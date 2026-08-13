@@ -18,7 +18,7 @@ import pytest
 from chisurf.plugins.chimol.chimol import settings as settings_api
 from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
 from chisurf.plugins.chimol.chimol.renderer import settings_window
-from chisurf.plugins.chimol.chimol.renderer.ui import settings_editor
+from chisurf.plugins.chimol.chimol.cmtk import settings_editor
 
 
 class RecordingPainter:
@@ -98,6 +98,24 @@ def test_numbers_get_a_usable_track():
     by_key = {one.key: one for one in model.settings}
     alpha = next(one for key, one in by_key.items() if key.endswith("alpha"))
     assert (alpha.v_min, alpha.v_max) == (0.0, 1.0)
+
+
+def test_max_fps_gets_a_sensible_track_not_a_guessed_one():
+    """Without a RANGES entry this would guess 0..120 from 2x the default --
+    a bad track for a frame-rate ceiling, which wants headroom above 60."""
+    model = settings_window.build_model()
+    by_key = {one.key: one for one in model.settings}
+    row = by_key["max_fps"]
+    assert (row.v_min, row.v_max) == (1.0, 240.0)
+
+
+def test_nerd_tick_gets_a_sensible_track_not_a_guessed_one():
+    """A guessed range for a 0.1 s default would be 0..0.2 -- no room to set
+    it coarser, which is the direction a slow machine actually wants to move."""
+    model = settings_window.build_model()
+    by_key = {one.key: one for one in model.settings}
+    row = by_key["nerd_tick"]
+    assert (row.v_min, row.v_max) == (0.02, 1.0)
 
 
 def test_writing_goes_through_the_settings_api():

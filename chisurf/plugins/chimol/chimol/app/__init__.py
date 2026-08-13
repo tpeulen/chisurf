@@ -1,11 +1,25 @@
-"""The application layer: the Qt main window, its panels, and what they share.
+"""The ChiSurf/Qt integration layer: the main window, its panels, their glue.
 
-``MolViewPluginWindow`` resolves lazily, for the reason given in
-:mod:`chimol.renderer`: it is a ``QMainWindow``, and eagerly importing it here
-made *every* module in this package require a window system. That included
-:mod:`~chimol.app.picking` -- a projection and an ``argmin`` -- which the
-viewer imports for every click, so a host with no toolkit could not select an
-atom because of an import three levels above the code doing the work.
+Everything here needs a window system, and that is now the *definition* of the
+package rather than an accident of where a file was first written. It used to
+hold engine code too -- picking, the command dispatcher and its history, the
+demo catalogue, the CLI -- none of which touches Qt, and which the engine
+therefore had to reach *up* into this package to use: the command language
+imported ``app`` to find a demo, the viewer imported ``app`` to resolve a
+click. Those have moved to where they belong (:mod:`chimol.renderer.picking`,
+:mod:`chimol.cmd.dispatch`, :mod:`chimol.demos`, :mod:`chimol.cli`), and the
+dependency now runs one way: this layer imports the engine, never the reverse.
+
+The CLI took a detour worth recording: it is toolkit-free but built its
+prompt on ``chisurf.core.console``, so moving it merely swapped a Qt
+dependency for a ChiSurf one -- which the seam test caught. The fix was not
+to leave it here but to make the routing *attachable*: :mod:`chimol.repl`
+owns the protocol, ChiSurf's console is attached when it is importable, and
+chimol carries the same rule for when it is not.
+
+``MolViewPluginWindow`` still resolves lazily, for the reason given in
+:mod:`chimol.renderer` -- it is a ``QMainWindow``, and importing it eagerly
+here made every module in the package require a window system.
 """
 from __future__ import annotations
 

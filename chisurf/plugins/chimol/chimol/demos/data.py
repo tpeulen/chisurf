@@ -31,13 +31,17 @@ class DemoDataUnavailable(RuntimeError):
 
 
 def cache_dir() -> pathlib.Path:
-    """Where generated demo material is kept between sessions."""
-    try:
-        import chisurf.core.settings as settings
+    """Where generated demo material is kept between sessions.
 
-        directory = pathlib.Path(settings.get_path("settings")) / "chimol_demos"
-    except Exception:  # pragma: no cover - ChiMOL running without ChiSurf
-        directory = pathlib.Path(tempfile.gettempdir()) / "chimol_demos"
+    Through :mod:`chimol.settings_dir` rather than asking ChiSurf directly: it
+    already resolves the same three cases (the env override a test sets,
+    ChiSurf's directory when ChiSurf is there, a standalone fallback), and the
+    temp-directory fallback here meant demo material was silently re-generated
+    every session on a machine without ChiSurf.
+    """
+    from ..settings_dir import settings_dir  # noqa: PLC0415
+
+    directory = settings_dir(create=True) / "chimol_demos"
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 

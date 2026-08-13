@@ -46,7 +46,7 @@ modifier keys):
   reappear, which reads as a refusal that redraws;
 * clicking empty histogram still adds a threshold there, and selects it.
 
-Everything is drawn through :mod:`chimol.renderer.ui.painter`'s six operations,
+Everything is drawn through :mod:`chimol.cmtk.painter`'s six operations,
 so this panel runs wherever the chrome runs: the desktop viewport and the
 browser, from one implementation.
 """
@@ -59,9 +59,9 @@ import time
 import numpy as np
 
 from .internal_gui import GuiWindow
-from .ui.icons import draw_eye
-from .ui.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
-from .ui.widgets import ColorEdit4, SliderFloat
+from ..cmtk.icons import draw_eye
+from ..cmtk.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
+from ..cmtk.widgets import ColorEdit4, SliderFloat
 
 logger = logging.getLogger(__name__)
 

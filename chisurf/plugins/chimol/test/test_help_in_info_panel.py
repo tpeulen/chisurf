@@ -49,7 +49,7 @@ def session():
 
 
 def _laid_out(win):
-    from chisurf.plugins.chimol.chimol.renderer.gui_overlay import refresh_gui_state
+    from chisurf.plugins.chimol.chimol.host.qt_overlay import refresh_gui_state
 
     gui = win.viewer._renderer._internal_gui
     refresh_gui_state(gui, win.viewer)
@@ -144,7 +144,7 @@ def test_help_setting_goes_to_the_panel_too(session):
     """92 names do not fit the prompt's one-line feedback strip."""
     from chisurf.plugins.chimol.chimol.cmd import cmd
 
-    from chisurf.plugins.chimol.chimol.renderer import gui_overlay
+    from chisurf.plugins.chimol.chimol.host import qt_overlay
 
     window, _app = session
     cmd.set_window(window)
@@ -153,7 +153,7 @@ def test_help_setting_goes_to_the_panel_too(session):
     gui = window.viewer._renderer._internal_gui
     # The panel's text is *pulled* by the chrome sync, which runs on a paint --
     # `layout()` alone leaves `info_text` empty and the panel looks broken.
-    gui_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
     assert window.viewer._info_visible
     assert len(gui._info_lines) > 10, gui._info_lines
     assert "Settings" in gui._info_lines[0]
@@ -163,27 +163,27 @@ def test_help_setting_goes_to_the_panel_too(session):
 def test_the_panel_draws_a_scroll_bar_when_it_overflows(session):
     """It scrolled on the wheel and said nothing: a page that ends
     mid-sentence reads as truncated rather than scrolled."""
-    from chisurf.plugins.chimol.chimol.renderer import gui_overlay
+    from chisurf.plugins.chimol.chimol.host import qt_overlay
 
     window, _app = session
     gui = window.viewer._renderer._internal_gui
 
     window.viewer.set_system_info_text("one line only")
     window.viewer.set_system_info_visible(True)
-    gui_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
     assert gui.info_max_scroll() == 0, "the short fixture already overflows"
-    short = _filled_rects(gui, gui_overlay)
+    short = _filled_rects(gui, qt_overlay)
 
     window.viewer.set_system_info_text("\n".join(f"line {i}" for i in range(400)))
-    gui_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
     assert gui.info_max_scroll() > 0, "the tall fixture did not overflow"
-    tall = _filled_rects(gui, gui_overlay)
+    tall = _filled_rects(gui, qt_overlay)
 
     assert short == 0, f"a bar was drawn for text that fits ({short} fills)"
     assert tall == 2, f"expected a track and a thumb, got {tall} fills"
 
 
-def _filled_rects(gui, gui_overlay) -> int:
+def _filled_rects(gui, qt_overlay) -> int:
     """How many filled rectangles the chrome paints (the bar adds two)."""
 
     class _Counter:

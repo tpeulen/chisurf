@@ -36,8 +36,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from ...host.events import CONTROL_MODIFIER, META_MODIFIER
-from ...host.keys import (
+from ..host.events import CONTROL_MODIFIER, META_MODIFIER
+from ..host.keys import (
     KEY_BACKSPACE,
     KEY_DELETE,
     KEY_DOWN,
@@ -307,7 +307,7 @@ class CommandLine:
         # calling it: the key was never handled, and would not have arrived
         # anyway -- Qt gives Tab to focus navigation before a key handler sees
         # it, so the widget has to claim it in `event()`.
-        from ...host.keys import KEY_TAB
+        from ..host.keys import KEY_TAB
 
         if key == KEY_TAB:
             self.complete()

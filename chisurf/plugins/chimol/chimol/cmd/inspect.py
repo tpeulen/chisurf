@@ -134,7 +134,7 @@ class InspectMixin(BaseCmd):
         TextEditor
             The editor, so a caller can read ``.text`` back.
         """
-        from ..renderer.ui import text_editor as te
+        from ..cmtk import text_editor as te
 
         path = Path(str(filename)).expanduser() if str(filename).strip() else None
         text = ""
@@ -163,7 +163,7 @@ class InspectMixin(BaseCmd):
     # -- helpers -------------------------------------------------------- #
     def _open_memory_window(self, source) -> None:
         """Open a hex view on one block, if there is a display."""
-        from ..renderer.ui import memory_editor as me
+        from ..cmtk import memory_editor as me
 
         editor = me.MemoryEditor(source, read_only=True)
         self._open_control_window(editor, f"Memory — {source.name}", 720, 420)
@@ -185,7 +185,7 @@ class InspectMixin(BaseCmd):
         try:
             from qtpy import QtWidgets
 
-            from ..renderer.ui.qt_host import ControlHost
+            from ..cmtk.qt_host import ControlHost
         except ImportError:
             self._emit_error("no Qt binding; use the text form instead")
             return

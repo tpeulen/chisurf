@@ -760,7 +760,7 @@ def load_trajectory_cell(path: Path):
     if suffix not in TRAJECTORY_SUFFIXES:
         return None
     try:
-        from chisurf.core.fio.trajectory import read_dcd
+        from .dcd import read_dcd  # noqa: PLC0415
 
         _xyz, lengths, angles = read_dcd(str(path))
     except Exception:  # noqa: BLE001 - a missing box is not a failed load
@@ -794,7 +794,11 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
             f"File type '{suffix}' is not a trajectory ChiSurf reads (.dcd is)"
         )
 
-    from chisurf.core.fio.trajectory import read_dcd
+    # chimol's own reader -- `io/dcd.py`, moved here from ChiSurf on the rule
+    # that structure I/O is chimol's (`okf/plugins/chimol-relocation.md`).
+    # No guard and no fallback: it is part of this package now, so it is
+    # either importable or the install is broken.
+    from .dcd import read_dcd  # noqa: PLC0415
 
     xyz, _, _ = read_dcd(str(path))              # already Angstrom; see below
     arr = np.ascontiguousarray(xyz, dtype=float)

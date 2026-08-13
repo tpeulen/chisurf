@@ -2,7 +2,7 @@
 
 Why this is not a slider with a different name
 ----------------------------------------------
-:class:`~chimol.renderer.ui.widgets.SliderFloat` maps an *absolute* position in
+:class:`~chimol.cmtk.widgets.SliderFloat` maps an *absolute* position in
 its box onto its range: press at the middle of the track and the value is the
 middle of the range, wherever the track happens to be on screen. A drag has no
 track at all. Its box is only where the gesture *starts*; from then on the
@@ -106,7 +106,7 @@ _INNER_SPACING = 4.0
 _NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 
 #: *Detects* -- does not interpret -- the percentage spec that
-#: :func:`~chimol.renderer.ui.style.format_value` understands. A value shown
+#: :func:`~chimol.cmtk.style.format_value` understands. A value shown
 #: through ``"%.0%"`` is displayed multiplied by a hundred, so reading it back
 #: has to undo that; the formatting itself stays in ``style``.
 _PERCENT_SPEC = re.compile(r"%\.(\d+)%")

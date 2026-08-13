@@ -38,7 +38,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui.font import MISSING_GLYPH, load_atlas
+from chisurf.plugins.chimol.chimol.cmtk.font import MISSING_GLYPH, load_atlas
 
 #: What was reported, and what the baked set now has to cover on its own.
 REPORTED = "äöüÄÖÜß"

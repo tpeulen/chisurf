@@ -8,7 +8,7 @@ desktop app and the browser run one code path -- so the same file is read here
 and drawn with the chrome's own controls.
 
 That is an **adapter**, not a second renderer: the spec becomes
-:class:`~chimol.renderer.ui.settings_editor.Setting` rows over the editor that
+:class:`~chimol.cmtk.settings_editor.Setting` rows over the editor that
 already existed for the display settings. Stating it that way is what keeps the
 two from drifting into two form systems.
 
@@ -32,14 +32,14 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui.settings_editor import (
+from chisurf.plugins.chimol.chimol.cmtk.settings_editor import (
     BOOL,
     CHOICE,
     FLOAT,
     INT,
     TEXT,
 )
-from chisurf.plugins.chimol.chimol.renderer.ui.view_spec import (
+from chisurf.plugins.chimol.chimol.cmtk.view_spec import (
     load_view_spec,
     model_from_view_spec,
     settings_from_view_spec,

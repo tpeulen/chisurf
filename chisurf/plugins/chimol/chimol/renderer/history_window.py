@@ -20,7 +20,7 @@ silently does something else at some rows would be worse than not offering one.
 from __future__ import annotations
 
 from .internal_gui import GuiWindow
-from .ui.painter import ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
+from ..cmtk.painter import ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
 
 __all__ = ["HistoryWindow"]
 

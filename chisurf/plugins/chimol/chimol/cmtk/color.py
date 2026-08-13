@@ -12,7 +12,7 @@ Why the hue *bar* and not the hue *wheel*
 -----------------------------------------
 The reference offers both, and the wheel is the prettier one. It is also an
 annulus of six shaded arcs plus a rotating triangle, and
-:class:`~chimol.renderer.ui.painter.Painter` has no arc, no circle and no
+:class:`~chimol.cmtk.painter.Painter` has no arc, no circle and no
 triangle -- everything it can express is an axis-aligned rectangle. A wheel
 approximated out of rectangles is a worse wheel than a correct square, so the
 wheel is deliberately **not** ported. What is ported is the reference's own
@@ -220,7 +220,7 @@ def _opaque(colour: Colour) -> tuple[int, int, int, int]:
 def _strips(size: float) -> int:
     """How many horizontal strips a vertical ramp is drawn as.
 
-    :meth:`~chimol.renderer.ui.painter.Painter.gradient_rect` interpolates
+    :meth:`~chimol.cmtk.painter.Painter.gradient_rect` interpolates
     left to right only, so anything that varies *down* the box is a stack of
     strips -- and the stack is what the frame pays for, so it is capped.
 
@@ -457,7 +457,7 @@ class ColorButton:
     transparent the colour is rather than only that it is, and the split needs
     the swatch to be wide enough for two readable halves, which a swatch drawn
     at row height is not. The checkerboard itself is small
-    :meth:`~chimol.renderer.ui.painter.Painter.fill_rect` calls, which is all
+    :meth:`~chimol.cmtk.painter.Painter.fill_rect` calls, which is all
     the painter has; the reference's diagonal-triangle preview from its older
     versions is not expressible at all, there being no triangle operation.
 
@@ -909,7 +909,7 @@ class ColorPicker4:
     ------------------------------
     The reference paints it as two four-cornered gradients: white to hue
     across, transparent to black down.
-    :meth:`~chimol.renderer.ui.painter.Painter.gradient_rect` interpolates
+    :meth:`~chimol.cmtk.painter.Painter.gradient_rect` interpolates
     **left to right only**, so the square is instead a stack of horizontal
     strips, each one a single gradient from grey to the hue at that strip's
     value. Along a strip this is exact -- at fixed hue and value, every RGB

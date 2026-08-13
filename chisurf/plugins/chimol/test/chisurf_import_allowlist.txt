@@ -1,0 +1,40 @@
+# Modules that still import ChiSurf. SHRINKING -- never add a line.
+#
+# chimol is being made into its own repository (`~/dev/chimol`, symlinked into
+# `modules/` the way tttrlib and imp-tricks are). The dependency runs **one
+# way**: ChiSurf may import chimol; chimol may not import ChiSurf. Every line
+# here is a place that still does, and therefore a place the move would break.
+#
+# The refactor happens *here*, in place, where it can be tested against the
+# real suite -- so that the move itself is a `git mv` and an import rewrite,
+# not a debugging session.
+#
+# Three groups, and they are not equally hard:
+#
+#   * `app/*` is the ChiSurf integration layer -- the Qt panels, the console,
+#     the dock. Most of it is deleted rather than ported (`HANDOVER_CHIMOL.md`
+#     section 3.4, PRD-101: thirteen of these panels draw with Qt widgets what
+#     the in-viewport chrome already draws with quads). What remains of it is
+#     the natural home for anything that has to know about ChiSurf, and can
+#     stay behind when the engine moves.
+#   * `io/*` and `analysis/*` are real data dependencies -- an atom dtype, a
+#     DCD reader, element tables. These need chimol to own them or to take
+#     them through a seam.
+#   * `settings_dir.py` is **allowed to stay** and is the model for the rest:
+#     it asks for ChiSurf inside a `try`, uses it when it is there, and falls
+#     back to its own directory when it is not. A soft dependency that works
+#     both ways is the target shape, not a violation.
+#
+# Guarded by test_chisurf_seam.py, which parses the import graph rather than
+# grepping the text -- a docstring explaining that a module no longer imports
+# ChiSurf must not count as importing it.
+analysis/ss.py
+cli.py
+app/demos.py
+app/molview_main_window.py
+app/rmf_panel.py
+app/settings_table.py
+app/volume_panel.py
+cmd/exporting.py
+io/atoms.py
+settings_dir.py

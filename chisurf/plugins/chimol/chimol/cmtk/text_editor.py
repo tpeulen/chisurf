@@ -53,7 +53,7 @@ third of the size and not one that has to be re-read to be trusted. Multilevel
 comments and strings (Lua's ``[==[``) go with them; the languages that ship
 here have none.
 
-Everything draws through :class:`~chimol.renderer.ui.painter.Painter`'s six
+Everything draws through :class:`~chimol.cmtk.painter.Painter`'s six
 operations, holds its own state, and hit-tests with :func:`.style.hit`, like
 every other control in this package.
 """
@@ -2411,8 +2411,8 @@ class TextEditor:
             gives: a key that falls through to a viewport shortcut while
             someone is typing is worse than one that does nothing.
         """
-        from ...host.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
-        from ...host.keys import (
+        from ..host.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
+        from ..host.keys import (
             KEY_BACKSPACE,
             KEY_DELETE,
             KEY_DOWN,
@@ -2569,7 +2569,7 @@ class TextEditor:
             the chrome has no clock to derive it from, which is the rule this
             package's docstring states.
         """
-        from ...host.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
+        from ..host.events import ALT_MODIFIER, CONTROL_MODIFIER, META_MODIFIER, SHIFT_MODIFIER
 
         if not hit(px, py, x, y, w, h):
             return None
@@ -2837,6 +2837,6 @@ def _is_mac_style(modifiers: int) -> bool:
     the platform -- which would be wrong in the browser build, where the host
     is the one that knows.
     """
-    from ...host.events import META_MODIFIER
+    from ..host.events import META_MODIFIER
 
     return bool(modifiers & META_MODIFIER)

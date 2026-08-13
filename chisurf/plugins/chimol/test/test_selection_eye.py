@@ -133,7 +133,7 @@ def test_the_eye_is_drawn_rather_than_typed():
     with ink in it rather than a character that silently went missing.
     """
     from chisurf.plugins.chimol.chimol.renderer.internal_gui import Rect
-    from chisurf.plugins.chimol.chimol.renderer.ui.icons import (
+    from chisurf.plugins.chimol.chimol.cmtk.icons import (
         CLOSED_EYE, OPEN_EYE, draw_glyph,
     )
 

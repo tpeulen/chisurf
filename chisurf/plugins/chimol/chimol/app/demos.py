@@ -30,7 +30,7 @@ from chisurf.gui import dialogs
 # no toolkit: the menu bar is generated from them at import time, and this
 # module owns a `QDialog`. Re-exported here so every existing caller keeps its
 # spelling.
-from .demo_catalog import (  # noqa: E402
+from ..demos.catalog import (  # noqa: E402
     DEMO_DIR,
     DEMOS,
     demo_path,

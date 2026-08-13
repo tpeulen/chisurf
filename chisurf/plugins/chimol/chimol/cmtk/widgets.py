@@ -1,6 +1,6 @@
 """Reusable painter-level ImGui-style controls for Chimol and shared UI.
 
-Everything is drawn through :class:`~chimol.renderer.ui.painter.Painter`'s six
+Everything is drawn through :class:`~chimol.cmtk.painter.Painter`'s six
 operations so controls run natively on desktop quads, Qt, and in the browser.
 
 Includes:
@@ -1148,7 +1148,7 @@ class Tooltip:
 class TextInput:
     """A one-line editable field with a caret.
 
-    The editing itself is :class:`~chimol.renderer.ui.text_field.TextField` --
+    The editing itself is :class:`~chimol.cmtk.text_field.TextField` --
     this adds the box, the caret and the placeholder, and nothing else, so a
     host that already routes keys into a field keeps doing exactly that.
 

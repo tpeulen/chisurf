@@ -1,5 +1,308 @@
 # Update Log
 
+## 2026-08-13
+* **ChiMOL: severing ChiSurf, before the move** ([chimol-relocation](plugins/chimol-relocation.md)).
+  User: chimol becomes `~/dev/chimol` (local git, no remote, symlinked into
+  `modules/`), *"chisurf can depend on chimol, not the other way around"*, and
+  *"do the refactor before reloc so it can all be tested in place and the reloc
+  remains mechanical"*. `test/test_chisurf_seam.py` is the ledger and the guard
+  -- import graph, not grep; a shrinking allowlist; and a real distinction
+  between a **hard** import (breaks the move) and a **soft** one (asks inside a
+  `try`, carries its own answer, survives the move -- with a second test
+  proving the wrapper is actually there). Severed so far: the two
+  self-referential absolute imports that hard-coded chimol's own path and would
+  have broken *on move*; the four settings-directory importers, now through
+  `settings_dir` (which also fixed standalone chimol falling back to the
+  read-only package copy, demo data regenerating every session, and three tests
+  patching a `config._cs_settings` seam that no longer exists); and
+  `cmd/exporting.py`, now falling through to the in-viewport progress that
+  already existed. Writing the soft/hard split down then corrected the
+  picture: three of the four remaining "hard" engine deps turned out to be
+  **already guarded** (the browser port had done it), so the engine is far
+  closer to movable than the raw import count suggested — **one**
+  unconditional import is left, `analysis/elements.py`. `io/structure.py`'s
+  loader, genuinely unguarded, now raises a chimol error naming the missing
+  DCD reader rather than an `ImportError` from a package it should not need.
+  Recorded trap: the engine imports *into* `app/` in eight places, so "engine
+  moves, app stays" is not yet true.
+* **Keyboard bindings are readable and rebindable** — Help → Keyboard
+  bindings (overlay), Settings → `keys.*`. New `chimol/keybindings.py` holds
+  the table of *actions* (what each does) while the key on each lives in the
+  display config, so the same information reaches three places without being
+  written three times: the `keys` command prints it into the info overlay (the
+  one `help` already uses), the settings panel renders each as an editable
+  text field for free (it walks `_DISPLAY_CONFIG`, and strings fall through to
+  `TextInput`), and `MolView.handle_key_event` resolves through it — replacing
+  six hard-coded `if ch == "r"` comparisons that could be neither listed nor
+  changed. Keyed `action -> key`, not the reverse, so a rebind does not
+  rewrite the entry's identity and two-actions-on-one-key is *detectable*
+  (`conflicts()`, reported in the overlay) rather than silently last-one-wins;
+  an empty value unbinds. Defaults unchanged (r/c/b/d/s/q). Two things the
+  work caught: the listing overlay lays entries out in columns and shows only
+  their first element, so it dropped every description — found by rendering
+  the overlay and looking at it, fixed by using the prose path; and the
+  defaults literal cannot call a function, because
+  `test_display_config_defaults` `eval`s it as a literal to guard JSON/Python
+  drift — so the keys are spelled out in both and a new test guards *that*
+  pair instead. 17 tests in `test_keybindings.py`; 173 across the affected
+  config/settings/menu suites.
+* **The frame-rate readout runs continuously instead of only on hover**
+  (`renderer/canvas_base.py`). Reported as "the fps counter only updated when
+  I move it over an active element". Root cause: both hosts run
+  `update_mode="ondemand"`, so a frame is drawn only when something asks for
+  one, and the idle-settle timer added earlier the same day was deliberately
+  **one-shot** — it settled the rate to zero once and then stopped. The only
+  thing still repainting an otherwise-idle viewport was `mouse_move` returning
+  `True` as the pointer *crossed into or out of* a control, which is exactly
+  the reported symptom. Now `_note_frame_drawn` rearms after every draw
+  **while a readout is actually on screen** (`_readout_is_live`: nerd mode, or
+  the status band's rate under `debug_overlays`), ticking at the readout's own
+  publish interval (`nerd.tick_interval`) rather than past `_IDLE_GAP` — a
+  cadence past the idle gap can only ever redraw *after* the rate has been
+  cleared to zero, which is a settle, not a counter. With no readout on screen
+  the one-shot settle is unchanged, so an idle viewport nobody is measuring
+  still goes fully quiet; `continuous` mode was **not** used, since that
+  redraws the whole scene forever for a number in the corner.
+
+  **Kept off the frame budget on a second pass** ("i do not want to loose
+  perf"): the idle redraw is its own setting, `nerd.idle_tick_interval`
+  (default 0.25 s, `nerd_idle_tick`), *not* the publish tick
+  `nerd.tick_interval` it first reused. The two cost different things —
+  publishing re-reads numbers the renderer already had, while this forces a
+  whole extra frame, geometry and all, out of a viewport that had nothing to
+  draw, which on a large model is not cheap. Four times a second reads as
+  live at a fraction of 10 Hz. **`0` disables it outright** (settle to zero
+  and stay there), which is what to set while measuring, and nothing is paid
+  at all unless a readout is on screen — the default for both instruments is
+  off. 15 tests in `test_canvas_cadence.py`, pinning the rearm split, that
+  the idle tick stays slower than the publish tick, and that `0` arms no
+  timer.
+* **Lumis Quest: the engine is fully JSON-driven**
+  ([PRD-91](prds/prd-91.md)). All game content and mechanics now live in ten
+  JSON data files under `data/`. The Python modules are generic interpreters:
+  `battle.py`'s `_damage` iterates JSON-defined trait rules (conditions +
+  effects, no if/elif chain), `_warden_surge_move` dispatches JSON-defined
+  effect sequences (no Python elif per Warden), `bleach_rate` iterates JSON
+  cost-rule multipliers, and every log message reads from `battle.json`'s
+  `messages` templates. New files: `bestiary.json`, `battle.json`,
+  `crafting.json`, `perks.json`, `game_state.json`, `npc_lines.json`.
+  Constants renamed to generic terms. Graphics and sound are JSON-driven too
+  (`data/graphics.json`: tile sprites, weapons, magic, colors, art refs;
+  `data/sound.json`: SFX events, music tracks, sound frequencies). 409 tests pass.
+* **Lumis Quest: creatures level up -- the Pokemon compulsion loop**
+  ([PRD-91](prds/prd-91.md)). Team creatures now gain XP and level up from
+  battle wins, the core loop that was missing. `Fighter` grew `level`/`xp`
+  fields; each level scales max HP and attack by 12%. XP is awarded on win
+  based on opponent tier (doubled for Wardens). Level-ups heal to full. The
+  save format extends team tuples to 6 elements (additive, old saves parse).
+  Fighter cards and the PARTY tab show `Lv{N}`. 409 tests pass.
+
+* **Lumis Quest: all constants are settings; Warden bosses have phases**
+  ([PRD-91](prds/prd-91.md)). The remaining gameplay constants -- `GRAVITY`,
+  `JUMP_SPEED`, `TYPE_CPS`, `AUTOSAVE_SECONDS` -- are now in the settings
+  registry (`gamelogic.gravity`, `gamelogic.jump_power`, `options.text_speed`,
+  `options.autosave_interval`), with `_setting_property` views so every call
+  site reads the store. The registry now holds 26 settings, all wired, all
+  part of the save. Warden boss fights gained a **surge phase**: below 50% HP
+  each Warden gains a signature move every third round (FLARE, SPLIT, VEIL,
+  TIDE, ECLIPSE), making the five boss fights mechanically distinct from wild
+  encounters rather than just harder. The battle screen now shows a **boss bar**
+  at the top for Warden fights, turning red with a "!! SURGE !!" indicator when
+  the phase change is live. 405 tests pass.
+
+* **View gizmo removed** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). User: *"gizmo is ugly as fuck
+  remove."* `cmtk/gizmo.py` deleted outright (not disabled behind a flag),
+  along with every wiring point in `internal_gui.py` (Hit kind, state,
+  hit-test/press/drag/release/tooltip branches, the layout_info footprint
+  reservation, the paint call), `canvas_base.py`'s and `view.py`'s
+  `on_gizmo_*` callback wiring, `cmtk/__init__.py`'s exports, and
+  `test_gizmo.py`/`gizmo_baseline.py` plus its rendered PNGs. Three rounds of
+  work (axis-ball port, ViewCube redesign, reference-screenshot refinement)
+  are kept as an honest record in the concept, not scrubbed — including the
+  one piece worth keeping on its own terms, a generalised
+  direction→(elevation, azimuth) orientation solver that exists nowhere else
+  in the tree. Verified: 3885 tests collect (was 3946), 267-test targeted
+  sweep passes clean.
+* **chimol ViewCube gizmo refined against three reference screenshots**
+  ([PRD-104](prds/prd-104.md), [chimol-cmtk.md](plugins/chimol-cmtk.md)). The
+  ViewCube shipped earlier the same day was checked against three real
+  Autodesk/SolidWorks references and found four gaps: a bolder/longer axis
+  triad with a legibility halo fix along the way; a small fixed perspective
+  for the gizmo's own mini-scene (`gizmo._project`), independent of the main
+  viewport's projection; and chrome outside the cube's silhouette — a home
+  icon (wired to `MolView.reset_view`), a pair of 90°-roll arrows and 3 edge
+  nudge-triangles (all wired to `CameraState.turn`, every sign verified
+  numerically rather than assumed), plus a dropdown drawn and hit-tested but
+  left an honest inert placeholder since its real menu contents could not be
+  identified from the reference alone. Per-face slanted labels were judged
+  out of scope (`Painter.text` has no rotation parameter; adding one is a
+  separate, toolkit-wide change). Footprint grew on purpose this round;
+  `test_wheel_routing.py`'s earlier fix (reserve the gizmo's *current*
+  footprint) needed no rework, just feeding it the new, wider rectangle.
+  `test_gizmo.py` 34→59 tests; `gizmo_baseline.py` gained a `chrome_hover`
+  capture; 5 PNGs rendered and inspected by hand.
+* **PRD-36 and PRD-88 closed: status flips for already-done work.**
+  PRD-36 (dockable-tool migration): both remaining tools — `ProjectBrowserTool`
+  (DB init deferred via `QTimer.singleShot`) and `MolViewPluginWindow` (on the
+  base after PRD-57 settled) — were already migrated and passing the guard test.
+  PRD-88 (provenance graph matrix): the audit harness is green in two test files,
+  root-cause defects fixed, nested chains covered, CLI vocabulary checked. Two
+  edge-case cells documented as decisions (`img_tracking` needs a fixture;
+  no-primary container is well-formed when explicitly declared primary).
+* **PRD-103 done: the declared UI scheme covers every format, and an editor finds it**
+  ([PRD-103](prds/prd-103.md)). All four remaining checkboxes landed: (1) `$schema`
+  accepted in both view-spec and guide schemes, so editors validate on write;
+  (2) per-key validation for the
+  eight documented custom-section factories (`help`, `embed`, `scalar_table`,
+  `background_run`, `rate_matrix`, `path_list`, `lcurve`, `fitting_parameter`) — a typo
+  in one of their option names is now caught; (3) a generated manifest schema
+  (`build_manifest_schema` in `chisurf/core/plugin/manifest.py`) replacing the hand-written
+  draft-07 dict, with a 127-file test suite that found and fixed a real defect (hmm's
+  `params` → `params_schema`); (4) `generate_starter_view_spec` producing a valid
+  `view.json` from a model's parameter groups. 477 tests across view specs, tours, and
+  manifests.
+
+* **Lumis Quest: every declared setting now works; menu scroll fixed**
+  ([PRD-91](prds/prd-91.md)). Four gameplay settings that existed in the pause
+  menu but had no effect are now wired: `enemy_aggro_radius` (was never read by
+  the enemy AI), `action_combat_enabled` (gated nothing), `particle_fx_enabled`
+  (particles updated and drew unconditionally), `crt_filter_enabled` (there was
+  no CRT effect -- `_draw_crt_filter` scanline overlay is new). Four module
+  constants the open front named are now settings: `SPRINT` (→
+  `gamelogic.sprint_multiplier`), `CAMERA_LAG` (→ `options.camera_smooth`),
+  `LUMI_TRAIL` (→ `options.lumi_trail`), and a new `gamelogic.encounter_rate`
+  that scales the beast-contact radius. The menu scroll window was hardcoded to
+  8 rows but OPTIONS and GAMELOGIC now have 11 settings each -- widened to 12
+  with a centred-scroll algorithm so every row is visible without scrolling.
+  `_menu_click_target` now shares the same scroll computation as `_draw_menu`.
+  402 tests pass.
+
+* **View gizmo redesigned: six axis balls → a solid ViewCube**
+  ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)). A
+  reference screenshot showed the earlier `ImViewGuizmo` port (below, same
+  date) targeted the wrong widget entirely; `cmtk/gizmo.py` rewritten outright
+  as the Blender/3ds Max/ChimeraX ViewCube — a projected cube (8 corners, the
+  same `_view` projection generalised from 6 axis directions), up to 3
+  visible faces drawn back-to-front and labelled, a small RGB axis indicator
+  at the nearest corner. `_orientation_for_direction` generalises the old
+  six-axis hand-solved snap table to all 26 face/edge/corner directions,
+  regression-tested against the original table exactly. Interaction: a press
+  on the cube snaps on release unless the drag exceeds a 6px threshold, which
+  then orbits instead — replacing the old ball-vs-invisible-disc split. New:
+  the widget drags to reposition (a grip strip, persisted like a
+  `GuiWindow`'s position) inside its *unchanged* footprint budget, which
+  mattered — growing it regressed a real collision with the info panel that
+  `layout_info` now reserves around. Also fixed at the root: `fill_triangle`
+  quads (a face's own two triangles) showed a seam under antialiasing;
+  `qt_painter.py` now strokes with the fill's own colour, closing it
+  app-wide, which forced a `chrome_baseline.py` recapture that also picked up
+  an unrelated, already-stale baseline from an earlier eye-icon fix.
+  `test_gizmo.py` rewritten (34 tests), 4 headless PNGs inspected by hand.
+* **Nerd panel fixed-width; gizmo spokes widened** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). `InternalGui.NERD_WIDTH_CHARS = 68`
+  replaces sizing the block to its longest current line, which resized the
+  panel under the reader as content changed length; clipped rather than
+  grown around, and a new test stresses `FrameStats.lines()` with the widest
+  plausible values per field — caught its own first guess (62) as too narrow
+  against a real long GPU adapter string. Gizmo spoke line width 2.5→4.0
+  (`_SPOKE_WIDTH`), reported as too faint to read as a "diagonal" against the
+  reference's own disc-pixelation, which is the *toolkit's* shared
+  `style.disc()` rasterisation and was deliberately left alone — raising its
+  band count is a real, app-wide performance cost, and doing that mid-way
+  through an open "why is the UI laggy" investigation would be moving before
+  the measurement exists.
+* **`chimol.renderer.cmtk` relocated to `chimol.cmtk`** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). User: *"cmtk should be on another
+  module level."* Depth changed, not just a name, so every relative import
+  needed its dot-count recomputed per file rather than a blind rename — two
+  shapes missed by the first pass and caught only by actually importing the
+  package (not just grepping): a bare `from . import cmtk` module import, and
+  six files reaching `chimol/host/` via a relative import indented inside a
+  function body (invisible to a line-start-anchored grep). Same segmented-
+  pathlib-literal trap as the earlier `ui/`→`cmtk/` merge repeated in two
+  files, found the same way. 3907 tests collect, 754 pass, all outside-chimol
+  consumers import clean.
+* **Nerd-mode plots smoothed, gizmo made usable** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). `frame_stats.REPORT_INTERVAL` 0.5s →
+  0.1s: the nerd-mode line plots redraw 5x more often, so the trace no longer
+  jumps by up to 30 samples in one step at 60fps (the numeric fps readout,
+  `_FPS_REPORT_INTERVAL`, deliberately untouched — a number redrawn at 10Hz
+  is unreadable). Gizmo (`cmtk/gizmo.py`): reported too small and
+  unclickable — `DEFAULT_SIZE` 84→120, `_HANDLE_RADIUS_RATIO` 0.117→0.16, and
+  `hit_test` now accepts a click anywhere along a primary handle's spoke, not
+  just the tiny ball at its tip. First attempt at the spoke hit-test gated on
+  the wrong radius and disabled it almost everywhere (a spoke is shorter than
+  the centre-orbit-disc radius by design); caught before shipping by testing
+  the spoke's own midpoint, fixed by gating on the much smaller handle
+  radius instead. Two new tests pin both the spoke-click and the
+  still-correctly-orbits-near-dead-centre cases.
+* **`renderer/ui/` merged into `cmtk/` — chimol has one widget
+  namespace** ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)).
+  User: *"all chimol widgets and autoform must be in cmtk."* Scoped first
+  (AutoForm is a chisurf-wide, 170-file, 75-plugin-directory framework
+  predating chimol — moving *that package* would invert the app's dependency
+  graph): merge `renderer/ui/`'s ~30 files into `cmtk/`, repoint
+  AutoForm's one bridge module (`qt_host.py`, used by two custom sections) at
+  the merged package, leave AutoForm's own location untouched. 69 files'
+  imports fixed inside the chimol plugin, 5 outside (AutoForm's two sections,
+  lumis_quest which reuses chimol's ImGui-style controls, a doc comment),
+  plus `bake_chrome_atlas.py`, `port_imgui_widget.py`'s scaffolder target,
+  and two guard tests (`test_chrome_atlas.py`, `test_qt_seam.py` — which also
+  surfaced two pre-existing allowlist gaps, `qt_host.py` and `cmd/inspect.py`,
+  unrelated to the rename, fixed alongside it). Historical/dated entries
+  elsewhere in this log and in `chimol-web.md` were deliberately left saying
+  `renderer/ui/` — that was the real name when they were written. Verified:
+  3905 tests collect, the full widget/painter/plot/gizmo/qt-seam/autoform-bridge
+  set (~800 tests) passes.
+* **cmtk gizmo: a six-axis view-orientation widget, clickable and wired to the
+  camera** ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)).
+  Phase 4 done. `cmtk/gizmo.py`: a faithful port of
+  `Ka1serM/ImViewGuizmo`'s `Rotate` — which turned out to be six axis balls
+  (`+X`/`-X`/`+Y`/`-Y`/`+Z`/`-Z`) plus a big centre orbit-disc, **not** a
+  Blender-style cube with faces/edges/corners; ported what the reference
+  actually has. Orthographic projection is one matrix-vector product against
+  `CameraState._rotation` (no 4x4 matrices needed — see `gizmo.py`'s `_view`
+  docstring for why), depth-sorted back-to-front, faded on the far side,
+  hover-highlighted in gold. Wired into `InternalGui` through three new
+  callback attributes (`on_gizmo_orient`/`on_gizmo_rotation`/`on_gizmo_orbit`,
+  assigned in `canvas_base.py`'s `init_viewport`) and a new `Hit("gizmo", ...)`
+  kind threaded through the existing `hit_test`/`mouse_press`/`drag`/`release`/
+  `is_dragging` pipeline — no new input path, no text command (state changes
+  stay reachable only through `ChiSurfAPI`/callbacks per the architecture
+  rule). A handle click snaps the camera via `CameraState.set_orientation`
+  (six `(elevation, azimuth)` pairs derived from `reset_view`'s own formula,
+  unit-tested by round-tripping through it); dragging the centre disc calls
+  `CameraState.orbit` verbatim, so the gesture matches the viewport's own
+  drag exactly. 20 new tests (`test/test_gizmo.py`) plus three headless
+  screenshots (`test/gizmo_baseline.py`, front/three-quarter/top) inspected by
+  hand — colours, occlusion, and the hover ring+label-reveal all read
+  correctly. `junk/ImViewGuizmo/ImViewGuizmo.h` annotated
+  (`CHISURF-TAKEN`/`CHISURF-SKIPPED`: dolly/pan buttons and the eased snap
+  animation were deliberately not ported — see the concept for why).
+* **cmtk draws the nerd-mode frame-stats graphs** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). Phase 1: `cmtk/` gained
+  `axis.py` (linear auto-fit + Heckbert nice-ticks), `markers.py`
+  (circle/square/diamond/cross), `plot.py` (`Plot`/`begin_plot`, ImPlot's
+  default "Deep" palette). First production caller —
+  `InternalGui._paint_nerd_graph` — now draws fps/frame-time/cpu/instances as
+  real polylines instead of the bar-sparkline approximation its own docstring
+  used to explain was only there because the painter had no line primitive;
+  the stacked breakdown graph stays bars. 16 new tests, headless-rendered and
+  inspected. One pre-existing (not introduced here) cosmetic label-overlap
+  defect noted in the concept, left unfixed as out of scope.
+* **cmtk: ImPlot, ImPlot3D and a view gizmo, scoped** ([PRD-104](prds/prd-104.md),
+  [chimol-cmtk](plugins/chimol-cmtk.md)). References mined into
+  `junk/implot`, `junk/implot3d`, `junk/ImViewGuizmo` (`junk/clone.sh`) — a
+  combined ~21.7k lines of C++. The one architecture decision: `Painter`
+  (`renderer/ui/painter.py`) gains an arbitrary filled triangle, the single
+  primitive none of the three references can be drawn without on a floor that
+  was deliberately axis-aligned-rects-only until now — additive to, not a
+  reversal of, that floor's documented exclusions. Phased: foundation
+  (triangle primitive on both `QtPainter`/`QuadPainter` backends), a cmtk 2D
+  MVP (axes/line/scatter), 2D breadth, cmtk3d (surfaces/meshes), and the
+  gizmo — tracked with resume notes in the concept as each lands.
+
 ## 2026-08-12
 * **chimol: the default window needs no Qt** ([chimol-web](plugins/chimol-web.md)).
   `python -m chisurf.plugins.chimol` now opens a **GLFW** window through
@@ -35973,3 +36276,28 @@
   would act on, so the GPU row graphs *submitted work* and says so. Also fixed:
   `psutil.cpu_percent` measures since the previous call, so the first reading
   was 0 % — reported as an idle machine rather than as no reading yet.
+- 2026-08-13 -- chimol relocation: six Qt-free modules moved out of `app/` into
+  the engine (`renderer/picking`, `cmd/dispatch`, `cmd/history`, `demos/catalog`,
+  `demos/data`, `cli`), cutting engine->`app/` edges from ~11 to 3;
+  `renderer/gui_overlay` -> `host/qt_overlay` because compositing chrome is a host
+  job and `renderer/` must run in a browser. Moving the CLI exposed a ChiSurf
+  dependency the Qt audit could not see, fixed by making the prompt's
+  command-or-Python routing attachable (`chimol/repl.py`) with a stdlib fallback
+  that is tested for *agreement* with ChiSurf's console rather than merely for
+  existing. See okf/plugins/chimol-relocation.md.
+- 2026-08-13 -- chimol: fixed the full-suite SIGSEGV. A `destroyed`-signal slot
+  wrote the canvas's closed-flags from inside PyQt's C++ destructor, which runs
+  *inside a garbage collection* when the collector drops the last reference --
+  so a widget left over from an earlier test crashed an unrelated one. Replaced
+  by `_rc_get_closed`/`_rc_close` overrides that ask whether the C++ half is
+  alive when rendercanvas asks them. Also fixed `test_camera_framing`, which had
+  stopped building the state it describes: the object panel now starts floating,
+  and a floating panel reserves no column, so the degenerate viewport it asserts
+  against never occurred. See okf/references/known-issues.md.
+- 2026-08-13 -- chimol: the suite completing exposed 18 failures the segfault
+  hid. Two were real regressions from deleting the Qt object dock, not stale
+  tests: the group-expansion rule (`_targets_for`) lived only on that widget and
+  is now `object_menus.targets_for`, used by the in-viewport panel; and
+  `set_object_group`/`set_group_open` never bumped `objects_revision`, so a
+  `group` command left every view showing a flat list. Nine failures remain --
+  worklist and the trap in okf/plugins/chimol-relocation.md.

@@ -124,6 +124,13 @@ class QuadPainter:
         #: ``(quad index, four RGBA tuples)`` for the handful of quads whose
         #: corners differ. See :meth:`vertices`.
         self._gradients: list[tuple[int, tuple]] = []
+        #: Raw vertex-format floats for :meth:`fill_triangle`, three vertices
+        #: at a time -- unlike a rect quad's four corners derived from
+        #: ``x, y, w, h``, a triangle's three corners are independent and have
+        #: nowhere to sit in the rect record, so they bypass the
+        #: :data:`FLOATS_PER_QUAD` expansion entirely and are appended to the
+        #: output as-is in :meth:`vertices`.
+        self._tris: list[float] = []
         self._clips: list[tuple[float, float, float, float]] = []
         #: Device pixels per logical pixel.
         #:
@@ -168,8 +175,11 @@ class QuadPainter:
 
     @property
     def vertex_count(self) -> int:
-        """Number of vertices the emitted quads expand to."""
-        return (len(self._data) // FLOATS_PER_QUAD) * VERTICES_PER_QUAD
+        """Number of vertices the emitted quads and triangles expand to."""
+        return (
+            (len(self._data) // FLOATS_PER_QUAD) * VERTICES_PER_QUAD
+            + len(self._tris) // FLOATS_PER_VERTEX
+        )
 
     def vertices(self) -> np.ndarray:
         """Return the interleaved array, ready for upload.
@@ -209,7 +219,11 @@ class QuadPainter:
         three-times-larger buffer.
         """
         if not self._data:
-            return np.zeros((0, FLOATS_PER_VERTEX), dtype=np.float32)
+            if not self._tris:
+                return np.zeros((0, FLOATS_PER_VERTEX), dtype=np.float32)
+            return np.fromiter(
+                self._tris, dtype=np.float32, count=len(self._tris)
+            ).reshape(-1, FLOATS_PER_VERTEX)
         quads = np.fromiter(
             self._data, dtype=np.float32, count=len(self._data)
         ).reshape(-1, FLOATS_PER_QUAD)
@@ -241,12 +255,19 @@ class QuadPainter:
         for index, quad_colours in self._gradients:
             corners[index, :, 4:8] = quad_colours
 
-        return corners[:, _TRIANGLES, :].reshape(-1, FLOATS_PER_VERTEX)
+        rect_vertices = corners[:, _TRIANGLES, :].reshape(-1, FLOATS_PER_VERTEX)
+        if not self._tris:
+            return rect_vertices
+        tri_vertices = np.fromiter(
+            self._tris, dtype=np.float32, count=len(self._tris)
+        ).reshape(-1, FLOATS_PER_VERTEX)
+        return np.concatenate((rect_vertices, tri_vertices), axis=0)
 
     def clear(self) -> None:
         """Drop everything accumulated, keeping the loaded atlas."""
         self._data.clear()
         self._gradients.clear()
+        self._tris.clear()
         del self._clips[:]
         self._clip = _NO_CLIP
         self._scaled_clip = self._scale_clip(_NO_CLIP)
@@ -365,6 +386,32 @@ class QuadPainter:
         quad(x, y + h - 1.0, w, 1.0, u, v, 0.0, 0.0, line)
         quad(x, y, 1.0, h, u, v, 0.0, 0.0, line)
         quad(x + w - 1.0, y, 1.0, h, u, v, 0.0, 0.0, line)
+
+    def fill_triangle(
+        self,
+        p0: tuple[float, float],
+        p1: tuple[float, float],
+        p2: tuple[float, float],
+        colour: Colour,
+    ) -> None:
+        """Fill a triangle with three independent corners. No outline.
+
+        Flat-shaded like a rect quad -- each vertex samples the atlas's opaque
+        block -- so ``ui.wgsl`` needs no second pipeline, only a longer vertex
+        buffer; see :meth:`vertices`.
+        """
+        u, v = self._solid_uv
+        scale = self._scale
+        r, g, b, a = _rgba(colour)
+        cx0, cy0, cx1, cy1 = self._scaled_clip
+        tris = self._tris
+        for x, y in (p0, p1, p2):
+            tris.extend((
+                x * scale, y * scale,
+                u, v,
+                r, g, b, a,
+                cx0, cy0, cx1, cy1,
+            ))
 
     def gradient_rect(
         self,

@@ -41,8 +41,8 @@ PACKAGE = pathlib.Path(__file__).resolve().parent.parent / "chimol"
 #: Modules still importing Qt. **Shrinking**: never add to this.
 #:
 #: The `app/` entries and `renderer/wgpu_view.py` are the embedding window and
-#: are expected to stay. `renderer/ui/qt_painter.py` and
-#: `renderer/gui_overlay.py` are the QPainter half of the painter seam.
+#: are expected to stay. `cmtk/qt_painter.py` and
+#: `host/qt_overlay.py` are the QPainter half of the painter seam.
 #: `host/widget.py` is the seam that decides whether Qt is used at all.
 #: The rest are leaks with no reason to exist.
 ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "qt_import_allowlist.txt"

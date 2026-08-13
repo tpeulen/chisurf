@@ -17,7 +17,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from chisurf.plugins.chimol.chimol.host.keys import KEY_TAB  # noqa: E402
-from chisurf.plugins.chimol.chimol.renderer.ui.command_line import (  # noqa: E402
+from chisurf.plugins.chimol.chimol.cmtk.command_line import (  # noqa: E402
     CommandLine,
 )
 

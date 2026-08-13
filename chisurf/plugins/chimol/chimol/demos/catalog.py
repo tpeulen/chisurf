@@ -21,7 +21,9 @@ __all__ = [
 ]
 
 #: Where the shipped scripts live.
-DEMO_DIR = pathlib.Path(__file__).resolve().parent.parent / "demos"
+#: The ``.pml`` scripts, which are this module's own directory now that it
+#: lives beside them rather than in the Qt layer.
+DEMO_DIR = pathlib.Path(__file__).resolve().parent
 
 #: Search path for the structures a demo names, so the scripts can say
 #: ``load 148l.pdb`` rather than carrying an absolute path that only works on one
@@ -56,7 +58,7 @@ def resolve_structure(name: str) -> str:
     type; this is what lets that work from any working directory.
 
     One demo's material does not exist until it is computed -- see
-    :mod:`chimol.app.demo_data` -- and is generated here, on first use, so the
+    :mod:`chimol.demos.data` -- and is generated here, on first use, so the
     script that wants it still just says ``load``.
 
     Parameters
@@ -71,12 +73,12 @@ def resolve_structure(name: str) -> str:
 
     Raises
     ------
-    chimol.app.demo_data.DemoDataUnavailable
+    chimol.demos.data.DemoDataUnavailable
         When the file is one ChiMOL generates and generating it failed. Raised
         rather than swallowed: the alternative is a path that is not there, which
         reads as a missing download.
     """
-    from .demo_data import generated_demo_path
+    from .data import generated_demo_path
 
     candidate = pathlib.Path(name)
     if candidate.is_absolute() and candidate.exists():

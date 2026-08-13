@@ -1,5 +1,5 @@
 {
-  "_comment": "Chimol's appearance settings as a ChiSurf view spec, proving the viewer builds its UI from the same declarative format every other tool uses -- the real dialect, validated by chisurf.core.dataspec.schema, not a convenient dialect of its own. `model: settings` binds the rows to chimol's registered PyMOL-style settings through SettingsProxy rather than to attributes of an object. Opened with `form`; drawn by the chrome's own painted controls, so it works in the browser too. Read by chimol.renderer.ui.view_spec.",
+  "_comment": "Chimol's appearance settings as a ChiSurf view spec, proving the viewer builds its UI from the same declarative format every other tool uses -- the real dialect, validated by chisurf.core.dataspec.schema, not a convenient dialect of its own. `model: settings` binds the rows to chimol's registered PyMOL-style settings through SettingsProxy rather than to attributes of an object. Opened with `form`; drawn by the chrome's own painted controls, so it works in the browser too. Read by chimol.cmtk.view_spec.",
   "title": "Appearance",
   "model": "settings",
   "sections": [

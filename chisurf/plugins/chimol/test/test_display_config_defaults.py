@@ -211,16 +211,13 @@ def test_a_stale_user_copy_is_migrated_on_load(tmp_path, monkeypatch):
     user_path = tmp_path / "chimol_display.json"
     user_path.write_text(json.dumps(stale), encoding="utf-8")
 
-    # Patch what the loader actually consults. `_load_display_config` builds the
-    # path from `_cs_settings.get_path`, not from `get_user_display_config_path`,
-    # and patching the latter alone left the test reading the *shipped* file --
-    # which now holds the new values, so it passed while proving nothing.
-    class _Settings:
-        @staticmethod
-        def get_path(_what):
-            return tmp_path
-
-    monkeypatch.setattr(cfg_mod, "_cs_settings", _Settings)
+    # Patch what the loader actually consults. `_load_display_config` resolves
+    # its directory through `chimol.settings_dir`, which `CHIMOL_SETTINGS_DIR`
+    # overrides; patching `get_user_display_config_path` alone left the test
+    # reading the *shipped* file -- which now holds the new values, so it
+    # passed while proving nothing. (It patched ChiSurf's settings module
+    # before chimol resolved its own directory.)
+    monkeypatch.setenv("CHIMOL_SETTINGS_DIR", str(tmp_path))
     monkeypatch.delenv("CHIMOL_DISPLAY_CONFIG", raising=False)
     loaded = cfg_mod._load_display_config()
 

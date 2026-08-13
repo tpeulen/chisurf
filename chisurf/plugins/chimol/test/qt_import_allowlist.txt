@@ -5,23 +5,30 @@
 # module they cannot use.
 #
 # `app/*` and `renderer/wgpu_view.py` are the embedding window and are expected
-# to stay. `renderer/ui/qt_painter.py` and `renderer/gui_overlay.py` are the
-# QPainter half of the painter seam. `host/widget.py` is the seam that decides
-# whether Qt is used at all. Everything else here is a leak.
+# to stay. `cmtk/qt_painter.py` and `host/qt_overlay.py` are the
+# QPainter half of the painter seam; `cmtk/qt_host.py` hosts a
+# painter-level control inside a real QWidget (imported lazily, inside its
+# constructor, same reason as qt_painter.py) and is the seam AutoForm's
+# `code_editor`/`memory_editor` custom sections embed a chimol control
+# through. `host/widget.py` is the seam that decides whether Qt is used at
+# all. `cmd/exporting.py` and `cmd/inspect.py` are commands that open a Qt
+# dialog/window as an explicit, guarded (`try/except ImportError`), opt-in
+# convenience -- typing the command still works with no Qt binding present.
+# Everything else here is a leak.
 #
 # Guarded by test_qt_seam.py.
 app/controls_panel.py
 app/demos.py
 app/menu_bar.py
 app/molview_main_window.py
-app/objects_panel.py
 app/rmf_panel.py
-app/sequence_dock.py
 app/settings_table.py
 cmd/exporting.py
+cmd/inspect.py
 host/widget.py
-renderer/gui_overlay.py
-renderer/ui/qt_painter.py
+cmtk/qt_host.py
+cmtk/qt_painter.py
+host/qt_overlay.py
 renderer/view.py
 renderer/wgpu_view.py
 testing/mock_viewer.py

@@ -682,3 +682,107 @@ def _build_chain_color_array(
         colors[m:, :] = colors[m - 1, :]
     return colors
 
+
+
+# ---------------------------------------------------------------------------
+# Sequence colouring
+# ---------------------------------------------------------------------------
+#: Fallback secondary-structure colours, as RGBA in 0-1, keyed by the name the
+#: display config uses. The config may override any of them.
+_SS_DEFAULTS: dict[str, list[float]] = {
+    "helix": [0.3, 0.3, 0.9, 1.0],
+    "strand": [0.9, 0.3, 0.3, 1.0],
+    "coil": [0.9, 0.9, 0.7, 1.0],
+}
+
+#: Which secondary-structure code maps to which config key.
+_SS_KEYS: dict[str, str] = {"H": "helix", "E": "strand", "C": "coil"}
+
+
+def sequence_palette(ss_code: str) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    """Background and foreground for one residue, by secondary structure.
+
+    Returns plain ``(r, g, b)`` 0-255 tuples rather than a toolkit's colour
+    type. These colours were `SequenceDock.default_sequence_palette`, a
+    ``staticmethod`` on a Qt dock -- so the *only* way to ask "what colour is a
+    helix residue" was through a widget, in a viewer that draws its sequence
+    strip in three hosts and has a window system in one of them. The logic was
+    never Qt's: it is a config lookup and a luminance test.
+
+    The foreground is black or white by the background's luminance, so a
+    config that sets a dark helix colour still gets readable text.
+    """
+    key = _SS_KEYS.get((ss_code or "C").upper(), "coil")
+    default = _SS_DEFAULTS[key]
+    try:
+        section = (_DISPLAY_CONFIG.get("colors", {}) or {}).get(
+            "secondary_structure", {}
+        ) or {}
+        rgba = list(section.get(key, default))
+    except Exception:  # noqa: BLE001 - a colour is not worth a traceback
+        rgba = default
+
+    try:
+        r, g, b = (float(rgba[0]), float(rgba[1]), float(rgba[2]))
+    except Exception:  # noqa: BLE001 - a malformed entry falls back
+        r, g, b = default[0], default[1], default[2]
+
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    fg = (255, 255, 255) if lum < 0.5 else (0, 0, 0)
+    bg = (int(round(r * 255)), int(round(g * 255)), int(round(b * 255)))
+    return bg, fg
+
+
+def gap_palette() -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    """Colours for an alignment gap -- deliberately quiet.
+
+    A gap used to be drawn with the *coil* palette, which is what a real
+    residue with no secondary structure gets. On a row that is mostly gaps -- a
+    ligand aligned against a protein -- the few real residues then vanished
+    into a solid band of identical cells. Muted grey keeps the column
+    positions readable while letting anything real stand out.
+    """
+    return (238, 238, 238), (170, 170, 170)
+
+
+def sequence_config() -> dict:
+    """The display config's ``sequence`` section, or an empty dict.
+
+    Was a ``staticmethod`` on the Qt sequence dock, for the same reason
+    :func:`sequence_palette` was: it is a dict lookup, and reading a setting
+    should not require a widget. Six call sites in the Qt window used it
+    through the dock.
+    """
+    try:
+        return _DISPLAY_CONFIG.get("sequence", {}) or {}
+    except Exception:  # noqa: BLE001 - a missing section is an empty one
+        return {}
+
+
+def rgba_to_rgb(values, default) -> tuple[int, int, int]:
+    """Normalise an RGBA-in-0-1 config entry to an ``(r, g, b)`` 0-255 tuple.
+
+    The toolkit-free half of the dock's ``color_from_rgba``: that returned a
+    ``QColor``, which is why every caller of it needed Qt. Callers that want a
+    ``QColor`` build one from this; callers drawing through chimol's own
+    painter -- which is all of the in-viewport chrome -- use it directly.
+
+    Falls back to *default* for a malformed or short entry rather than
+    raising: a colour typed wrong in a settings file should not stop a
+    molecule from being drawn.
+    """
+    try:
+        seq = list(values)
+    except Exception:  # noqa: BLE001
+        seq = list(default)
+    if len(seq) < 4:
+        seq = list(default)
+    try:
+        r, g, b = float(seq[0]), float(seq[1]), float(seq[2])
+    except Exception:  # noqa: BLE001
+        r, g, b = float(default[0]), float(default[1]), float(default[2])
+    return (
+        int(round(max(0.0, min(1.0, r)) * 255)),
+        int(round(max(0.0, min(1.0, g)) * 255)),
+        int(round(max(0.0, min(1.0, b)) * 255)),
+    )

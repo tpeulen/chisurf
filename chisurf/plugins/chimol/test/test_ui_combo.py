@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui import combo
+from chisurf.plugins.chimol.chimol.cmtk import combo
 
 
 class RecordingPainter:
@@ -80,7 +80,7 @@ def _make(options=("alpha", "beta", "gamma"), **kwargs):
     options : sequence of str
         The choices.
     **kwargs
-        Passed to :class:`~chimol.renderer.ui.combo.ComboBox`.
+        Passed to :class:`~chimol.cmtk.combo.ComboBox`.
 
     Returns
     -------

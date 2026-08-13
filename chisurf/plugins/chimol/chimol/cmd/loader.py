@@ -148,7 +148,7 @@ class LoaderCommands(BaseCmd):
         key : str, optional
             Which demo. Omitted, the names and what each shows are listed.
         """
-        from ..app.demo_catalog import DEMOS
+        from ..demos.catalog import DEMOS
 
         wanted = str(key).strip().lower()
         if not wanted:

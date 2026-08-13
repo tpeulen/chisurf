@@ -21,6 +21,8 @@ import pathlib
 
 import pytest
 
+from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS, targets_for
+
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
     / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
@@ -77,15 +79,23 @@ def _names(viewer, group):
 
 
 def _rows(win):
-    """(kind, label) for each panel row, in order."""
-    out = []
-    for i in range(win.object_list.count()):
-        widget = win.object_list.itemWidget(win.object_list.item(i))
-        if hasattr(widget, "disclosure"):
-            out.append(("group", widget.group))
-        else:
-            out.append(("object", widget.check.text()))
-    return out
+    """(kind, label) for each panel row, in order.
+
+    Read from the in-viewport panel rather than a ``QListWidget``. The Qt
+    object dock this used to inspect is gone; the panel that replaced it holds
+    the same list as :class:`~chimol.renderer.internal_gui.GuiRow` records,
+    which is a better thing to assert against anyway -- it is the state the
+    renderer draws from, not a widget mirroring it.
+
+    The ``all`` header and the ``sele`` pseudo-object are filtered out: they
+    are chrome, not objects, and the dock did not list them.
+    """
+    gui = win.viewer._renderer._internal_gui
+    return [
+        ("group" if row.is_group else "object", row.name)
+        for row in gui.rows
+        if not row.is_header and not row.is_selection and not row.is_measurement
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -343,37 +353,50 @@ def test_a_closed_group_hides_its_members_but_keeps_them_loaded(session):
 
 
 def test_the_members_are_indented_and_the_header_is_not(session):
+    """Asked of the row's own ``indent``, not a widget's left margin.
+
+    The Qt dock expressed this as ``contentsMargins().left()`` on a row widget;
+    the panel that replaced it carries the depth on the row itself, which is
+    the thing the renderer actually offsets by.
+    """
     win, do, _ = session
     do("group ligands, lig")
-    header = member = None
-    for i in range(win.object_list.count()):
-        widget = win.object_list.itemWidget(win.object_list.item(i))
-        left = widget.layout().contentsMargins().left()
-        if hasattr(widget, "disclosure") and widget.group == "ligands":
-            header = left
-        elif getattr(widget, "check", None) is not None and widget.check.text() == "lig":
-            member = left
-    assert header is not None and member is not None
-    assert member > header, "a group member has to look like one"
+    rows = {row.name: row for row in win.viewer._renderer._internal_gui.rows}
+    assert "ligands" in rows and "lig" in rows
+    assert rows["lig"].indent > rows["ligands"].indent, (
+        "a group member has to look like one"
+    )
 
 
 def test_the_group_header_carries_the_same_five_menus(session):
     """A group is a command target, so it needs the menus that act on one."""
     win, do, _ = session
     do("group ligands, lig nag")
-    for i in range(win.object_list.count()):
-        widget = win.object_list.itemWidget(win.object_list.item(i))
-        if hasattr(widget, "disclosure") and widget.group == "ligands":
-            assert set(widget.buttons) == {"A", "S", "H", "L", "C"}
-            return
-    pytest.fail("no group header row was built")
+    gui = win.viewer._renderer._internal_gui
+    index = next(
+        (i for i, r in enumerate(gui.rows) if r.is_group and r.name == "ligands"),
+        None,
+    )
+    assert index is not None, "no group header row was built"
+
+    # The buttons are laid out, not stored on a widget: `layout` fills one
+    # dict of hit-rects per row, keyed by the menu letter. So the question
+    # "does this row carry the five menus" is asked of the geometry the panel
+    # actually clicks against, which is stricter than the old check against a
+    # widget's own list.
+    gui.layout(1000, 700)
+    assert set(gui._button_rects[index]) == {"A", "S", "H", "L", "C"}
+    # ... and they are the five from the shared table, not a private copy.
+    assert [letter for letter, _label, _entries in OBJECT_MENUS] == [
+        "A", "S", "H", "L", "C",
+    ]
 
 
 def test_a_menu_entry_on_a_group_runs_once_per_member(session):
     """"The command should be applied to all members of the group."" -- PyMOL."""
     win, do, _ = session
     do("group ligands, lig nag")
-    targets = win.objects._targets_for("show cartoon, {sele}", "ligands")
+    targets = targets_for(win.viewer, "show cartoon, {sele}", "ligands")
     assert sorted(targets) == ["lig", "nag"]
 
 
@@ -381,12 +404,12 @@ def test_a_group_aware_command_is_not_expanded(session):
     """`group ligands, toggle` per member would toggle nothing at all."""
     win, do, _ = session
     do("group ligands, lig nag")
-    assert win.objects._targets_for("group {sele}, toggle", "ligands") == ["ligands"]
+    assert targets_for(win.viewer, "group {sele}, toggle", "ligands") == ["ligands"]
 
 
 def test_an_ordinary_object_is_its_own_target(session):
     win, do, _ = session
-    assert win.objects._targets_for("show cartoon, {sele}", "lig") == ["lig"]
+    assert targets_for(win.viewer, "show cartoon, {sele}", "lig") == ["lig"]
 
 
 # --------------------------------------------------------------------------- #

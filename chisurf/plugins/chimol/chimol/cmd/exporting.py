@@ -808,10 +808,19 @@ class ExportMixin(BaseCmd):
         # PDB and mmCIF.
         from qtpy import QtCore, QtWidgets
 
-        from chisurf.gui.progress import ChiSurfProgress
+        # ChiSurf's progress facade is used **when ChiSurf is there**, and its
+        # absence is not an error: chimol is packaged to run on its own (see
+        # `test_chisurf_seam.py`), and the in-viewport path below already draws
+        # a bar, an ETA and a Cancel button with chimol's own chrome. Falling
+        # through to it is the same thing that happens for a windowless host,
+        # which is a path this method already had and already tests.
+        try:
+            from chisurf.gui.progress import ChiSurfProgress  # noqa: PLC0415
+        except Exception:  # noqa: BLE001 - standalone chimol
+            ChiSurfProgress = None
 
         parent = window if isinstance(window, QtWidgets.QWidget) else None
-        if parent is None:
+        if parent is None or ChiSurfProgress is None:
             self._render_ray_in_viewport(
                 render_func, progress, cancel, total_rows,
                 out_path, width, height, viewer, window,

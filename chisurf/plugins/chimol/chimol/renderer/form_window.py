@@ -6,15 +6,15 @@ a ChiSurf tool that already declares its interface as data gets a painted form
 in the 3-D view for free -- no Qt, and therefore also in the browser.
 
 The mapping from spec to rows lives in
-:mod:`~chimol.renderer.ui.view_spec`; this file is the window around it.
+:mod:`~chimol.cmtk.view_spec`; this file is the window around it.
 """
 from __future__ import annotations
 
 from typing import Any, Callable
 
 from .internal_gui import GuiWindow
-from .ui.settings_editor import SettingsEditor
-from .ui.view_spec import load_view_spec, model_from_view_spec, unsupported_sections
+from ..cmtk.settings_editor import SettingsEditor
+from ..cmtk.view_spec import load_view_spec, model_from_view_spec, unsupported_sections
 
 __all__ = ["FormWindow", "SettingsProxy", "model_for"]
 

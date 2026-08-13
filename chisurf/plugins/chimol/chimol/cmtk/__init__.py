@@ -1,15 +1,19 @@
-"""The in-viewport chrome's drawing layer, and the controls drawn with it.
+"""cmtk -- the chimol toolkit. One name, one package, drawn through one
+painter: every in-viewport control chimol has, ported out of the Dear ImGui
+ecosystem.
 
-:mod:`.painter` is the interface the chrome draws against; :mod:`.qt_painter`
-is the reference implementation and the before-half of the port. Neither is
-imported eagerly -- ``qt_painter`` needs a GUI toolkit, and the point of this
-package is that the chrome does not.
+:mod:`.painter` is the interface everything below draws against;
+:mod:`.qt_painter` is the reference implementation and the before-half of the
+port, :mod:`.quad_painter` the GPU one. Neither is imported eagerly --
+``qt_painter`` needs a GUI toolkit, and the point of this package is that the
+chrome does not.
 
-The controls
-------------
-:mod:`.widgets` holds the first nineteen. The rest are a port of Dear ImGui's
-widget stack (``junk/imgui``), one module per section of its
-``imgui_widgets.cpp`` so a control can be read against the source it came from:
+The widgets
+-----------
+:mod:`.widgets` holds the first nineteen. Most of the rest are a port of Dear
+ImGui's widget stack (``junk/imgui``), one module per section of its
+``imgui_widgets.cpp`` so a control can be read against the source it came
+from:
 
 ============  ========================================================
 :mod:`.text`      ``Text``/``Colored``/``Disabled``/``Wrapped``, ``LabelText``,
@@ -34,8 +38,8 @@ widget stack (``junk/imgui``), one module per section of its
 :mod:`.style`     the palette and the arithmetic all of them share
 ============  ========================================================
 
-Two families came from elsewhere in the same ecosystem, and are ported the same
-way against their own sources:
+Two widget families came from elsewhere in the same ecosystem, and are ported
+the same way against their own sources:
 
 ==================== ===================================================
 :mod:`.text_editor`  a colourising, multi-cursor code editor, from
@@ -44,15 +48,15 @@ way against their own sources:
                      ``junk/imgui_club``'s ``imgui_memory_editor``
 ==================== ===================================================
 
-Porting another one is meant to be mechanical rather than heroic: see
+Porting another widget is meant to be mechanical rather than heroic: see
 :mod:`.control` for the base class that supplies the contract below, and
 ``build_tools/dev_utils/port_imgui_widget.py`` for the scaffolder that lifts a
 C++ widget's enums, palettes, option struct and keyword tables into Python and
 writes the module, the test and the gallery page around them.
 
-What every control agrees on
+What every widget agrees on
 ----------------------------
-A control is a **retained object**: it keeps its state and its hit test in the
+A widget is a **retained object**: it keeps its state and its hit test in the
 same place as its drawing, so a host that owns neither a widget tree nor a
 layout pass can put one on screen by constructing it, drawing it into a box,
 and handing it the presses that land in that box::
@@ -69,11 +73,31 @@ reference reads that context for something chimol has no feed for -- hover, a
 clock, a modifier key, a click count -- the port takes it as an **explicit
 argument** rather than growing a global to read it from.
 
-Everything is drawn through :class:`~.painter.Painter`'s six operations, so the
+Beyond widgets: plotting
+------------------------
+The same painter also carries a port out of the wider Dear ImGui ecosystem
+that is not a widget in the sense above: :mod:`.plot` (a port of
+`epezent/implot <https://github.com/epezent/implot>`_ -- axes, line and
+scatter series, a legend, built through :func:`begin_plot`). It needed one
+thing the original nineteen-plus widgets never had: a diagonal edge, which is
+why :class:`~.painter.Painter` carries an eighth-ish operation,
+:meth:`~.painter.Painter.fill_triangle`, atop the original six. See
+``okf/plugins/chimol-cmtk.md`` for the full account and
+``okf/prds/prd-104.md`` for the phased scope (implot3d's surfaces/meshes and
+the rest of implot's plot types are not ported yet; a view-orientation gizmo
+was tried and removed -- also recorded there).
+
+cmtk is the one name for all of this -- not a second "tk" package with a
+"cmtk" alias, and not a second renderer: every shape here, widget or plot,
+is drawn through the same :class:`~.painter.Painter`.
+
+Everything is drawn through :class:`~.painter.Painter`'s operations, so the
 controls run unchanged on desktop quads, on Qt, and in the browser.
 """
 from __future__ import annotations
 
+from .axis import Axis, nice_ticks
+from .markers import MARKERS, draw_marker
 from .painter import (
     ALIGN_CENTER,
     ALIGN_HCENTER,
@@ -83,6 +107,7 @@ from .painter import (
     Colour,
     Painter,
 )
+from .plot import DEEP_PALETTE, Plot, begin_plot
 from .widgets import (
     Button,
     Checkbox,
@@ -134,6 +159,13 @@ __all__ = [
     "Tooltip",
     "TreeNode",
     "fit_text",
+    "Axis",
+    "nice_ticks",
+    "MARKERS",
+    "draw_marker",
+    "DEEP_PALETTE",
+    "Plot",
+    "begin_plot",
 ]
 
 #: The ported families, by module name. Kept as data because it is what the
@@ -158,6 +190,9 @@ CONTROL_MODULES = (
     "text_editor",
     "memory_editor",
     "control",
+    "axis",
+    "markers",
+    "plot",
 )
 
 
@@ -165,7 +200,7 @@ def __getattr__(name: str):
     """Resolve a ported control lazily, from whichever family owns it.
 
     Why lazily, and why not ``from .tables import *`` at the top: importing
-    thirteen modules to put one slider on screen costs every host that time,
+    twenty-odd modules to put one slider on screen costs every host that time,
     and the browser build pays it on load. The families are independent, so a
     name is resolved by asking each in turn and the module is imported only
     when something actually reaches for one of its controls.
@@ -204,7 +239,7 @@ def __dir__() -> list:
     -------
     list of str
         Sorted names, so tab-completion in the console sees the whole toolkit
-        rather than only the nineteen that are imported eagerly.
+        rather than only the ones that are imported eagerly.
     """
     import importlib
 

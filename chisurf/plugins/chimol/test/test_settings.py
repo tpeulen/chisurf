@@ -256,6 +256,27 @@ def test_bg_rgb_reaches_the_viewer(cmd_and_viewer):
     assert viewer._background_color == "white"
 
 
+def test_max_fps_reaches_the_viewer(cmd_and_viewer):
+    """The frame-rate ceiling is renderer state, held by rendercanvas: a
+    changed value must re-throttle the already-open window, not just sit in
+    the config until the next restart."""
+    cmd, viewer, _, errors = cmd_and_viewer
+    cmd.do("set max_fps, 30")
+    assert errors == []
+    assert viewer._max_fps == pytest.approx(30.0)
+
+
+def test_nerd_tick_writes_through_to_the_config(cmd_and_viewer):
+    """Unlike `max_fps`, the nerd tick is read live from the config -- it has
+    no renderer state to push, so `set` only needs to land in the config."""
+    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+    cmd, _viewer, _, errors = cmd_and_viewer
+    cmd.do("set nerd_tick, 0.2")
+    assert errors == []
+    assert _DISPLAY_CONFIG["nerd"]["tick_interval"] == pytest.approx(0.2)
+
+
 def test_representation_toggle_spelling_still_works(cmd_and_viewer):
     """Chimol scripts have long written `set cartoon, off`; keep honouring it."""
     cmd, viewer, _, errors = cmd_and_viewer

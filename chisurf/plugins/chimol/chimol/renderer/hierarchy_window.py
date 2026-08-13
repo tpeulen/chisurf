@@ -8,7 +8,7 @@ implementation — and it reads the **same `HierarchyNode` tree**, not a copy.
 It carries the **search box** too. That was left out at first as "a
 keyboard-focus problem of its own", and it is one -- but the chrome already
 solves it for the prompt, so the answer was to generalise that rather than to
-do without: :class:`~chimol.renderer.ui.text_field.TextField` holds the string
+do without: :class:`~chimol.cmtk.text_field.TextField` holds the string
 and the caret, and `InternalGui` owns *which* field has focus, because a key
 arrives at the panel and something has to say where it goes.
 
@@ -23,8 +23,8 @@ import logging
 from typing import Optional
 
 from .internal_gui import GuiWindow
-from .ui.painter import ALIGN_LEFT, ALIGN_VCENTER
-from .ui.text_field import TextField
+from ..cmtk.painter import ALIGN_LEFT, ALIGN_VCENTER
+from ..cmtk.text_field import TextField
 
 logger = logging.getLogger(__name__)
 

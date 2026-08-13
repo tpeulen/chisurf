@@ -14,11 +14,15 @@ Two tables, from two places, because PyMOL keeps them in two:
 
 Run it against a PyMOL source checkout::
 
-    python make_elements.py junk/pymol-open-source \\
-        > ../../../../core/fio/structure/elements.py
+    python make_elements.py junk/pymol-open-source > elements.py
 
-The output is checked in under ``chisurf/core/fio/structure/`` -- the reader
-needs it, and one table serves everyone -- so nothing needs PyMOL at runtime, and this script
+The output is checked in **beside this script**, in chimol. It used to be
+written into ``chisurf/core/fio/structure/`` on the reasoning that the reader
+needs it and one table serves everyone -- but nothing in ChiSurf ever imported
+it (the only consumers were this generator and ``analysis/elements.py``), so
+core was holding a periodic table on chimol's behalf and chimol could not move
+without it. Structure data is chimol's; see
+``okf/plugins/chimol-relocation.md``. Nothing needs PyMOL at runtime, and this script
 exists so the transcription can be **redone and diffed** rather than trusted --
 the same arrangement as ``make_space_groups.py``. ``test_elements.py`` verifies
 the result's own properties, which is what catches a truncated extraction: a

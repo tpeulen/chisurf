@@ -325,7 +325,7 @@ class TestLabels:
 
     def test_labels_are_drawn_into_the_chrome(self, renderer):
         """A label that is collected but never painted is not a label."""
-        from chisurf.plugins.chimol.chimol.renderer.gui_overlay import paint_chrome
+        from chisurf.plugins.chimol.chimol.host.qt_overlay import paint_chrome
 
         renderer._internal_gui.visible = False
         centre = np.array(renderer._target, dtype=float)

@@ -228,7 +228,7 @@ class SettingsMixin(BaseCmd):
             return
 
         from ..renderer.form_window import FormWindow, model_for
-        from ..renderer.ui.view_spec import load_view_spec
+        from ..cmtk.view_spec import load_view_spec
 
         redraw = lambda _key, _value: viewer._update_view()  # noqa: E731
         try:

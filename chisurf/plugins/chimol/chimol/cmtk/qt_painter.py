@@ -186,6 +186,38 @@ class QtPainter:
             font.setBold(False)
             self._p.setFont(font)
 
+    def fill_triangle(
+        self,
+        p0: tuple[float, float],
+        p1: tuple[float, float],
+        p2: tuple[float, float],
+        colour: Colour,
+    ) -> None:
+        """Fill a triangle with three independent corners. No outline.
+
+        Stroked with a hairline pen in the **same** colour as the fill,
+        rather than ``NoPen`` -- two triangles sharing an edge (a quad
+        drawn as two `fill_triangle` calls, which is every quad this
+        primitive serves: `line`, a marker, a projected 3-D face) are two
+        independent antialiased paths, and antialiasing a shared internal
+        edge from both sides does not reliably sum to full coverage: the
+        gap reads as a stray hairline bisecting what should be one flat
+        shape. A same-colour stroke closes it without changing anything a
+        caller can see on a triangle's own *outer* boundary, where the
+        stroke and the fill are the same colour anyway.
+        """
+        from qtpy import QtCore, QtGui
+
+        path = QtGui.QPainterPath()
+        path.moveTo(QtCore.QPointF(*p0))
+        path.lineTo(QtCore.QPointF(*p1))
+        path.lineTo(QtCore.QPointF(*p2))
+        path.closeSubpath()
+        fill = self._colour(colour)
+        self._p.setPen(QtGui.QPen(fill, 1.0))
+        self._p.setBrush(fill)
+        self._p.drawPath(path)
+
     def push_clip(self, x: float, y: float, w: float, h: float) -> None:
         """Restrict drawing to a rectangle until :meth:`pop_clip`."""
         self._p.save()

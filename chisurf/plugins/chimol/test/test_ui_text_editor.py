@@ -32,7 +32,7 @@ from chisurf.plugins.chimol.chimol.host.keys import (
     KEY_TAB,
     KEY_UP,
 )
-from chisurf.plugins.chimol.chimol.renderer.ui import text_editor as te
+from chisurf.plugins.chimol.chimol.cmtk import text_editor as te
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 #: The reference checkout. Gitignored and re-clonable, so the tests that read

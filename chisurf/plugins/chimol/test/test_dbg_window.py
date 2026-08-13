@@ -204,10 +204,106 @@ def test_the_machine_line_is_assembled_from_the_standard_library():
 
 
 def test_the_publishing_interval_is_slower_than_a_frame():
-    """The number that stops the instrument dominating what it measures."""
+    """The module's own default keeps the historical contract.
+
+    ``nerd_report_interval`` is what a running session actually reads (it is
+    live-editable from the settings panel and ``set nerd_tick, ...``); this
+    stays a check on the module's own default, unaffected by whatever a
+    session has configured.
+    """
     from chisurf.plugins.chimol.chimol.renderer.frame_stats import REPORT_INTERVAL
 
     assert REPORT_INTERVAL >= 1.0 / 30.0
+
+
+def test_the_live_interval_falls_back_to_the_default():
+    """No config section, no key: the live getter still answers the default."""
+    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chisurf.plugins.chimol.chimol.renderer.frame_stats import (
+        REPORT_INTERVAL,
+        nerd_report_interval,
+    )
+
+    before = _DISPLAY_CONFIG.get("nerd")
+    try:
+        _DISPLAY_CONFIG.pop("nerd", None)
+        assert nerd_report_interval() == pytest.approx(REPORT_INTERVAL)
+    finally:
+        if before is not None:
+            _DISPLAY_CONFIG["nerd"] = before
+
+
+def test_the_live_interval_is_clamped_to_the_floor():
+    """A value typed too small in the panel cannot make the instrument
+    dominate what it measures -- the whole point of a publishing interval."""
+    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chisurf.plugins.chimol.chimol.renderer.frame_stats import (
+        MIN_REPORT_INTERVAL,
+        nerd_report_interval,
+    )
+
+    before = dict(_DISPLAY_CONFIG.get("nerd") or {})
+    try:
+        _DISPLAY_CONFIG["nerd"] = {"tick_interval": 0.001}
+        assert nerd_report_interval() == pytest.approx(MIN_REPORT_INTERVAL)
+    finally:
+        _DISPLAY_CONFIG["nerd"] = before
+
+
+def test_the_live_interval_reads_a_configured_value():
+    """A value inside the floor is honoured as-is."""
+    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chisurf.plugins.chimol.chimol.renderer.frame_stats import nerd_report_interval
+
+    before = dict(_DISPLAY_CONFIG.get("nerd") or {})
+    try:
+        _DISPLAY_CONFIG["nerd"] = {"tick_interval": 0.2}
+        assert nerd_report_interval() == pytest.approx(0.2)
+    finally:
+        _DISPLAY_CONFIG["nerd"] = before
+
+
+def test_nerd_lines_fit_the_fixed_width():
+    """The "assert enough space" half of a fixed-width panel.
+
+    `InternalGui._paint_nerd` no longer sizes the block to its longest
+    current line -- reported directly as a panel that visibly resized under
+    the reader while they were trying to read it. A fixed width only stays
+    honest if something checks the content actually fits, so this stresses
+    :meth:`FrameStats.lines` with the widest plausible values (a five-name
+    pipeline list, three-digit millisecond figures, a long adapter/backend
+    string, a six-digit instance count) and fails if any line would spill
+    past the box -- a silent clip is a defect a person only ever notices by
+    accident.
+    """
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    stats = FrameStats()
+    stats.enabled = True
+    stats.frame_ms = 999.9
+    stats.cpu_ms = 999.9
+    stats.scene_ms = 999.9
+    stats.chrome_ms = 999.9
+    stats.last_draws = 999999
+    stats.last_instances = 9_999_999
+    stats.last_chrome_quads = 999999
+    stats.last_chrome_bytes = 999999
+    stats.last_objects = 9999
+    stats.ambient_occlusion = "on"
+    stats.pipelines = ("mesh", "chrome", "silhouette", "impostor", "text")
+    stats.adapter = "AMD Radeon Pro W7900 Dual Slot Workstation Edition"
+    stats.backend = "Metal"
+
+    lines = stats.lines(fps=9999.9)
+    # Inset by one char_w on each side (`_paint_nerd`'s `x + char_w`, box
+    # width `width - char_w * 2`), so the usable room is two characters
+    # narrower than the panel itself.
+    usable = InternalGui.NERD_WIDTH_CHARS - 2
+    overlong = [(len(one), one) for one in lines if len(one) > usable]
+    assert not overlong, (
+        f"NERD_WIDTH_CHARS ({InternalGui.NERD_WIDTH_CHARS}) is too narrow "
+        f"for: {overlong}"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -462,8 +558,17 @@ def test_a_stacked_graph_is_scaled_by_the_sum_not_the_tallest_part():
     assert sum(one[3] for one in bars) <= gui.NERD_GRAPH_H + 0.5
 
 
-def test_the_reference_lines_are_drawn_over_the_bars():
-    """Underneath they are hidden by the data they exist to be read against."""
+def test_the_reference_lines_are_drawn_over_the_line():
+    """Underneath they are hidden by the data they exist to be read against.
+
+    A non-stacked graph (``fps`` here) is a real polyline through
+    ``cmtk.begin_plot`` now, not a bar chart -- see
+    ``InternalGui._paint_nerd_graph``'s docstring. The line is
+    ``fill_triangle`` calls, the guide is still a ``fill_rect``, so draw order
+    is read from ``RecordingPainter.calls`` (the one list every operation
+    lands in, in order) rather than compared index-for-index within a single
+    per-kind list the way the old bar-chart version of this test could.
+    """
     from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
 
     gui = InternalGui()
@@ -474,10 +579,13 @@ def test_the_reference_lines_are_drawn_over_the_bars():
         ("fps", "frame rate", "fps", (120.0, 55.0, 58.0)),
     )
     guide_colours = {colour for _v, colour in gui.NERD_GUIDES["fps"]}
-    guides = [i for i, one in enumerate(painter.fills) if one[4] in guide_colours]
-    bars = [i for i, one in enumerate(painter.fills) if one[4] == (120, 190, 240)]
-    assert guides and bars
-    assert min(guides) > max(bars)
+    guide_indices = [
+        i for i, call in enumerate(painter.calls)
+        if call[0] == "fill_rect" and call[-1] in guide_colours
+    ]
+    line_indices = [i for i, call in enumerate(painter.calls) if call[0] == "fill_triangle"]
+    assert guide_indices and line_indices
+    assert min(guide_indices) > max(line_indices)
 
 
 def test_a_graph_with_no_samples_still_draws_its_frame():

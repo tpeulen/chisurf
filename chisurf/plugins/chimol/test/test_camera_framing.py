@@ -312,6 +312,14 @@ def test_a_widget_that_was_never_laid_out_frames_square(view):
     # Constructed, not hoped for. This used to rely on the OpenGL widget
     # happening to report 100x30 before layout -- which the WebGPU widget does
     # not, so the test silently stopped covering the guard rather than failing.
+    #
+    # Docked explicitly, for the same reason and after the same kind of silent
+    # miss: the panel now starts **floating**, and a floating panel takes no
+    # column at all (`scene_width` says so). So the resize below left a full
+    # 221-pixel scene, the degenerate viewport never happened, and the test was
+    # asserting against a state it no longer built. Only a docked panel can
+    # squeeze the scene to nothing, which is the case the guard is for.
+    renderer._internal_gui.docked = True
     renderer.resize(int(renderer._internal_gui.column_width) + 1, 30)
     assert renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE, (
         "the degenerate viewport was not reproduced"

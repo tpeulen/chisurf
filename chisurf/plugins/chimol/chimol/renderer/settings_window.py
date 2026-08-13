@@ -25,7 +25,7 @@ from .. import config
 from .. import settings as settings_api
 from ..config import _DISPLAY_CONFIG
 from .internal_gui import GuiWindow
-from .ui.settings_editor import (
+from ..cmtk.settings_editor import (
     ACTION,
     BOOL,
     CHOICE,
@@ -73,6 +73,16 @@ RANGES: dict[str, tuple[float, float]] = {
     "spacing": (0.05, 5.0),
     "distance": (0.0, 50.0),
     "size": (0.0, 64.0),
+    # Rendering cadence, not a visual quantity -- both would otherwise fall
+    # through to the guessed 0..2x-of-default range, which is a useless track
+    # for a ceiling (60 -> 0..120, nowhere near a sensible cap) and worse for
+    # a sub-second interval (0.1 -> 0..0.2, no room to go coarser).
+    "max_fps": (1.0, 240.0),
+    "tick_interval": (0.02, 1.0),
+    # Longer suffix than `tick_interval`, so `_range_for`'s longest-match
+    # wins and this does not inherit the publish tick's range. Starts at 0
+    # because 0 is a real, useful value here: it switches the idle redraw off.
+    "idle_tick_interval": (0.0, 2.0),
 }
 
 #: Settings whose value is one of a short list. Given here rather than inferred

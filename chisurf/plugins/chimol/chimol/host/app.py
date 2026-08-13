@@ -403,8 +403,8 @@ class ViewerHost:
         key : str
             A demo name from ``demo_catalog.DEMOS``.
         """
-        from ..app.demo_catalog import read_demo, resolve_structure
-        from ..app.demo_data import DemoDataUnavailable
+        from ..demos.catalog import read_demo, resolve_structure
+        from ..demos.data import DemoDataUnavailable
 
         text = read_demo(key)
         if not text:

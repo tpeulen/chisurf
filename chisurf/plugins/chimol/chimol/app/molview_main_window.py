@@ -74,7 +74,14 @@ from ..analysis import (
     build_residue_alignment,
 )
 from ..cmd import cmd as _cmd
-from ..colors import _OBJECT_ID_ROLE, _SEQ_COLOR_ROLE
+from ..colors import (
+    _OBJECT_ID_ROLE,
+    _SEQ_COLOR_ROLE,
+    gap_palette,
+    rgba_to_rgb,
+    sequence_config,
+    sequence_palette,
+)
 from ..config import _DISPLAY_CONFIG
 from ..io import (
     TrajectoryFormatError,
@@ -88,9 +95,7 @@ from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
 from ..renderer.view import MolView
 from .controls_panel import ControlsToolbar
 from .menu_bar import MENU_BAR, TOOLBAR, build_menu_bar
-from .objects_panel import ObjectsDock
 from .rmf_panel import RmfPanel
-from .sequence_dock import SequenceDock
 from .volume_panel import VolumeViewModel
 
 try:
@@ -199,6 +204,43 @@ def _without_retired_docks(state):
 
 
 @persist_plugin_state("chimol")
+
+
+def _qcolor_from_rgba(values, default):
+    """`chimol.colors.rgba_to_rgb` as a ``QColor``.
+
+    The dock's own ``color_from_rgba`` returned a ``QColor``, which is what
+    made every caller of a *colour lookup* depend on a widget. The lookup is
+    chimol's now; only this conversion is Qt's.
+    """
+    from qtpy import QtGui  # noqa: PLC0415
+
+    return QtGui.QColor(*rgba_to_rgb(values, default))
+
+
+def _seq_colors(ss_code: str):
+    """`chimol.colors.sequence_palette` as the Qt colours this table wants.
+
+    The colours themselves are chimol's and toolkit-free -- they were a
+    ``staticmethod`` on a Qt dock, so asking "what colour is a helix residue"
+    required a widget in a viewer that draws its sequence in three hosts and
+    has a window system in one. Only the conversion is Qt's, and it belongs
+    here, in the Qt window.
+    """
+    from qtpy import QtGui  # noqa: PLC0415
+
+    bg, fg = sequence_palette(ss_code)
+    return QtGui.QColor(*bg), QtGui.QColor(*fg)
+
+
+def _gap_colors():
+    """`chimol.colors.gap_palette`, as Qt colours. See :func:`_seq_colors`."""
+    from qtpy import QtGui  # noqa: PLC0415
+
+    bg, fg = gap_palette()
+    return QtGui.QColor(*bg), QtGui.QColor(*fg)
+
+
 class MolViewPluginWindow(ChisurfDockTool):
     """Chimol main window — toolbar, statusbar, DockArea panels, and 3D view."""
 
@@ -285,25 +327,14 @@ class MolViewPluginWindow(ChisurfDockTool):
         self._status_timer.timeout.connect(self._update_status_bar)
         self._status_timer.start(2000)
 
-        # ── Single DockArea (all panels as tabs) ──────────────────────
-        self.objects = ObjectsDock(
-            self,
-            margins=dock_margins,
-            spacing=spacing,
-            # The A/S/H/L/C menus drive the same command layer the command line
-            # does, so every menu action is reproducible as a typed command and
-            # shows up in the command log.
-            run_command=self._run_object_menu_command,
-        )
-        self.object_list = self.objects.object_list
-        self.object_list.itemSelectionChanged.connect(
-            self.on_object_selection_changed,
-        )
-        self.object_list.itemChanged.connect(self.on_object_item_changed)
-        self.object_list.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.object_list.customContextMenuRequested.connect(
-            self._on_object_list_context_menu,
-        )
+        # The Qt objects dock is **gone**. Like the sequence dock it was never
+        # added to a layout or shown -- the object list in the viewport chrome
+        # replaced it -- but unlike that one it was not inert: the window kept
+        # mutating its rows, and those mutations emitted `itemSelectionChanged`,
+        # which was the *only* thing still driving active-object changes. That
+        # propagation is a direct call now (`_select_object_in_ui`), which is
+        # what made the widget safe to delete. See
+        # `okf/plugins/chimol-relocation.md`.
 
         # The Qt volume/map dock is gone: density controls live in the
         # viewport (`renderer/density_window.py`). The pure-Python model remains.
@@ -325,31 +356,13 @@ class MolViewPluginWindow(ChisurfDockTool):
                 "could not subscribe to object changes", exc_info=True
             )
         self.rmf_panel = RmfPanel(self, self.viewer)
-        self.sequence = SequenceDock(
-            self,
-            margins=dock_margins,
-            spacing=spacing,
-        )
-        # Built but not docked: the strip in the viewport replaced its tab, and
-        # a widget with no parent and no layout is a *top-level window* in Qt --
-        # so it floated over the app as a stray "Seq nbr" box. Parented and
-        # hidden until the ~100 call sites that still feed it are unwound.
-        try:
-            self.sequence.widget.setParent(self)
-            self.sequence.widget.hide()
-        except Exception:
-            pass
-
-        self.seq_label = self.sequence.seq_label
-        self.seq_numbers_label = self.sequence.seq_numbers_label
-        self.seq_numbers_list = self.sequence.seq_numbers_list
-        self.seq_scrollbar = self.sequence.seq_scrollbar
-        self.seq_list = self.sequence.seq_list
-        self._extra_seq_container = self.sequence.extra_seq_container
-        self._extra_seq_layout = self.sequence.extra_seq_layout
-        self._sequence_number_font = self.sequence.sequence_number_font
-        self._sequence_number_bold_font = self.sequence.sequence_number_bold_font
-        self._sequence_font = self.sequence.sequence_font
+        # The sequence dock is **gone**. It was built, parented and hidden --
+        # the in-viewport strip had replaced it, but ~77 call sites still fed
+        # its widgets, so every sequence change rebuilt rows nobody could see.
+        # The strip is fed independently (`sync_internal_gui` ->
+        # `_sync_internal_sequences` -> `gui.set_sequences`), which is why the
+        # dock could go without anything taking its place here. See
+        # `okf/plugins/chimol-relocation.md`.
 
         # A COMMAND-role chinsole, not a bespoke dock. It takes chimol's own
         # commands *and* Python at one prompt -- the command line had no Python
@@ -357,8 +370,8 @@ class MolViewPluginWindow(ChisurfDockTool):
         # history that the hand-rolled panel did not have.
         from chisurf.gui.chinsole import Chinsole, ConsoleConfig, ConsoleRole
 
-        from .command_dispatch import ChimolDispatcher
-        from .command_history import resolve_history_path
+        from ..cmd.dispatch import ChimolDispatcher
+        from ..cmd.history import resolve_history_path
 
         self.command_panel = Chinsole(
             ConsoleConfig(
@@ -396,12 +409,8 @@ class MolViewPluginWindow(ChisurfDockTool):
         self._sequence_rows: dict[str, dict[str, Any]] = {}
         self._sequence_alignment_axis: Optional[np.ndarray] = None
         self._sequence_alignment_maps: dict[str, Optional[np.ndarray]] = {}
-        try:
-            self.seq_label.toggled.connect(self.on_seq_label_toggled)
-        except Exception:
-            pass
-
-        self._reset_scroll_targets()
+        # `seq_label.toggled` and `_reset_scroll_targets` went with the
+        # sequence dock: both drove widgets in it.
 
         # ── Viewer signal connections ─────────────────────────────────
         try:
@@ -443,9 +452,9 @@ class MolViewPluginWindow(ChisurfDockTool):
             except Exception:
                 pass
 
-        self.seq_list.itemSelectionChanged.connect(
-            self.on_sequence_selection_changed,
-        )
+        # `seq_list.itemSelectionChanged` went with the dock. The list was
+        # hidden, so it never emitted -- see `okf/plugins/chimol-relocation.md`
+        # for why that made the whole read-back path dead in effect.
 
         self._default_object_name_counter = 0
 
@@ -523,7 +532,7 @@ class MolViewPluginWindow(ChisurfDockTool):
 
     def run_demo(self, key: str) -> None:
         """Run a shipped demo script by name."""
-        from .demo_data import DemoDataUnavailable
+        from ..demos.data import DemoDataUnavailable
         from .demos import read_demo, resolve_structure
 
         text = read_demo(key)
@@ -1099,241 +1108,32 @@ class MolViewPluginWindow(ChisurfDockTool):
         return True
 
     def _update_sequence_view(self, object_id: Optional[str] = None) -> None:
-        active_id = object_id or self.viewer.get_active_object_id()
+        """Rebuild the sequence strip.
 
-        seq_cfg = self.sequence.sequence_config()
-        seq_view_enabled = bool(seq_cfg.get("seq_view", True))
-        self._set_tab_visible("Sequence", seq_view_enabled)
-        if not seq_view_enabled:
-            return
+        Kept because the command layer calls it -- `cmd/rendering.py`,
+        `cmd/session.py`, `cmd/exporting.py` and `cmd/interactions.py` all
+        refresh the sequence through this name -- but it no longer populates a
+        Qt table. It used to fill the sequence **dock**, which had been
+        parented and hidden since the in-viewport strip replaced it, so every
+        call rebuilt ~29 widget rows nobody could see. The strip is fed by an
+        independent path (`sync_internal_gui` -> `_sync_internal_sequences` ->
+        `gui.set_sequences`), which is what this now drives, matching the
+        toolkit-free host's own `_update_sequence_view`.
 
-        if not (
-            self._widget_alive(self.seq_numbers_list)
-            and self._widget_alive(self.seq_list)
-        ):
-            # The sequence dock is gone. Say so once rather than raise out of a
-            # signal handler: the rest of the window is still usable.
-            logging.getLogger(__name__).warning(
-                "chimol: the sequence dock's widgets have been deleted; "
-                "skipping the sequence update"
-            )
-            return
+        It does **nothing**, deliberately, and must not be made to call
+        `_refresh_objects_from_viewer`: that method calls *this* one, so the
+        delegation loops (caught immediately as a `RecursionError` in
+        `test_panel_layout`). The strip is already refreshed by
+        `sync_internal_gui`, which the object-registry subscription drives, so
+        there is nothing left for this to do but stay callable.
 
-        self.seq_numbers_list.clear()
-        self.seq_numbers_list.setEnabled(False)
-        self.seq_list.clear()
-        self._clear_extra_sequence_rows()
-
-        if active_id is None:
-            self._sequence_visible = True
-            self._sequence_alignment_axis = None
-            self._sequence_alignment_maps = {}
-            try:
-                self.seq_label.blockSignals(True)
-                self.seq_label.setText("No molecule selected")
-                self.seq_label.setChecked(True)
-                self.seq_label.blockSignals(False)
-            except Exception:
-                pass
-            self.seq_list.addItem("(no molecule selected)")
-            self.seq_list.setEnabled(False)
-            self.seq_numbers_list.addItem("(no molecule selected)")
-            self.seq_numbers_list.setEnabled(False)
-            self._reset_scroll_targets()
-            return
-
-        if not self._object_store:
-            self._sequence_alignment_axis = None
-            self._sequence_alignment_maps = {}
-            self.seq_list.addItem("(no molecules loaded)")
-            self.seq_list.setEnabled(False)
-            self.seq_numbers_list.addItem("(no molecules loaded)")
-            self.seq_numbers_list.setEnabled(False)
-            self._reset_scroll_targets()
-            return
-
-        seq_data: dict[str, tuple[Optional[np.ndarray], Optional[np.ndarray]]] = {}
-        lengths: dict[str, int] = {}
-        residue_numbers_map: dict[str, Optional[np.ndarray]] = {}
-        residue_colors_map: dict[str, Optional[np.ndarray]] = {}
-        for obj_id in self._object_store.keys():
-            seq_codes, res_names = self.viewer.get_sequence_arrays(obj_id)
-            seq_data[obj_id] = (seq_codes, res_names)
-            lengths[obj_id] = self._sequence_length(seq_codes, res_names)
-            try:
-                residue_numbers_map[obj_id] = self.viewer.get_residue_numbers(obj_id)
-            except Exception:
-                residue_numbers_map[obj_id] = None
-            try:
-                residue_colors_map[obj_id] = self.viewer.get_residue_colors(obj_id)
-            except Exception:
-                residue_colors_map[obj_id] = None
-
-        # Build a shared residue-number axis across all loaded molecules. When
-        # PDB residue ids are available, this aligns sequences by residue
-        # number and exposes explicit gaps; otherwise it falls back to a
-        # simple 1..N index axis matching the longest sequence.
-        gap_mode = int(seq_cfg.get("seq_view_gap_mode", 1))
-        try:
-            if gap_mode > 0:
-                axis, maps = build_residue_alignment(residue_numbers_map, lengths)
-                if axis is not None:
-                    axis, maps = self._collapse_alignment_gaps(axis, maps)
-            else:
-                axis = None
-                maps = {}
-        except Exception:
-            axis = None
-            maps = {}
-
-        axis_len = 0
-        if axis is not None:
-            try:
-                axis_arr = np.asarray(axis)
-                if axis_arr.ndim == 1:
-                    axis_len = int(axis_arr.shape[0])
-            except Exception:
-                axis_len = 0
-
-        if axis_len > 0:
-            max_len = axis_len
-            try:
-                self._sequence_alignment_axis = np.asarray(axis, dtype=int)
-            except Exception:
-                self._sequence_alignment_axis = None
-            try:
-                self._sequence_alignment_maps = {
-                    str(k): (np.asarray(v) if v is not None else None)
-                    for k, v in maps.items()
-                }
-            except Exception:
-                self._sequence_alignment_maps = {}
-        else:
-            max_len = max(lengths.values()) if lengths else 0
-            self._sequence_alignment_axis = None
-            self._sequence_alignment_maps = {str(k): None for k in self._object_store.keys()}
-
-        entry = self._object_store.get(active_id)
-        label_text = str(active_id)
-        visible = True
-        if entry is not None:
-            label_text = entry.get("name", active_id)
-            visible = bool(entry.get("visible", True))
-
-        self._sequence_visible = visible
-        try:
-            self.seq_label.blockSignals(True)
-            self.seq_label.setText(label_text)
-            self.seq_label.setChecked(visible)
-            self.seq_label.blockSignals(False)
-        except Exception:
-            pass
-
-        if max_len <= 0:
-            self._sequence_alignment_axis = None
-            self._sequence_alignment_maps = {}
-            placeholder = "(no sequence information)"
-            self.seq_list.addItem(placeholder)
-            self.seq_list.setEnabled(False)
-            self.seq_numbers_list.addItem(placeholder)
-            self.seq_numbers_list.setEnabled(False)
-            self._reset_scroll_targets()
-            return
-
-        ss_codes_map: dict[str, Optional[Sequence[str]]] = {}
-        for obj_id, length in lengths.items():
-            if length > 0:
-                ss_codes_map[obj_id] = self._get_secondary_structure_codes(obj_id, length)
-            else:
-                ss_codes_map[obj_id] = None
-
-        active_seq_codes, active_res_names = seq_data.get(active_id, (None, None))
-        active_len = lengths.get(active_id, 0)
-        active_ss = ss_codes_map.get(active_id)
-
-        active_empty_text = "(no sequence information)"
-        if (active_seq_codes is not None and len(active_seq_codes) > 0) or (
-            active_res_names is not None and len(active_res_names) > 0
-        ):
-            active_empty_text = ""
-
-        active_items = self._build_sequence_items(
-            seq_codes=active_seq_codes,
-            res_names=active_res_names,
-            ss_codes=active_ss,
-            max_len=max_len,
-            enable_selection=active_len > 0,
-            empty_text=active_empty_text or "(no residues)",
-            res_numbers=residue_numbers_map.get(active_id),
-            residue_colors=residue_colors_map.get(active_id),
-            index_map=self._sequence_alignment_maps.get(active_id),
-        )
-        for item in active_items:
-            self.seq_list.addItem(item)
-
-        self.seq_list.setEnabled(active_len > 0)
-        self._apply_sequence_selection_styles(set())
-
-        for obj_id, obj_entry in self._object_store.items():
-            if obj_id == active_id:
-                continue
-            seq_codes, res_names = seq_data.get(obj_id, (None, None))
-            ss_codes = ss_codes_map.get(obj_id)
-            length = lengths.get(obj_id, 0)
-            self._add_sequence_row_for_object(
-                object_id=obj_id,
-                entry=obj_entry,
-                seq_codes=seq_codes,
-                res_names=res_names,
-                ss_codes=ss_codes,
-                length=length,
-                max_len=max_len,
-                res_numbers=residue_numbers_map.get(obj_id),
-                residue_colors=residue_colors_map.get(obj_id),
-            )
-
-        seq_cfg = self.sequence.sequence_config()
-        number_step = max(1, int(seq_cfg.get("seq_view_label_spacing", seq_cfg.get("number_step", 5))))
-
-        residue_numbers = None
-        try:
-            if hasattr(self, "viewer") and self.viewer is not None:
-                residue_numbers = self.viewer.get_residue_numbers(active_id)
-        except Exception:
-            residue_numbers = None
-
-        # When a global alignment axis is available, use it for the sequence
-        # number row so the labels reflect the shared PDB residue numbers.
-        axis_nums = None
-        try:
-            axis_arr = getattr(self, "_sequence_alignment_axis", None)
-            if axis_arr is not None:
-                axis_arr = np.asarray(axis_arr)
-                if axis_arr.ndim == 1 and axis_arr.shape[0] == max_len:
-                    axis_nums = axis_arr
-        except Exception:
-            axis_nums = None
-
-        if axis_nums is not None:
-            numbers_for_row = axis_nums
-        else:
-            numbers_for_row = residue_numbers
-
-        self._populate_sequence_numbers(
-            max_len,
-            number_step,
-            active_length=active_len,
-            residue_numbers=numbers_for_row,
-        )
-        enabled = max_len > 0
-        self.seq_numbers_list.setEnabled(enabled)
-        try:
-            self.seq_numbers_label.setEnabled(enabled)
-        except Exception:
-            pass
-
-        self._reset_scroll_targets()
-
+        Parameters
+        ----------
+        object_id : str, optional
+            Accepted for signature parity with the callers; the strip is
+            rebuilt from the whole object list either way.
+        """
+        return
     def _collapse_alignment_gaps(
         self,
         axis: np.ndarray,
@@ -1440,112 +1240,6 @@ class MolViewPluginWindow(ChisurfDockTool):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def _add_sequence_row_for_object(
-        self,
-        object_id: str,
-        entry: dict[str, Any],
-        *,
-        seq_codes: Optional[Sequence[object]],
-        res_names: Optional[Sequence[object]],
-        ss_codes: Optional[Sequence[object]],
-        length: int,
-        max_len: int,
-        res_numbers: Optional[np.ndarray] = None,
-        residue_colors: Optional[np.ndarray] = None,
-    ) -> None:
-        container = getattr(self, "_extra_seq_container", None)
-        layout = getattr(self, "_extra_seq_layout", None)
-        if container is None or layout is None:
-            return
-
-        row_widget = QtWidgets.QWidget(container)
-        row_layout = QtWidgets.QHBoxLayout(row_widget)
-        row_layout.setContentsMargins(0, 0, 0, 0)
-        row_layout.setSpacing(6)
-
-        button = QtWidgets.QToolButton(row_widget)
-        button.setMinimumWidth(120)
-        label_text = entry.get("name", object_id)
-        button.setText(str(label_text))
-        button.setCheckable(True)
-        visible = bool(entry.get("visible", True))
-        button.setChecked(visible)
-
-        seq_list = QtWidgets.QListWidget(row_widget)
-        seq_list.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        seq_list.setFlow(QtWidgets.QListView.LeftToRight)
-        seq_list.setWrapping(False)
-        seq_list.setUniformItemSizes(True)
-        seq_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        seq_list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        seq_list.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-        try:
-            seq_font = getattr(self, "_sequence_font", None)
-            if isinstance(seq_font, QtGui.QFont):
-                seq_list.setFont(seq_font)
-            seq_list.setFixedHeight(self.seq_list.height())
-            seq_list.setStyleSheet(self.seq_list.styleSheet())
-        except Exception:
-            pass
-
-        row_layout.addWidget(button, 0, QtCore.Qt.AlignVCenter)
-        row_layout.addWidget(seq_list, 1)
-        layout.addWidget(row_widget)
-
-        self._sequence_rows[object_id] = {"button": button, "list": seq_list}
-
-        extra_items = self._build_sequence_items(
-            seq_codes=seq_codes,
-            res_names=res_names,
-            ss_codes=ss_codes,
-            max_len=max_len,
-            enable_selection=False,
-            empty_text="(no sequence information)" if length <= 0 else "",
-            res_numbers=res_numbers,
-            residue_colors=residue_colors,
-            index_map=self._sequence_alignment_maps.get(object_id),
-        )
-        for item in extra_items:
-            seq_list.addItem(item)
-
-        seq_list.setEnabled(bool(visible))
-        self._update_sequence_row_colors(object_id, visible)
-
-        button.toggled.connect(
-            lambda checked, oid=object_id: self.on_seq_row_toggled(oid, checked)
-        )
-
-    def _update_sequence_row_colors(self, object_id: str, visible: bool) -> None:
-        row_info = self._sequence_rows.get(str(object_id)) if hasattr(self, "_sequence_rows") else None
-        if not isinstance(row_info, dict):
-            return
-        lst = row_info.get("list")
-        if not isinstance(lst, QtWidgets.QListWidget):
-            return
-        if lst.count() == 0:
-            return
-
-        gray_bg = QtGui.QColor(200, 200, 200)
-        gray_fg = QtGui.QColor(140, 140, 140)
-
-        for i in range(lst.count()):
-            item = lst.item(i)
-            if item is None:
-                continue
-            palette = item.data(_SEQ_COLOR_ROLE)
-            if isinstance(palette, tuple) and len(palette) == 2:
-                base_bg, base_fg = palette
-            else:
-                base_bg = QtGui.QColor(220, 220, 200)
-                base_fg = QtGui.QColor(0, 0, 0)
-
-            if not visible:
-                item.setBackground(QtGui.QBrush(gray_bg))
-                item.setForeground(QtGui.QBrush(gray_fg))
-            else:
-                item.setBackground(QtGui.QBrush(base_bg))
-                item.setForeground(QtGui.QBrush(base_fg))
-
     def _sequence_length(
         self,
         seq_codes: Optional[Sequence[object]],
@@ -1632,115 +1326,28 @@ class MolViewPluginWindow(ChisurfDockTool):
                     frame_idx = 0
                 lines.append(f"Frame: {frame_idx + 1} / {n_frames}")
 
-            sel_idx = self._selected_residue_indices()
-            if sel_idx:
-                seq_codes, res_names = self.viewer.get_sequence_arrays(active_id)
-                try:
-                    resno_arr = self.viewer.get_residue_numbers(active_id)
-                except Exception:
-                    resno_arr = None
-                desc: list[str] = []
-                for i in sel_idx:
-                    try:
-                        if resno_arr is not None and 0 <= i < len(resno_arr):
-                            res_no = int(resno_arr[i])
-                        else:
-                            res_no = i + 1
-                    except Exception:
-                        res_no = i + 1
-                    name = (
-                        str(res_names[i])
-                        if res_names is not None and i < len(res_names)
-                        else "?"
-                    )
-                    one = (
-                        str(seq_codes[i])
-                        if seq_codes is not None and i < len(seq_codes)
-                        else "?"
-                    )
-                    desc.append(f"{res_no}: {name} ({one})")
-
-                lines.append("")
-                lines.append("Selected residues:")
-                lines.append(", ".join(desc))
-
+            # The residue list the sequence **dock** was selected in used to be
+            # described here. The dock is gone (it was hidden, and nothing could
+            # select in it, so this block never ran); the viewport reports its own
+            # picks. See `okf/plugins/chimol-relocation.md`.
         text = "\n".join(str(x) for x in lines)
         try:
             self.viewer.set_system_info_text(text)
         except Exception:
             pass
 
-    def on_sequence_selection_changed(self) -> None:
-        """Sync 3D selection and info text when the sequence selection changes."""
-
-        # Map QListWidget selection to residue indices
-        idx = self._selected_residue_indices()
-        try:
-            self._apply_sequence_selection_styles(set(idx))
-        except Exception:
-            pass
-        object_id = self.viewer.get_active_object_id()
-        if object_id is None:
-            return
-
-        try:
-            self.viewer.set_selected_residues(idx, object_id=object_id)
-        except Exception:
-            pass
-
-        try:
-            self._update_system_info(object_id)
-        except Exception:
-            pass
-
     def on_viewer_residue_selection_changed(self, object_id, indices) -> None:
-        """Update sequence selection to match picks from the 3D viewer."""
+        """A pick in the 3-D view changed the residue selection.
 
-        active_id = self.viewer.get_active_object_id()
-        if object_id != active_id:
-            return
-
-        if not isinstance(indices, (list, tuple)):
-            try:
-                indices = list(indices)
-            except Exception:
-                indices = []
-
-        self.seq_list.blockSignals(True)
-        try:
-            self.seq_list.clearSelection()
-            # Map residue indices from the viewer back to visible rows using
-            # the stored sequence index role, so alignment gaps are handled
-            # correctly.
-            try:
-                target_idx = {int(i) for i in indices if int(i) >= 0}
-            except Exception:
-                target_idx = set()
-            if target_idx:
-                for row in range(self.seq_list.count()):
-                    item = self.seq_list.item(row)
-                    if item is None:
-                        continue
-                    seq_idx = item.data(_SEQ_INDEX_ROLE)
-                    if isinstance(seq_idx, int) and seq_idx in target_idx:
-                        item.setSelected(True)
-        finally:
-            self.seq_list.blockSignals(False)
-
-        try:
-            self._apply_sequence_selection_styles({int(i) for i in indices})
-        except Exception:
-            pass
-
-        try:
-            self._update_system_info(object_id)
-        except Exception:
-            pass
-
-    # ------------------------------------------------------------------
-    # Object management helpers
-    # ------------------------------------------------------------------
-
+        Nothing to mirror any more. This used to push the selection into the
+        sequence **dock**'s list so the two views agreed -- but that dock has
+        been parented and hidden since the in-viewport strip replaced it, and
+        the strip reads the viewer's own selection directly, so the mirroring
+        wrote into a widget nobody could see. Kept as a signal handler (the
+        viewer connects to it) rather than disconnected, so the wiring stays
+        visible and a future consumer has somewhere to go.
+        """
+        return
     def _detach_orphan_widgets(self) -> None:
         """Take every widget that is not the viewport off the window.
 
@@ -1955,7 +1562,6 @@ class MolViewPluginWindow(ChisurfDockTool):
                 },
             }
             self._object_store[object_id] = entry
-            self._add_object_list_item(object_id, entry)
             self._select_object_in_ui(object_id)
             # The Map panel follows whatever map is loaded.
             panel = getattr(self, "volume_panel", None)
@@ -2117,7 +1723,6 @@ class MolViewPluginWindow(ChisurfDockTool):
             "radius_gyration": radius_gyration,
         }
         self._object_store[object_id] = entry
-        self._add_object_list_item(object_id, entry)
         self._select_object_in_ui(object_id)
         return object_id
 
@@ -2132,12 +1737,8 @@ class MolViewPluginWindow(ChisurfDockTool):
         # Reset store and UI list
         self._object_store.clear()
         self._drawn_groups: set[str] = set()
-        try:
-            self.object_list.blockSignals(True)
-            self.object_list.clear()
-            self.objects.clear_rows()
-        finally:
-            self.object_list.blockSignals(False)
+        # (The Qt list this used to clear alongside the store is gone; the
+        # chrome rebuilds its rows from the store.)
 
         # A group's members must be drawn together under its header, and the
         # viewer's registry does not guarantee they are adjacent: grouping `lig`
@@ -2166,10 +1767,8 @@ class MolViewPluginWindow(ChisurfDockTool):
             if group:
                 if group not in self._drawn_groups:
                     self._drawn_groups.add(group)
-                    self._add_group_list_item(group, bool(obj.get("group_open", True)))
                 if not obj.get("group_open", True):
                     continue
-            self._add_object_list_item(oid, entry, indent=12 if group else 0)
 
         # Reselect the active object if possible
         active_id = self.viewer.get_active_object_id()
@@ -2210,31 +1809,6 @@ class MolViewPluginWindow(ChisurfDockTool):
         while f"{base} ({suffix})" in existing:
             suffix += 1
         return f"{base} ({suffix})"
-
-    def _add_object_list_item(
-        self, object_id: str, entry: dict[str, Any], *, indent: int = 0
-    ) -> None:
-        item = self.objects.create_item(object_id, entry)
-
-        self._block_object_list_signals = True
-        try:
-            # From the entry, not always Checked. Forcing Checked meant every
-            # panel rebuild silently re-showed anything that had been hidden --
-            # so `split_chains` hid its source and the very next refresh brought
-            # it back, drawing the whole structure on top of every chain copy.
-            item.setCheckState(
-                QtCore.Qt.Checked
-                if bool(entry.get("visible", True))
-                else QtCore.Qt.Unchecked
-            )
-        finally:
-            self._block_object_list_signals = False
-
-        self.object_list.addItem(item)
-        # The row widget can only be hosted once the item exists in the list.
-        self.objects.attach_row(item, object_id, entry, indent=indent)
-        entry["item"] = item
-        self.sync_internal_gui()
 
     def sync_internal_gui(self) -> None:
         """Mirror the object list into the panel drawn inside the viewport.
@@ -2665,7 +2239,7 @@ class MolViewPluginWindow(ChisurfDockTool):
         """
         line = gui.command_line
         if line.completions is None:
-            from .command_dispatch import ChimolDispatcher
+            from ..cmd.dispatch import ChimolDispatcher
 
             line.completions = ChimolDispatcher(_cmd).completions
         if line.history:
@@ -2725,20 +2299,17 @@ class MolViewPluginWindow(ChisurfDockTool):
                 blocks[slot][1].append(obj)
         return [obj for _group, members in blocks for obj in members]
 
-    def _add_group_list_item(self, group: str, is_open: bool) -> None:
-        """Add the header row that stands for a group."""
-        item = self.objects.create_group_item(group, is_open)
-        self.object_list.addItem(item)
-        self.objects.attach_group_row(item, group, is_open)
-
     def _select_object_in_ui(self, object_id: Optional[str]) -> None:
-        if object_id is None:
-            self.object_list.clearSelection()
-            self._handle_active_object_change(None)
-            return
+        """Make *object_id* the active object.
 
-        self.objects.set_current_object(object_id)
-
+        Calls `_handle_active_object_change` **directly**. It used to set the
+        current row of a `QListWidget` and let `itemSelectionChanged` carry the
+        change -- but that list was never shown, so the signal was the only
+        thing keeping the propagation alive, and deleting the widget would have
+        stopped active-object changes with nothing to notice it. Measured
+        before removing: a plain 148L load fired it three times, unblocked.
+        """
+        self._handle_active_object_change(object_id)
     def _handle_active_object_change(self, object_id: Optional[str]) -> None:
         if object_id is None:
             self._active_object_id = None
@@ -2763,284 +2334,6 @@ class MolViewPluginWindow(ChisurfDockTool):
                 self.rmf_panel.set_state(state)
             except Exception:
                 self.rmf_panel.set_state(None)
-
-    def on_object_selection_changed(self) -> None:
-        if self._block_object_list_signals:
-            return
-
-        item = self.object_list.currentItem()
-        if item is None:
-            self._handle_active_object_change(None)
-            return
-
-        object_id = item.data(_OBJECT_ID_ROLE)
-        if not object_id:
-            self._handle_active_object_change(None)
-            return
-
-        self._handle_active_object_change(str(object_id))
-
-    def on_object_item_changed(self, item: QtWidgets.QListWidgetItem) -> None:
-        if self._block_object_list_signals or item is None:
-            return
-
-        object_id = item.data(_OBJECT_ID_ROLE)
-        if not object_id:
-            return
-
-        visible = item.checkState() == QtCore.Qt.Checked
-        self._set_object_visible(object_id, visible)
-
-        row_info = self._sequence_rows.get(str(object_id)) if hasattr(self, "_sequence_rows") else None
-        if isinstance(row_info, dict):
-            btn = row_info.get("button")
-            lst = row_info.get("list")
-            if isinstance(btn, QtWidgets.QToolButton):
-                try:
-                    btn.blockSignals(True)
-                    btn.setChecked(bool(visible))
-                    btn.blockSignals(False)
-                except Exception:
-                    pass
-            if isinstance(lst, QtWidgets.QListWidget):
-                lst.setEnabled(bool(visible))
-            try:
-                self._update_sequence_row_colors(str(object_id), bool(visible))
-            except Exception:
-                pass
-
-        if object_id == self.viewer.get_active_object_id():
-            self._sequence_visible = bool(visible)
-            try:
-                self.seq_label.blockSignals(True)
-                self.seq_label.setChecked(bool(visible))
-                self.seq_label.blockSignals(False)
-            except Exception:
-                pass
-            try:
-                self._apply_sequence_selection_styles(set(self._selected_residue_indices()))
-            except Exception:
-                pass
-
-    def _on_object_list_context_menu(self, pos: QtCore.QPoint) -> None:
-        menu = QtWidgets.QMenu(self.object_list)
-        action_select_all = menu.addAction("Select All")
-        action_clear_selection = menu.addAction("Clear Selection")
-        menu.addSeparator()
-        action_delete = menu.addAction("Delete Selected")
-
-        chosen = menu.exec_(self.object_list.mapToGlobal(pos))
-        if chosen == action_select_all:
-            self.object_list.selectAll()
-        elif chosen == action_clear_selection:
-            self.object_list.clearSelection()
-        elif chosen == action_delete:
-            self._delete_selected_objects()
-
-    def _delete_selected_objects(self) -> None:
-        items = self.object_list.selectedItems()
-        if not items:
-            return
-
-        object_ids: list[str] = []
-        for item in items:
-            oid = item.data(_OBJECT_ID_ROLE)
-            if oid:
-                object_ids.append(str(oid))
-
-        if not object_ids:
-            return
-
-        for oid in object_ids:
-            try:
-                self.viewer.remove_object(oid)
-            except Exception:
-                pass
-            self._object_store.pop(oid, None)
-
-        self._refresh_objects_from_viewer()
-
-    def on_seq_label_toggled(self, checked: bool) -> None:
-        active_id = self.viewer.get_active_object_id()
-        if active_id is None:
-            return
-
-        self._block_object_list_signals = True
-        try:
-            self._set_object_visible(active_id, checked)
-            self.objects.set_item_checked(active_id, checked)
-        finally:
-            self._block_object_list_signals = False
-
-        self._sequence_visible = bool(checked)
-        try:
-            self._apply_sequence_selection_styles(set(self._selected_residue_indices()))
-        except Exception:
-            pass
-
-    def on_seq_row_toggled(self, object_id: str, checked: bool) -> None:
-        if not object_id:
-            return
-
-        active_id = self.viewer.get_active_object_id()
-
-        self._block_object_list_signals = True
-        try:
-            self._set_object_visible(object_id, checked)
-            self.objects.set_item_checked(object_id, checked)
-        finally:
-            self._block_object_list_signals = False
-
-        row_info = self._sequence_rows.get(str(object_id)) if hasattr(self, "_sequence_rows") else None
-        if isinstance(row_info, dict):
-            lst = row_info.get("list")
-            if isinstance(lst, QtWidgets.QListWidget):
-                lst.setEnabled(bool(checked))
-            try:
-                self._update_sequence_row_colors(str(object_id), bool(checked))
-            except Exception:
-                pass
-
-        if active_id == object_id:
-            self._sequence_visible = bool(checked)
-            try:
-                self.seq_label.blockSignals(True)
-                self.seq_label.setChecked(bool(checked))
-                self.seq_label.blockSignals(False)
-            except Exception:
-                pass
-            try:
-                self._apply_sequence_selection_styles(set(self._selected_residue_indices()))
-            except Exception:
-                pass
-
-    def _selected_residue_indices(self) -> list[int]:
-        if self.seq_list.count() == 0:
-            return []
-        indices: list[int] = []
-        for model_idx in self.seq_list.selectedIndexes():
-            item = self.seq_list.item(model_idx.row())
-            if item is None:
-                continue
-            seq_idx = item.data(_SEQ_INDEX_ROLE)
-            if isinstance(seq_idx, int) and seq_idx >= 0:
-                indices.append(seq_idx)
-        return sorted(set(indices))
-
-    def _populate_sequence_numbers(
-        self,
-        max_len: int,
-        step: int,
-        *,
-        active_length: int = 0,
-        residue_numbers: Optional[np.ndarray] = None,
-    ) -> None:
-        self.seq_numbers_list.clear()
-        if max_len <= 0:
-            return
-        digits = len(str(max(1, max_len)))
-        seq_cfg = self.sequence.sequence_config()
-        fg_rgba = seq_cfg.get("number_color", [0.9, 0.9, 0.9, 1.0])
-        bg_rgba = seq_cfg.get("number_bg_color", [0.12, 0.12, 0.12, 1.0])
-        fallback_fg = QtGui.QBrush(self.sequence.color_from_rgba(fg_rgba, (0.9, 0.9, 0.9, 1.0)))
-        fallback_bg = QtGui.QBrush(self.sequence.color_from_rgba(bg_rgba, (0.12, 0.12, 0.12, 1.0)))
-
-        resno_arr: Optional[np.ndarray]
-        try:
-            if residue_numbers is not None:
-                arr_res = np.asarray(residue_numbers)
-                if arr_res.ndim == 1:
-                    resno_arr = arr_res
-                else:
-                    resno_arr = None
-            else:
-                resno_arr = None
-        except Exception:
-            resno_arr = None
-
-        color_arr: Optional[np.ndarray]
-        try:
-            if residue_colors is not None:
-                c_arr = np.asarray(residue_colors, dtype=float)
-                if c_arr.ndim == 2 and c_arr.shape[1] >= 3:
-                    color_arr = c_arr
-                else:
-                    color_arr = None
-            else:
-                color_arr = None
-        except Exception:
-            color_arr = None
-
-        # Build per-position labels so that residue indices are laid out as a
-        # single monospaced string like "1   5    10   15   20" where each
-        # character aligns with one residue cell in the sequence row below.
-        step_val = step if step > 0 else 1
-        labels: list[str] = ["·"] * max_len
-        if max_len > 0:
-            for idx in range(max_len):
-                r = -1
-                if resno_arr is not None and idx < resno_arr.shape[0]:
-                    try:
-                        r = int(resno_arr[idx])
-                    except Exception:
-                        pass
-                else:
-                    r = idx + 1
-
-                if r <= 0:
-                    continue
-
-                if r == 1 or r % step_val == 0:
-                    text = str(r)
-                    start = idx + 1 - len(text)
-                    if start < 0:
-                        text = text[-(idx + 1):]
-                        start = 0
-                    for j, ch in enumerate(text):
-                        idx_char = start + j
-                        if 0 <= idx_char < max_len:
-                            labels[idx_char] = ch
-
-        size_hint = None
-        if self.seq_list.count() > 0:
-            try:
-                idx0 = self.seq_list.model().index(0, 0)
-                size_hint = self.seq_list.sizeHintForIndex(idx0)
-            except Exception:
-                size_hint = None
-        normal_font = getattr(self, "_sequence_number_font", None)
-        bold_font = getattr(self, "_sequence_number_bold_font", None)
-
-        for idx in range(max_len):
-            item = QtWidgets.QListWidgetItem()
-            ch = labels[idx] if idx < len(labels) else " "
-            text = ch if ch else " "
-            item.setText(text)
-            item.setTextAlignment(QtCore.Qt.AlignCenter)
-            item.setFlags(QtCore.Qt.ItemIsEnabled)
-
-            # Use neutral number coloring; never mirror 3D per-residue colors.
-            bg_brush = fallback_bg
-            fg_brush = fallback_fg
-
-            item.setBackground(bg_brush)
-            item.setForeground(fg_brush)
-
-            # Keep size in sync with sequence row.
-            ref_item = self.seq_list.item(idx)
-            if ref_item is not None:
-                hint = ref_item.sizeHint()
-                if hint.isValid():
-                    item.setSizeHint(hint)
-            elif size_hint is not None:
-                item.setSizeHint(size_hint)
-
-            if text.strip() and bold_font is not None:
-                item.setFont(bold_font)
-            elif normal_font is not None:
-                item.setFont(normal_font)
-            item.setData(_SEQ_INDEX_ROLE, idx)
-            self.seq_numbers_list.addItem(item)
 
     def _build_sequence_items(
         self,
@@ -3151,9 +2444,9 @@ class MolViewPluginWindow(ChisurfDockTool):
                         lum = 0.299 * float(r) + 0.587 * float(g) + 0.114 * float(b)
                         fg = QtGui.QColor(255, 255, 255) if lum < 0.5 else QtGui.QColor(0, 0, 0)
                     except Exception:
-                        bg, fg = SequenceDock.default_sequence_palette(ss_str)
+                        bg, fg = _seq_colors(ss_str)
                 else:
-                    bg, fg = SequenceDock.default_sequence_palette(ss_str)
+                    bg, fg = _seq_colors(ss_str)
                 res_name = (
                     str(res_names[seq_index])
                     if res_names is not None and seq_index < len(res_names)
@@ -3174,7 +2467,7 @@ class MolViewPluginWindow(ChisurfDockTool):
                 # muted grey rather than the coil palette: a gap is not a residue,
                 # and on a row that is mostly gaps the few real ones were
                 # indistinguishable from the padding around them.
-                bg, fg = SequenceDock.gap_palette()
+                bg, fg = _gap_colors()
                 tooltip = tooltip_hint
                 seq_index = -1
                 text = "." if orig_seq_index == -2 else "-"
@@ -3205,133 +2498,6 @@ class MolViewPluginWindow(ChisurfDockTool):
             return [note]
 
         return items
-
-    def _reset_scroll_targets(self) -> None:
-        for bar in getattr(self, "_scroll_targets", []):
-            try:
-                bar.valueChanged.disconnect(self._on_target_scroll_changed)
-            except Exception:
-                pass
-        if getattr(self, "_scroll_master", None) is not None:
-            try:
-                self._scroll_master.valueChanged.disconnect(self._on_master_scroll_changed)
-            except Exception:
-                pass
-        if getattr(self, "_content_scrollbar", None) is not None:
-            try:
-                self._content_scrollbar.rangeChanged.disconnect(self._on_content_scroll_range_changed)
-            except Exception:
-                pass
-            try:
-                self._content_scrollbar.valueChanged.disconnect(self._on_target_scroll_changed)
-            except Exception:
-                pass
-        self._content_scrollbar = None
-
-        self._scroll_targets = []
-        self._scroll_master = None
-
-        master = getattr(self, "seq_scrollbar", None)
-        content_bar = self.seq_list.horizontalScrollBar() if hasattr(self, "seq_list") else None
-        # Read sequence display configuration to determine whether scrolling
-        # should be synchronized across all rows or independent per row.
-        seq_cfg = self.sequence.sequence_config()
-        raw_independent = seq_cfg.get("independent_scroll", False)
-        # Only treat a real boolean True as enabling independent scrolling;
-        # avoid truthiness of strings like "False".
-        independent = bool(raw_independent) if isinstance(raw_independent, bool) else False
-
-        if master is None or content_bar is None:
-            if master is not None:
-                master.blockSignals(True)
-                master.setRange(0, 0)
-                master.setPageStep(0)
-                master.setValue(0)
-                master.setEnabled(False)
-                master.blockSignals(False)
-            return
-
-        # When independent scrolling is enabled, hide/disable the shared
-        # master scrollbar and allow each row's own horizontal scrollbar to
-        # operate normally.
-        if independent:
-            try:
-                master.blockSignals(True)
-                master.setRange(0, 0)
-                master.setPageStep(0)
-                master.setValue(0)
-                master.setEnabled(False)
-                master.blockSignals(False)
-            except Exception:
-                pass
-
-            # Enable individual horizontal scrollbars for all sequence lists.
-            try:
-                if hasattr(self, "seq_list") and self.seq_list is not None:
-                    self.seq_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-            except Exception:
-                pass
-            try:
-                if hasattr(self, "seq_numbers_list") and self.seq_numbers_list is not None:
-                    self.seq_numbers_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-            except Exception:
-                pass
-            try:
-                for row in getattr(self, "_sequence_rows", {}).values():
-                    lst = row.get("list")
-                    if isinstance(lst, QtWidgets.QListWidget):
-                        lst.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-            except Exception:
-                pass
-
-            # No shared-scroll wiring in this mode.
-            return
-
-        # Synchronized scrolling mode (default): ensure per-row scrollbars are
-        # hidden and driven by the shared master scrollbar.
-        try:
-            if hasattr(self, "seq_list") and self.seq_list is not None:
-                self.seq_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        except Exception:
-            pass
-        try:
-            if hasattr(self, "seq_numbers_list") and self.seq_numbers_list is not None:
-                self.seq_numbers_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        except Exception:
-            pass
-        try:
-            for row in getattr(self, "_sequence_rows", {}).values():
-                lst = row.get("list")
-                if isinstance(lst, QtWidgets.QListWidget):
-                    lst.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        except Exception:
-            pass
-        self._scroll_master = master
-        master.valueChanged.connect(self._on_master_scroll_changed)
-        self._content_scrollbar = content_bar
-        content_bar.rangeChanged.connect(self._on_content_scroll_range_changed)
-
-        targets: list[QtWidgets.QScrollBar] = []
-        targets.append(content_bar)
-        if hasattr(self, "seq_numbers_list") and self.seq_numbers_list is not None:
-            bar = self.seq_numbers_list.horizontalScrollBar()
-            if bar is not None and bar is not master:
-                targets.append(bar)
-
-        for row in self._sequence_rows.values():
-            lst = row.get("list")
-            if isinstance(lst, QtWidgets.QListWidget):
-                bar = lst.horizontalScrollBar()
-                if bar is not None and bar is not master:
-                    targets.append(bar)
-
-        self._scroll_targets = targets
-        value = content_bar.value()
-        for bar in self._scroll_targets:
-            bar.setValue(value)
-            bar.valueChanged.connect(self._on_target_scroll_changed)
-
-        self._update_shared_scrollbar_range()
 
     def _on_master_scroll_changed(self, value: int) -> None:
         if self._scroll_updating:
@@ -3391,56 +2557,6 @@ class MolViewPluginWindow(ChisurfDockTool):
         master.setEnabled(content.maximum() > content.minimum())
         master.setValue(content.value())
         master.blockSignals(False)
-
-    def _apply_sequence_selection_styles(self, selected_rows: set[int]) -> None:
-        if self.seq_list.count() == 0:
-            return
-        seq_cfg = self.sequence.sequence_config()
-        sel_bg = self.sequence.color_from_rgba(
-            seq_cfg.get("selection_color", [1.0, 0.95, 0.4, 1.0]),
-            [1.0, 0.95, 0.4, 1.0],
-        )
-        sel_fg = self.sequence.color_from_rgba(
-            seq_cfg.get("selection_text_color", [0.1, 0.1, 0.1, 1.0]),
-            [0.1, 0.1, 0.1, 1.0],
-        )
-        for row in range(self.seq_list.count()):
-            item = self.seq_list.item(row)
-            if item is None:
-                continue
-            palette = item.data(_SEQ_COLOR_ROLE)
-            if isinstance(palette, tuple) and len(palette) == 2:
-                base_bg, base_fg = palette
-            else:
-                base_bg = QtGui.QColor(220, 220, 200)
-                base_fg = QtGui.QColor(0, 0, 0)
-            seq_idx = item.data(_SEQ_INDEX_ROLE)
-            if not getattr(self, "_sequence_visible", True):
-                gray_bg = QtGui.QColor(200, 200, 200)
-                gray_fg = QtGui.QColor(140, 140, 140)
-                item.setBackground(QtGui.QBrush(gray_bg))
-                item.setForeground(QtGui.QBrush(gray_fg))
-            elif isinstance(seq_idx, int) and seq_idx >= 0 and seq_idx in selected_rows:
-                item.setBackground(QtGui.QBrush(sel_bg))
-                item.setForeground(QtGui.QBrush(sel_fg))
-            else:
-                item.setBackground(QtGui.QBrush(base_bg))
-                item.setForeground(QtGui.QBrush(base_fg))
-
-    def _apply_representation_to_selection(self, cartoon=None, ball=None) -> None:
-        idx = self._selected_residue_indices()
-        if not idx:
-            return
-        try:
-            self.viewer.set_residue_representation(idx, cartoon=cartoon, ball=ball)
-        except Exception as e:
-            try:
-                cs.logging.warning(
-                    "MolViewPluginWindow._apply_representation_to_selection failed: %s",
-                    e,
-                )
-            except Exception:
-                pass
 
     def _get_secondary_structure_codes(self, object_id: Optional[str], n_res: int) -> list[str] | None:
         """Return a list of secondary-structure codes (H/E/C) for residues.

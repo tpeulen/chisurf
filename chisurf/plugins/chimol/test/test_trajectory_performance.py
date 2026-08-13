@@ -481,3 +481,96 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
         )
     finally:
         view.deleteLater()
+
+
+# --------------------------------------------------------------------------- #
+# Re-enabling an object is not a scene rebuild
+# --------------------------------------------------------------------------- #
+def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
+    """`disable` then `enable` must not re-enter the scene builder.
+
+    The report: "when i disable an object and reenable it that is kind of
+    slow, why there should be no recompute needed." It was not just slow for
+    the toggled object -- `_update_view` rebuilt *every visible entry* on
+    every call, with no way to tell "a boolean flipped" from "the geometry
+    moved". Measured on 148L with a surface, sticks and a cartoon shown, one
+    disable/enable cycle cost 37.6 ms; none of it was needed, because nothing
+    about the object's coordinates, colours or representations had changed --
+    only whether it was drawn.
+
+    `_update_view` now takes a `visibility_only` flag, set only by
+    `set_object_visible`. Every other mutation -- colouring, editing, `set`,
+    every representation change -- still asks for the unconditional rebuild,
+    which bumps `_scene_build_generation` and rebuilds every visible entry for
+    real; that is what makes trusting the cache safe without tracking what
+    changed. `set_object_visible` reuses an entry's last-built scene exactly
+    when it was built at the *current* generation, which after this session
+    (add the structure, no other command) it always is.
+
+    Pinned structurally, like the colour-query case above: the scene builder
+    must not be entered by `disable` or `enable` when nothing else has
+    touched the object in between, and the object must still draw once
+    re-enabled.
+    """
+    import pathlib
+
+    cs_struct = pytest.importorskip("chisurf.core.structure")
+    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    pdb = (
+        pathlib.Path(__file__).resolve().parents[4]
+        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    )
+
+    view = MolView()
+    try:
+        object_id = view.add_structure(
+            _read_full_model(cs_struct.Structure, pdb),
+            name="148l",
+            source_path=str(pdb),
+        )
+        # A representative scene -- a surface and sticks are the expensive
+        # representations a rebuild would otherwise redo.
+        view._surface_visible = True
+        view._show_sticks = True
+        view._update_view()  # one general rebuild, so there is a cache to reuse
+
+        builds = []
+        original = view._build_scene_for_current_object
+
+        def counted(*args, **kwargs):
+            builds.append(1)
+            return original(*args, **kwargs)
+
+        view._build_scene_for_current_object = counted
+
+        view.set_object_visible(object_id, False)
+        view.set_object_visible(object_id, True)
+
+        assert not builds, (
+            f"disable/enable entered the scene builder {len(builds)} time(s); "
+            "nothing about the object's geometry changed, only whether it is drawn"
+        )
+        assert view._scene is not None and view._scene.objects, (
+            "the object must still be drawn after re-enabling"
+        )
+
+        # A genuine change in between must still be picked up: this is not a
+        # cache that can never invalidate, only one that skips work it can
+        # prove is unnecessary.
+        view._build_scene_for_current_object = original
+        view.set_object_visible(object_id, False)
+        # What `color`/`set`/an edit does under the hood: change a state
+        # field, then ask for the *general* (non-visibility-only) rebuild --
+        # which always rebuilds for real and bumps `_scene_build_generation`.
+        view._color_mode = "chain"
+        view._update_view()
+        view._build_scene_for_current_object = counted
+        view.set_object_visible(object_id, True)
+        assert builds, (
+            "a colour change between disable and enable must force a real "
+            "rebuild, not reuse the pre-change scene"
+        )
+    finally:
+        view.deleteLater()

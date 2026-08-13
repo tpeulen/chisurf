@@ -1,6 +1,6 @@
 """What the panel reads back from the viewer each frame, and the label default.
 
-Split out of :mod:`.gui_overlay` -- which needs a painter, and therefore a
+Split out of :mod:`..host.qt_overlay` -- which needs a painter, and therefore a
 toolkit -- because neither of these does. The panel's state is pulled from the
 viewer once per frame on *every* host, including the ones that build the chrome
 as quads and never open a painter at all, so leaving it beside the painter made
@@ -8,6 +8,8 @@ a windowless host import a window system to copy two integers.
 """
 from __future__ import annotations
 
+
+import weakref
 
 import numpy as np
 
@@ -95,6 +97,13 @@ def refresh_gui_state(gui, controller) -> None:
     """
     if controller is None or gui is None or gui.is_dragging():
         return
+
+    # A menu entry on a *group* runs once per member, and only the viewer knows
+    # who the members are. Kept as a weak reference: the panel outlives no
+    # viewer, and a strong one here would make the chrome keep a dead MolView
+    # alive -- the exact shape of leak that made a destroyed widget crash an
+    # unrelated test elsewhere in this file's neighbourhood.
+    gui._viewer_ref = weakref.ref(controller)
 
     # The system-info panel is chrome, so it is pulled here with everything
     # else rather than pushed. It used to be a `QPlainTextEdit` stacked on the

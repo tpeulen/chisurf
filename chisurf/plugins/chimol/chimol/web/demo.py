@@ -330,7 +330,7 @@ class Viewer:
     def draw(self) -> int:
         """Render one frame. Returns the quad count of the chrome."""
         from ..renderer.pack import pack_scene
-        from ..renderer.ui.quad_painter import QuadPainter
+        from ..cmtk.quad_painter import QuadPainter
 
         self.gui.layout(self.logical_width, self.logical_height)
         self.gui.layout_block(self.logical_width, self.logical_height)

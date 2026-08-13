@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui import sliders
+from chisurf.plugins.chimol.chimol.cmtk import sliders
 
 
 class RecordingPainter:

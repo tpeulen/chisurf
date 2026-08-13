@@ -179,7 +179,7 @@ def _occlusion_enabled() -> bool:
 
 def _get_picking_module():
     try:
-        return import_module("..app.picking", __package__)
+        return import_module(".picking", __package__)
     except Exception:
         return None
 
@@ -2224,6 +2224,13 @@ class MolView(WidgetBase):
         if name:
             self._group_open.setdefault(name, True)
         self._prune_group_state()
+        # Grouping changes what the panel *draws* -- a header row appears and
+        # the members indent under it -- without changing the mapping, which is
+        # the case `touch` is documented for. Missing it meant `group ligands,
+        # lig nag` left the in-viewport panel showing a flat list until some
+        # unrelated command bumped the revision. It was invisible while the Qt
+        # object dock existed, because that dock refreshed on its own path.
+        self._objects.touch("group", object_id=str(object_id), detail=name or "")
         return True
 
     def is_group_open(self, group: str) -> bool:
@@ -2236,6 +2243,10 @@ class MolView(WidgetBase):
         if name not in self.group_names():
             return False
         self._group_open[name] = bool(open_)
+        # Same reason as `set_object_group`: collapsing a group removes its
+        # members' rows from the panel, which no view learns about unless the
+        # revision moves.
+        self._objects.touch("group_open", detail=name)
         return True
 
     def _prune_group_state(self) -> None:
@@ -6131,8 +6142,12 @@ class MolView(WidgetBase):
         a panel per frame is what this exists to avoid, and polling the list
         itself means building a comparable copy of it per frame instead.
 
-        Bumped by an addition, a removal, a reorder, a rename and a visibility
-        change; see :mod:`~chimol.renderer.object_registry`.
+        Bumped by an addition, a removal, a reorder, a rename, a visibility
+        change and a **grouping** change; see
+        :mod:`~chimol.renderer.object_registry`. Grouping was missing from this
+        list for as long as a Qt dock refreshed itself on a separate path --
+        the panel that replaced it reads only this, so a group appeared late or
+        not at all.
         """
         try:
             return int(self._objects.revision)

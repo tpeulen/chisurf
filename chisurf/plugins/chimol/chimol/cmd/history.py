@@ -26,19 +26,16 @@ def resolve_history_path() -> pathlib.Path | None:
         persistence rather than failing.
     """
     try:
-        try:
-            import chisurf.core.settings as settings
-        except Exception:
-            settings = None
+        # Through `chimol.settings_dir`, not ChiSurf directly: it already
+        # resolves the env override a test sets, ChiSurf's directory when
+        # ChiSurf is importable, and a standalone fallback. The home-directory
+        # branch this replaces missed the override, so a suite wrote history
+        # into the developer's own home.
+        from ..settings_dir import settings_dir as _settings_dir  # noqa: PLC0415
 
-        if settings is not None:
-            base = pathlib.Path(settings.get_path("settings"))
-            current = base / "chimol_cmd_history.txt"
-            legacy = base / "molview_cmd_history.txt"
-        else:
-            base = pathlib.Path.home()
-            current = base / ".chimol_cmd_history"
-            legacy = base / ".molview_cmd_history"
+        base = _settings_dir()
+        current = base / "chimol_cmd_history.txt"
+        legacy = base / "molview_cmd_history.txt"
 
         if not current.exists() and legacy.exists():
             return legacy

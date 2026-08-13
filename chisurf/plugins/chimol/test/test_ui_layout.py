@@ -1,6 +1,6 @@
 """Painter-level tests for the layout cursor.
 
-:class:`~chimol.renderer.ui.layout.Layout` draws nothing, so what there is to
+:class:`~chimol.cmtk.layout.Layout` draws nothing, so what there is to
 test is arithmetic -- and the only test worth writing about arithmetic is one
 that asserts the *exact* rectangle a host would otherwise have hand-computed.
 Every number below was worked out from the reference implementation's
@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui import widgets
-from chisurf.plugins.chimol.chimol.renderer.ui.layout import Layout, LayoutStyle
+from chisurf.plugins.chimol.chimol.cmtk import widgets
+from chisurf.plugins.chimol.chimol.cmtk.layout import Layout, LayoutStyle
 
 
 class RecordingPainter:

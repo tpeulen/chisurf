@@ -4293,7 +4293,7 @@ cells wide.
 
 The fix is a dirty-flag cache on the chrome quad buffer: the chrome changes on
 hover, focus and state, not on camera motion, and camera motion is when frames
-matter. **Not done here** because `internal_gui.py` and `renderer/ui/*` are
+matter. **Not done here** because `internal_gui.py` and `cmtk/*` are
 being actively edited by another agent (+2,496 uncommitted lines, and the chrome
 baseline PNGs themselves are modified), so it would collide.
 
@@ -4362,7 +4362,7 @@ that.
 ~2,800 quads and ~330 text runs from scratch every frame. It wants a dirty-flag
 cache on the chrome vertex buffer — the chrome changes on hover, focus and
 state, not on camera motion, and camera motion is when frames matter. Not done
-here because `internal_gui.py` and `renderer/ui/*` are under active edit by
+here because `internal_gui.py` and `cmtk/*` are under active edit by
 another agent.
 
 ### 2026-08-12 — the chimol suite's exit code lies, and four tests are stale
@@ -4620,3 +4620,40 @@ working tree by another agent instance's in-flight work. Re-capturing would
 write my change into their staged files, and a PNG cannot be split into "my
 hunks" the way a source file can. Whoever owns those staged captures should
 re-run it; the images will then carry both changes, which is correct.
+
+## chimol's full test suite segfaulted (fixed 2026-08-13)
+
+**Symptom.** `pytest chisurf/plugins/chimol/test` died with SIGSEGV around 7%
+of the way in, inside an unrelated test. The file it died in passed on its own,
+and the test it died on moved between runs -- the marks of a fault that is not
+where it appears.
+
+**How to read the fault report.** The give-away is two lines, not the stack:
+
+```
+Current thread ...:
+  Garbage-collecting
+  File ".../renderer/wgpu_view.py", line ??? in _mark_closed
+  File ".../geometry/cartoon.py", line 128 in _transport_ups
+```
+
+`Garbage-collecting` directly above a chimol frame means the code below it did
+not call the code above it. A collection ran at an arbitrary allocation point
+-- here, ordinary cartoon geometry -- and destroyed a widget left over from an
+*earlier test*, whose C++ destructor called back into Python.
+
+**Cause.** `WgpuRenderer.__init__` connected a `_mark_closed` slot to Qt's
+`destroyed` signal so rendercanvas's loop would not probe a dead wrapper. The
+slot mutated the instance `__dict__`, and when the last reference is dropped by
+the collector that mutation happens *mid-collection*.
+
+**Fix.** Stop pushing the state out. `_rc_get_closed` and `_rc_close` are
+overridden to ask `_cpp_alive()` -- one cheap C++ call in a `try` -- so the
+question is answered when rendercanvas asks it, on its own stack. No chimol
+code can run during a collection any more.
+
+**Do not reintroduce it.** Two earlier attempts pushed the state from the same
+signal (a keyword-only default holding `self.__dict__`, then a closure over
+it). The first exited 134 at interpreter shutdown *after* every test passed;
+the second is the segfault above. The full history is in the comment block
+above `_cpp_alive` in `renderer/wgpu_view.py`.

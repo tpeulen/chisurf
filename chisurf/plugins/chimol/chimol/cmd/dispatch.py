@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 import typing
 
-from chisurf.plugins.chimol.chimol.cmd import completion
+from . import completion
 
 __all__ = ["ChimolDispatcher"]
 

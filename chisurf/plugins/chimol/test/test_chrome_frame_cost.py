@@ -28,8 +28,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui import quad_painter as qp
-from chisurf.plugins.chimol.chimol.renderer.ui.quad_painter import QuadPainter
+from chisurf.plugins.chimol.chimol.cmtk import quad_painter as qp
+from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
 
 
 # --------------------------------------------------------------------------

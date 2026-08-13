@@ -84,6 +84,7 @@ class MockViewer(_get_qobject_base()):
             0.1, 1000.0, 45.0,
         ]
         self._field_of_view = 20.0
+        self._max_fps = 60.0
         self._ss_recomputes = 0
         self._show_atoms = True
         self._show_cartoon = True
@@ -117,6 +118,9 @@ class MockViewer(_get_qobject_base()):
 
     def set_field_of_view(self, fov: float):
         self._field_of_view = float(fov)
+
+    def set_max_fps(self, max_fps: float):
+        self._max_fps = float(max_fps)
 
     def recompute_secondary_structure(self) -> int:
         """Stand in for the real assignment; reports how many residues it saw."""

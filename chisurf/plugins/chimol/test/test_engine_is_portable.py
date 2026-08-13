@@ -49,7 +49,7 @@ ENGINE_MODULES = (
     "chimol.mouse_modes",
     "chimol.object_menus",
     "chimol.app.menu_bar",
-    "chimol.app.picking",
+    "chimol.renderer.picking",
     "chimol.host.app",
     "chimol.host.events",
     "chimol.host.keys",
@@ -73,9 +73,9 @@ ENGINE_MODULES = (
     # run *the* viewer and *the* command layer rather than a second set of both.
     "chimol.renderer.view",
     "chimol.renderer.scene",
-    "chimol.renderer.ui.command_line",
-    "chimol.renderer.ui.painter",
-    "chimol.renderer.ui.quad_painter",
+    "chimol.cmtk.command_line",
+    "chimol.cmtk.painter",
+    "chimol.cmtk.quad_painter",
     "chimol.renderer.wgpu_backend",
 )
 
@@ -110,11 +110,9 @@ HOSTS = frozenset({
     "app/controls_panel.py",
     "app/demos.py",
     "app/molview_main_window.py",
-    "app/objects_panel.py",
     "app/rmf_panel.py",
-    "app/sequence_dock.py",
     "app/settings_table.py",
-    "renderer/gui_overlay.py",
+    "host/qt_overlay.py",
     "renderer/wgpu_view.py",
 })
 

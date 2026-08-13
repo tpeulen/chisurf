@@ -280,7 +280,7 @@ def _demo_menu() -> tuple[MenuEntry, ...]:
     here would be shipped and unreachable, which is the failure the Qt menu
     already avoided by being generated the same way.
     """
-    from .demo_catalog import DEMOS
+    from ..demos.catalog import DEMOS
 
     entries = [
         MenuEntry(title, f"demo {key}", note) for key, title, note in DEMOS

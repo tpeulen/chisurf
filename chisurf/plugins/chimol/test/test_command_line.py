@@ -23,7 +23,7 @@ from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
     GuiRow,
     InternalGui,
 )
-from chisurf.plugins.chimol.chimol.renderer.ui.command_line import CommandLine
+from chisurf.plugins.chimol.chimol.cmtk.command_line import CommandLine
 
 SIZE = (900, 600)
 
@@ -224,7 +224,7 @@ def test_clicking_the_prompt_focuses_it_and_places_the_caret():
     assert gui.command_line.focused is True
 
     from chisurf.plugins.chimol.chimol.renderer.internal_gui import char_width
-    from chisurf.plugins.chimol.chimol.renderer.ui.command_line import PROMPT
+    from chisurf.plugins.chimol.chimol.cmtk.command_line import PROMPT
 
     advance = char_width(gui.FONT_PT)
     origin = rect.x + gui.MARGIN + advance * (len(PROMPT) + 1)
@@ -282,7 +282,7 @@ def test_focusing_the_prompt_closes_an_open_menu():
 # ── drawing ──────────────────────────────────────────────────────────────
 def test_the_prompt_paints_without_a_toolkit():
     """Quads, from the same painter the rest of the chrome uses."""
-    from chisurf.plugins.chimol.chimol.renderer.ui.quad_painter import QuadPainter
+    from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
 
     gui = _gui()
     gui.focus_command(True)

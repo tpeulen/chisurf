@@ -10,11 +10,6 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-try:
-    import chisurf.core.settings as _cs_settings
-except Exception:  # pragma: no cover - moview can run without chisurf
-    _cs_settings = None
-
 DISPLAY_CONFIG_VERSION: int = 19
 """Current version of the chimol_display.json schema.
 
@@ -1313,8 +1308,15 @@ def _load_display_config() -> dict:
                 path = override_path
             else:
                 path = package_path
-        elif _cs_settings is not None:
-            settings_dir = _cs_settings.get_path("settings")
+        else:
+            # Through `chimol.settings_dir`, not ChiSurf directly -- same
+            # directory when ChiSurf is present, a real one when it is not.
+            # The `_cs_settings is not None` branch this replaces fell through
+            # to the read-only package copy on a standalone run, which is how
+            # standalone chimol used to forget every setting.
+            from .settings_dir import settings_dir as _resolve_dir  # noqa: PLC0415
+
+            settings_dir = _resolve_dir()
             user_path = settings_dir / "chimol_display.json"
             if not user_path.is_file():
                 legacy = settings_dir / "molview_display.json"
@@ -1332,8 +1334,6 @@ def _load_display_config() -> dict:
                     path = package_path
             else:
                 path = user_path
-        else:
-            path = package_path
     except Exception:
         path = package_path
 

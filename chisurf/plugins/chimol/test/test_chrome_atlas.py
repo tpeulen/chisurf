@@ -24,7 +24,7 @@ import pytest
 #: The committed atlas.
 _ATLAS = (
     pathlib.Path(__file__).resolve().parents[1]
-    / "chimol" / "renderer" / "ui" / "atlas"
+    / "chimol" / "cmtk" / "atlas"
 )
 
 
@@ -167,7 +167,7 @@ def test_the_charset_covers_what_the_chrome_draws():
 _CONTROL_MODULES = sorted(
     p.name
     for p in (
-        pathlib.Path(__file__).resolve().parents[1] / "chimol" / "renderer" / "ui"
+        pathlib.Path(__file__).resolve().parents[1] / "chimol" / "cmtk"
     ).glob("*.py")
     if p.name != "__init__.py"
 )
@@ -199,7 +199,7 @@ def test_every_control_module_draws_only_baked_glyphs(module):
     _alpha, meta = _load()
     path = (
         pathlib.Path(__file__).resolve().parents[1]
-        / "chimol" / "renderer" / "ui" / module
+        / "chimol" / "cmtk" / module
     )
     tree = ast.parse(path.read_text(encoding="utf-8"))
     docstrings = {

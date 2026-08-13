@@ -1,8 +1,8 @@
 """A real data table: sized, resized, reordered, multi-sorted, frozen, clipped.
 
-Why this is not :class:`~chimol.renderer.ui.widgets.Table`
+Why this is not :class:`~chimol.cmtk.widgets.Table`
 ----------------------------------------------------------
-:class:`~chimol.renderer.ui.widgets.Table` is a grid: it splits its width by a
+:class:`~chimol.cmtk.widgets.Table` is a grid: it splits its width by a
 list of ratios, sorts by one column, and scrolls. That is the right control for
 a fixed report, and it stays.
 

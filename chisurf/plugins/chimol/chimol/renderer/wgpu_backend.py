@@ -146,7 +146,7 @@ _OVERLAY_HASH_LIMIT = 1 << 20
 #: Floats per chrome vertex: position, uv, colour, clip box.
 #:
 #: Mirrors ``ui.wgsl``'s vertex inputs and
-#: :data:`chimol.renderer.ui.quad_painter.FLOATS_PER_VERTEX`; a mismatch is a
+#: :data:`chimol.cmtk.quad_painter.FLOATS_PER_VERTEX`; a mismatch is a
 #: stride error, which draws a plausible-looking panel out of the wrong bytes
 #: rather than failing.
 UI_FLOATS_PER_VERTEX = 12
@@ -930,7 +930,7 @@ class WgpuMeshRenderer:
             return self._ui_atlas_texture
 
         wgpu = self._wgpu
-        from .ui.font import load_atlas
+        from ..cmtk.font import load_atlas
 
         atlas = load_atlas()
         image = _read_atlas_rgba(atlas.image_path)
@@ -974,7 +974,7 @@ class WgpuMeshRenderer:
             the quads changing too, "in practice" is the wrong standard for a
             cache that would otherwise show a stale glyph.
         """
-        from .ui.font import load_atlas
+        from ..cmtk.font import load_atlas
 
         cache = load_atlas().cache
         if cache is None or cache.version == getattr(self, "_ui_glyph_version", None):

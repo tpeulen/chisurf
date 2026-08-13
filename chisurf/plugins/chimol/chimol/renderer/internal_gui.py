@@ -20,6 +20,7 @@ here that could not be scripted.
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Optional
@@ -27,12 +28,18 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
-from ..object_menus import OBJECT_MENUS, MenuEntry, quote_selection_name
-from .ui.command_line import HINT, PROMPT, CommandLine
-from .ui.icons import draw_eye
-from .ui.text_field import TextField
-from .ui.progress import ProgressOverlay
-from .ui.painter import (
+from ..object_menus import (
+    OBJECT_MENUS,
+    MenuEntry,
+    quote_selection_name,
+    targets_for,
+)
+from .. import cmtk
+from ..cmtk.command_line import HINT, PROMPT, CommandLine
+from ..cmtk.icons import draw_eye
+from ..cmtk.text_field import TextField
+from ..cmtk.progress import ProgressOverlay
+from ..cmtk.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_RIGHT,
@@ -81,7 +88,7 @@ def char_width(font_pt: int) -> float:
     """
     global _CHAR_WIDTH
     if _CHAR_WIDTH is None:
-        from .ui.font import load_atlas
+        from ..cmtk.font import load_atlas
 
         _CHAR_WIDTH = load_atlas().advance()
     return _CHAR_WIDTH * (float(font_pt) / BASE_FONT_PT)
@@ -4195,6 +4202,18 @@ class InternalGui:
             # Quoted unless it is a bare identifier: an object called
             # `EMD-3061` otherwise reaches the selection parser as
             # `EMD` `-` `3061`.
+            # A group runs the entry once per member -- see
+            # `object_menus.targets_for`. `targets` is `[target]` for an
+            # ordinary object, so the loop costs nothing in the common case.
+            ref = getattr(self, "_viewer_ref", None)
+            viewer = ref() if callable(ref) else None
+            targets = targets_for(viewer, line, target)
+            if len(targets) > 1 and "{text}" not in line:
+                for one in targets:
+                    self._run_command(
+                        line.replace("{sele}", quote_selection_name(one))
+                    )
+                continue
             line = line.replace("{sele}", quote_selection_name(target))
             if "{text}" in line:
                 # An entry that names a *file* opens a real dialog on hosts
@@ -4208,7 +4227,22 @@ class InternalGui:
                         mode, title, name_filter = file_prompt
                         self.on_file_prompt(line, mode, title, name_filter)
                     except Exception:
-                        pass
+                        # A menu entry that names a file must not fail in
+                        # total silence: swallowing this used to mean a
+                        # broken dialog (a host method that raised, a title
+                        # or filter the toolkit rejected) looked identical to
+                        # "nothing happened", which is unreachable from the
+                        # user's chair -- there is nothing to report. The
+                        # command line is the one error channel every host
+                        # already has.
+                        logger.exception(
+                            "menu file dialog failed for %r (title=%r)",
+                            line, title if "title" in locals() else None,
+                        )
+                        self.command_line.append_error(
+                            f"error: could not open the file dialog "
+                            f"for {line!r}"
+                        )
                     continue
                 question = str((prompt or ("", "value"))[-1]).strip().rstrip(":")
                 placeholder = f"<{question.lower() or 'value'}>"
@@ -4674,9 +4708,9 @@ class InternalGui:
 
         Parameters
         ----------
-        p : chimol.renderer.ui.painter.Painter
+        p : chimol.cmtk.painter.Painter
             The surface to draw on. Six operations, each carrying its own
-            colour -- see :mod:`chimol.renderer.ui.painter` for why this is not
+            colour -- see :mod:`chimol.cmtk.painter` for why this is not
             a ``QPainter`` with the names changed.
         """
         if self._baseline is None:
@@ -4751,6 +4785,19 @@ class InternalGui:
     #: part of the viewport nothing else claims.
     NERD_PAD = 8.0
 
+    #: Fixed width of the nerd block, in characters. Not derived from the
+    #: longest current line: `FrameStats.lines()`'s content changes size
+    #: frame to frame (pipeline names, an object count gaining a digit, a
+    #: longer machine string), and sizing the panel to it made the block
+    #: resize under the reader's eye while they were trying to read it --
+    #: reported directly ("must be fixed width and not vary"). Content that
+    #: does not fit is clipped rather than grown around
+    #: (`test_dbg_window.py::test_nerd_lines_fit_the_fixed_width` is the
+    #: "assert enough space" half: it fails the build if `FrameStats.lines()`
+    #: ever produces something this width cannot hold, so a clip silently
+    #: eating real content is a test failure, not a runtime surprise).
+    NERD_WIDTH_CHARS = 68
+
     def _paint_nerd(self, p) -> None:
         """The frame's numbers, drawn into the backdrop.
 
@@ -4766,7 +4813,7 @@ class InternalGui:
             return
         char_w = char_width(self.FONT_PT)
         row = float(self.CMD_ROW_H)
-        width = char_w * (max(len(one) for one in lines) + 2)
+        width = char_w * self.NERD_WIDTH_CHARS
         graphs = self.nerd_graphs
         graph_h = (self.NERD_GRAPH_H + row) * len(graphs)
         height = row * len(lines) + graph_h + self.NERD_PAD
@@ -4774,11 +4821,13 @@ class InternalGui:
         y = self._top_chrome_height() + self.NERD_PAD
 
         p.fill_rect(x, y, width, height, (16, 18, 22, 190))
+        p.push_clip(x, y, width, height)
         for index, line in enumerate(lines):
             p.text(x + char_w, y + self.NERD_PAD * 0.5 + index * row,
                    width - char_w * 2, row,
                    ALIGN_VCENTER | ALIGN_LEFT, line,
                    MODE_TITLE_FG if index == 0 else WINDOW_DIM_FG)
+        p.pop_clip()
 
         top = y + self.NERD_PAD * 0.5 + row * len(lines)
         for graph in graphs:
@@ -4805,10 +4854,13 @@ class InternalGui:
     def _paint_nerd_graph(self, p, x, y, width, row, graph) -> float:
         """Draw one graph -- a caption, a plot, and its reference lines.
 
-        Bars, not a line: the painter draws rectangles, and a polyline would
-        have to be approximated by them anyway. One bar per *frame*, so a
-        single stutter is one bar rather than being averaged away, which is the
-        only reason to plot this rather than print a number.
+        The stacked "breakdown" series is still bars: each bar's height is the
+        *sum* of its parts, which is a stacked-bar question, not a line-plot
+        one, and cmtk does not have a stacked series type yet (see
+        ``okf/plugins/chimol-cmtk.md``). Every other series -- fps, frame
+        time, cpu load, submitted instances -- is a real polyline through
+        :mod:`chimol.cmtk`, cmtk's first production caller: bars used
+        to stand in here only because the painter had no line primitive.
 
         Returns
         -------
@@ -4817,42 +4869,45 @@ class InternalGui:
         """
         key, label, unit, samples = graph
         stacked = key == "breakdown"
-        series = samples if stacked else ((key, label, None, samples),)
-        length = max((len(one[3]) for one in series), default=0)
         plot_y = y + row
         plot_h = self.NERD_GRAPH_H
 
-        peak = 0.0
-        for _k, _l, _c, values in series:
-            if stacked:
-                continue
-            peak = max(peak, max(values, default=0.0))
-        if stacked:
-            # A stacked bar's height is the *sum* of its parts, so the scale
-            # has to come from the sums -- scaling by the tallest single part
-            # draws every bar off the top of the plot.
-            peak = max(
-                (sum(one[3][index] for one in series if index < len(one[3]))
-                 for index in range(length)),
-                default=0.0,
-            )
-        peak = max(peak, 1e-6)
-
         p.text(x, y, width, row, ALIGN_VCENTER | ALIGN_LEFT, label, WINDOW_DIM_FG)
-        latest = ""
-        if length:
-            if stacked:
-                latest = "  ".join(
-                    f"{one[1]} {one[3][-1]:.1f}" for one in series if one[3]
-                )
-            else:
-                latest = f"{samples[-1]:,.0f} {unit}" if samples else ""
+        if stacked:
+            length = max((len(one[3]) for one in samples), default=0)
+            latest = "  ".join(
+                f"{one[1]} {one[3][-1]:.1f}" for one in samples if one[3]
+            ) if length else ""
+        else:
+            length = len(samples)
+            latest = f"{samples[-1]:,.0f} {unit}" if length else ""
         p.text(x, y, width, row, ALIGN_VCENTER | ALIGN_RIGHT, latest, WINDOW_DIM_FG)
-        p.fill_rect(x, plot_y, width, plot_h, (0, 0, 0, 60))
 
-        if not length:
-            self._paint_nerd_guides(p, x, plot_y, width, plot_h, unit, peak)
+        if not stacked:
+            with cmtk.begin_plot(p, x, plot_y, width, plot_h, y_range=(0.0, None)) as plot:
+                if length:
+                    # No label: the caption drawn above the plot already
+                    # names it, and a legend swatch on a 26px-tall graph
+                    # would cover more of it than it explains.
+                    plot.line("", list(range(length)), list(samples),
+                               colour=(120, 190, 240), width=1.2)
+                for value, colour in self.NERD_GUIDES.get(unit, ()):
+                    plot.hline(value, colour)
             return plot_y + plot_h + 2.0
+
+        p.fill_rect(x, plot_y, width, plot_h, (0, 0, 0, 60))
+        if not length:
+            return plot_y + plot_h + 2.0
+
+        # A stacked bar's height is the sum of its parts, so the scale has to
+        # come from the sums -- scaling by the tallest single part draws
+        # every bar off the top of the plot.
+        peak = max(
+            (sum(one[3][index] for one in samples if index < len(one[3]))
+             for index in range(length)),
+            default=0.0,
+        )
+        peak = max(peak, 1e-6)
 
         # Right-aligned, so the newest frame is always at the same edge: a
         # graph that grows from the left moves under the eye while it fills.
@@ -4860,7 +4915,7 @@ class InternalGui:
         for index in range(length):
             left = x + width - (length - index) * bar
             bottom = plot_y + plot_h
-            for _k, _l, colour, values in series:
+            for _k, _l, colour, values in samples:
                 if index >= len(values):
                     continue
                 part = plot_h * (values[index] / peak)
@@ -4877,7 +4932,12 @@ class InternalGui:
         return plot_y + plot_h + 2.0
 
     def _paint_nerd_guides(self, p, x, plot_y, width, plot_h, unit, peak) -> None:
-        """Draw a graph's reference lines: 60/30 Hz, or the 16.7 ms budget."""
+        """Draw the stacked breakdown graph's reference lines (16.7/33.3 ms).
+
+        The non-stacked graphs' guides are drawn by cmtk's ``Plot.hline``
+        instead (see :meth:`_paint_nerd_graph`); this is the one caller left,
+        for the stacked bars, which have their own peak-relative scale.
+        """
         for value, colour in self.NERD_GUIDES.get(unit, ()):
             if 0.0 < value <= peak:
                 p.fill_rect(x, plot_y + plot_h * (1.0 - value / peak),

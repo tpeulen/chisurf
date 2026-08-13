@@ -27,7 +27,7 @@ The object panel's pop-up menus and the wizard beyond hover/click/drag routing.
 Everything else is here: the molecule, the object panel, the sequence strip,
 3-D labels, the depth-outline silhouette, and atom picking. The chrome and the
 labels are composited as a textured quad at the end of the render pass rather
-than painted over the surface -- see :mod:`.gui_overlay` for why the two obvious
+than painted over the surface -- see :mod:`..host.qt_overlay` for why the two obvious
 Qt arrangements do not work.
 """
 from __future__ import annotations
@@ -182,37 +182,82 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
 
         super().__init__(parent=parent, max_fps=_max_fps(), update_mode="ondemand")
 
-        # Qt destroys an embedded widget without a closeEvent, so rendercanvas
-        # keeps it registered as open; at aboutToQuit its loop probes the dead
-        # wrapper and PyQt raises RuntimeError where the loop expects
-        # AttributeError, killing app shutdown. Writing the flags through the
-        # captured instance dict survives the C++ half's death, so the loop
-        # skips both the probe and the close() call.
-        # Captured in a *closure*, not as a keyword-only default. The default
-        # form (`def _mark_closed(*_args, _d=self.__dict__)`) does the same job
-        # until interpreter shutdown, when a function's ``__kwdefaults__`` may
-        # already have been torn down -- and the slot then raises
-        # ``TypeError: missing 1 required keyword-only argument: '_d'`` from
-        # inside Qt's destroyed signal, which becomes a SIGABRT. A whole pytest
-        # run exited 134 on this, *after* every test had passed, which reads as
-        # a test failure and is not one.
-        #
-        # A closure cell keeps the same property that motivated the default: it
-        # captures the instance ``__dict__`` and not ``self``, so writing the
-        # flags survives the C++ half's death.
-        state = self.__dict__
-
-        def _mark_closed(*_args):
-            state["_is_closed"] = True
-            state["_rc_closed_by_loop"] = True
-
-        self.destroyed.connect(_mark_closed)
-
+        # Nothing is connected to ``destroyed`` here on purpose -- see
+        # :meth:`_cpp_alive` for the history and the reason.
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
         self.init_viewport(controller)
+
+    # -- surviving the C++ half's death ---------------------------------------
+    #
+    # Qt destroys an embedded widget without a ``closeEvent``, so rendercanvas
+    # keeps it registered as open; its loop then probes the dead wrapper and
+    # PyQt raises ``RuntimeError`` where the loop expects ``AttributeError``,
+    # killing shutdown.
+    #
+    # This was fixed twice by *pushing* the state out from a ``destroyed`` slot
+    # -- first with a keyword-only default holding ``self.__dict__``, then with
+    # a closure over it. Both are recorded here because both looked right and
+    # both were wrong, in ways that only showed up under a full test run:
+    #
+    # * the default form lost its ``__kwdefaults__`` at interpreter shutdown
+    #   and raised ``TypeError`` from inside the signal, which becomes SIGABRT
+    #   -- a whole run exiting 134 *after* every test passed;
+    # * the closure form survived that, and then segfaulted. The ``destroyed``
+    #   signal fires from the C++ destructor, and when the last reference to a
+    #   widget is dropped by the *garbage collector* that destructor runs
+    #   inside the collection. The slot then mutates a dict mid-collection.
+    #   ``Garbage-collecting`` sits directly above ``_mark_closed`` in the
+    #   fault report, under an unrelated test that merely allocated enough to
+    #   trigger a gen-2 pass.
+    #
+    # So nothing is pushed. The question is *answered when asked*, at a point
+    # of rendercanvas's choosing, on its own stack -- which is the difference
+    # that matters: there is no longer any chimol code that can run during a
+    # collection.
+
+    def _cpp_alive(self) -> bool:
+        """Whether the C++ ``QWidget`` behind this wrapper still exists.
+
+        Returns
+        -------
+        bool
+            False once Qt has destroyed the widget, when every method call on
+            it raises. Asked by touching the cheapest C++ accessor there is;
+            ``sip.isdeleted`` would be more direct but is PyQt-only, and the
+            renderer is built through :func:`_make_widget_base` precisely so it
+            does not care which binding is present.
+        """
+        try:
+            self.objectName()
+        except RuntimeError:
+            return False
+        return True
+
+    def _rc_get_closed(self):
+        """Report a destroyed widget as closed.
+
+        rendercanvas asks this to decide what is still alive. A widget whose
+        C++ half is gone is closed by any useful definition, and saying so here
+        is what keeps the loop from calling into it.
+        """
+        if not self._cpp_alive():
+            return True
+        return super()._rc_get_closed()
+
+    def _rc_close(self):
+        """Close, unless there is nothing left to close.
+
+        The loop closes whatever :meth:`_rc_get_closed` reports as closed, so
+        this is reached with a dead widget in the ordinary course of shutdown,
+        and ``QWidget.close`` on a dead wrapper is the ``RuntimeError`` this
+        whole section exists to prevent.
+        """
+        if not self._cpp_alive():
+            return
+        super()._rc_close()
 
     # -- what a Qt widget answers differently --------------------------------
 
@@ -264,7 +309,7 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
         numpy.ndarray or None
             ``(h, w, 4)`` premultiplied RGBA.
         """
-        from .gui_overlay import paint_chrome
+        from ..host.qt_overlay import paint_chrome
 
         return paint_chrome(
             # The panel is drawn as quads now; what is left here is the traced
@@ -297,7 +342,7 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
         painter : QtGui.QPainter
             An open painter, in the widget's logical pixels.
         """
-        from .gui_overlay import paint_chrome_into
+        from ..host.qt_overlay import paint_chrome_into
 
         paint_chrome_into(
             painter,
@@ -346,7 +391,7 @@ class WgpuRenderer(_make_widget_base(), CanvasRenderer):
         if isinstance(source, QtGui.QImage):
             image = source
         elif isinstance(source, np.ndarray):
-            from .gui_overlay import image_from_rgb
+            from ..host.qt_overlay import image_from_rgb
 
             image = image_from_rgb(source)
         elif isinstance(source, str):

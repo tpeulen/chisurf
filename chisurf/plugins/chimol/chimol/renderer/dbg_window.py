@@ -20,7 +20,7 @@ Shaders  The WGSL the renderer is actually running
 ======== ===============================================================
 
 The last two are the ones that did not exist. **Widgets** matters because half
-of ``renderer/ui`` is reachable only from the panel that happens to use it --
+of ``cmtk`` is reachable only from the panel that happens to use it --
 the code editor and the hex view were ported and could not be *tried* without
 writing a script -- so it hosts them directly, with their real state, driven by
 real presses. **Shaders** matters because the WGSL is the part of the renderer
@@ -36,8 +36,8 @@ is what keeps the window from drifting away from what the viewer actually does
 from __future__ import annotations
 
 from .internal_gui import GuiWindow
-from .ui.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
-from .ui.style import fit_text
+from ..cmtk.painter import ALIGN_CENTER, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_VCENTER
+from ..cmtk.style import fit_text
 
 __all__ = ["PANELS", "TABS", "DbgWindow"]
 
@@ -135,7 +135,7 @@ class DbgWindow:
     def _demos() -> tuple[tuple[str, str, str], ...]:
         """The shipped demos, or nothing if the catalogue cannot be read."""
         try:
-            from ..app.demo_catalog import DEMOS  # noqa: PLC0415
+            from ..demos.catalog import DEMOS  # noqa: PLC0415
 
             return tuple(DEMOS)
         except Exception:  # noqa: BLE001 - a panel is not worth a frame
@@ -325,7 +325,7 @@ class DbgWindow:
             return self._widgets[name]
         try:
             if name == "text_editor":
-                from .ui import text_editor as te  # noqa: PLC0415
+                from ..cmtk import text_editor as te  # noqa: PLC0415
 
                 control = te.TextEditor(
                     "# the code editor, live in the dbg window\\n"
@@ -335,7 +335,7 @@ class DbgWindow:
                     te.Language.chimol(),
                 )
             elif name == "memory_editor":
-                from .ui import memory_editor as me  # noqa: PLC0415
+                from ..cmtk import memory_editor as me  # noqa: PLC0415
 
                 control = me.MemoryEditor(
                     me.BufferSource(bytes(range(256)) * 4, "scratch"),
@@ -366,7 +366,7 @@ class DbgWindow:
         except OSError as problem:
             editor.set_text(f"// {name}: {problem}")
         try:
-            from .ui import text_editor as te  # noqa: PLC0415
+            from ..cmtk import text_editor as te  # noqa: PLC0415
 
             editor.set_language(te.Language.glsl())
         except Exception:  # noqa: BLE001

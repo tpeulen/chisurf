@@ -376,7 +376,7 @@ class Layout:
         """Reserve the rule between two groups of rows.
 
         Draws nothing -- hand the rectangle to
-        :class:`~chimol.renderer.ui.widgets.Separator`, which is the control
+        :class:`~chimol.cmtk.widgets.Separator`, which is the control
         that knows what a rule looks like (and how to sit a caption in one).
 
         Parameters

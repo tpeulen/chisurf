@@ -2,7 +2,7 @@ r"""Paint every painter-level control onto one sheet, so a human can look at it.
 
 Why this exists
 ---------------
-The controls in :mod:`chimol.renderer.ui` are tested against a recording
+The controls in :mod:`chimol.cmtk` are tested against a recording
 painter, which proves that a control emitted the rectangles it meant to and
 nothing about whether the result is *legible*. A slider whose thumb is drawn
 one pixel wide, a label that overhangs its column, a checkbox whose tick lands
@@ -10,7 +10,7 @@ outside its box, an arrow pointing the wrong way -- every one of those passes a
 recording-painter test and is obvious in an image.
 
 This is the image. One PNG, every control, drawn through the same ``QtPainter``
-the chrome uses, laid out by the same :class:`~chimol.renderer.ui.layout.Layout`
+the chrome uses, laid out by the same :class:`~chimol.cmtk.layout.Layout`
 a host would use.
 
 It is a **development tool, not a test**. There is no golden image to compare
@@ -73,7 +73,7 @@ def _rows(module_name: str) -> list[tuple]:
     Parameters
     ----------
     module_name : str
-        Bare module name inside ``chimol.renderer.ui``, e.g. ``"buttons"``.
+        Bare module name inside ``chimol.cmtk``, e.g. ``"buttons"``.
 
     Returns
     -------
@@ -86,7 +86,7 @@ def _rows(module_name: str) -> list[tuple]:
     if builders is None:
         return []
     try:
-        __import__(f"chisurf.plugins.chimol.chimol.renderer.ui.{module_name}")
+        __import__(f"chisurf.plugins.chimol.chimol.cmtk.{module_name}")
     except ImportError:
         return []
     return builders()
@@ -94,7 +94,7 @@ def _rows(module_name: str) -> list[tuple]:
 
 def _widgets_rows() -> list[tuple[str, Callable]]:
     """The nineteen controls that predate the port."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import widgets as w
+    from chisurf.plugins.chimol.chimol.cmtk import widgets as w
 
     return [
         ("SliderFloat", lambda: w.SliderFloat("gain", 0.0, 1.0, 0.35)),
@@ -122,10 +122,10 @@ def _widgets_rows() -> list[tuple[str, Callable]]:
 def _buttons_rows() -> list[tuple]:
     """The Button/Main family.
 
-    The list dot is not here -- it belongs to :mod:`~chimol.renderer.ui.text`
+    The list dot is not here -- it belongs to :mod:`~chimol.cmtk.text`
     beside ``BulletText``, so that one dot has one implementation.
     """
-    from chisurf.plugins.chimol.chimol.renderer.ui import buttons as b
+    from chisurf.plugins.chimol.chimol.cmtk import buttons as b
 
     rows: list[tuple] = [
         ("SmallButton", lambda: b.SmallButton("SmallButton"), ROW_H, 110.0),
@@ -147,7 +147,7 @@ def _buttons_rows() -> list[tuple]:
 
 def _text_rows() -> list[tuple]:
     """The Text family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import text as t
+    from chisurf.plugins.chimol.chimol.cmtk import text as t
 
     return [
         ("Text", lambda: t.Text("plain caption")),
@@ -172,7 +172,7 @@ def _text_rows() -> list[tuple]:
 
 def _sliders_rows() -> list[tuple]:
     """The Slider family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import sliders as s
+    from chisurf.plugins.chimol.chimol.cmtk import sliders as s
 
     return [
         ("SliderScalar", lambda: s.SliderScalar("alpha", 0.0, 1.0, 0.4)),
@@ -191,7 +191,7 @@ def _sliders_rows() -> list[tuple]:
 
 def _drag_rows() -> list[tuple]:
     """The Drag family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import drag as d
+    from chisurf.plugins.chimol.chimol.cmtk import drag as d
 
     return [
         ("DragFloat", lambda: d.DragFloat("cutoff", 2.5, v_speed=0.1)),
@@ -205,7 +205,7 @@ def _drag_rows() -> list[tuple]:
 
 def _inputs_rows() -> list[tuple]:
     """The Input family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import inputs as i
+    from chisurf.plugins.chimol.chimol.cmtk import inputs as i
 
     return [
         ("InputFloat", lambda: i.InputFloat("sigma", 1.25, step=0.1, step_fast=1.0)),
@@ -227,7 +227,7 @@ def _combo_rows() -> list[tuple]:
     ``widgets.Combo`` cycles in place on click; this one opens a list. Both
     are photographed so the difference is visible rather than asserted.
     """
-    from chisurf.plugins.chimol.chimol.renderer.ui import combo as c
+    from chisurf.plugins.chimol.chimol.cmtk import combo as c
 
     options = ["cartoon", "sticks", "spheres", "surface", "ribbon", "dots"]
 
@@ -249,7 +249,7 @@ def _combo_rows() -> list[tuple]:
 
 def _selection_rows() -> list[tuple]:
     """Selectable, CollapsingHeader and the selection model."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import selection as s
+    from chisurf.plugins.chimol.chimol.cmtk import selection as s
 
     return [
         ("Selectable", lambda: s.Selectable("chain A", False)),
@@ -267,7 +267,7 @@ def _selection_rows() -> list[tuple]:
 
 def _color_rows() -> list[tuple]:
     """The Colour family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import color as c
+    from chisurf.plugins.chimol.chimol.cmtk import color as c
 
     return [
         ("ColorButton", lambda: c.ColorButton((220, 110, 40, 255), "warm")),
@@ -281,7 +281,7 @@ def _color_rows() -> list[tuple]:
 
 def _menus_rows() -> list[tuple]:
     """Menus and popups."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import menus as m
+    from chisurf.plugins.chimol.chimol.cmtk import menus as m
 
     def _file_menu() -> m.Menu:
         return m.Menu(
@@ -335,7 +335,7 @@ def _menus_rows() -> list[tuple]:
 
 def _tabs_rows() -> list[tuple]:
     """The TabBar family."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import tabs as t
+    from chisurf.plugins.chimol.chimol.cmtk import tabs as t
 
     return [
         ("TabBar (measured)", lambda: t.TabBar(["Scene", "A much longer tab", "Fit"], index=1)),
@@ -368,7 +368,7 @@ def _tabs_rows() -> list[tuple]:
 
 def _tables_rows() -> list[tuple]:
     """The Tables subsystem."""
-    from chisurf.plugins.chimol.chimol.renderer.ui import tables as tb
+    from chisurf.plugins.chimol.chimol.cmtk import tables as tb
 
     rows = [
         ["A", 1310, "protein", 2.10],
@@ -416,7 +416,7 @@ def _dragdrop_rows() -> list[tuple]:
     photographing, which is also the honest picture: an idle source and a
     dragging one look different, and that difference is the widget.
     """
-    from chisurf.plugins.chimol.chimol.renderer.ui import dragdrop as dd
+    from chisurf.plugins.chimol.chimol.cmtk import dragdrop as dd
 
     class _Dragging:
         """A source mid-drag, drawing its preview under the cursor."""
@@ -468,8 +468,8 @@ def _layout_rows() -> list[tuple]:
     see the thing worth seeing -- that a row, a ``same_line`` and an indent
     put controls where a reader expects them.
     """
-    from chisurf.plugins.chimol.chimol.renderer.ui import layout as lay
-    from chisurf.plugins.chimol.chimol.renderer.ui import widgets as w
+    from chisurf.plugins.chimol.chimol.cmtk import layout as lay
+    from chisurf.plugins.chimol.chimol.cmtk import widgets as w
 
     class _Demo:
         """Draws a small panel through :class:`Layout`."""
@@ -498,7 +498,7 @@ def _text_editor_rows() -> list[tuple]:
     glyphs rather than over them, and that the line-number gutter is wide
     enough for the number it has to hold.
     """
-    from chisurf.plugins.chimol.chimol.renderer.ui import text_editor as te
+    from chisurf.plugins.chimol.chimol.cmtk import text_editor as te
 
     script = (
         "# fetch and colour a structure\n"
@@ -540,7 +540,7 @@ def _memory_editor_rows() -> list[tuple]:
     """The hex view, plain and in HexII, over a buffer with structure in it."""
     import struct
 
-    from chisurf.plugins.chimol.chimol.renderer.ui import memory_editor as me
+    from chisurf.plugins.chimol.chimol.cmtk import memory_editor as me
 
     blob = bytearray(256)
     # Exactly 16 bytes: a longer literal would *grow* the bytearray past 256
@@ -618,8 +618,8 @@ def capture(page: str, out_dir: pathlib.Path = OUT_DIR) -> pathlib.Path:
     """
     from qtpy import QtGui
 
-    from chisurf.plugins.chimol.chimol.renderer.ui import painter as painter_mod
-    from chisurf.plugins.chimol.chimol.renderer.ui.qt_painter import QtPainter
+    from chisurf.plugins.chimol.chimol.cmtk import painter as painter_mod
+    from chisurf.plugins.chimol.chimol.cmtk.qt_painter import QtPainter
 
     rows = [
         (

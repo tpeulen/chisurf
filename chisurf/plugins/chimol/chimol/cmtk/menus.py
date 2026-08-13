@@ -1214,7 +1214,7 @@ class PopupModal(Popup):
     """A :class:`Popup` that takes every press, inside it or not.
 
     Two things separate it from a plain popup, and they are the two the
-    reference gives it: a wash of :data:`~chimol.renderer.ui.style.MODAL_DIM_BG`
+    reference gives it: a wash of :data:`~chimol.cmtk.style.MODAL_DIM_BG`
     over everything behind, and a press outside that is **swallowed** rather
     than passed through -- ``WantCaptureMouse`` is forced true while a modal is
     up, and ``ClosePopupsExceptModals`` steps over it. So a stray click cannot

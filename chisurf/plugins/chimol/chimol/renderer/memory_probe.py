@@ -23,7 +23,7 @@ buffer without that usage is *listed* -- its size is the interesting number
 either way -- and reads from it return zeros with :attr:`GpuBufferSource.error`
 set, rather than raising into the middle of a repaint.
 
-The consumer is :class:`~chimol.renderer.ui.memory_editor.MemoryEditor`, which
+The consumer is :class:`~chimol.cmtk.memory_editor.MemoryEditor`, which
 knows nothing about any of this: it asks a source for its size and its bytes.
 """
 from __future__ import annotations

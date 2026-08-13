@@ -27,7 +27,7 @@ moves and is dropped by anything else. Storing the clamped column instead is the
 classic truncation bug, and it is invisible until a short line sits between two
 long ones.
 
-Everything draws through the six :class:`~chimol.renderer.ui.painter.Painter`
+Everything draws through the six :class:`~chimol.cmtk.painter.Painter`
 operations, holds its own state, and hit-tests with :func:`.style.hit`.
 """
 from __future__ import annotations
@@ -283,8 +283,8 @@ class InputScalar:
     :meth:`cancel` throws it away. A press *outside* the box commits, because
     that is what losing focus means.
 
-    The editing itself is :class:`~chimol.renderer.ui.text_field.TextField`, the
-    same one-line editor :class:`~chimol.renderer.ui.widgets.TextInput` uses, so
+    The editing itself is :class:`~chimol.cmtk.text_field.TextField`, the
+    same one-line editor :class:`~chimol.cmtk.widgets.TextInput` uses, so
     a host that already routes keys into a field keeps doing exactly that.
 
     Parameters
@@ -436,7 +436,7 @@ class InputScalar:
         """Delete the character before the caret, or the whole selection."""
         if not self.editing:
             return ""
-        from ...host.keys import KEY_BACKSPACE
+        from ..host.keys import KEY_BACKSPACE
 
         if self.select_all:
             self.field.clear()
@@ -466,7 +466,7 @@ class InputScalar:
         """
         if not self.editing:
             return False
-        from ...host.keys import (
+        from ..host.keys import (
             KEY_BACKSPACE,
             KEY_DELETE,
             KEY_ENTER,
@@ -1006,7 +1006,7 @@ class InputTextWithHint:
 
     def backspace(self) -> str:
         """Delete the character before the caret."""
-        from ...host.keys import KEY_BACKSPACE
+        from ..host.keys import KEY_BACKSPACE
 
         self.field.key(KEY_BACKSPACE)
         return self.field.text
@@ -1053,7 +1053,7 @@ class InputTextMultiline:
     """A text editor with a caret at a row and a column.
 
     Each line is its own
-    :class:`~chimol.renderer.ui.text_field.TextField`, so everything that
+    :class:`~chimol.cmtk.text_field.TextField`, so everything that
     happens *within* a line -- typing, backspace, delete, left, right, home,
     end -- is the one-line editor that already exists. Only the four things that
     cross a line boundary are new: Enter splitting one line into two, backspace
@@ -1203,7 +1203,7 @@ class InputTextMultiline:
         str
             The whole contents afterwards.
         """
-        from ...host.keys import KEY_BACKSPACE
+        from ..host.keys import KEY_BACKSPACE
 
         self._preferred_col = None
         line = self._lines[self.row]
@@ -1228,7 +1228,7 @@ class InputTextMultiline:
         str
             The whole contents afterwards.
         """
-        from ...host.keys import KEY_DELETE
+        from ..host.keys import KEY_DELETE
 
         self._preferred_col = None
         line = self._lines[self.row]
@@ -1332,7 +1332,7 @@ class InputTextMultiline:
             Always ``True``: an editor with the caret consumes everything,
             including the keys it does nothing with.
         """
-        from ...host.keys import (
+        from ..host.keys import (
             KEY_BACKSPACE,
             KEY_DELETE,
             KEY_DOWN,

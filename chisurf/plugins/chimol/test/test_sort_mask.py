@@ -400,7 +400,7 @@ def test_masking_is_separate_from_protection(session):
 
 def test_a_masked_atom_is_excluded_from_picking():
     """The flag has to change what picking returns, or it is decoration."""
-    from chisurf.plugins.chimol.chimol.app import picking
+    from chisurf.plugins.chimol.chimol.renderer import picking
 
     coords = np.zeros((3, 3))
 

@@ -56,13 +56,19 @@ def _build_minimal_atoms(n_res: int) -> np.ndarray:
 
 
 def test_display_config_prefers_settings_dir(tmp_path, monkeypatch):
-    """Ensure config reads chimol_display.json from ChiSurf settings dir."""
+    """Ensure config reads chimol_display.json from the settings directory.
+
+    Pointed through ``CHIMOL_SETTINGS_DIR``, the documented override. This
+    used to monkeypatch ``config._cs_settings`` -- ChiSurf's settings module,
+    imported by name -- which no longer exists: `config` resolves its
+    directory through :mod:`chimol.settings_dir` so that chimol can find its
+    own settings with no ChiSurf to ask.
+    """
 
     cfg_path = tmp_path / "chimol_display.json"
     cfg_path.write_text('{"background": "w", "camera": {"near_clip": 0.5}}', encoding="utf-8")
 
-    fake_settings = SimpleNamespace(get_path=lambda name: tmp_path)
-    monkeypatch.setattr(config, "_cs_settings", fake_settings)
+    monkeypatch.setenv("CHIMOL_SETTINGS_DIR", str(tmp_path))
     monkeypatch.setenv("CHIMOL_DISPLAY_CONFIG", str(cfg_path))
 
     importlib.reload(config)

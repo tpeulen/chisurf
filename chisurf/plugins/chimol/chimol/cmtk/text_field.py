@@ -2,7 +2,7 @@
 
 Why this exists rather than reusing the prompt
 ----------------------------------------------
-:class:`~chimol.renderer.ui.command_line.CommandLine` is a one-line editor
+:class:`~chimol.cmtk.command_line.CommandLine` is a one-line editor
 already, but it is *the prompt*: it owns a history, a log of what came back, and
 a submit that runs a command. A search box shares none of that and would have to
 be told to suppress all three.
@@ -70,7 +70,7 @@ class TextField:
         it does nothing with -- a search box that lets `s` through to the
         shortcut that shows sticks is worse than one that ignores it.
         """
-        from ...host.keys import (
+        from ..host.keys import (
             KEY_BACKSPACE,
             KEY_DELETE,
             KEY_END,

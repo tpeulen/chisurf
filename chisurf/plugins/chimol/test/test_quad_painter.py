@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.ui.painter import (
+from chisurf.plugins.chimol.chimol.cmtk.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_RIGHT,
@@ -26,8 +26,8 @@ from chisurf.plugins.chimol.test import chrome_baseline, quad_raster
 
 def _painter():
     """Return a fresh :class:`QuadPainter`, skipping if the atlas is unbaked."""
-    from chisurf.plugins.chimol.chimol.renderer.ui.font import load_atlas
-    from chisurf.plugins.chimol.chimol.renderer.ui.quad_painter import QuadPainter
+    from chisurf.plugins.chimol.chimol.cmtk.font import load_atlas
+    from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
 
     try:
         atlas = load_atlas()
@@ -60,6 +60,27 @@ def test_text_is_one_quad_per_glyph():
     assert p.vertex_count == 4 * 6
     p.clear()
     p.text(0, 0, 200, 20, ALIGN_LEFT, "", (255, 255, 255))
+    assert p.vertex_count == 0
+
+
+def test_a_filled_triangle_is_exactly_three_vertices_at_its_corners():
+    """No expansion: a triangle is its own three corners, unlike a rect's four."""
+    p, _atlas = _painter()
+    p.fill_triangle((0.0, 0.0), (10.0, 0.0), (5.0, 10.0), (255, 0, 0))
+    assert p.vertex_count == 3
+    positions = p.vertices()[:, 0:2]
+    np.testing.assert_allclose(
+        positions, [[0.0, 0.0], [10.0, 0.0], [5.0, 10.0]]
+    )
+
+
+def test_a_triangle_coexists_with_rects_in_one_vertex_buffer():
+    """Triangles ride alongside the rect-derived quads, not instead of them."""
+    p, _atlas = _painter()
+    p.fill_rect(0, 0, 10, 10, (255, 255, 255))
+    p.fill_triangle((0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (0, 255, 0))
+    assert p.vertex_count == 6 + 3
+    p.clear()
     assert p.vertex_count == 0
 
 

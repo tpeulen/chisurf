@@ -338,6 +338,12 @@ class CanvasRenderer(CameraState, Renderer):
         #: The frame rate as *shown*, and when it was last published.
         self._fps_published = 0.0
         self._fps_published_at = 0.0
+        #: Timer that keeps the frame-rate readout live on a still viewport.
+        #: See :meth:`_arm_idle_settle`.
+        self._idle_settle_timer = None
+        #: True for a draw this timer asked for rather than the app. Only used
+        #: to keep the *settle* case one-shot; see :meth:`_note_frame_drawn`.
+        self._idle_settling = False
         self._background_source = None
         self._background_image = None
         #: The rubber-band selection box while it is being dragged, in viewport
@@ -360,7 +366,7 @@ class CanvasRenderer(CameraState, Renderer):
         self._right_dragged = False
 
         # The object panel and the sequence strip, composited as a textured
-        # quad at the end of the render pass -- see :mod:`.gui_overlay` for the
+        # quad at the end of the render pass -- see :mod:`..host.qt_overlay` for the
         # two Qt-child arrangements that were tried first and why neither works
         # over a presented surface.
         from .internal_gui import InternalGui
@@ -564,6 +570,34 @@ class CanvasRenderer(CameraState, Renderer):
         CameraState.set_background_color(self, color)
         self.update()
 
+    def set_max_fps(self, max_fps: float) -> None:
+        """Re-throttle an already-open window's frame-rate ceiling, live.
+
+        ``renderer.max_fps`` used to be read only at construction, so raising
+        or lowering it from the settings panel (or ``set max_fps, ...``)
+        changed the config but left an open window capped at whatever value
+        it started with. ``rendercanvas`` has a real API for this --
+        :meth:`~rendercanvas.base.BaseRenderCanvas.set_update_mode`, which the
+        scheduler applies to the next tick without touching anything else
+        about the update mode -- so this calls it rather than building a
+        second throttle beside the one the library already enforces.
+
+        Parameters
+        ----------
+        max_fps : float
+            The new ceiling. Clamped to at least 1: ``rendercanvas`` raises
+            for anything smaller, and the way to remove the cap entirely is a
+            different update mode (``"fastest"``), not a very small number.
+        """
+        surface = self._surface()
+        setter = getattr(surface, "set_update_mode", None)
+        if not callable(setter):
+            return
+        try:
+            setter("ondemand", max_fps=max(1.0, float(max_fps)))
+        except Exception:  # noqa: BLE001 - one unhappy setting must not crash a draw
+            pass
+
     # -- the chrome's share of the surface ------------------------------------
 
     def scene_width(self) -> int:
@@ -665,6 +699,117 @@ class CanvasRenderer(CameraState, Renderer):
         finally:
             if stats is not None:
                 stats.end()
+        self._note_frame_drawn()
+
+    def _readout_is_live(self) -> bool:
+        """Whether a frame-rate readout is on screen and wants to keep ticking.
+
+        Nerd mode draws the graphs and the numbers; ``debug_overlays`` draws
+        the plain rate in the status band. Neither is on by default, so a
+        viewer nobody is measuring pays nothing for the repeating tick in
+        :meth:`_arm_idle_settle`.
+        """
+        gui = self._internal_gui
+        if gui is None:
+            return False
+        return bool(getattr(gui, "nerd", False) or getattr(gui, "debug_overlays", False))
+
+    def _note_frame_drawn(self) -> None:
+        """After a real draw: (re)arm the timer that keeps the readout live.
+
+        Rearmed after *every* draw when a readout is on screen, including the
+        timer's own -- that is what makes the counter tick continuously rather
+        than freeze between the moments something else happens to repaint (a
+        hover crossing a control was doing all the work, which is exactly the
+        "only updates when I move over an active element" report). With no
+        readout on screen the timer stays one-shot: it settles the rate to
+        zero once and then stops, so an idle viewport goes fully quiet.
+        """
+        if self._readout_is_live():
+            self._idle_settling = False
+            self._arm_idle_settle()
+        elif self._idle_settling:
+            self._idle_settling = False
+        else:
+            self._arm_idle_settle()
+
+    def _arm_idle_settle(self) -> None:
+        """(Re)start the timer that lets the fps readout notice a still viewport.
+
+        :meth:`_measured_fps` already knows how to report an idle viewport: a
+        gap longer than :data:`_IDLE_GAP` since the last frame clears its
+        sample window and returns ``0.0`` instead of the stale rate. That
+        logic only runs from *inside* a real draw, though, and both hosts
+        construct their canvas with ``update_mode="ondemand"`` (see
+        :func:`.canvas_view._max_fps`), which draws **nothing** once nobody is
+        dragging, animating, or has just changed a setting. Left alone, the
+        readout does not go wrong so much as **freeze**: it keeps showing the
+        rate from the last moment something moved, however long the viewport
+        then sits still.
+
+        The fix is not `continuous` mode -- that would redraw the whole scene
+        forever whether or not anyone is reading a number in the corner,
+        exactly the cost "on demand" exists to avoid. Instead this schedules a
+        follow-up draw with :class:`~chimol.host.widget.Timer` -- the same
+        Qt-or-canvas-loop clock already used for movie playback and for the
+        cartoon settle-then-bake pass, so it works the same way on the Qt
+        host, the toolkit-free desktop host and the browser.
+
+        Two cadences, because there are two different jobs:
+
+        * **A readout is on screen** (nerd mode, or the status band's rate --
+          see :meth:`_readout_is_live`): tick at `nerd.idle_tick_interval`
+          (default 0.25 s), rearmed after every draw. That is what makes the
+          counter *run*, rather than only advancing when something else -- a
+          hover crossing a control -- happened to repaint the chrome anyway.
+
+          This is deliberately **not** `nerd.tick_interval`, the publish rate:
+          publishing re-reads numbers the renderer already had, while this
+          forces a whole extra frame, geometry and all, out of a viewport that
+          had nothing to draw. On a large model that frame is not cheap, and
+          an instrument that redraws the scene to report the rate is an
+          instrument that changes the rate -- the failure `frame_stats`' own
+          module docstring is about. Four times a second reads as live to a
+          human eye at a fraction of the cost. Setting it to ``0`` disables
+          the tick entirely, which is what to do while measuring.
+        * **No readout**: one shot, timed just past :data:`_IDLE_GAP`, so
+          `_measured_fps` notices the gap and settles the rate at ``0``
+          instead of leaving it stuck -- then stops. An idle viewport with no
+          instrument on it goes fully quiet, which is the point of on-demand.
+        """
+        try:
+            from ..host.widget import Timer  # noqa: PLC0415
+
+            if self._readout_is_live():
+                from .frame_stats import nerd_idle_tick_interval  # noqa: PLC0415
+
+                seconds = nerd_idle_tick_interval()
+                if seconds <= 0.0:
+                    return          # tick disabled: settle to zero and stay there
+                interval_ms = max(int(seconds * 1000), 16)
+            else:
+                interval_ms = int(_IDLE_GAP * 1000) + 50
+
+            timer = self._idle_settle_timer
+            if timer is None:
+                timer = Timer()
+                timer.setSingleShot(True)
+                timer.timeout.connect(self._on_idle_settle_timeout)
+                self._idle_settle_timer = timer
+            timer.start(interval_ms)
+        except Exception:  # noqa: BLE001 - no event loop to settle into (headless)
+            pass
+
+    def _on_idle_settle_timeout(self) -> None:
+        """Ask for the follow-up draw :meth:`_arm_idle_settle` scheduled.
+
+        Whether this repeats is decided in :meth:`_note_frame_drawn` once the
+        draw lands, not here: with a readout on screen it rearms and the
+        counter keeps ticking; without one the ``_idle_settling`` flag stops
+        it after this single settle draw.
+        """
+        self._idle_settling = True
+        self.update()
 
     def _draw_frame(self) -> None:
         """The frame itself, wrapped by :meth:`_draw` so it can be timed."""
@@ -723,7 +868,7 @@ class CanvasRenderer(CameraState, Renderer):
         every frame. An instrument that costs a rebuild per frame reports the
         cost of switching it on, which is the one number nobody wants.
         """
-        from .frame_stats import REPORT_INTERVAL  # noqa: PLC0415
+        from .frame_stats import nerd_report_interval  # noqa: PLC0415
 
         stats = getattr(self._gpu, "stats", None)
         gui.nerd = _layout_flag("nerd", False)
@@ -735,7 +880,7 @@ class CanvasRenderer(CameraState, Renderer):
             gui.nerd_graphs = ()
             return
         now = time.perf_counter()
-        if now - getattr(self, "_nerd_published_at", 0.0) < REPORT_INTERVAL:
+        if now - getattr(self, "_nerd_published_at", 0.0) < nerd_report_interval():
             return
         self._nerd_published_at = now
         gui.nerd_lines = stats.lines(gui.fps)
@@ -847,7 +992,7 @@ class CanvasRenderer(CameraState, Renderer):
             return None
 
         from .gui_state import refresh_gui_state
-        from .ui.quad_painter import QuadPainter
+        from ..cmtk.quad_painter import QuadPainter
 
         refresh_gui_state(gui, self._controller)
         # `self._width`/`self._height` are **device** pixels: `_draw` resizes

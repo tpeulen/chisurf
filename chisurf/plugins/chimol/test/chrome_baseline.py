@@ -5,7 +5,7 @@ Why this exists
 The panel down the right, the sequence strip across the top, the wizard, the
 prompt, the movie transport and the menus are all drawn by
 ``InternalGui.paint`` with a ``QPainter``, rasterised into a full-viewport
-premultiplied RGBA image by ``gui_overlay.paint_chrome``, and uploaded as a
+premultiplied RGBA image by ``qt_overlay.paint_chrome``, and uploaded as a
 texture every time the cache expires. Replacing that with GPU quads makes "the
 new panel looks fine" the wrong question -- the question is *whether anything
 was lost* -- and once the paint layer is swapped the old appearance is
@@ -181,7 +181,7 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
     """
     from qtpy import QtGui, QtWidgets
 
-    from chisurf.plugins.chimol.chimol.renderer import gui_overlay
+    from chisurf.plugins.chimol.chimol.host import qt_overlay
     from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
@@ -196,7 +196,7 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
         gui = InternalGui()
         _apply_state(gui, state, width, height)
 
-        image = gui_overlay.paint_chrome(gui, None, width, height, 1.0)
+        image = qt_overlay.paint_chrome(gui, None, width, height, 1.0)
         if image is not None:
             QtGui.QImage(
                 image.tobytes(),

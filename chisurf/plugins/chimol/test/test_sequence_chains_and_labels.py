@@ -156,7 +156,7 @@ def test_paint_labels_honours_the_size_it_is_given(qapp):
     """The painter, not just the setting: the two were disconnected before."""
     from qtpy import QtGui
 
-    from chisurf.plugins.chimol.chimol.renderer.gui_overlay import (
+    from chisurf.plugins.chimol.chimol.host.qt_overlay import (
         DEFAULT_LABEL_SIZE,
         paint_labels,
     )
@@ -326,7 +326,7 @@ def test_a_long_path_is_wrapped_rather_than_run_off_the_panel():
 
 def test_the_panel_pulls_its_text_and_palette_from_the_viewer(session):
     """It is chrome, so it is pulled at paint time rather than pushed."""
-    from chisurf.plugins.chimol.chimol.renderer.gui_overlay import (
+    from chisurf.plugins.chimol.chimol.host.qt_overlay import (
         refresh_gui_state,
     )
 

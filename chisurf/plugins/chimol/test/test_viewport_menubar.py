@@ -126,3 +126,69 @@ def test_a_menu_entry_still_runs_its_command(gui):
             gui.mouse_press(item_rect.x + 4, item_rect.y + item_rect.h / 2)
             break
     assert ran, "no command reached the sink"
+
+
+def _click_row(gui, menu, label):
+    """Press the row labelled *label* in an already-open *menu*."""
+    for item_rect, entry in menu.item_rects:
+        if entry is not None and entry.label == label:
+            assert gui.mouse_press(item_rect.x + 4, item_rect.y + item_rect.h / 2)
+            return entry
+    raise AssertionError(f"no {label!r} row in {menu.title!r}")
+
+
+@pytest.mark.parametrize("label, filt", [
+    ("glTF for PowerPoint...", "glTF binary (*.glb)"),
+    ("STL...", "STL (*.stl)"),
+    ("WRL (VRML)...", "VRML (*.wrl)"),
+])
+def test_file_export_reaches_the_host_dialog(gui, label, filt):
+    """File -> Export -> <format> must open a real save dialog, every format.
+
+    Reported for glTF specifically ("does not open the file save dialog"), but
+    the three Export entries share one mechanism -- a ``save {text}`` command
+    with a ``file_prompt`` -- so a wiring regression in any one of them (a
+    typo'd command, a dropped ``file_prompt``, an entry that fell out of the
+    submenu) would look exactly like this from the menu. Parametrized over all
+    three rather than just glTF so the sibling comparison the bug report
+    invites is actually enforced, not just eyeballed once.
+    """
+    asked: list[tuple[str, str, str, str]] = []
+    gui.on_file_prompt = lambda line, mode, title, name_filter: asked.append(
+        (line, mode, title, name_filter)
+    )
+    ran: list[str] = []
+    gui.set_run_command(ran.append)
+
+    rect = _title(gui, "File")
+    gui.mouse_press(rect.x + rect.w / 2, rect.h / 2)
+    file_menu = gui._menus[-1]
+    _click_row(gui, file_menu, "Export")
+    export_menu = gui._menus[-1]
+    entry = _click_row(gui, export_menu, label)
+
+    assert entry.command == "save {text}"
+    assert asked == [("save {text}", "save", entry.file_prompt[1], filt)]
+    assert ran == [], "the template must not run before the dialog fills it in"
+
+
+def test_a_failed_file_dialog_is_reported_not_swallowed(gui):
+    """A host dialog that raises must say so, not vanish without a trace.
+
+    ``_emit`` used to catch *any* exception from ``on_file_prompt`` and drop
+    it -- so a host-side failure (a bad title, a filter the toolkit rejected,
+    anything) looked identical to a click that did nothing at all, which is
+    exactly what "the dialog does not open" reports as, and left nothing to
+    debug from.
+    """
+    def _raises(line, mode, title, name_filter):
+        raise RuntimeError("dialog boom")
+
+    gui.on_file_prompt = _raises
+    gui._emit(
+        "save {text}", "",
+        file_prompt=("save", "Export glTF", "glTF binary (*.glb)"),
+    )
+
+    errors = [row.text for row in gui.command_line.log if row.kind == "error"]
+    assert errors, "the failure must reach the command line, not vanish"

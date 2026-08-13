@@ -516,7 +516,7 @@ class MemoryEditor:
         digits rather than a value: after one digit the cell is legitimately
         half-typed, and rendering it as a number would show the wrong byte.
         """
-        from ...host.keys import KEY_DOWN, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
+        from ..host.keys import KEY_DOWN, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP
 
         if self.source is None or self.preview_address < 0:
             return False

@@ -638,7 +638,9 @@ OBJECT_MENUS: tuple[tuple[str, str, tuple[MenuEntry, ...]], ...] = (
 
 
 __all__ = [
+    "GROUP_AWARE",
     "quote_selection_name",
+    "targets_for",
     "MenuEntry",
     "SEP",
     "ACTION_MENU",
@@ -649,6 +651,63 @@ __all__ = [
     "OBJECT_MENUS",
     "DESTRUCTIVE",
 ]
+
+#: Commands that take a group name themselves, so must not be expanded into one
+#: call per member. ``group kinases, toggle`` run per member would toggle
+#: nothing and complain about objects that are not groups.
+GROUP_AWARE = ("group", "ungroup", "order", "delete", "del")
+
+
+def targets_for(viewer, line: str, name: str) -> list[str]:
+    """Names to substitute for ``{sele}`` -- a group becomes its members.
+
+    PyMOL: "Group objects can typically be used as arguments to commands. In
+    such cases, the command should be applied to all members of the group."
+    The selection resolver answers for one object at a time, so the expansion
+    happens where the target is known instead: a group's row runs the entry
+    once per member.
+
+    This lived on the Qt object dock and was lost when that dock was deleted --
+    with it, a menu entry on a group silently applied to the group name, which
+    resolves to nothing. It has no Qt in it and never did, so it lives here now
+    and the in-viewport panel uses it.
+
+    Parameters
+    ----------
+    viewer : object or None
+        Asked for ``group_members`` and ``list_objects``. Anything missing
+        means "not a group", which is the safe answer: the name is used as-is.
+    line : str
+        The command template, for the verb. Only the first word matters.
+    name : str
+        The object, group or selection the menu was opened on.
+
+    Returns
+    -------
+    list of str
+        One or more names. Never empty -- an empty group is still its own
+        target, or the entry would do nothing at all.
+    """
+    verb = line.split(None, 1)[0].strip().lower() if line.strip() else ""
+    if verb in GROUP_AWARE:
+        return [name]
+    members = getattr(viewer, "group_members", None)
+    if not callable(members):
+        return [name]
+    try:
+        ids = members(name)
+    except Exception:
+        return [name]
+    if not ids:
+        return [name]
+    try:
+        by_id = {
+            str(o.get("id")): str(o.get("name", "")) for o in viewer.list_objects()
+        }
+    except Exception:
+        return [name]
+    return [by_id.get(oid) or oid for oid in ids]
+
 
 def quote_selection_name(name: str) -> str:
     """Quote an object name unless it lexes as a bare identifier.

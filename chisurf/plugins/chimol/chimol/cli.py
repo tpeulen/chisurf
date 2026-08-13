@@ -27,20 +27,36 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chisurf.core.console import dispatch
+from .repl import attach as _attach_router, router as _router
+
+# A host's router if one is installed, chimol's own if not. ChiSurf's console
+# already answers command-or-Python, and answering it a second way here is how
+# two prompts in one application come to disagree about what `set` means -- so
+# it is attached rather than reimplemented. Guarded, because chimol also runs
+# where there is no ChiSurf: see `chimol.repl` for the rule that applies then.
+try:  # pragma: no cover - exercised by whichever host is present
+    from chisurf.core.console import dispatch as _chisurf_dispatch
+except ImportError:
+    pass
+else:
+    _attach_router(_chisurf_dispatch)
 
 # ---------------------------------------------------------------------------
 # History helpers (shared between ptpython and fallback paths)
 # ---------------------------------------------------------------------------
 
 def _resolve_history_path() -> Path:
-    """Return a platform-appropriate path for chimol CLI history."""
-    try:
-        import chisurf.core.settings as _cs_settings
-        base = _cs_settings.get_path("settings")
-        return Path(base) / "chimol_cli_history"
-    except Exception:
-        return Path.home() / ".chimol_cli_history"
+    """Return a platform-appropriate path for chimol CLI history.
+
+    Through :mod:`chimol.settings_dir`, which already answers exactly this
+    question -- ``$CHIMOL_SETTINGS_DIR``, then ChiSurf's directory when ChiSurf
+    is importable, then ``~/.chimol`` -- rather than asking ChiSurf directly.
+    Reaching past it re-implemented two of those three cases and skipped the
+    env override, so a test could not redirect this file.
+    """
+    from .settings_dir import settings_path  # noqa: PLC0415
+
+    return settings_path("chimol_cli_history")
 
 
 # ---------------------------------------------------------------------------
@@ -49,8 +65,8 @@ def _resolve_history_path() -> Path:
 
 def _make_cmd():
     """Create a headless ``Cmd`` instance backed by a mock viewer."""
-    from ..cmd.command import Cmd
-    from ..testing.mock_viewer import MockWindow
+    from .cmd.command import Cmd
+    from .testing.mock_viewer import MockWindow
 
     win = MockWindow()
     cmd = Cmd(win)
@@ -86,7 +102,7 @@ def _build_chimol_completer(cmd_instance):
     """
     from prompt_toolkit.completion import Completer, Completion
 
-    from ..app.command_dispatch import ChimolDispatcher
+    from .cmd.dispatch import ChimolDispatcher
 
     dispatcher = ChimolDispatcher(cmd_instance)
 
@@ -267,7 +283,7 @@ def _install_chimol_keybinding(repl, cmd_instance, namespace) -> None:
 
     Notes
     -----
-    On Enter, :mod:`chisurf.core.console.dispatch` decides command-or-Python --
+    On Enter, :mod:`chimol.repl`'s router decides command-or-Python --
     the same rule the Qt console uses. This prompt used to carry its own copy,
     which asked only whether the line compiles, so every **no-argument**
     command (``ray``, ``zoom``, ``orient``, ``undo``) was evaluated as a name
@@ -293,7 +309,8 @@ def _install_chimol_keybinding(repl, cmd_instance, namespace) -> None:
         # An unfinished block is neither -- let ptpython keep collecting it,
         # or `for i in range(3):` gets swallowed as a command and the body can
         # never be typed. This binding is eager, so nothing else asks first.
-        if not dispatch.is_incomplete_python(text) and dispatch.is_command(
+        router = _router()
+        if not router.is_incomplete_python(text) and router.is_command(
             text, namespace=namespace
         ):
             buf.reset()
@@ -343,7 +360,7 @@ def _run_fallback_repl(cmd_instance) -> None:
             # the command whenever the first word was one, with no Python check
             # at all -- so `set` reached chimol's `set` rather than the builtin,
             # the very case the rule exists to protect.
-            if dispatch.is_command(line, namespace=ns):
+            if _router().is_command(line, namespace=ns):
                 cmd_instance.do(line)
                 continue
 

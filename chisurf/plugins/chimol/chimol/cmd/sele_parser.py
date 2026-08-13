@@ -1526,9 +1526,7 @@ class Evaluator:
         self, coords: np.ndarray, target: np.ndarray, distance: float
     ) -> np.ndarray:
         """Which of ``coords`` lie within ``distance`` of any of ``target``."""
-        from chisurf.plugins.chimol.chimol.geometry.neighbors import (
-            within_distance_mask,
-        )
+        from ..geometry.neighbors import within_distance_mask  # noqa: PLC0415
 
         return np.asarray(
             within_distance_mask(coords, target, float(distance)), dtype=bool

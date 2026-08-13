@@ -14,7 +14,7 @@ import pytest
 
 from chisurf.plugins.chimol.chimol.host.keys import KEY_DOWN, KEY_RIGHT
 from chisurf.plugins.chimol.chimol.renderer import memory_probe
-from chisurf.plugins.chimol.chimol.renderer.ui import memory_editor as me
+from chisurf.plugins.chimol.chimol.cmtk import memory_editor as me
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 numpy = pytest.importorskip("numpy")
@@ -128,7 +128,7 @@ def test_hex_ii_hides_zeroes_and_spells_printable_bytes():
 
 def test_a_zero_byte_is_dimmed_when_asked_and_not_when_not():
     """Grey-out is what makes the data stand out of an empty buffer."""
-    from chisurf.plugins.chimol.chimol.renderer.ui.style import TEXT_DISABLED
+    from chisurf.plugins.chimol.chimol.cmtk.style import TEXT_DISABLED
 
     editor = _editor(bytes(16), columns=16)
     assert TEXT_DISABLED in [one[6] for one in _drawn(editor).texts]

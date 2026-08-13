@@ -1,8 +1,8 @@
 """A tab strip whose tabs are as wide as their labels.
 
-Why this is not :class:`~chimol.renderer.ui.widgets.Tabs`
+Why this is not :class:`~chimol.cmtk.widgets.Tabs`
 --------------------------------------------------------
-:class:`~chimol.renderer.ui.widgets.Tabs` divides its box into *N* equal
+:class:`~chimol.cmtk.widgets.Tabs` divides its box into *N* equal
 slices. That is the right amount of machinery for a three-way view switch, and
 the wrong amount for anything that holds documents: an equal slice is decided
 by the tab *count*, so adding a ninth tab makes the other eight narrower, and
@@ -261,7 +261,7 @@ class TabPress(NamedTuple):
 class TabItem:
     """One tab: a label, and optionally a close button and an unsaved dot.
 
-    Unlike a slice of :class:`~chimol.renderer.ui.widgets.Tabs`, a tab knows
+    Unlike a slice of :class:`~chimol.cmtk.widgets.Tabs`, a tab knows
     how wide it wants to be -- see :meth:`content_width` -- and the strip lays
     it out from that.
 

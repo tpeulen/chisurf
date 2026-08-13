@@ -82,7 +82,7 @@ def test_the_structures_the_demos_name_can_be_found():
     generated path produces a file. Where the simulator is not installed it is
     skipped rather than failed: that is an environment, not a broken demo.
     """
-    from chisurf.plugins.chimol.chimol.app.demo_data import DemoDataUnavailable
+    from chisurf.plugins.chimol.chimol.demos.data import DemoDataUnavailable
 
     for key, _t, _d in DEMOS:
         for line in read_demo(key).splitlines():
@@ -142,7 +142,7 @@ def _vertices(viewer):
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""
-    from chisurf.plugins.chimol.chimol.app.demo_data import (
+    from chisurf.plugins.chimol.chimol.demos.data import (
         DemoDataUnavailable,
         GENERATED_DEMO_DATA,
     )

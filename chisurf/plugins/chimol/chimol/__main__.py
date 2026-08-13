@@ -35,7 +35,7 @@ def _dispatch(argv: list[str] | None = None) -> int:
     if args and args[0].lower() == "cli":
         # Strip the "cli" subcommand so argparse in cli.main() sees clean args
         sys.argv = [sys.argv[0] + " cli"] + args[1:]
-        from .app.cli import main as cli_main
+        from .cli import main as cli_main
 
         cli_main()
         return 0

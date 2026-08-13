@@ -54,17 +54,16 @@ def settings(tmp_path, monkeypatch):
     A stale test seam fails loudly here only because these tests assert on a
     *difference*. One asserting on agreement would have passed against the real
     configuration and proved nothing.
+
+    There is now exactly **one** seam to point. `_load_display_config` used to
+    read ChiSurf's settings module directly, so this fixture had to patch that
+    too or a reload reached past the override; it goes through
+    :mod:`chimol.settings_dir` as well now, and that honours the environment
+    variable above. One override covers every path into the config, which is
+    the whole reason chimol resolves its own settings directory rather than
+    asking ChiSurf.
     """
     monkeypatch.setenv("CHIMOL_SETTINGS_DIR", str(tmp_path))
-    # `_cs_settings` is the older seam and still decides where
-    # `_load_display_config` looks, so both are pointed at the same place --
-    # otherwise a reload inside a test reaches past the override.
-    class _Settings:
-        @staticmethod
-        def get_path(_what):
-            return tmp_path
-
-    monkeypatch.setattr(cfg_mod, "_cs_settings", _Settings)
     return tmp_path
 
 

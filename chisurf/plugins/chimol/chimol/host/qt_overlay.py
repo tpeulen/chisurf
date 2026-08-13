@@ -13,6 +13,14 @@ of its own render pass. That is the only form a browser could use either, and
 it is what ``kind == "text"`` labels will want -- so the shape that looks like a
 detour is the one that generalises.
 
+**Why it lives under ``host/`` and not ``renderer/``.** It opens a
+``QPainter``, and the renderer is the half of chimol that moves to a
+repository which runs in a browser, where there is no Qt at all. Compositing
+the chrome is a *host* job -- the Qt host paints it into an image, a browser
+host will build it as quads -- so it belongs beside the other things only a
+host can provide. Nothing here is a widget; that is the line (see
+``okf/plugins/chimol-relocation.md``).
+
 It also gives the WebGPU path something the GL one has wanted for a long time:
 ``win.grab()`` captures the chrome *and* the molecule, where the GL screenshot
 helper pastes the framebuffer over the widget area and hides overlay children,
@@ -23,7 +31,7 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtGui
 
-from .gui_state import DEFAULT_LABEL_SIZE, refresh_gui_state
+from ..renderer.gui_state import DEFAULT_LABEL_SIZE, refresh_gui_state
 
 __all__ = [
     "DEFAULT_LABEL_SIZE",
@@ -191,12 +199,12 @@ def paint_chrome_into(painter, gui, controller, width: int, height: int, *,
     if labels and project is not None:
         paint_labels(painter, labels, project, label_size)
     if gui is not None:
-        from .ui.qt_painter import QtPainter
+        from ..cmtk.qt_painter import QtPainter
 
         refresh_gui_state(gui, controller)
         gui.layout(int(width), int(height))
         # The panel no longer knows what a ``QPainter`` is: it draws through
-        # the six operations in :mod:`chimol.renderer.ui.painter`, of which
+        # the six operations in :mod:`chimol.cmtk.painter`, of which
         # this is the Qt implementation and the reference. Constructed here,
         # per paint, because it owns the font it sets on the painter.
         gui.paint(QtPainter(painter, font_pt=gui.FONT_PT))

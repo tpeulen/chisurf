@@ -41,7 +41,7 @@ __all__ = ["OPEN_EYE", "CLOSED_EYE", "draw_glyph", "draw_eye"]
 class Cell(Protocol):
     """Anything with the four numbers of a rectangle.
 
-    Structural on purpose. ``renderer.ui.layout.Rect`` is a plain tuple alias
+    Structural on purpose. ``cmtk.layout.Rect`` is a plain tuple alias
     while the chrome's own ``Rect`` is a class with these attributes, and this
     module is called with the latter -- importing the former would name the
     wrong type and add a dependency it does not need.
@@ -84,7 +84,7 @@ def draw_glyph(p, rect: Cell, rows: tuple[str, ...], colour) -> None:
 
     Parameters
     ----------
-    p : chimol.renderer.ui.painter.Painter
+    p : chimol.cmtk.painter.Painter
         The surface to draw on.
     rect : Cell
         The cell to centre the picture in -- normally one character wide.

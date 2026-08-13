@@ -35,6 +35,7 @@ PUSHED_PATHS: tuple[tuple[str, ...], ...] = (
     ("background",),
     ("camera", "field_of_view"),
     ("selection", "mouse_selection_mode"),
+    ("renderer", "max_fps"),
 )
 
 
@@ -84,6 +85,8 @@ def apply_config_path(viewer, path, value, *, rebuild: bool = True) -> None:
         # showing the level that was replaced.
         window = getattr(viewer, "window", None) or getattr(viewer, "_window", None)
         _call(window, "sync_internal_gui")
+    elif path == ("renderer", "max_fps"):
+        _call(viewer, "set_max_fps", value)
     elif path[:1] == ("info_overlay",):
         # Chrome re-reads its palette every frame; all this needs is a repaint.
         _call(viewer, "_request_chrome_redraw")
