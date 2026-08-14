@@ -1,4 +1,4 @@
-"""GUI tool for the MFD preparation plugin (PRD-72 item 7).
+"""GUI tool for the MFD preparation plugin (see /plugins/burst.md).
 
 A dockable tool that lets the user pick a burst folder, prepare it for MFD
 analysis, and inspect the result (verified channels, count agreement, source

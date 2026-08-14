@@ -1,4 +1,4 @@
-"""RPC backend services for the MFD preparation plugin (PRD-72 item 7)."""
+"""RPC backend services for the MFD preparation plugin."""
 
 from __future__ import annotations
 
@@ -18,17 +18,19 @@ from ..api import (
 logger = logging.getLogger(__name__)
 
 
-def register_services(dispatcher, **kwargs: Any) -> None:
+def register_services(dispatcher: Any) -> None:
     """Register MFD-prepare RPC handlers on a ServiceDispatcher."""
+    dispatcher.register(METHOD_PREPARE, _prepare_handler)
+    dispatcher.register(METHOD_DESCRIBE, _describe_handler)
 
-    @dispatcher.method(METHOD_PREPARE)
-    def _prepare(params: dict[str, Any]) -> dict[str, Any]:
-        request = request_from_payload(params)
-        result = prepare_folder(request)
-        if result.error:
-            return service_error(result.error)
-        return service_success(result)
 
-    @dispatcher.method(METHOD_DESCRIBE)
-    def _describe(params: dict[str, Any]) -> dict[str, Any]:
-        return service_success(describe_preparation())
+def _prepare_handler(params: dict[str, Any]) -> dict[str, Any]:
+    request = request_from_payload(params or {})
+    result = prepare_folder(request)
+    if result.error:
+        return service_error(result.error)
+    return service_success(result)
+
+
+def _describe_handler(params: dict[str, Any]) -> dict[str, Any]:
+    return service_success(describe_preparation())

@@ -1,4 +1,4 @@
-"""Tests for the MFD preparation plugin (PRD-72 item 7)."""
+"""Tests for the MFD preparation plugin (see /plugins/burst.md)."""
 
 from __future__ import annotations
 

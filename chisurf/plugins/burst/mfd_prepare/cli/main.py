@@ -1,4 +1,4 @@
-"""Headless CLI for the MFD preparation plugin (PRD-72 item 7, PRD-71 staging 6).
+"""Headless CLI for the MFD preparation plugin (see /plugins/burst.md).
 
 Usage::
 

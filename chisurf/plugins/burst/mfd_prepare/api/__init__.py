@@ -1,4 +1,7 @@
-"""Pure API layer for the MFD preparation plugin (PRD-72 item 7).
+"""Pure API layer for the MFD preparation plugin.
+
+See the burst plugin group (/plugins/burst.md) for its place in the
+smFRET pipeline, and :mod:`chisurf.core.fluorescence.mfd` for the core.
 
 Thin wrappers over :mod:`chisurf.core.fluorescence.mfd.prepare` so the
 preparation core is reachable from a CLI, an RPC client, and a GUI without
