@@ -56,7 +56,7 @@ def test_a_chimol_spec_follows_the_shared_scheme(path):
 
 @pytest.mark.parametrize("path", TOURS, ids=_label)
 def test_a_chimol_tour_follows_the_shared_scheme(path):
-    """chimol's tours are painted rather than Qt, and are the same format."""
+    """Chimol's tours are painted rather than Qt, and are the same format."""
     problems = validate_guide(json.loads(path.read_text(encoding="utf-8")))
     assert not problems, f"{path.name}:\n  " + "\n  ".join(problems)
 
@@ -74,14 +74,15 @@ def test_a_chimol_spec_also_loads_in_the_qt_loader(path):
 
 
 def test_the_adapter_only_claims_kinds_the_loader_implements():
-    """chimol must not invent a ``kind``.
+    """Chimol must not invent a ``kind``.
 
     If it accepted one AutoForm does not, a spec written against chimol would
     render there and vanish everywhere else -- and the scheme, which is derived
     from the loader, would reject the file while chimol drew it happily.
     """
-    from chisurf.core.dataspec.schema import VALUE_KINDS
     from chimol.cmtk.view_spec import FIELD_KINDS
+
+    from chisurf.core.dataspec.schema import VALUE_KINDS
 
     unknown = set(FIELD_KINDS) - set(VALUE_KINDS)
     assert not unknown, f"chimol renders kinds that do not exist: {sorted(unknown)}"
@@ -89,11 +90,12 @@ def test_the_adapter_only_claims_kinds_the_loader_implements():
 
 def test_the_adapter_only_binds_real_section_types():
     """Same, one level up: the types it edits have to be types."""
-    from chisurf.core.dataspec import _SECTION_TYPES
     from chimol.cmtk.view_spec import (
         CONTAINER_TYPES,
         SECTION_KINDS,
     )
+
+    from chisurf.core.dataspec import _SECTION_TYPES
 
     unknown = set(SECTION_KINDS) - set(_SECTION_TYPES)
     assert not unknown, f"chimol edits section types that do not exist: {sorted(unknown)}"
@@ -111,8 +113,9 @@ def test_every_kind_the_loader_implements_is_handled_or_deliberately_not():
     picker. What it must not do is *silently* fall through: an unhandled kind
     lands on a text row, which is a control that looks like it works.
     """
-    from chisurf.core.dataspec.schema import VALUE_KINDS
     from chimol.cmtk.view_spec import FIELD_KINDS
+
+    from chisurf.core.dataspec.schema import VALUE_KINDS
 
     missing = set(VALUE_KINDS) - set(FIELD_KINDS)
     assert not missing, (
