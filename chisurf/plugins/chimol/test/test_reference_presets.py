@@ -40,8 +40,7 @@ PRESETS = load_reference_presets()
 KEYS = sorted(PRESETS)
 
 _FILE = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "chimol" / "gui" / "presets.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent / "gui" / "presets.json"
 )
 
 

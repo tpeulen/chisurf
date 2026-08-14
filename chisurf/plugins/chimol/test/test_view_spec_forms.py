@@ -48,8 +48,7 @@ from chimol.cmtk.view_spec import (
 
 #: chimol's own spec: the appearance settings, bound through ``SettingsProxy``.
 APPEARANCE = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "chimol" / "gui" / "appearance.view.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent / "gui" / "appearance.view.json"
 )
 
 #: A spec shipped by ChiSurf itself, written with no thought for chimol. Read

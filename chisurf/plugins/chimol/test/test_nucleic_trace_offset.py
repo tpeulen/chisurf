@@ -33,7 +33,8 @@ import pytest
 REPO = pathlib.Path(__file__).resolve().parents[4]
 PDB = REPO / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
 DISPLAY_JSON = (
-    REPO / "chisurf" / "plugins" / "chimol" / "chimol" / "chimol_display.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent
+    / "chimol_display.json"
 )
 
 

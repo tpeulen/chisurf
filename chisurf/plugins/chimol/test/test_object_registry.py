@@ -185,7 +185,7 @@ def test_all_three_hosts_consume_the_registry():
     """
     import pathlib
 
-    root = pathlib.Path(__file__).resolve().parents[1] / "chimol"
+    root = pathlib.Path(__import__("chimol").__file__).resolve().parent
     hosts = {
         "toolkit-free": root / "host" / "run.py",
         "Qt": root / "app" / "molview_main_window.py",
