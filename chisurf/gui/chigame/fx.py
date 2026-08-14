@@ -210,6 +210,30 @@ class Weather:
                 self.fog_alpha = max(self.fog_target, self.fog_alpha - step)
         self._fog_scroll += dt * 6.0
 
+    def particles(self, kind: str):
+        """Yield one falling kind's particle states, view-relative.
+
+        For a game that draws weather through its own sprite names rather
+        than the pack vocabulary: this exposes the same simulation the
+        :meth:`draw` path renders, position and all, without reaching into
+        the arrays.
+
+        Parameters
+        ----------
+        kind : str
+            One of :data:`RAIN`, :data:`SNOW`, :data:`LEAF`.
+
+        Yields
+        ------
+        tuple of float
+            ``(x, y, scale, phase)`` in view coordinates, top-left origin.
+        """
+        states = self._drops.get(kind)
+        if states is None:
+            return
+        for x, y, scale, phase in states:
+            yield float(x), float(y), float(scale), float(phase)
+
     def draw(self, scene, camera: Camera) -> None:
         """Queue the weather around the view centre.
 
