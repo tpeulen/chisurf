@@ -1,0 +1,15 @@
+{
+  "id": "ninja_adventure",
+  "version": "1.0.0",
+  "display_name": "Ninja Adventure",
+  "description": "The CC0 Ninja Adventure reference map, playable on the chigame engine: explore the village, break the crates, cross the teleporter, fight the swamp samurai.",
+  "authors": ["ChiSurf contributors"],
+  "categories": ["Tools", "Miscellaneous"],
+  "entrypoints": {
+    "gui": "chisurf.plugins.misc.games.ninja_adventure.tool:NinjaAdventureWidget"
+  },
+  "dependencies": {},
+  "menu_hidden": true,
+  "deprecated": false,
+  "demo": false
+}

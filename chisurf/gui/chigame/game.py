@@ -130,12 +130,11 @@ class GameHost:
         if with_text:
             self.font = FontAtlas(context.device)
             self.batch.set_atlas(self.font.texture)
+        self.scene = Scene(self.batch, self.pack, self.camera, self.font)
         # A pack that carries pixel art binds its atlas here, so every SPRITE
         # draw in the frame samples real art. The procedural pack has no
         # ``texture`` and leaves the 1x1 white placeholder in place.
-        texture_of_pack = getattr(self.pack, "texture", None)
-        if texture_of_pack is not None:
-            self.batch.set_sprites(texture_of_pack(context.device))
+        self.bind_pack(self.pack)
         # The decoder shares the renderer's device rather than asking the
         # driver for a second one purely to decompress audio.
         try:
@@ -145,7 +144,6 @@ class GameHost:
         except Exception:
             pass
         self.audio = Audio(self.pack, enabled=with_audio)
-        self.scene = Scene(self.batch, self.pack, self.camera, self.font)
         self._extra_players: list[InputMap] = []
         self._last = time.perf_counter()
         try:
@@ -154,6 +152,27 @@ class GameHost:
             # The offscreen canvas emits no key events; scripted input still works.
             pass
         self.game.setup(self)
+
+    def bind_pack(self, pack: AssetPack) -> None:
+        """Make a pack the look and sound of everything this host draws.
+
+        Swapping ``host.scene.pack`` alone re-resolves *what* is drawn but
+        leaves the batch sampling the old texture, which for a textured pack
+        means every sprite renders as flat white placeholders. This rebinds
+        the batch's sprite texture too, and is what a game that carries its
+        own pack calls from ``setup``.
+
+        Parameters
+        ----------
+        pack : chisurf.gui.chigame.assets.AssetPack
+            The pack to adopt.
+        """
+        self.pack = pack
+        if self.scene is not None:
+            self.scene.pack = pack
+        texture_of_pack = getattr(pack, "texture", None)
+        if texture_of_pack is not None:
+            self.batch.set_sprites(texture_of_pack(self.ctx.device))
 
     def add_player(self, bindings: dict) -> InputMap:
         """Create a second (or third) controller on the same canvas.

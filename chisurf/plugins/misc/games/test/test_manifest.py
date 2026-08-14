@@ -32,10 +32,10 @@ def test_the_gamespace_survives_the_demo_flag():
 
     names = [p["name"] for p in GAME_PANELS]
     assert names == ["Number Quest", "Minesweeper", "Tetris", "Pong",
-                     "Breakout", "Lumis Quest"]
+                     "Breakout", "Lumis Quest", "Ninja Adventure"]
 
     for game_dir in ("number_quest", "minesweeper", "tetris", "pong",
-                     "breakout", "lumis_quest"):
+                     "breakout", "lumis_quest", "ninja_adventure"):
         m = load_manifest(Path(__file__).parents[1] / game_dir / "manifest.json")
         assert m.demo or m.menu_hidden, (
             f"{game_dir} would appear in the production menus"

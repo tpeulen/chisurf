@@ -527,6 +527,10 @@ class Weapon:
         Damage-area radius ahead of the holder.
     duration : float, optional
         Seconds a swing stays live.
+    recharge : float, optional
+        Seconds after a swing before the next may start. Without it an
+        caller that polls ``swing`` every frame machine-guns the weapon,
+        which the reference's attack timers exist to prevent.
     """
 
     def __init__(
@@ -536,15 +540,21 @@ class Weapon:
         team: Team | None = None,
         reach: float = 12.0,
         duration: float = 0.2,
+        recharge: float = 0.15,
     ) -> None:
         self.alias = alias
         self.damage = damage if damage is not None else Damage(1.0, 120.0)
         self.team = team
         self.reach = reach
         self.duration = duration
+        self.recharge = float(recharge)
         self.timer = 0.0
         self.direction = np.array([0.0, 1.0])
         self.cooldown = 0.0
+        # Where the damage area anchors. Kept as a copy, updated by
+        # :meth:`update`, because a weapon that is never drawn (an enemy's,
+        # off screen) must still strike from where its holder stands.
+        self.holder_position = np.zeros(2)
 
     def swing(self) -> bool:
         """Start a strike if one is not running or cooling.
@@ -557,6 +567,7 @@ class Weapon:
         if self.timer > 0.0 or self.cooldown > 0.0:
             return False
         self.timer = self.duration
+        self.cooldown = self.duration + self.recharge
         return True
 
     def update(self, dt: float, holder: Actor) -> None:
@@ -571,6 +582,7 @@ class Weapon:
         """
         self.timer = max(0.0, self.timer - dt)
         self.cooldown = max(0.0, self.cooldown - dt)
+        self.holder_position[:] = holder.position
         if np.any(holder.move_vector):
             norm = np.hypot(*holder.move_vector)
             self.direction = holder.move_vector / norm
@@ -593,9 +605,7 @@ class Weapon:
         -------
         numpy.ndarray
         """
-        return self._holder_position + self.direction * self.reach
-
-    _holder_position = np.zeros(2)
+        return self.holder_position + self.direction * self.reach
 
     def draw(self, scene, holder: Actor) -> None:
         """Queue the weapon relative to its holder.
@@ -607,7 +617,7 @@ class Weapon:
         holder : Actor
             Whose hand it is in; also the anchor the damage area follows.
         """
-        self._holder_position = holder.position
+        self.holder_position[:] = holder.position
         direction = self.direction
         if self.striking:
             at = (holder.position[0] - direction[0] * 7.0,

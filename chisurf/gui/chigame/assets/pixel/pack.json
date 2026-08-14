@@ -1,19 +1,69 @@
 {
   "grids": {
-    "hero":          {"sheet": "characters/hero", "columns": 4, "rows": 7},
-    "samurai_blue":  {"sheet": "characters/samurai_blue", "columns": 4, "rows": 7},
-    "samurai_green": {"sheet": "characters/samurai_green", "columns": 4, "rows": 7},
-    "animal":        {"sheet": "characters/animal", "columns": 2},
-    "hearts":        {"sheet": "ui/hearts", "columns": 5},
-    "hearts_b":      {"sheet": "ui/hearts_b", "columns": 5},
-    "hearts_c":      {"sheet": "ui/hearts_c", "columns": 5},
-    "floor":         {"sheet": "tiles/floor", "columns": 22, "rows": 26},
-    "wall":          {"sheet": "tiles/wall", "columns": 10, "rows": 11},
-    "interior":      {"sheet": "tiles/interior", "columns": 22, "rows": 17},
-    "village":       {"sheet": "tiles/village", "columns": 20, "rows": 12},
-    "animated":      {"sheet": "tiles/animated", "columns": 4, "rows": 4},
-    "snowflake":     {"sheet": "fx/snow", "columns": 7},
-    "leaflet":       {"sheet": "fx/leaf", "columns": 6}
+    "hero": {
+      "sheet": "characters/hero",
+      "columns": 4,
+      "rows": 7
+    },
+    "samurai_blue": {
+      "sheet": "characters/samurai_blue",
+      "columns": 4,
+      "rows": 7
+    },
+    "samurai_green": {
+      "sheet": "characters/samurai_green",
+      "columns": 4,
+      "rows": 7
+    },
+    "animal": {
+      "sheet": "characters/animal",
+      "columns": 2
+    },
+    "hearts": {
+      "sheet": "ui/hearts",
+      "columns": 5
+    },
+    "hearts_b": {
+      "sheet": "ui/hearts_b",
+      "columns": 5
+    },
+    "hearts_c": {
+      "sheet": "ui/hearts_c",
+      "columns": 5
+    },
+    "floor": {
+      "sheet": "tiles/floor",
+      "columns": 22,
+      "rows": 26
+    },
+    "wall": {
+      "sheet": "tiles/wall",
+      "columns": 10,
+      "rows": 11
+    },
+    "interior": {
+      "sheet": "tiles/interior",
+      "columns": 22,
+      "rows": 17
+    },
+    "village": {
+      "sheet": "tiles/village",
+      "columns": 20,
+      "rows": 12
+    },
+    "animated": {
+      "sheet": "tiles/animated",
+      "columns": 4,
+      "rows": 4
+    },
+    "snowflake": {
+      "sheet": "fx/snow",
+      "columns": 7
+    },
+    "leaflet": {
+      "sheet": "fx/leaf",
+      "columns": 6
+    }
   },
   "characters": {
     "hero": "hero",
@@ -46,7 +96,9 @@
     "rain": "fx/rain",
     "cloud": "fx/cloud",
     "fog": "fx/fog",
-    "raylight": "fx/raylight"
+    "raylight": "fx/raylight",
+    "grass": "props/grass",
+    "pot": "props/pot"
   },
   "vitality_strips": {
     "a": "hearts",

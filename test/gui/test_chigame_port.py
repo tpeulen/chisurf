@@ -60,7 +60,7 @@ def atlas():
 
 
 def test_the_pack_packs_every_image(atlas):
-    assert len([n for n in atlas.frames if ":" not in n]) == 39
+    assert len([n for n in atlas.frames if ":" not in n]) == 41
     width, height = atlas.size
     assert width <= 2048 and height <= 2048
 
@@ -158,11 +158,35 @@ def test_a_wall_stops_the_body_but_slides_along_it():
 # -- damage ---------------------------------------------------------------
 
 
+def test_a_weapon_cools_down_between_swings():
+    """A weapon polled every frame cannot machine-gun.
+
+    The damage area anchoring also follows ``update`` rather than ``draw``:
+    an enemy's weapon is never drawn, and it used to strike from wherever
+    its holder last stood on screen.
+    """
+    holder = Actor(alias="hero", speed=0.0)
+    holder.position[:] = (0.0, 0.0)
+    sword = Weapon(reach=10.0, duration=0.2, recharge=0.3)
+    assert sword.swing() is True
+    assert sword.swing() is False  # mid-swing
+    sword.update(0.25, holder)
+    assert not sword.striking
+    assert sword.swing() is False  # cooling
+    for _ in range(20):
+        sword.update(0.05, holder)
+    assert sword.swing() is True
+    # The area anchors at the holder even when the weapon is never drawn.
+    holder.position[:] = (100.0, 50.0)
+    sword.update(0.0, holder)
+    assert sword.area_centre[0] == pytest.approx(100.0)
+
+
 def test_a_strike_skips_allies_and_the_already_hit():
     villagers = Team("villagers")
     beasts = Team("beasts")
     sword = Weapon(team=villagers, damage=Damage(2.0, 100.0))
-    sword._holder_position = np.array([0.0, 10.0])
+    sword.holder_position = np.array([0.0, 10.0])
     sword.direction = np.array([0.0, 1.0])
     sword.timer = sword.duration
     beast = Actor(alias="beast", team=beasts, maximum_life=5.0)
