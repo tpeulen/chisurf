@@ -28,8 +28,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import quad_painter as qp
-from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
+from chimol.cmtk import quad_painter as qp
+from chimol.cmtk.quad_painter import QuadPainter
 
 
 # --------------------------------------------------------------------------
@@ -199,7 +199,7 @@ class _Backend:
     UNIFORM_FLOATS = 4 * 16 + 7 * 4
 
     def __init__(self) -> None:
-        from chisurf.plugins.chimol.chimol.renderer.frame_stats import FrameStats
+        from chimol.renderer.frame_stats import FrameStats
 
         self.device = _Recorder()
         #: The real backend always has one; `_draw_ui` counts into it.
@@ -231,7 +231,7 @@ class _Backend:
 @pytest.fixture()
 def backend():
     """A stub backend carrying the real ``_draw_ui``."""
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
     stub = _Backend()
     stub._draw_ui = WgpuMeshRenderer._draw_ui.__get__(stub, _Backend)

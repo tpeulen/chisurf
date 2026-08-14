@@ -39,11 +39,11 @@ def qapp():
 
 @pytest.fixture
 def window(qapp):
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
-    from chisurf.plugins.chimol.chimol.settings import set_setting
+    from chimol.cmd import cmd as shared
+    from chimol.settings import set_setting
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")

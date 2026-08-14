@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from dataclasses import dataclass
 
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+from chimol.testing.mock_viewer import MockViewer
+from chimol.cmd.command import Cmd
 
 class MockWindow:
     def __init__(self, viewer):

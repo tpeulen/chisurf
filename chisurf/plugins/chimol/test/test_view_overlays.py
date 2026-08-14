@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 from qtpy import QtWidgets
 
-from chisurf.plugins.chimol.chimol.geometry.surface import (
+from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.renderer.view import MolView
 
 
 @pytest.fixture

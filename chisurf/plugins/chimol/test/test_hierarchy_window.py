@@ -15,11 +15,11 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.io.hierarchy import HierarchyNode  # noqa: E402
-from chisurf.plugins.chimol.chimol.renderer.hierarchy_window import (  # noqa: E402
+from chimol.io.hierarchy import HierarchyNode  # noqa: E402
+from chimol.renderer.hierarchy_window import (  # noqa: E402
     HierarchyWindow,
 )
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui  # noqa: E402
+from chimol.renderer.internal_gui import InternalGui  # noqa: E402
 
 
 class _Recorder:
@@ -183,7 +183,7 @@ def test_it_says_so_when_there_is_no_tree():
 
     window = HierarchyWindow(_Viewer())
     painter = _Recorder()
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import Rect
+    from chimol.renderer.internal_gui import Rect
 
     window.draw(painter, Rect(0, 0, 300, 200))
     assert any("Nothing loaded" in text for text in painter.texts)
@@ -299,7 +299,7 @@ def test_filtering_does_not_change_what_is_drawn(panel):
 
 
 def test_backspace_clears_and_the_tree_comes_back(panel):
-    from chisurf.plugins.chimol.chimol.host.keys import KEY_BACKSPACE
+    from chimol.host.keys import KEY_BACKSPACE
 
     window, gui, _applied = panel
     window.attach(gui)
@@ -316,7 +316,7 @@ def test_backspace_clears_and_the_tree_comes_back(panel):
 
 def test_escape_gives_the_keyboard_back(panel):
     """Otherwise every shortcut is swallowed by a box nobody is looking at."""
-    from chisurf.plugins.chimol.chimol.host.keys import KEY_ESCAPE
+    from chimol.host.keys import KEY_ESCAPE
 
     window, gui, _applied = panel
     window.attach(gui)
@@ -362,7 +362,7 @@ def test_a_tree_taller_than_the_window_gets_a_bar(panel):
     looking at.
     """
     window, gui, _applied = panel
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import Rect
+    from chimol.renderer.internal_gui import Rect
 
     window.draw(_Recorder(), Rect(0, 0, 300, 200))
     assert window._bar is None, "a tree that fits does not get a bar"
@@ -375,7 +375,7 @@ def test_a_tree_taller_than_the_window_gets_a_bar(panel):
 
 def test_dragging_the_bar_scrolls(panel):
     window, gui, _applied = panel
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import Rect
+    from chimol.renderer.internal_gui import Rect
 
     for molecule in window._root().children:
         window._expanded.add(id(molecule))

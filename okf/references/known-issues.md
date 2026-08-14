@@ -4657,3 +4657,137 @@ signal (a keyword-only default holding `self.__dict__`, then a closure over
 it). The first exited 134 at interpreter shutdown *after* every test passed;
 the second is the segfault above. The full history is in the comment block
 above `_cpp_alive` in `renderer/wgpu_view.py`.
+
+
+## Clicking empty space does not clear the selection (open)
+
+`MolView.handle_mouse_click` documents PyMOL's rule -- *"left-clicking away
+from any atom should deactivate the selection"* -- and says that with nothing
+picked it falls through to a `set` of no indices. It does not: a selection
+survives a click on an empty point **inside** the viewport.
+
+Found while wiring picking into the browser host and **not browser-specific**;
+the toolkit-free path is simply where it was first exercised, because that is
+the configuration the page runs. Guarded by a strict `xfail` in
+`chisurf/plugins/chimol/test/test_browser_picking.py`, so it flips to a
+failure -- and starts guarding the behaviour -- the moment it is fixed.
+
+To reproduce, take a point at least 40 px from every projected atom rather
+than a coordinate off the surface: a click the viewer never considers proves
+nothing about the rule, and `(-10000, -10000)` was the first thing tried.
+
+
+## The screenshot helper predates the WebGPU port, and returns a blank image (open)
+
+`test/screenshot.py` is the tool the project rule *"never implement a GUI
+blind"* depends on. It cannot photograph chimol any more, and it **fails
+silently**: the image is a uniform grey rectangle of the right size rather than
+an error.
+
+Cause. The helper finds the 3-D view with
+`widget.findChildren(QtWidgets.QOpenGLWidget)` and captures it with
+`gl.grabFramebuffer()`. chimol's renderer is `WgpuRenderer` -- a plain
+`QWidget` presenting a WebGPU surface -- so there is no `QOpenGLWidget` to
+find. Its whole docstring argues about the offscreen platform plugin and GL
+contexts, which is the *previous* renderer's problem.
+
+Both routes are dead, and neither says so:
+
+* `QT_QPA_PLATFORM=offscreen` + `win.grab()` -> uniform grey. A presented
+  WebGPU surface is not in the widget's backing store.
+* the documented route (real window server, `WA_DontShowOnScreen`,
+  `shoot(win, ..., area="window")`) -> also uniform grey, because the
+  `QOpenGLWidget` search finds nothing and the fallback is the same
+  `widget.grab()`.
+
+Consequence. Any chimol GUI change "verified by screenshot" since the WebGPU
+port was verified against a blank image. The rule has been unenforceable for
+this plugin and nothing reported it.
+
+What a fix needs. The renderer already composites its chrome into the frame
+(`host/qt_overlay.paint_chrome_into`) and `WgpuMeshRenderer` can render
+offscreen -- `test/chrome_baseline.py` and the visual-rendering tests both get
+real pixels that way. So the capture should go through the *renderer*, not
+through Qt: draw a frame into a texture, read it back, and composite the
+chrome, which is also the only route that works for the browser host. Until
+then `screenshot.py` should raise rather than return grey.
+
+
+## Browser clicks land in the wrong place -- two boxes, not one (open)
+
+Picking now runs in the page, and it misses. Not a constant shift: the error
+grows toward the bottom and the right, because the projection and the render
+use **differently sized rectangles**.
+
+The renderer draws with (`web/demo.py`):
+
+    viewport=(0.0, 0.0, self.scene_width() * dpr, self.scene_height() * dpr)
+
+where `Viewer.scene_width/height` *do* subtract the panel column and the
+sequence strip. So the molecule is drawn into a shorter, narrower box -- but
+anchored at **y = 0**, where the desktop anchors it under the strip
+(`CanvasRenderer._scene_viewport` returns `(0, strip, ...)`).
+
+The projection runs on `SceneSink`, which inherits `CameraState.scene_width()`
+and `scene_height()`. Those return the **full** surface -- their docstrings say
+so outright: *"No panel is reserved"*, *"No strip is reserved"* -- so
+`scene_origin_y()` is 0 and the aspect used for the projection matrix is the
+whole canvas rather than the scene box.
+
+So: drawn in one rectangle, projected in another. `scene_origin_y()`'s own
+docstring is the statement of the invariant being broken -- *"both the
+projection and the render viewport need it and they must not disagree by a
+pixel: they are what decides whether a click lands on the atom under the
+cursor."*
+
+**Same root cause as the five missing host features.** `SceneSink` is a sibling
+of `CanvasRenderer`, not a child, so it has no `_internal_gui` and cannot know
+what the chrome reserves; `Viewer` therefore hand-rolls the scene metrics and
+the two halves drift. Re-basing `SceneSink` fixes the offset and the missing
+features together -- see the relocation concept.
+
+**Why the test suite did not catch it.** `test_browser_picking.py` projects an
+atom and clicks at the projected coordinate. That is self-consistent under any
+projection, correct or not: it proves the pick *path* is wired, never that the
+projection agrees with what was drawn. A real check has to render a frame and
+find the molecule's pixels, then click those -- the same "measure it, do not
+re-derive it" rule the trajectory test now follows.
+
+## test_prd_mentions and test_plugin_help_guide_seam are red at HEAD for unrelated plugins (open)
+
+**Found 2026-08-14, during the chimol relocation** (which is *not* the
+cause — verified against HEAD before touching anything).
+
+Two guardrail suites fail on plugins whose modernisation is in flight
+elsewhere:
+
+* `test_prd_mentions.py`: `dcd.py`, `chiplot/backends/{__init__,opengl}`, five
+  `mfd_prepare` files, `fcs/flc_2d` parity test, `lumis_quest` CREDITS.md and
+  four `fret/core` files name PRDs without allow-list entries; conversely the
+  allow-list still carries `core/fio/trajectory/{__init__,xtc}.py`, which no
+  longer name one. All of these are exactly the state at HEAD — the offenders
+  named PRDs in HEAD's blobs and were absent from HEAD's allow-list.
+* `test_plugin_help_guide_seam.py`: `mfd_prepare`, `plot_settings`,
+  `tttr_to_pto`, `tttr/filetools` lack help/guide without allow-list entries,
+  `lumis_quest` lacks help.md, and the allow-list still carries
+  `tttr/converter/gui`, which matches no manifest.
+
+`mfd_prepare` is mid-restructure (its files are staged for deletion in the
+shared index), which is why the fix did not land with the relocation: cleaning
+PRD mentions inside a plugin another change is deleting would collide. Whoever
+finishes `mfd_prepare` strikes its lines; the fret-core PRD mentions and the
+stale trajectory/converter lines are free wins.
+
+## lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
+
+**Found 2026-08-14 (T-20260814-05).** Deterministic failure (3/3 runs) in
+`chisurf/plugins/misc/games/lumis_quest/test/test_npcs.py`. The cause is an
+**uncommitted in-flight edit to `api/npcs.py`** (working-tree diff of
+-125/+59 lines against HEAD by a peer session, still evolving at time of
+writing) — the test is pure `api.npcs` physics and imports no GUI module, so
+the T-20260814-05 presentation work cannot be implicated. Not fixed by the
+finder because the file is actively owned mid-edit: reverting or patching it
+would discard the peer's work. Whoever lands the npcs change owns the test;
+if it is still red after their landing, the hitch-step resolution in
+`npcs.update` lets a beast end a 0.75 s step inside a solid (observed at
+(710.0, 376.0), a `beast` inside a wall of the test world).

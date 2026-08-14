@@ -35,10 +35,10 @@ def qapp():
 @pytest.fixture(scope="module")
 def session(qapp):
     """A window with 148L loaded, the runner, and the viewer."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")

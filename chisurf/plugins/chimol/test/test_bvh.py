@@ -22,9 +22,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer import compute
-from chisurf.plugins.chimol.chimol.renderer import bvh as bvh_module
-from chisurf.plugins.chimol.chimol.renderer.bvh import (
+from chimol.renderer import compute
+from chimol.renderer import bvh as bvh_module
+from chimol.renderer.bvh import (
     _MAX_LEAF,
     build_bvh,
     build_bvh_cached,
@@ -313,7 +313,7 @@ def test_cost_grows_far_slower_than_the_triangle_count():
     """
     import time
 
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         RayCamera,
         Sphere,
         trace,
@@ -363,7 +363,7 @@ def test_the_tracer_says_so_when_there_is_no_device(monkeypatch):
     session that can display a molecule can trace one, and a second shading
     implementation would be a large body of code nothing ever runs.
     """
-    from chisurf.plugins.chimol.chimol.renderer import raytracer
+    from chimol.renderer import raytracer
 
     monkeypatch.setattr(compute, "raytrace", lambda *a, **k: None)
     with pytest.raises(raytracer.NoComputeDevice):

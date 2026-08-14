@@ -14,6 +14,7 @@ reads them, and none of them touches a toolkit.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,7 +22,41 @@ from typing import TYPE_CHECKING
 from chisurf.core.plugin import load_manifest
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
-    from chisurf.plugins.chimol.chimol.app import MolViewPluginWindow
+    from chimol.app import MolViewPluginWindow
+
+def _place_chimol_settings_beside_chisurf_s() -> None:
+    """Tell chimol to keep its settings where ChiSurf keeps everything else.
+
+    chimol resolves its own settings directory and defaults to ``~/.chimol``,
+    because it is packaged to run with no ChiSurf on the path. Inside ChiSurf
+    that default is wrong: the plugin and the application should share one
+    directory, so a user has one place to look and the standalone and plugin
+    runs see the same configuration.
+
+    Injected rather than asked for. chimol used to import
+    ``chisurf.core.settings`` itself inside a ``try`` -- which worked, and put
+    the dependency in the wrong direction and out of sight: nothing on this
+    side said the plugin owned that decision. Here it is a single call at the
+    only moment the answer is both known and correct, and chimol names nobody.
+
+    A failure is not fatal. chimol falls back to its own directory, which is a
+    working viewer whose settings live somewhere unexpected -- much better than
+    a plugin that will not load because a settings path could not be resolved.
+    """
+    try:
+        import chisurf.core.settings as _cs_settings
+
+        from chimol.settings_dir import set_settings_dir
+
+        set_settings_dir(_cs_settings.get_path("settings"))
+    except Exception:  # noqa: BLE001 - a partial install, or a settings backend that moved
+        logging.getLogger(__name__).debug(
+            "chimol keeps its own settings directory; ChiSurf's was not resolvable",
+            exc_info=True,
+        )
+
+
+_place_chimol_settings_beside_chisurf_s()
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -52,7 +87,7 @@ def __getattr__(attribute: str):
         If *attribute* is not one this module provides.
     """
     if attribute == "MolViewPluginWindow":
-        from chisurf.plugins.chimol.chimol.app import MolViewPluginWindow
+        from chimol.app import MolViewPluginWindow
 
         globals()["MolViewPluginWindow"] = MolViewPluginWindow
         return MolViewPluginWindow
@@ -69,9 +104,9 @@ def _create_window():
 
     Returns
     -------
-    chisurf.plugins.chimol.chimol.app.MolViewPluginWindow
+    chimol.app.MolViewPluginWindow
     """
-    from chisurf.plugins.chimol.chimol.app import MolViewPluginWindow
+    from chimol.app import MolViewPluginWindow
 
     win = MolViewPluginWindow()
     try:
@@ -84,7 +119,7 @@ def _create_window():
 def main() -> None:
     """Launch Chimol as a standalone **Qt** application.
 
-    The Qt-free window is :func:`chisurf.plugins.chimol.chimol.host.run.run`,
+    The Qt-free window is :func:`chimol.host.run.run`,
     and it is what ``python -m chisurf.plugins.chimol`` opens; this is what
     ``--qt`` asks for.
     """

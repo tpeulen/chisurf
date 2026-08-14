@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.gpu import enums
+from chimol.renderer.gpu import enums
 
 #: The engine's source root.
 _CHIMOL = Path(__file__).resolve().parents[1] / "chimol"
@@ -122,7 +122,7 @@ def test_our_constants_match_the_binding(namespace):
 
 def test_the_seam_is_a_drop_in_for_the_binding():
     """``api`` answers to every name the engine used to take from ``wgpu``."""
-    from chisurf.plugins.chimol.chimol.renderer.gpu import api
+    from chimol.renderer.gpu import api
 
     assert hasattr(api.gpu, "request_adapter_sync")
     # A spot-check of the two kinds of constant: a spec string and a bit flag.

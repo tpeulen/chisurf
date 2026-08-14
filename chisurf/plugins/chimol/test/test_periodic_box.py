@@ -47,8 +47,8 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.structure import load_trajectory_cell
-from chisurf.plugins.chimol.chimol.renderer.view import _minimum_image, _smooth_frame
+from chimol.io.structure import load_trajectory_cell
+from chimol.renderer.view import _minimum_image, _smooth_frame
 
 DCD = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -125,7 +125,7 @@ def test_a_triclinic_cell_images_along_its_own_vectors():
     against the edge lengths -- moves them somewhere else entirely, and for a
     90-degree box the two agree, which is how a wrong transpose survives.
     """
-    from chisurf.plugins.chimol.chimol.renderer.view import _cell_matrix
+    from chimol.renderer.view import _cell_matrix
 
     lengths = np.array([30.0, 40.0, 50.0])
     angles = np.array([70.0, 80.0, 110.0])
@@ -148,7 +148,7 @@ def test_a_triclinic_cell_images_along_its_own_vectors():
 
 def test_the_cell_matrix_has_the_right_volume():
     """A sanity check on the six-numbers-to-three-vectors construction."""
-    from chisurf.plugins.chimol.chimol.renderer.view import _cell_matrix
+    from chimol.renderer.view import _cell_matrix
 
     matrix = _cell_matrix(np.array([10.0, 10.0, 10.0]), np.full(3, 90.0))
     assert np.isclose(abs(np.linalg.det(matrix)), 1000.0)
@@ -160,7 +160,7 @@ def test_the_cell_matrix_has_the_right_volume():
 
 def test_a_degenerate_cell_is_refused_rather_than_producing_nonsense():
     """Zero edges and flat angles have no inverse to image with."""
-    from chisurf.plugins.chimol.chimol.renderer.view import _cell_matrix
+    from chimol.renderer.view import _cell_matrix
 
     assert _cell_matrix(np.array([0.0, 10.0, 10.0]), np.full(3, 90.0)) is None
     assert _cell_matrix(np.array([10.0, 10.0, 10.0]), np.array([90.0, 90.0, 0.0])) is None
@@ -218,7 +218,7 @@ def test_a_molecule_on_a_wall_arrives_split():
 
 
 def test_unwrap_makes_the_molecule_whole():
-    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+    from chimol.analysis.periodic import (
         cell_matrix, fragments, unwrap_coordinates,
     )
 
@@ -239,7 +239,7 @@ def test_wrap_moves_a_molecule_as_a_unit():
     the box and tears the molecule in half doing it, which is the state the
     files arrive in.
     """
-    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+    from chimol.analysis.periodic import (
         cell_matrix, fragments, unwrap_coordinates, wrap_coordinates,
     )
 
@@ -258,7 +258,7 @@ def test_wrap_moves_a_molecule_as_a_unit():
 
 def test_unwrap_works_in_a_sheared_cell():
     """Two atoms one cell vector apart come back together, triclinic or not."""
-    from chisurf.plugins.chimol.chimol.analysis.periodic import (
+    from chimol.analysis.periodic import (
         cell_matrix, unwrap_coordinates,
     )
 
@@ -275,7 +275,7 @@ def test_fragments_fall_back_when_there_are_no_bonds():
     Chains before residues: a residue-wise wrap would tear a polymer at every
     peptide bond, which is worse than not wrapping at all.
     """
-    from chisurf.plugins.chimol.chimol.analysis.periodic import fragments
+    from chimol.analysis.periodic import fragments
 
     chains = np.array(["A", "A", "B", "B", "B"])
     residues = np.array([1, 2, 3, 4, 5])

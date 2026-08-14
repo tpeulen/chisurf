@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from chisurf.plugins.chimol.chimol.analysis import assign_ss_c3_from_file
+from chimol.analysis import assign_ss_c3_from_file
 
 
 class TestChimolSSAgainstReferenceDSSP(unittest.TestCase):

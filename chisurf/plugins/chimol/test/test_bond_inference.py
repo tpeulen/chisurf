@@ -29,7 +29,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.bonds import (
+from chimol.geometry.bonds import (
     CONNECT_CUTOFF,
     _build_bond_pairs,
     build_bond_pairs_by_element,
@@ -174,7 +174,7 @@ def test_no_atoms_gives_no_bonds():
 @pytest.fixture(scope="module")
 def hydrogenated():
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+    from chimol.io.structure import _read_full_model
 
     path = _PDB / "hGBP1_closed.pdb"
     if not path.exists():

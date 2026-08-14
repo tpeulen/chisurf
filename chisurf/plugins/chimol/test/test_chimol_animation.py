@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+from chimol.testing.mock_viewer import MockViewer, MockWindow
+from chimol.cmd.command import Cmd
 
 def test_chimol_animation_mset():
     viewer = MockViewer()

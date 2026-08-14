@@ -64,10 +64,10 @@ def _settle(widget, width, height, app, passes=8):
 def window(qapp):
     """Build a window with a protein and two derived objects, for comparing rows."""
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1300, 850)
@@ -100,7 +100,7 @@ def test_a_gap_is_not_coloured_like_a_residue(window):
     ``staticmethod``s on a widget, so this test needed a window system to ask
     what colour a gap is. They are chimol's now and answer in plain RGB.
     """
-    from chisurf.plugins.chimol.chimol.colors import gap_palette, sequence_palette
+    from chimol.colors import gap_palette, sequence_palette
 
     gap_bg, _ = gap_palette()
     coil_bg, _ = sequence_palette("C")
@@ -163,7 +163,7 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
     win.viewer.set_system_info_text("System: coordinates\nAtoms: 1363")
     _settle(win.viewer._container, 900, 600, qapp)
 
-    from chisurf.plugins.chimol.chimol.host.qt_overlay import (
+    from chimol.host.qt_overlay import (
         refresh_gui_state,
     )
 

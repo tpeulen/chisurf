@@ -35,8 +35,10 @@ import pathlib
 
 import pytest
 
-#: The package root, `chimol/`.
-PACKAGE = pathlib.Path(__file__).resolve().parent.parent / "chimol"
+#: The package root: the relocated engine (top-level ``chimol``, installed
+#: from ``modules/chimol`` / ``~/dev/chimol``). Resolved through the import
+#: system so the test follows the installation the host actually uses.
+PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 #: Modules still importing Qt. **Shrinking**: never add to this.
 #:
@@ -62,13 +64,16 @@ def _imports_qt(path: pathlib.Path) -> bool:
     """Whether *path* really imports Qt, by reading its import statements.
 
     Docstrings and comments do not count -- see the module docstring for the
-    version of this check that thought they did.
+    version of this check that thought they did. Neither do ``TYPE_CHECKING``
+    imports: they never execute, so they cannot pull a toolkit into a host
+    that has none -- the same rule ``test_chisurf_seam.py`` applies to the
+    chisurf dependency.
     """
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError:  # pragma: no cover - a broken file is a different test
         return False
-    for node in ast.walk(tree):
+    for node in _runtime_nodes(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 if alias.name.split(".")[0] in ("qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6"):
@@ -78,6 +83,25 @@ def _imports_qt(path: pathlib.Path) -> bool:
             if root in ("qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6"):
                 return True
     return False
+
+
+def _runtime_nodes(tree: ast.AST) -> list[ast.AST]:
+    """Every node except the contents of ``if TYPE_CHECKING:`` blocks.
+
+    ``ast.walk`` cannot prune, so the excluded nodes are collected from each
+    ``TYPE_CHECKING`` guard's body and filtered out by identity.
+    """
+    excluded: set[int] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.If)
+            and isinstance(node.test, ast.Name)
+            and node.test.id == "TYPE_CHECKING"
+        ):
+            for child in node.body + node.orelse:
+                for sub in ast.walk(child):
+                    excluded.add(id(sub))
+    return [n for n in ast.walk(tree) if id(n) not in excluded]
 
 
 def _modules() -> list[pathlib.Path]:

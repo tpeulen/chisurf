@@ -42,7 +42,7 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -57,7 +57,7 @@ def window(qapp):
 
 @pytest.fixture
 def cmd(window):
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     c = Cmd(window)
     c.set_message_callback(lambda _m: None)

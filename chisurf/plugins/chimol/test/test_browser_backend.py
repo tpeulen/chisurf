@@ -20,7 +20,7 @@ import types
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.gpu import browser
+from chimol.renderer.gpu import browser
 
 
 class _Recorder:
@@ -196,7 +196,7 @@ def test_availability_is_false_without_a_browser():
 
 def test_the_backend_choice_falls_back_to_native():
     """With no browser under it, the seam picks the native backend."""
-    from chisurf.plugins.chimol.chimol.renderer.gpu import api
+    from chimol.renderer.gpu import api
 
     assert api.backend_name() == "native"
 
@@ -217,7 +217,7 @@ def test_the_real_engine_survives_the_translation(fake_js):
     ``undefined`` on the other side, and WebGPU reports it as a missing field
     rather than as a wrong one.
     """
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
     log: list = []
     device = browser._Js(_Recorder("device", log))

@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.export import (
+from chimol.io.export import (
     format_for_path,
     unscale_coordinates,
     write_mmcif,
@@ -242,9 +242,9 @@ def loaded(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

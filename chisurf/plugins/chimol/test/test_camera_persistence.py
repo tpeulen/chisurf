@@ -41,10 +41,10 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win._load_structure_from_path(_PDB / "148l.pdb")

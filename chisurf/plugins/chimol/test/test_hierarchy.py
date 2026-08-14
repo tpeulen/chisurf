@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.hierarchy import HierarchyNode
+from chimol.io.hierarchy import HierarchyNode
 
 
 # --------------------------------------------------------------------------- #
@@ -95,7 +95,7 @@ _ihm_sphere_obj_site.model_id
 
 @pytest.fixture
 def parsed(tmp_path):
-    from chisurf.plugins.chimol.chimol.io.structure import _parse_mmcif_backbone
+    from chimol.io.structure import _parse_mmcif_backbone
 
     cif = tmp_path / "two.cif"
     cif.write_text(_TWO_MOLECULE_CIF)
@@ -137,7 +137,7 @@ def test_a_molecule_carries_its_copies_rows(parsed):
 
 def test_a_plain_pdb_has_no_hierarchy(tmp_path):
     """Nothing invented: a PDB file does not describe one."""
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chimol.io.structure import load_structure_payload
 
     pdb = tmp_path / "t.pdb"
     pdb.write_text(
@@ -184,7 +184,7 @@ def _three_level_tree():
 # honouring `set_rows_hidden`, whoever calls it.
 def test_hidden_rows_are_not_drawn(qapp_hier):
     """The point of the check box: fewer particles in the picture."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     n = 40
     rng = np.random.default_rng(1)
@@ -219,7 +219,7 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
 
 
 def test_hiding_everything_draws_nothing(qapp_hier):
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     n = 12
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
@@ -253,7 +253,7 @@ def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
     arbitrary set of beads instead. The guardrail in `test_sort_mask` is what
     catches the omission; this is what the omission would have cost.
     """
-    from chisurf.plugins.chimol.chimol.analysis.atom_order import (
+    from chimol.analysis.atom_order import (
         ATOM_INDEXED_FIELDS,
     )
 
@@ -262,7 +262,7 @@ def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
 
 def test_the_viewer_keeps_the_hierarchy_it_is_given(qapp_hier):
     """One field, whichever reader filled it."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     tree = _three_level_tree()
     view = MolView()

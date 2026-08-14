@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmd.sele_keywords import (
+from chimol.cmd.sele_keywords import (
     CANONICAL,
     KEYWORDS,
     Arity,

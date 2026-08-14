@@ -8,7 +8,7 @@ def test_molview(qtbot):
         # MolView lives in the inner package; the plugin package re-exports
         # only the window. Importing it from the wrong one made this test skip
         # itself on every run rather than fail.
-        from chisurf.plugins.chimol.chimol import MolView
+        from chimol import MolView
     except ImportError:
         pytest.skip("MolView import failed (missing dependencies)")
     widget = MolView()

@@ -38,9 +38,9 @@ def qapp():
 def session(qapp):
     """Build a fresh viewer with 148L loaded, plus a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.add_structure(

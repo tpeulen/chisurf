@@ -13,7 +13,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.structure import (
+from chimol.io.structure import (
     StructurePayload,
     _parse_pdb_backbone,
     load_structure_payload,
@@ -206,7 +206,7 @@ def test_hetero_records_survive_the_parser(parsed):
 
 def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
     """Without this the cartoon has nothing to shape and draws a loop tube."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     structure, backbone = load_structure_payload(
         _FALLBACK_PDB, structure_factory=None

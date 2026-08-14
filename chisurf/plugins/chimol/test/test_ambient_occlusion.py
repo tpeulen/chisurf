@@ -14,7 +14,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.ambient import occlusion_from_spheres
+from chimol.geometry.ambient import occlusion_from_spheres
 
 _ORIGIN = np.array([[0.0, 0.0, 0.0]])
 _UP = np.array([[0.0, 0.0, 1.0]])
@@ -242,8 +242,8 @@ def qapp():
 @pytest.fixture
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     v = MolView()
     v.resize(400, 300)
@@ -271,7 +271,7 @@ def _cartoon_colors(view) -> np.ndarray:
 
 def test_occlusion_varies_the_cartoon_colours(view):
     """Baked into vertex colours, so the live viewport gets it without `ray`."""
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("enabled", True)
@@ -301,7 +301,7 @@ def test_occlusion_leaves_alpha_alone(view):
 
 
 def test_disabling_occlusion_is_honoured(view):
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("darkness", 0.7)
@@ -353,7 +353,7 @@ def test_the_occlusion_matches_the_darkening_in_the_colours(view):
 
 def test_geometry_without_occlusion_is_still_valid():
     """Overlays and grids carry no occlusion; the backend must accept that."""
-    from chisurf.plugins.chimol.chimol.renderer.scene import Geometry
+    from chimol.renderer.scene import Geometry
 
     geom = Geometry(kind="mesh", positions=np.zeros((3, 3)))
     assert geom.occlusion is None
@@ -367,7 +367,7 @@ def test_geometry_without_occlusion_is_still_valid():
 # having them in the interactive view is chimol going further rather than
 # matching.
 
-from chisurf.plugins.chimol.chimol.geometry.ambient import (  # noqa: E402
+from chimol.geometry.ambient import (  # noqa: E402
     directional_occlusion,
 )
 
@@ -439,7 +439,7 @@ def test_a_degenerate_light_direction_is_rejected():
 
 def test_shadowing_reaches_the_mesh_colours(view):
     """Off vs on must actually change what is drawn."""
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("shadows", True)

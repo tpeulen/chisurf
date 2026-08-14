@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import style
-from chisurf.plugins.chimol.chimol.cmtk import text as uitext
+from chimol.cmtk import style
+from chimol.cmtk import text as uitext
 
 
 class RecordingPainter:

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import menus
+from chimol.cmtk import menus
 
 
 class RecordingPainter:

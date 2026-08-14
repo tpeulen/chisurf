@@ -18,9 +18,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-from chisurf.plugins.chimol.chimol.io.hierarchy import HierarchyNode
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.io.atoms import make_bead_rows
+from chimol.io.hierarchy import HierarchyNode
+from chimol.renderer.view import MolView
 
 
 @pytest.fixture(scope="module")

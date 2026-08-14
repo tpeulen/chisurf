@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.guide_frames import (
+from chimol.geometry.guide_frames import (
     build_guide_frames,
     differences_and_normals,
     refine_normals,
@@ -259,7 +259,7 @@ def test_a_chain_too_short_to_have_an_interior_is_handled(n):
 #     f2 = smooth(f0, power_b);          f3 = smooth(f1, power_b)
 #     f4 = dev * f2 * f3                 // dev = cartoon_throw * |P1 - P0|
 #     P  = f1*P0 + f0*P1 + f4*(f3*T0 - f2*T1)
-from chisurf.plugins.chimol.chimol.geometry.spline import (  # noqa: E402
+from chimol.geometry.spline import (  # noqa: E402
     DEFAULTS,
     sample_cartoon_curve,
     smooth,

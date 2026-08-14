@@ -7,7 +7,7 @@ without requiring Qt or OpenGL.
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.cartoon import (
+from chimol.geometry.cartoon import (
     _generate_cartoon_tube_arrays,
     _flatten_sheet_path,
     _helix_radials,
@@ -442,7 +442,7 @@ class TestSmoothLoops:
         return ca, loop
 
     def test_it_rounds_the_coil(self):
-        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+        from chimol.geometry.cartoon import _smooth_loop_path
 
         ca, loop = self.kinked_loop()
         out, _ = _smooth_loop_path(ca, loop, cycles=2)
@@ -452,7 +452,7 @@ class TestSmoothLoops:
 
     def test_the_flanking_elements_are_not_dragged_along(self):
         """The run widens by one residue, no further."""
-        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+        from chimol.geometry.cartoon import _smooth_loop_path
 
         ca, loop = self.kinked_loop()
         out, _ = _smooth_loop_path(ca, loop, cycles=2)
@@ -460,7 +460,7 @@ class TestSmoothLoops:
         assert np.allclose(out[9:], ca[9:])
 
     def test_up_vectors_are_smoothed_and_stay_unit(self):
-        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+        from chimol.geometry.cartoon import _smooth_loop_path
 
         ca, loop = self.kinked_loop()
         ups = np.zeros_like(ca)
@@ -472,7 +472,7 @@ class TestSmoothLoops:
         assert np.allclose(np.linalg.norm(out_ups, axis=1), 1.0)
 
     def test_zero_cycles_and_no_loops_are_both_no_ops(self):
-        from chisurf.plugins.chimol.chimol.geometry.cartoon import _smooth_loop_path
+        from chimol.geometry.cartoon import _smooth_loop_path
 
         ca, loop = self.kinked_loop()
         assert np.allclose(_smooth_loop_path(ca, loop, cycles=0)[0], ca)
@@ -483,6 +483,6 @@ class TestSmoothLoops:
 
     def test_it_is_off_by_default(self):
         """PyMOL ships it off; a rounder loop is further from the truth."""
-        from chisurf.plugins.chimol.chimol import settings
+        from chimol import settings
 
         assert settings.get_setting("cartoon_smooth_loops") is False

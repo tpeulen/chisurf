@@ -25,10 +25,10 @@ PDB = (
 def session():
     from qtpy import QtWidgets
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -49,7 +49,7 @@ def session():
 
 
 def _laid_out(win):
-    from chisurf.plugins.chimol.chimol.host.qt_overlay import refresh_gui_state
+    from chimol.host.qt_overlay import refresh_gui_state
 
     gui = win.viewer._renderer._internal_gui
     refresh_gui_state(gui, win.viewer)
@@ -70,7 +70,7 @@ def test_help_opens_the_info_panel_and_fills_it(session):
 
 def test_help_still_returns_its_text(session):
     """A script and the console read the return value; the panel is extra."""
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win, _app = session
     text = shared.help("distance")
@@ -142,9 +142,9 @@ def test_unknown_command_help_says_so_in_the_panel(session):
 # --------------------------------------------------------------------------- #
 def test_help_setting_goes_to_the_panel_too(session):
     """92 names do not fit the prompt's one-line feedback strip."""
-    from chisurf.plugins.chimol.chimol.cmd import cmd
+    from chimol.cmd import cmd
 
-    from chisurf.plugins.chimol.chimol.host import qt_overlay
+    from chimol.host import qt_overlay
 
     window, _app = session
     cmd.set_window(window)
@@ -163,7 +163,7 @@ def test_help_setting_goes_to_the_panel_too(session):
 def test_the_panel_draws_a_scroll_bar_when_it_overflows(session):
     """It scrolled on the wheel and said nothing: a page that ends
     mid-sentence reads as truncated rather than scrolled."""
-    from chisurf.plugins.chimol.chimol.host import qt_overlay
+    from chimol.host import qt_overlay
 
     window, _app = session
     gui = window.viewer._renderer._internal_gui

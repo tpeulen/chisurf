@@ -17,7 +17,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import (  # noqa: E402
+from chimol.renderer.internal_gui import (  # noqa: E402
     GuiWindow,
     InternalGui,
 )
@@ -209,8 +209,8 @@ def test_the_mouse_window_is_wide_enough_for_its_own_title_row(gui):
     was present at *every* viewport size -- so no amount of resizing revealed
     it either.
     """
-    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_NAMES
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import char_width
+    from chimol.mouse_modes import MODE_NAMES
+    from chimol.renderer.internal_gui import char_width
 
     gui.layout(900, 640)
 

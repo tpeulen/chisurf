@@ -26,9 +26,9 @@ import pytest
 
 RMF = pytest.importorskip("RMF")
 
-from chisurf.plugins.chimol.chimol.io.rmf import load_rmf_full
-from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.io.rmf import load_rmf_full
+from chimol.io.structure import load_structure_payload
+from chimol.renderer.view import MolView
 
 
 N_BEADS = 6
@@ -196,7 +196,7 @@ def restore_recenter():
     a setting changed does not fail here -- it fails somewhere else, in another
     file, for no visible reason.
     """
-    from chisurf.plugins.chimol.chimol.settings import get_setting, set_setting
+    from chimol.settings import get_setting, set_setting
 
     before = get_setting("movie_recenter")
     yield set_setting

@@ -41,9 +41,9 @@ def qapp():
 def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.add_structure(
@@ -304,7 +304,7 @@ def test_an_unknown_colour_is_reported(session):
 # --------------------------------------------------------------------------- #
 def test_the_ramp_puts_the_ends_on_the_ends():
     """Clamping to n-2 is what puts the maximum on the last colour."""
-    from chisurf.plugins.chimol.chimol.analysis.spectrum import spectrum_colors
+    from chimol.analysis.spectrum import spectrum_colors
 
     palette = np.array([[0.0, 0, 0], [0.5, 0.5, 0.5], [1.0, 1, 1]])
     ramped, lo, hi = spectrum_colors([0.0, 0.5, 1.0], palette)
@@ -315,7 +315,7 @@ def test_the_ramp_puts_the_ends_on_the_ends():
 
 
 def test_the_ramp_interpolates_between_neighbours():
-    from chisurf.plugins.chimol.chimol.analysis.spectrum import spectrum_colors
+    from chimol.analysis.spectrum import spectrum_colors
 
     palette = np.array([[0.0, 0, 0], [1.0, 1, 1]])
     ramped, _, _ = spectrum_colors([0.0, 0.25, 1.0], palette)
@@ -324,7 +324,7 @@ def test_the_ramp_interpolates_between_neighbours():
 
 def test_a_constant_property_takes_the_first_colour():
     """Not a division by zero, and not an arbitrary point in the ramp."""
-    from chisurf.plugins.chimol.chimol.analysis.spectrum import spectrum_colors
+    from chimol.analysis.spectrum import spectrum_colors
 
     palette = np.array([[0.0, 0, 0], [1.0, 1, 1]])
     ramped, lo, hi = spectrum_colors([5.0, 5.0, 5.0], palette)
@@ -333,7 +333,7 @@ def test_a_constant_property_takes_the_first_colour():
 
 
 def test_palette_names_come_from_pymols_table():
-    from chisurf.plugins.chimol.chimol.analysis.spectrum import palette_colors
+    from chimol.analysis.spectrum import palette_colors
 
     assert palette_colors("rainbow") == [
         "blue", "cyan", "green", "yellow", "orange", "red"
@@ -343,7 +343,7 @@ def test_palette_names_come_from_pymols_table():
 
 def test_an_unlisted_palette_is_read_as_colour_names():
     """Which is why `blue_white_red` works without being a defined palette."""
-    from chisurf.plugins.chimol.chimol.analysis.spectrum import palette_colors
+    from chimol.analysis.spectrum import palette_colors
 
     assert palette_colors("blue_white_red") == ["blue", "white", "red"]
 

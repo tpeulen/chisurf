@@ -72,7 +72,7 @@ INTERACTIONS = [
 def swept():
     """Drive every interaction and report whether the cache stayed honest."""
     return probe('''
-        from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
+        from chimol.cmtk.quad_painter import QuadPainter
 
         app = open_app(size=(1100, 760))
         app.cmd.do("fetch 148L")

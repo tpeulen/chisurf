@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
+from chimol.cmd.command import Cmd
+from chimol.testing.mock_viewer import MockViewer, MockWindow
 
 
 def _cmd_with_object():
@@ -86,10 +86,10 @@ def test_translate_is_in_angstrom_not_scene_units(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
 
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.export import unscale_coordinates
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.export import unscale_coordinates
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

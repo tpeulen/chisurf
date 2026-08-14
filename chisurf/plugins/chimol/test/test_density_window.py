@@ -35,11 +35,11 @@ def qapp():
 @pytest.fixture
 def loaded(qapp):
     """Build a window with a small map, its view model, and the panel."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.renderer.density_window import DensityWindow
-    from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+    from chimol.renderer.density_window import DensityWindow
+    from chimol.volume import VolumeGrid
 
     win = MolViewPluginWindow()
     win.resize(900, 640)
@@ -246,10 +246,10 @@ def test_an_unknown_mode_is_refused(loaded):
 
 def test_the_panel_says_so_when_there_is_no_map(qapp):
     """It must not draw a histogram of nothing."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.renderer.density_window import DensityWindow
+    from chimol.renderer.density_window import DensityWindow
 
     win = MolViewPluginWindow()
     win.show()
@@ -263,7 +263,7 @@ def test_the_panel_says_so_when_there_is_no_map(qapp):
             def text(self, x, y, w, h, align, text, colour):
                 said.append(text)
 
-        from chisurf.plugins.chimol.chimol.renderer.internal_gui import Rect
+        from chimol.renderer.internal_gui import Rect
 
         panel.draw(_Text(), Rect(0, 0, 300, 200))
         assert any("No map loaded" in line for line in said)
@@ -444,8 +444,8 @@ def test_an_indexed_line_geometry_is_expanded_to_its_edges():
     between whichever vertices were adjacent in the array. The packer must
     expand indices into pairs.
     """
-    from chisurf.plugins.chimol.chimol.renderer.pack import PackedGeometry
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.renderer.pack import PackedGeometry
+    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
     positions = np.array(
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float32
@@ -494,7 +494,7 @@ def test_mesh_draws_the_square_net_with_lit_lines(loaded):
 # --------------------------------------------------------------------------- #
 def test_subdivision_quadruples_and_welds():
     """One level of subdivide_surface: 4x the triangles, midpoints shared."""
-    from chisurf.plugins.chimol.chimol.geometry.refine import subdivide_triangles
+    from chimol.geometry.refine import subdivide_triangles
 
     verts = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float64)
     faces = np.array([[0, 1, 2], [1, 3, 2]])
@@ -509,8 +509,8 @@ def test_subdivision_quadruples_and_welds():
 
 def test_smoothing_relaxes_noise_without_moving_the_shape():
     """surface_smoothing pulls the noise in while the mean radius holds."""
-    from chisurf.plugins.chimol.chimol.geometry.refine import smooth_vertex_positions
-    from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+    from chimol.geometry.refine import smooth_vertex_positions
+    from chimol.volume import VolumeGrid
 
     rng = np.random.default_rng(3)
     z, y, x = np.mgrid[-16:16, -16:16, -16:16]
@@ -578,7 +578,7 @@ def test_the_panel_offers_the_quality_row(loaded):
 # --------------------------------------------------------------------------- #
 def _speckled_map():
     """One big blob plus far-flung single-voxel speckles -- dust by design."""
-    from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+    from chimol.volume import VolumeGrid
 
     z, y, x = np.mgrid[-20:20, -20:20, -20:20]
     values = np.exp(-(x * x + y * y + z * z) / 60.0).astype(np.float32)
@@ -591,7 +591,7 @@ def _speckled_map():
 
 
 def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
-    from chisurf.plugins.chimol.chimol.geometry.dust import dust_faces
+    from chimol.geometry.dust import dust_faces
 
     grid = _speckled_map()
     verts, faces, _normals = grid.isosurface(0.5)
@@ -610,8 +610,8 @@ def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
 
 def _shell(qapp):
     """Build a viewer plus command shell, mirroring test_volume's fixture."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.renderer.view import MolView
 
     view = MolView()
     messages: list[str] = []
@@ -643,7 +643,7 @@ def test_hide_dust_is_a_map_setting_and_show_dust_clears_it(qapp):
 
 
 def test_volume_gaussian_adds_a_smoothed_copy(qapp):
-    from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+    from chimol.volume import VolumeGrid
 
     view, cmd, messages, errors = _shell(qapp)
     z, y, x = np.mgrid[-14:14, -14:14, -14:14]
@@ -659,7 +659,7 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     ]
     assert any("gaussian" in str(n) for n in names), names
 
-    from chisurf.plugins.chimol.chimol.volume import gaussian_filtered
+    from chimol.volume import gaussian_filtered
 
     smoothed = gaussian_filtered(grid, 1.5)
     assert smoothed.values.shape == grid.values.shape

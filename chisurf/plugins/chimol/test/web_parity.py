@@ -180,7 +180,7 @@ def browser_report(
     port = _free_port()
     root = _PLUGIN_DIR.parents[2]
     server = subprocess.Popen(
-        [sys.executable, "-m", "chisurf.plugins.chimol.chimol.web.serve",
+        [sys.executable, "-m", "chimol.web.serve",
          "--port", str(port), "--no-open"],
         cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )

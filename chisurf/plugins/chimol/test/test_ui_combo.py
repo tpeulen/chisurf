@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import combo
+from chimol.cmtk import combo
 
 
 class RecordingPainter:

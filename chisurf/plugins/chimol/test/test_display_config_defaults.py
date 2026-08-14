@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from chisurf.plugins.chimol.chimol import config as cfg_mod
+from chimol import config as cfg_mod
 
 
 @pytest.fixture(scope="module")

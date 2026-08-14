@@ -20,7 +20,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.atoms import (
+from chimol.io.atoms import (
     ATOM_DTYPE,
     BEAD_RES_NAME,
     atom_row,
@@ -94,7 +94,7 @@ def test_the_mmcif_reader_still_produces_recognisable_beads():
     using the shared builder would fail here rather than at render time on a
     234,000-bead model.
     """
-    from chisurf.plugins.chimol.chimol.io import structure
+    from chimol.io import structure
 
     assert structure.ATOM_DTYPE is ATOM_DTYPE
     row = np.array([bead_row("X", 1, (0.0, 0.0, 0.0))], dtype=ATOM_DTYPE)
@@ -111,8 +111,8 @@ def test_there_is_one_atom_dtype_and_the_core_owns_it():
     the mismatch showed up only as fields that were quietly always zero.
     """
     from chisurf.core.fio.structure.coordinates import atom_dtype, keys
-    from chisurf.plugins.chimol.chimol.cmd.editing import PSEUDOATOM_DTYPE
-    from chisurf.plugins.chimol.chimol.io import structure
+    from chimol.cmd.editing import PSEUDOATOM_DTYPE
+    from chimol.io import structure
 
     assert ATOM_DTYPE is atom_dtype
     assert PSEUDOATOM_DTYPE is atom_dtype

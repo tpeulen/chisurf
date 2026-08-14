@@ -56,7 +56,7 @@ def _load_cartoon_module():
     drags in a GUI toolkit, so the module can simply be imported, and then the
     relative imports resolve by themselves.
     """
-    from chisurf.plugins.chimol.chimol.geometry import cartoon
+    from chimol.geometry import cartoon
 
     return cartoon
 

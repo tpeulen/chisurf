@@ -20,10 +20,10 @@ Primary source areas:
 
 - `chisurf/plugins/modelling/proteinmc/`
 - `chisurf/core/models/structure/`
-- {src}`chisurf/plugins/chimol/chimol/io/rmf.py`
-- {src}`chisurf/plugins/chimol/chimol/renderer/chimol_state.py`
-- {src}`chisurf/plugins/chimol/chimol/renderer/view.py`
-- `chisurf/plugins/chimol/chimol/app/`
+- {src}`modules/chimol/chimol/io/rmf.py`
+- {src}`modules/chimol/chimol/renderer/chimol_state.py`
+- {src}`modules/chimol/chimol/renderer/view.py`
+- `modules/chimol/chimol/app/`
 
 Reference-only source areas:
 
@@ -71,7 +71,7 @@ Known limitations:
 - Similar RMF writer code exists in {src}`chisurf/core/models/structure/rmf.py`.
 - Similar ProteinMC runner code exists in {src}`chisurf/core/models/structure/proteinmc.py`.
 
-Chimol currently reads RMF via {src}`chisurf/plugins/chimol/chimol/io/rmf.py`.
+Chimol currently reads RMF via {src}`modules/chimol/chimol/io/rmf.py`.
 
 Known limitations:
 
@@ -102,8 +102,8 @@ Recommended module layout:
 - {src}`chisurf/core/models/structure/rmf.py`: canonical shared PMI-compatible RMF writer and metadata helpers.
 - {src}`chisurf/plugins/modelling/proteinmc/rmf.py`: thin compatibility import or ProteinMC-specific adapter around the shared writer.
 - {src}`chisurf/plugins/modelling/proteinmc/model.py`: ProteinMC runner passes frame metadata into the writer.
-- {src}`chisurf/plugins/chimol/chimol/io/rmf.py`: loader extracts hierarchy, coordinates, features, provenance, and PMI `stat` frame series.
-- {src}`chisurf/plugins/chimol/chimol/app/rmf_panel.py`: RMF feature/provenance/plot dock.
+- {src}`modules/chimol/chimol/io/rmf.py`: loader extracts hierarchy, coordinates, features, provenance, and PMI `stat` frame series.
+- {src}`modules/chimol/chimol/app/rmf_panel.py`: RMF feature/provenance/plot dock.
 
 The shared writer should support two levels of compatibility:
 
@@ -251,7 +251,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Extend {src}`chisurf/plugins/chimol/chimol/io/rmf.py`.
+- Extend {src}`modules/chimol/chimol/io/rmf.py`.
 - During frame iteration, read root-node values from RMF category `stat`.
 - Build `rmf_frame_series: dict[str, np.ndarray]` for numeric keys.
 - Preserve string values in `rmf_frame_metadata` if useful.
@@ -299,7 +299,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Add {src}`chisurf/plugins/chimol/chimol/app/rmf_panel.py`.
+- Add {src}`modules/chimol/chimol/app/rmf_panel.py`.
 - Provide a dock with:
   - frame-series combo box,
   - line plot widget,
@@ -356,7 +356,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Extend `chisurf/plugins/chimol/chimol/cmd/rmf.py` with:
+- Extend `modules/chimol/chimol/cmd/rmf.py` with:
   - `rmf_hierarchy [object_id]`
   - `rmf_features [object_id]`
   - `rmf_provenance [object_id]`

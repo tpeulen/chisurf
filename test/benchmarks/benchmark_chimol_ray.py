@@ -84,11 +84,11 @@ def main() -> int:
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.cmd.command import Cmd
+    from chimol.renderer.raytracer import (
         _camera_from_view_state,
         render_scene,
     )

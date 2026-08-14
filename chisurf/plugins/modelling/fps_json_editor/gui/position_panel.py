@@ -17,7 +17,7 @@ import chisurf.core.structure
 import chisurf.gui.widgets
 from chisurf import logging
 from chisurf.gui.glyphs import Glyphs
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.renderer.view import MolView
 
 from ..core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
 from ..core.mrc import save_av_mrc

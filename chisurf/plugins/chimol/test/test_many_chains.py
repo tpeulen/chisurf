@@ -16,10 +16,10 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.app.molview_main_window import (  # noqa: E402
+from chimol.app.molview_main_window import (  # noqa: E402
     MolViewPluginWindow,
 )
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui  # noqa: E402
+from chimol.renderer.internal_gui import InternalGui  # noqa: E402
 
 CHAINS, PER_CHAIN = 250, 300
 

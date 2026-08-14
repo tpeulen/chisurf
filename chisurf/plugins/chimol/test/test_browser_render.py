@@ -60,7 +60,7 @@ def server():
     port = _free_port()
     root = pathlib.Path(__file__).resolve().parents[4]
     process = subprocess.Popen(
-        [sys.executable, "-m", "chisurf.plugins.chimol.chimol.web.serve",
+        [sys.executable, "-m", "chimol.web.serve",
          "--port", str(port)],
         cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )

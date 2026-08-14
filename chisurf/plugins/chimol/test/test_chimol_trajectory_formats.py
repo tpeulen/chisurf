@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.io import structure as chimol_structure
-from chisurf.plugins.chimol.chimol.io.structure import (
+from chimol.io import structure as chimol_structure
+from chimol.io.structure import (
     TRAJECTORY_SUFFIXES,
     TrajectoryFormatError,
     load_trajectory_frames,

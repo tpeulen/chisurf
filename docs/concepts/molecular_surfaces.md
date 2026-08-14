@@ -159,7 +159,7 @@ spectrum b, blue_red         # buried blue, exposed red
 From Python the same calculation is available without a viewer:
 
 ```python
-from chisurf.plugins.chimol.chimol.analysis.surface_area import atom_surface_areas
+from chimol.analysis.surface_area import atom_surface_areas
 
 areas = atom_surface_areas(
     coords, radii,            # (n, 3) Angstrom, (n,) van der Waals radii

@@ -35,10 +35,10 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(700, 500)
@@ -72,7 +72,7 @@ def _state(viewer):
 # The presets
 # --------------------------------------------------------------------------- #
 def test_every_chimerax_preset_is_present():
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     assert set(Cmd.LIGHTING_PRESETS) >= {
         "simple", "full", "soft", "gentle", "flat", "default"
@@ -262,12 +262,12 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
         pytest.skip("a GL context cannot be created on the offscreen platform")
     from qtpy import QtCore, QtGui
 
-    from chisurf.plugins.chimol.chimol.renderer.scene import (
+    from chimol.renderer.scene import (
         Geometry,
         Scene,
         SceneObject,
     )
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
@@ -377,7 +377,7 @@ def _window_with_molecule(qapp):
         pytest.skip("a GL context cannot be created on the offscreen platform")
     from qtpy import QtCore
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -448,7 +448,7 @@ def test_an_effect_pass_leaves_the_rest_of_the_frame_alone(qapp):
     """
     window = _window_with_molecule(qapp)
     try:
-        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+        from chimol.cmd.command import Cmd
 
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)
@@ -483,7 +483,7 @@ def test_the_sequence_strip_survives_an_effect_pass(qapp):
     """
     window = _window_with_molecule(qapp)
     try:
-        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+        from chimol.cmd.command import Cmd
 
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)
@@ -545,7 +545,7 @@ def test_the_viewport_depth_cue_grades_instead_of_dimming(qapp):
     """
     window = _window_with_molecule(qapp)
     try:
-        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+        from chimol.cmd.command import Cmd
 
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)
@@ -588,7 +588,7 @@ def test_turning_the_depth_cue_off_reaches_the_viewport(qapp):
     """
     window = _window_with_molecule(qapp)
     try:
-        from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+        from chimol.cmd.command import Cmd
 
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)

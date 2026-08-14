@@ -14,8 +14,8 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis import interactions as inter
-from chisurf.plugins.chimol.chimol.analysis.hbonds import type_atoms
+from chimol.analysis import interactions as inter
+from chimol.analysis.hbonds import type_atoms
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -66,11 +66,11 @@ def _ring_bonds(offset=0):
 @pytest.fixture(scope="module")
 def protein():
     """148L, with bonds inferred the way the viewer infers them."""
-    from chisurf.plugins.chimol.chimol.analysis.clashes import VDW_RADII
-    from chisurf.plugins.chimol.chimol.geometry.bonds import (
+    from chimol.analysis.clashes import VDW_RADII
+    from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
-    from chisurf.plugins.chimol.chimol.io.structure import _parse_pdb_backbone
+    from chimol.io.structure import _parse_pdb_backbone
 
     if not PDB.exists():
         pytest.skip("no 148l fixture")
@@ -377,10 +377,10 @@ def cmd(qapp, tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     if not PDB.is_file():
         pytest.skip("no 148l fixture")
@@ -501,7 +501,7 @@ def test_the_disulfide_expression_is_a_selection_chimol_can_evaluate():
     selection engine answers it -- and that it narrows to *bridged* cysteines
     rather than every one of them.
     """
-    from chisurf.plugins.chimol.chimol.object_menus import _DISULFIDE_SHOW
+    from chimol.object_menus import _DISULFIDE_SHOW
 
     assert "bound_to" in _DISULFIDE_SHOW and "byres" in _DISULFIDE_SHOW
     assert _DISULFIDE_SHOW.count("{sele}") == 2

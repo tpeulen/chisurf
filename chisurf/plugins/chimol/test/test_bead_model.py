@@ -22,8 +22,8 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-from chisurf.plugins.chimol.chimol.renderer.view import (
+from chimol.io.atoms import make_bead_rows
+from chimol.renderer.view import (
     MolView,
     _bead_mask,
     _is_bead_model,
@@ -329,7 +329,7 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
     pixels, which is the same projection the ray tracer builds its ray grid
     from -- so a GL impostor and a ray-traced sphere are the same size.
     """
-    from chisurf.plugins.chimol.chimol.renderer import wgpu_view
+    from chimol.renderer import wgpu_view
 
     if not wgpu_view.is_available():
         pytest.skip("no WebGPU adapter")
@@ -356,9 +356,9 @@ def test_world_radius_reaches_the_draw_call(qapp_chimol):
     really asking -- does a bead's radius survive as a *distance in the model*
     -- is answered by the number that reaches the GPU.
     """
-    from chisurf.plugins.chimol.chimol.renderer.pack import pack_geometry
-    from chisurf.plugins.chimol.chimol.renderer.scene import Geometry
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.renderer.pack import pack_geometry
+    from chimol.renderer.scene import Geometry
+    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
     pts = np.zeros((3, 3), dtype=float)
     beads = pack_geometry(
@@ -407,7 +407,7 @@ def test_the_geometry_modules_import_without_a_compiler():
     returns to these modules, that returns with it; ``test_no_numba.py`` is what
     keeps it away.
     """
-    from chisurf.plugins.chimol.chimol.geometry import ambient, cartoon
+    from chimol.geometry import ambient, cartoon
 
     assert not hasattr(cartoon, "_NB_CACHE"), "numba is back; restore the guard"
     assert not hasattr(ambient, "_NB_CACHE"), "numba is back; restore the guard"

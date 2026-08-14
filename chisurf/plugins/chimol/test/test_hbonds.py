@@ -21,7 +21,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.hbonds import (
+from chimol.analysis.hbonds import (
     HBond,
     HBondCriteria,
     find_hydrogen_bonds,
@@ -47,7 +47,7 @@ def _atoms(*rows) -> np.ndarray:
 def _read(name: str):
     """A fixture PDB with its bonds, keeping waters and ligands."""
     from chisurf.core.fio.structure.coordinates import read_coordinates
-    from chisurf.plugins.chimol.chimol.geometry.bonds import (
+    from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
 
@@ -97,7 +97,7 @@ def test_the_curve_is_monotone_between_the_two_ends():
 
 def test_a_zero_edge_flattens_the_curve_to_a_plain_distance():
     """PyMOL's own escape hatch, and the branch that reads it."""
-    from chisurf.plugins.chimol.chimol.analysis.hbonds import _test_hbond
+    from chimol.analysis.hbonds import _test_hbond
 
     hbc = HBondCriteria(cutoff_edge=0.0)
     don_to_acc = np.array([3.5, 0.0, 0.0])
@@ -111,7 +111,7 @@ def test_a_zero_edge_flattens_the_curve_to_a_plain_distance():
 
 def test_a_hydrogen_pointing_away_is_rejected():
     """The A-D-H angle test: 63 degrees is the limit, not 90."""
-    from chisurf.plugins.chimol.chimol.analysis.hbonds import _test_hbond
+    from chimol.analysis.hbonds import _test_hbond
 
     hbc = HBondCriteria()
     don_to_acc = np.array([3.0, 0.0, 0.0])
@@ -125,7 +125,7 @@ def test_a_hydrogen_pointing_away_is_rejected():
 
 def test_the_cone_rejects_a_hydrogen_behind_the_acceptor():
     """``h_bond_cone``: an acceptor does not accept from behind its neighbours."""
-    from chisurf.plugins.chimol.chimol.analysis.hbonds import _test_hbond
+    from chimol.analysis.hbonds import _test_hbond
 
     hbc = HBondCriteria()
     don_to_acc = np.array([3.0, 0.0, 0.0])
@@ -339,7 +339,7 @@ def test_stripping_the_hydrogens_keeps_almost_every_contact(hydrogenated):
     if not (~heavy).any():
         pytest.skip("fixture carries no hydrogens")
 
-    from chisurf.plugins.chimol.chimol.geometry.bonds import (
+    from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
 

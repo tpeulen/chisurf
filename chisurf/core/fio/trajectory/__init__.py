@@ -26,7 +26,7 @@ here. See ``okf/plugins/chimol-relocation.md``. Every existing caller of
 
 from __future__ import annotations
 
-from chisurf.plugins.chimol.chimol.io.dcd import (
+from chimol.io.dcd import (
     DCDHeader,
     DCDWriter,
     dcd_info,

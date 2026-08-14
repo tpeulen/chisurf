@@ -17,12 +17,12 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.host.events import (
+from chimol.host.events import (
     ALT_MODIFIER,
     CONTROL_MODIFIER,
     SHIFT_MODIFIER,
 )
-from chisurf.plugins.chimol.chimol.host.keys import (
+from chimol.host.keys import (
     KEY_BACKSPACE,
     KEY_DOWN,
     KEY_END,
@@ -32,7 +32,7 @@ from chisurf.plugins.chimol.chimol.host.keys import (
     KEY_TAB,
     KEY_UP,
 )
-from chisurf.plugins.chimol.chimol.cmtk import text_editor as te
+from chimol.cmtk import text_editor as te
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 #: The reference checkout. Gitignored and re-clonable, so the tests that read

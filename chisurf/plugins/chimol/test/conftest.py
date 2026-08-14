@@ -11,15 +11,22 @@ Two things about *how* this is done are load-bearing, and both were wrong
 before -- the isolation existed, was described exactly as above, and did not
 work:
 
-**The variable is chimol's own.** This set only ``CHISURF_SETTINGS_DIR``.
-:mod:`chimol.settings_dir` reads ``CHIMOL_SETTINGS_DIR`` and falls back to
-ChiSurf's directory only when that is unset -- part of making chimol run with
-no ChiSurf on the path. So the override never applied to chimol's own files
+**The variable is chimol's own.** This set only ``CHISURF_SETTINGS_DIR``,
+which :mod:`chimol.settings_dir` has never read -- it reads
+``CHIMOL_SETTINGS_DIR``. So the override never applied to chimol's own files
 and every test read ``~/.chisurf/chimol_display.json``. It cost two failures
 that looked like product defects: a background asserted black against a real
 saved white, and a surface quality asserted ``splat`` against a real saved
 ``fast``. Both pass or fail depending on whose machine runs them, which is the
 worst way for a test to be wrong.
+
+``CHISURF_SETTINGS_DIR`` is still set below, for ChiSurf's own half.
+
+The environment is also the *right* layer to isolate at, rather than calling
+``settings_dir.set_settings_dir``: importing ``chisurf.plugins.chimol`` injects
+ChiSurf's directory as a side effect, and most of these tests import it. The
+environment wins over an injected directory precisely so a later import cannot
+undo the isolation.
 
 **The directory is set at import, not in a fixture.** ``_DISPLAY_CONFIG`` is
 module-level state, loaded the first time :mod:`chimol.config` is imported --
@@ -65,7 +72,7 @@ def _settings_isolation_actually_took(_isolated_chisurf_settings):
     however long ``CHIMOL_SETTINGS_DIR`` has existed and nobody noticed, since
     the tests only fail on a machine whose saved settings happen to disagree.
     """
-    from chisurf.plugins.chimol.chimol.settings_dir import settings_dir
+    from chimol.settings_dir import settings_dir
 
     resolved = settings_dir()
     assert str(resolved).startswith(tempfile.gettempdir()) or str(resolved) == os.environ.get(

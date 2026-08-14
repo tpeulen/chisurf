@@ -8,7 +8,7 @@ Declared in a ``.view.json`` as::
 The bound attribute may be:
 
 * ``bytes`` / ``bytearray`` / ``memoryview`` / a NumPy array -- shown directly;
-* a :class:`~chimol.renderer.ui.memory_editor.MemorySource`;
+* a :class:`~chimol.cmtk.memory_editor.MemorySource`;
 * a **list** of either, or a callable returning one -- which grows a picker
   above the dump, so one section can show a whole set of buffers.
 
@@ -76,8 +76,8 @@ class MemoryEditorWidget(QtWidgets.QWidget):
         self.editor = None
         self._host = None
         try:
-            from chisurf.plugins.chimol.chimol.renderer.ui import memory_editor as me
-            from chisurf.plugins.chimol.chimol.renderer.ui.qt_host import ControlHost
+            from chimol.cmtk import memory_editor as me
+            from chimol.cmtk.qt_host import ControlHost
 
             self.editor = me.MemoryEditor(
                 None,
@@ -105,7 +105,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
     # -- sources -------------------------------------------------------- #
     def _gather(self) -> tuple[list, str]:
         """Return ``(sources, caption)`` for whatever this section is bound to."""
-        from chisurf.plugins.chimol.chimol.renderer.ui import memory_editor as me
+        from chimol.cmtk import memory_editor as me
 
         if not self._target:
             return self._probe()
@@ -135,7 +135,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
     def _probe(self) -> tuple[list, str]:
         """Probe the running renderer for its RAM and VRAM blocks."""
         try:
-            from chisurf.plugins.chimol.chimol.renderer import memory_probe
+            from chimol.renderer import memory_probe
         except ImportError as problem:
             return [], f"probe unavailable ({problem})"
 

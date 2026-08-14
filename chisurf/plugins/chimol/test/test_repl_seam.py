@@ -15,9 +15,11 @@ that quietly routes everything one way.
 """
 from __future__ import annotations
 
+import pathlib
+
 import pytest
 
-from chisurf.plugins.chimol.chimol import repl
+from chimol import repl
 
 
 @pytest.fixture(autouse=True)
@@ -235,3 +237,90 @@ def test_the_fallback_agrees_about_unfinished_blocks():
         "the two routers disagree about which lines are unfinished: "
         + repr(disagreements)
     )
+
+
+# --------------------------------------------------------------------------- #
+# The settings directory is injected, not asked for
+# --------------------------------------------------------------------------- #
+def test_chimol_defaults_to_its_own_settings_directory():
+    """With no host and no override, chimol answers for itself.
+
+    It used to import ``chisurf.core.settings`` inside a ``try`` and fall back
+    when that raised. That worked and pointed the wrong way: chimol is packaged
+    to run where there is no ChiSurf, so a module naming ChiSurf -- even
+    guarded, even only in the fallback -- is one the move has to keep
+    explaining away.
+    """
+    import os
+
+    from chimol import settings_dir as sd
+
+    before, env = sd.injected_settings_dir(), os.environ.pop(sd.ENV_VAR, None)
+    try:
+        sd.set_settings_dir(None)
+        assert sd.settings_dir() == pathlib.Path(sd.FALLBACK).expanduser()
+    finally:
+        sd.set_settings_dir(before)
+        if env is not None:
+            os.environ[sd.ENV_VAR] = env
+
+
+def test_a_host_can_place_the_settings_directory(tmp_path):
+    """What ChiSurf's plugin package does at import."""
+    import os
+
+    from chimol import settings_dir as sd
+
+    before, env = sd.injected_settings_dir(), os.environ.pop(sd.ENV_VAR, None)
+    try:
+        sd.set_settings_dir(tmp_path)
+        assert sd.settings_dir() == tmp_path
+        assert sd.settings_path("chimol_display.json") == tmp_path / "chimol_display.json"
+    finally:
+        sd.set_settings_dir(before)
+        if env is not None:
+            os.environ[sd.ENV_VAR] = env
+
+
+def test_the_environment_overrides_a_host(tmp_path):
+    """An operator has to be able to correct a host without editing it.
+
+    Also what keeps the suite's own isolation working: the ChiSurf plugin
+    package injects ``~/.chisurf`` the moment it is imported, which happens in
+    most of these tests, and the throwaway directory has to win anyway.
+    """
+    import os
+
+    from chimol import settings_dir as sd
+
+    before, env = sd.injected_settings_dir(), os.environ.get(sd.ENV_VAR)
+    try:
+        sd.set_settings_dir(tmp_path / "host")
+        os.environ[sd.ENV_VAR] = str(tmp_path / "operator")
+        assert sd.settings_dir() == tmp_path / "operator"
+    finally:
+        sd.set_settings_dir(before)
+        if env is None:
+            os.environ.pop(sd.ENV_VAR, None)
+        else:
+            os.environ[sd.ENV_VAR] = env
+
+
+def test_chimols_settings_module_does_not_import_chisurf():
+    """The point of the whole exercise, asserted on the import graph."""
+    import ast
+
+    from chimol import settings_dir as sd
+
+    source = pathlib.Path(sd.__file__).read_text(encoding="utf-8")
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            names = [a.name.split(".")[0] for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            names = [(node.module or "").split(".")[0]] if node.level == 0 else []
+        else:
+            continue
+        assert "chisurf" not in names, (
+            "chimol.settings_dir imports ChiSurf again -- the host injects the "
+            "directory now, see chisurf/plugins/chimol/__init__.py"
+        )

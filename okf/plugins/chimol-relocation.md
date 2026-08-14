@@ -1,8 +1,8 @@
 ---
 title: ChiMOL moves to its own repository — sever first, move second
-status: in-progress
+status: done
 group: plugins
-updated: 2026-08-13
+updated: 2026-08-14
 ---
 
 # ChiMOL moves to its own repository — sever first, move second
@@ -20,28 +20,72 @@ happens **here**, in `chisurf/plugins/chimol/`, against the real suite. The
 move itself is then a directory move and an import rewrite — not a debugging
 session in a repository where the tests do not yet run.
 
+**cmtk goes with it** (2026-08-14): ChiSurf consumes cmtk **via chimol**, and
+the ChiSurf↔cmtk interface is still floating — so this relocation is the
+prerequisite for the cmtk work too (see
+[chimol-cmtk.md](chimol-cmtk.md)).
+
 ## Where to pick this up
 
-The chimol suite is **green**: 3909 passed, 38 skipped, no segfault. All
-eighteen failures the crash had been hiding are resolved.
+**The move is done (2026-08-14).** The engine lives at `~/dev/chimol` — a
+local git repo, no remote, full 329-commit history extracted with
+`git filter-repo --path` — symlinked as `modules/chimol` exactly like
+`tttrlib`, `imp-tricks` and `mmfdb`, editable-installed via the new
+`build-chimol` pixi task. ChiSurf imports it as bare `chimol`; the plugin
+wrapper `chisurf/plugins/chimol/` (manifest, `__init__`, `__main__`, `test/`)
+stays behind and is the only place that knows about ChiSurf. The seam and
+portability suites stayed green through the move; the plugin window grab is
+pixel-identical before/after.
 
-The open front is the relocation itself, in this order:
+### What was carried, and where each state lives
 
-1. **`MENU_BAR`/`TOOLBAR` out of `app/menu_bar.py`.** They are data, and
-   `host/run.py` -- the toolkit-free host -- imports them from the Qt package.
-   One of the three remaining engine->`app/` edges, and the only one that is
-   pure movement. (The others: `cmd/base.py` is a `TYPE_CHECKING` annotation
-   and costs nothing; `cmd/volumes.py` -> `app/volume_panel.py` is real, and
-   `volume_panel` stays behind because it resolves an AutoForm view spec.)
-2. **The twelve Qt-widget files to the shim** (see the widget rule above).
-   `cmtk/qt_painter.py`, `host/qt_overlay.py` and `testing/mock_viewer.py` are
-   *not* among them -- they use no `QtWidgets`.
-3. **Retarget `test_qt_seam.py` at `QtWidgets`** rather than at Qt as a whole.
-   That is the property that decides whether chimol runs in a browser; the
-   current check over-reports by flagging painting-only modules.
-4. **The move**: `git mv` to `~/dev/chimol`, `git init` (no remote), rewrite
-   the `chisurf.plugins.chimol.chimol` -> `chimol` call sites, symlink into
-   `modules/`.
+Three states existed at move time and none was dropped:
+
+| state | where it lives now |
+|---|---|
+| full history (329 commits) | `~/dev/chimol` — extracted with filter-repo, rewritten to `chimol/` at repo root |
+| the **staged index snapshot** (204 files, the cmtk→`renderer/ui` rename direction that never materialised on disk and matches no commit) | `~/dev/chimol` commit `d13209b` — "snapshot: chisurf staged-index engine state, carried verbatim" |
+| the **disk state** the suite was green on (cmtk layout + `menus.py` + working-tree edits) | `~/dev/chimol` HEAD lineage, commit `cf9076d` |
+
+The staged snapshot is byte-identical (verified by blob-hash comparison) and
+sits in history one commit *before* the disk state, so the renderer/ui
+direction is recoverable with `git checkout d13209b -- .` if it is ever
+wanted. It was a rewind-era index: it deletes `repl.py`/`tour.py`/
+`keybindings.py` that HEAD ships and that the browser host imports, so it
+could not have become the final state.
+
+### What the move changed on the ChiSurf side
+
+* ~230 files rewritten `chisurf.plugins.chimol.chimol` → `chimol` (call
+  sites, the whole plugin test suite, manifest, pyproject entry points,
+  docs guides).
+* `test_chisurf_seam.py` / `test_qt_seam.py` / `test_engine_is_portable.py`
+  resolve the package through the import system
+  (`Path(__import__("chimol").__file__).parent`) instead of relative paths —
+  they follow whatever installation the host uses.
+* `test_plugin_help_guide_seam.py` learned to resolve GUI modules in sibling
+  checkouts (`modules/X/X/...`); chimol's allow-list key became
+  `modules/chimol/chimol/app`.
+* Found-and-fixed in passing: the `chimol-cli` console script pointed at
+  `chimol.app.cli:main`, which never existed — the REPL moved to
+  `chimol.cli` months ago. Now `chimol.cli:main`.
+* `test_qt_seam.py` no longer counts `TYPE_CHECKING`-only imports as Qt
+  (same rule the chisurf seam already applied); `menus.py` was the file that
+  exposed it.
+
+### The open front, in order
+
+1. **`test_prd_mentions.py` and `test_plugin_help_guide_seam.py` were red
+   before the move** (offenders: `mfd_prepare`, `plot_settings`,
+   `tttr_to_pto`, `filetools`, `lumis_quest` help.md, fret-core PRD mentions,
+   stale `tttr/converter/gui` allow-list line). All belong to other plugins'
+   modernisation debt — verify against HEAD before "fixing" anything there;
+   none is relocation fallout.
+2. **Retarget `test_qt_seam.py` at `QtWidgets`** rather than Qt as a whole
+   (unchanged from below — the TYPE_CHECKING fix was not this).
+3. **The twelve Qt-widget files to the shim** (widget rule below).
+4. **`io/structure.py` DCD reader decision** — standalone chimol opening a
+   trajectory (PRD-80 context) now has its own repo to decide it in.
 
 ### What the eighteen taught, and the trap to keep
 
@@ -98,6 +142,143 @@ runs. A session fixture is too late.
 
 `gui.rows` includes the `all` header and `sele`; filter on `is_header`,
 `is_selection`, `is_measurement`.
+
+
+
+## The browser host, and what "1:1 with the desktop" costs
+
+User: *"cm in browser: make demo look 1:1 like desk, still sele and mouse
+clicks not landing only obj rot works."*
+
+**The pick was never asked for.** `web/demo.py`'s `press` sent the pointer
+either to the panel or to the trackball and had no third case, so every click
+was consumed as a zero-length drag and `MolView.handle_mouse_click` was never
+called from the page at all. Nothing had to be *written*: the page runs the
+real `MolView`, its windowless renderer projects, and `renderer/picking` is
+duck-typed (`x()`, `y()`, `modifiers()`). A press/release with a travel
+threshold and a small event shim is the whole fix. `boot.js` already builds
+the modifier mask from `chimol.host.events` values, so nothing translates.
+
+### Why the rest of 1:1 is not a small change
+
+`supported_features` is the measure (`chimol.testing.parity.HOST_FEATURES`).
+The Qt-free desktop host `CanvasView` declares eleven; the browser now
+declares six. Missing: **box_select, context_menu, double_click, resize,
+wheel_modifiers**.
+
+They are missing for one structural reason, and it is worth stating plainly:
+
+```
+CanvasRenderer(CameraState, Renderer)   <- owns on_pointer_press/move/release/wheel,
+  CanvasView(CanvasRenderer)               the mouse-mode table, _BOX_ACTIONS,
+  WgpuRenderer(widget, CanvasRenderer)     _CLICK_ACTIONS, CLICK_SLOP
+SceneSink(CameraState, Renderer)        <- the browser's renderer: a SIBLING, not a child
+```
+
+Both desktop hosts inherit the whole event layer. `SceneSink` bypasses it, so
+the browser hand-rolls a partial copy -- which is exactly why it had a click
+tolerance of its own and no picking.
+
+The fix is to re-base `SceneSink` on `CanvasRenderer`, and the obstacle is
+that **`init_viewport` conflates input state with GPU setup**: it creates
+`_internal_gui`, `_press_button` and `_right_dragged` *and* calls
+`self._surface().get_context("wgpu")`, which a windowless renderer has no
+surface for. Split it -- an input-state half the headless/browser hosts call,
+a GPU half only a surfaced host calls -- and the browser gets all five
+remaining features from the shared implementation rather than five more
+hand-rolled copies.
+
+Encouraging: the four handlers (`canvas_base.py` 1549-2050) reference
+`_surface()` **zero** times. The split is real but shallow.
+
+### Menu and CLI
+
+Both already exist in the page -- `InternalGui` is constructed with
+`sequence_visible`, the command line takes `cmd.do` and completions. What is
+missing is the *input* to reach them: `context_menu` (a right press opening
+the viewer's own menu) and `double_click` (the panel opens menus on one) are
+two of the five features above, and `boot.js` sends neither. So the menu is
+drawn and unreachable, which reads as "no menu".
+
+
+## Desktop vs browser, photographed (2026-08-14)
+
+**The comparison was blocked by a broken camera, not by the browser.**
+`test/screenshot.py` finds the 3-D view with `findChildren(QOpenGLWidget)` and
+captures it with `grabFramebuffer()`; the renderer is WebGPU, so it finds
+nothing and falls back to `widget.grab()`, which returns a uniform grey
+rectangle of the right size. Silent. See known-issues.
+
+The working capture already existed and nothing used it:
+`CanvasRenderer.grab_image(chrome=True)` renders the frame offscreen and
+composites the panel -- one call, real pixels (29,804 distinct colours where
+`shoot()` gave one).
+
+**What the photographs showed.** Everything matched except two controls, and
+they were the two the browser could not reach:
+
+| control | desktop | browser (before) |
+|---|---|---|
+| menu bar (File..Help) | yes | **absent** |
+| toolbar (Open..Tree) | yes | **absent** |
+| sequence strip, Object List, Mouse block, command line | yes | yes |
+
+**Cause, and it was already on this page as the next task.** `MENU_BAR` and
+`TOOLBAR` are plain tuples of labels and command strings, and they lived in
+`app/menu_bar.py` -- the Qt package, which a page cannot import. `InternalGui`
+draws both whenever `gui.menubar` is filled and `menubar_visible` is already
+`True` by default, so the page had nothing to draw. The toolkit-free desktop
+host reached across the same boundary (`host/run.py` imported
+`..app.menu_bar`), which is the same smell from the other side.
+
+Fixed by splitting the file at its natural seam: `chimol/menus.py` holds the
+data (523 lines, no Qt), `app/menu_bar.py` keeps `build_menu_bar`/`_populate`/
+`_run` and re-exports the names so every caller is unchanged. Both hosts and
+the page now read one source. Engine->`app/` edges: **2** (`cmd/base.py` is a
+`TYPE_CHECKING` annotation; `cmd/volumes.py` -> `volume_panel` is the last real
+one).
+
+**A latent crash the move exposed.** `demos/catalog.py` computed its
+sample-data path with `parents[5]` at *module import time*. That index only
+exists five directories inside a ChiSurf checkout; in the browser bundle the
+package is three deep, so it raised `IndexError` and took the whole page down
+-- a traceback about a demo search path while the viewer was still booting. Now
+computed in a function that returns `()` when the root is not there: a missing
+sample directory degrades to "no samples", never to an exception.
+
+## Injection beats a guarded import
+
+User, on seeing `settings_dir.py` keep its `try: import chisurf`: *"why not
+conf dir inject? chisurf inject conf dir in chimol."* Right, and it generalises.
+
+A guarded import is the *tolerable* shape for a dependency that runs the wrong
+way. It is not the correct one. `settings_dir.py` asked
+`chisurf.core.settings` where to keep files and fell back to `~/.chimol` when
+that raised. That worked, and it was wrong twice over:
+
+* **Direction.** chimol is packaged to run where there is no ChiSurf. A module
+  that names ChiSurf -- even guarded, even only in a fallback -- is one the
+  move has to keep explaining away, and one more line on the allow-list that
+  looks permanent.
+* **Visibility.** Nothing on the ChiSurf side said "chimol keeps its settings
+  with mine". The decision lived in chimol, which is the one place a reader of
+  the *plugin* would not look.
+
+So the host tells the engine. `chisurf/plugins/chimol/__init__.py` calls
+`settings_dir.set_settings_dir(...)` at import -- the only moment the answer is
+both known and correct -- and chimol names nobody. The allow-list lost an
+entry rather than gaining an explanation, and `SOFT` is down to three.
+
+Resolution order is `$CHIMOL_SETTINGS_DIR`, then the injected directory, then
+`~/.chimol`. The environment winning over injection is load-bearing for the
+test suite: importing the plugin package injects `~/.chisurf` as a side effect,
+and the throwaway directory has to survive that.
+
+**Apply this to what is left.** `analysis/ss.py` and `io/atoms.py` are the same
+shape -- chimol asking ChiSurf for something the host could hand it. Before
+guarding a new dependency, ask whether the host can inject it instead; a
+guarded import should be the answer only when there is no host to ask, which
+for a *plugin* is never.
 
 ## The package boundary moved (2026-08-13)
 
@@ -179,10 +360,15 @@ behind.
    structures, only for opt exp data (inherit from chimol)"*. Structure data
    belongs to chimol; ChiSurf keeps what is specific to experimental/optical
    data and inherits or imports the rest **from** chimol. The next application
-   of that rule is `atom_dtype`, still defined in both places and held in step
+   of that rule was `atom_dtype`, still defined in both places and held in step
    by an equality test — a copy kept honest by a test is still a copy, and the
-   dependency points the wrong way. Vendor it the same way the element table
-   was vendored, then have ChiSurf's `coordinates.py` take it from chimol.
+   dependency points the wrong way. It is now **vendored and inverted
+   (2026-08-14)**: `chimol.io.atoms` owns `ATOM_DTYPE` unconditionally, and
+   `chisurf.core.fio.structure.coordinates` imports it from chimol and
+   re-exports `atom_dtype`/`keys`/`formats`/`keys_formats` (the DCD reader
+   pattern). `test_engine_is_portable.py` now asserts identity (`is`) rather
+   than equality, the allow-list lost `io/atoms.py`, and `SOFT` in
+   `test_chisurf_seam.py` dropped it.
 
    Original entry, for the record: `analysis/elements.py` imports
    `chisurf.core.fio.structure.elements` at **module scope**, unguarded: the
@@ -215,10 +401,10 @@ behind.
    the imported pieces moved into the engine first. Measure it again before
    committing to a boundary; `app/demo_catalog.py` was already staged for
    deletion by another instance while this was written.
-4. **Then move**, and only then: `git mv`, rewrite `chisurf.plugins.chimol.chimol`
-   → `chimol` at the ~20 ChiSurf call sites (already the correct direction —
-   `renderer.view` ×6, `cmtk` ×4, `io.rmf`, `io.structure`, `config`), add the
-   symlink, and let `test_chisurf_seam.py` say whether it was really ready.
+4. ~~**Then move**~~ **Done (2026-08-14)**: the engine is `~/dev/chimol`
+   (full history via filter-repo), the call sites say `chimol`, the symlink
+   is `modules/chimol`, and `test_chisurf_seam.py` confirmed it was ready —
+   green before and after the move.
 
 ## Counting it
 

@@ -35,11 +35,11 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.cmd import cmd as shared
+    from chimol.config import _DISPLAY_CONFIG
 
     win = MolViewPluginWindow()
     win.resize(800, 640)

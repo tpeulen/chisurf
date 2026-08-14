@@ -25,10 +25,10 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+from chimol.app.molview_main_window import (
     _INITIALLY_HIDDEN_DOCKS,
 )
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+from chimol.renderer.internal_gui import InternalGui
 
 
 # --------------------------------------------------------------------------- #
@@ -97,7 +97,7 @@ def qapp():
 @pytest.fixture
 def window(qapp, tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -174,7 +174,7 @@ def test_the_sequence_toggle_drives_the_strip_that_exists(window):
     against none of them, and returned -- so the menu entry ticked and unticked
     and nothing moved.
     """
-    from chisurf.plugins.chimol.chimol.settings import get_setting
+    from chimol.settings import get_setting
 
     window._set_sequence_visible(False)
     assert bool(get_setting("seq_view")) is False
@@ -190,7 +190,7 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     the panel that is now the primary one. The command line is one row below it,
     so the entry goes *there*, with the placeholder selected.
     """
-    from chisurf.plugins.chimol.chimol.object_menus import MenuEntry
+    from chimol.object_menus import MenuEntry
 
     window.resize(1200, 800)
     window.show()

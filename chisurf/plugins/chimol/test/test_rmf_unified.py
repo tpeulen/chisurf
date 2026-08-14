@@ -25,9 +25,9 @@ import numpy as np
 import pytest
 from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
 
-from chisurf.plugins.chimol.chimol.io.atoms import bead_mask
-from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
-from chisurf.plugins.chimol.chimol.renderer.view import MolView, _is_bead_model
+from chimol.io.atoms import bead_mask
+from chimol.io.structure import load_structure_payload
+from chimol.renderer.view import MolView, _is_bead_model
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 
@@ -260,7 +260,7 @@ def test_the_coordinate_permutation_is_right(multires, monkeypatch):
     Both paths are exercised and compared: the buffered one, and the per-node
     fallback that reads each particle by hand in loader order.
     """
-    import chisurf.plugins.chimol.chimol.io.rmf as rmf_module
+    import chimol.io.rmf as rmf_module
 
     path, _info = multires
     buffered = rmf_module.load_rmf_full(path)["frames"]

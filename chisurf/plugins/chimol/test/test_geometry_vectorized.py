@@ -11,15 +11,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.plugins.chimol.chimol.geometry import ambient
-from chisurf.plugins.chimol.chimol.geometry.cartoon import (
+from chimol.geometry import ambient
+from chimol.geometry.cartoon import (
     _build_frames,
     _catmull_rom,
     _default_side_from_up,
     _extrude_shape,
     _sample_path,
 )
-from chisurf.plugins.chimol.chimol.geometry.primitives import (
+from chimol.geometry.primitives import (
     _build_stick_mesh,
     _get_cylinder_template,
     _rotation_from_z,

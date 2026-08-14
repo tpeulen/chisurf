@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-from chisurf.plugins.chimol.chimol.settings import (
+from chimol.config import _DISPLAY_CONFIG
+from chimol.settings import (
     get_setting,
     resolve,
     set_setting,
@@ -217,7 +217,7 @@ def test_no_setting_is_registered_twice():
     untouched -- with both entries in the table, both docstrings plausible, and
     nothing failing.
     """
-    from chisurf.plugins.chimol.chimol.settings import _SPECS
+    from chimol.settings import _SPECS
 
     seen: dict[str, str] = {}
     duplicates = []
@@ -235,7 +235,7 @@ def test_no_two_settings_share_a_config_path():
     (`cartoon_side_chain_helper` and `ribbon_side_chain_helper` are one setting
     here), so this only asserts the direction that bites.
     """
-    from chisurf.plugins.chimol.chimol.settings import _SPECS
+    from chimol.settings import _SPECS
 
     by_name: dict[str, set[str]] = {}
     for spec in _SPECS:

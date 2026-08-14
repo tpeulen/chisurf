@@ -20,7 +20,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.clashes import (
+from chimol.analysis.clashes import (
     BAD_COLOR,
     GOOD_COLOR,
     ClashCriteria,
@@ -28,12 +28,12 @@ from chisurf.plugins.chimol.chimol.analysis.clashes import (
     find_clashes,
     radii_for,
 )
-from chisurf.plugins.chimol.chimol.analysis.hbond_networks import (
+from chimol.analysis.hbond_networks import (
     NetworkOptions,
     find_hbond_networks,
     network_colors,
 )
-from chisurf.plugins.chimol.chimol.analysis.hbonds import HBond
+from chimol.analysis.hbonds import HBond
 
 _PDB = pathlib.Path(__file__).resolve().parents[4] / "test" / "data" / (
     "atomic_coordinates"
@@ -281,7 +281,7 @@ def test_the_colours_are_stable_and_cycle():
 # --------------------------------------------------------------------------- #
 def _read(name: str):
     from chisurf.core.fio.structure.coordinates import read_coordinates
-    from chisurf.plugins.chimol.chimol.geometry.bonds import (
+    from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
 
@@ -307,7 +307,7 @@ def test_a_real_protein_has_networks_and_almost_no_clashes():
     missing, or the neighbour exclusion breaking -- either turns a clean
     crystal structure into hundreds of clashes.
     """
-    from chisurf.plugins.chimol.chimol.analysis.hbonds import type_atoms
+    from chimol.analysis.hbonds import type_atoms
 
     atoms, bonds = _read("148l.pdb")
     networks = find_hbond_networks(atoms, bonds, options=NetworkOptions(min_size=3))
@@ -336,7 +336,7 @@ def test_a_real_protein_has_networks_and_almost_no_clashes():
 # --------------------------------------------------------------------------- #
 def test_every_standard_residue_has_a_fragment_and_its_rotamers():
     """Twenty fragments, eighteen libraries -- ALA and GLY have no chi angle."""
-    from chisurf.plugins.chimol.chimol.analysis.residue_library import (
+    from chimol.analysis.residue_library import (
         FRAGMENTS,
         ROTAMERS,
     )
@@ -351,7 +351,7 @@ def test_every_standard_residue_has_a_fragment_and_its_rotamers():
 
 def test_a_built_rotamer_has_the_chi_angles_it_says():
     """The whole point of the library: the built side chain *is* that rotamer."""
-    from chisurf.plugins.chimol.chimol.analysis.mutate import (
+    from chimol.analysis.mutate import (
         _dihedral,
         build_rotamers,
     )
@@ -372,7 +372,7 @@ def test_a_built_rotamer_has_the_chi_angles_it_says():
 
 def test_the_backbone_is_kept_exactly():
     """The side chain grows out of the existing backbone; the chain does not move."""
-    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+    from chimol.analysis.mutate import build_rotamers
 
     backbone = {
         "N": np.array([3.1, -1.2, 0.7]),
@@ -394,7 +394,7 @@ def test_the_backbone_is_kept_exactly():
 
 def test_a_residue_without_a_backbone_is_refused():
     """PyMOL's wizard requires N, C and O before it offers anything."""
-    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+    from chimol.analysis.mutate import build_rotamers
 
     with pytest.raises(ValueError):
         build_rotamers("LEU", {"CA": np.zeros(3)})
@@ -406,7 +406,7 @@ def test_hydrogens_follow_the_structure():
     One residue drawn with hydrogens and 164 without reads as a rendering
     fault, and the fragments all carry them.
     """
-    from chisurf.plugins.chimol.chimol.analysis.mutate import build_rotamers
+    from chimol.analysis.mutate import build_rotamers
 
     backbone = {
         "N": np.zeros(3), "CA": np.array([1.458, 0.0, 0.0]),
@@ -430,7 +430,7 @@ def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
     crystallographic one, and PyMOL has exactly the same property, which is why
     its wizard shows the list.
     """
-    from chisurf.plugins.chimol.chimol.analysis.mutate import mutate_residue
+    from chimol.analysis.mutate import mutate_residue
 
     atoms, _bonds = _read("148l.pdb")
     resid = np.asarray(atoms["res_id"], dtype=int)
@@ -483,10 +483,10 @@ def wizard_cmd(qapp, tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     src = _PDB / "148l.pdb"
     if not src.is_file():

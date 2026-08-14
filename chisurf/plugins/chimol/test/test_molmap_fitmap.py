@@ -34,13 +34,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.mapfit import (
+from chimol.analysis.mapfit import (
     correlation_about_mean,
     fit_points_in_map,
     interpolate_values,
     map_correlation,
 )
-from chisurf.plugins.chimol.chimol.analysis.molmap import simulate_map
+from chimol.analysis.molmap import simulate_map
 
 _CACHE = Path.home() / ".chisurf/structures/chimol/chimol_pdb_148l.pdb"
 

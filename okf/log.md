@@ -1,5 +1,71 @@
 # Update Log
 
+## 2026-08-14
+* **The chimol engine moved to its own repository, `~/dev/chimol`.** Step 4
+  of the relocation plan is done
+  ([chimol-relocation.md](plugins/chimol-relocation.md)): full 329-commit
+  history extracted with `git filter-repo`, the staged index snapshot (the
+  cmtk→`renderer/ui` direction that never reached disk) preserved verbatim
+  as its own commit, and the disk state the suite was green on as HEAD.
+  `modules/chimol` symlinks to it like mmfdb/imp-tricks/tttrlib, a
+  `build-chimol` pixi task editable-installs it, and ~230 chisurf files now
+  import bare `chimol`. Seam/portability suites green before and after; the
+  plugin window grab is pixel-identical. Found-and-fixed in passing: the
+  `chimol-cli` entry point named `chimol.app.cli:main`, which never existed.
+  `test_prd_mentions.py` / `test_plugin_help_guide_seam.py` were already red
+  at HEAD for unrelated plugins (mfd_prepare, plot_settings, filetools,
+  tttr_to_pto, lumis_quest help.md, fret-core PRD mentions) — recorded in
+  known-issues, not relocation fallout.
+* **cmtk's name and the ordering are settled: `cmtk` = "Canvas Model
+  Toolkit", and chimol independence comes first** (maintainer, 2026-08-14).
+  ChiSurf reaches cmtk **via chimol** — the ChiSurf↔cmtk interface is still
+  floating, and making chimol independent
+  ([chimol-relocation.md](plugins/chimol-relocation.md)) must happen first
+  anyway. Dependency direction: ChiSurf imports chimol; chimol may not import
+  ChiSurf; cmtk lives inside chimol and ChiSurf consumes it through chimol.
+  Earlier spellings — "Canvas & Model Toolkit", "Component / Canvas Molecular
+  Toolkit", "chimol toolkit" — were approximations. Recorded in
+  [chimol-cmtk.md](plugins/chimol-cmtk.md), [PRD-104](prds/prd-104.md),
+  [PRD-64](prds/prd-64.md) and
+  [chiplot.md](subsystems/chiplot.md); chiplot stays cmtk's first external
+  consumer and still drives PRD-104 Phase 2 breadth.
+* **chiplot's native renderer is chimol's cmtk; pyqtgraph + cmtk are the only
+  backends** ([PRD-64](prds/prd-64.md)). Maintainer direction (2026-08-14):
+  the Phase 5+ native backend **MUST** be cmtk ([PRD-104](prds/prd-104.md)),
+  the ImPlot-style toolkit in `chisurf/plugins/chimol/chimol/cmtk/`, as the
+  primary plotting widget; the OpenGL scaffold and the WebGPU backend that
+  superseded it are exploration and retire; the registry flip
+  (unregistering `wgpu`/`opengl`) lands with the cmtk backend because
+  `test/gui/test_chiplot_wgpu.py::test_wgpu_backend_is_registered` pins
+  `"wgpu" in available_backends()`. This reverses the old "chimol draws
+  through chiplot" convergence — chiplot draws through cmtk. Also recorded:
+  the **long-term direction** — abstract the UI backend(s) (Qt/PyQt today) via
+  AutoForm for a web-capable ChiSurf, then replace PyQt with cmtk to drop the
+  PyQt licence obligations (PRD-64 "Long-term direction",
+  [gui-autoform](subsystems/gui-autoform.md)). Docs + registry comments only;
+  no cmtk chiplot backend exists yet.
+
+* **Lumis Quest: village ambience, honest map colours, cast reverted**
+  ([PRD-91](prds/prd-91.md)). Player and companion reverted to the authored
+  string art (ninja/pig read as someone else's characters; pinned by test).
+  Villages now drift autumn falling leaves (`_ambient_leaves`, settlements
+  only, gated by the particle setting). The whole-world map's terrain colours
+  are derived from the *average of the real shipped tile art* instead of a
+  second hand-picked palette, so the map reads as a miniature of the world.
+  Village premises stand on grass rather than flat plaza paving (graphics.json
+  remap -- the reference's villages are grass with dirt paths). 425 tests
+  pass.
+* **Lumis Quest: the cast is Ninja Adventure pack art**
+  ([PRD-91](prds/prd-91.md)). Every character slot now ships real CC0 pack
+  art, cut by extending `import_tileart.py`'s `CHAR_TILES`: player = blue
+  ninja walk cycle, companion = pig, villagers/keepers = green samurai,
+  townsfolk/healers/emissaries = blue samurai, Wardens = the samurai attack
+  rows. Wraiths and spirit/squid beasts stay string art (no pack
+  equivalent). 50 tiles in the shipped strip, facings and walk frames
+  verified distinct numerically, 422 tests pass. Also fixed a rename leftover
+  (`_iris_hit_flash` never renamed, so the player hit-flash cooldown never
+  gated damage).
+
 ## 2026-08-13
 * **ChiMOL: severing ChiSurf, before the move** ([chimol-relocation](plugins/chimol-relocation.md)).
   User: chimol becomes `~/dev/chimol` (local git, no remote, symlinked into
@@ -35327,7 +35393,7 @@
   **Availability is not choice.** `host/widget.py` picked `MolView`'s base from
   whether Qt *imported*, and chimol ships inside a PyQt application where it
   always does — so the toolkit-free host still built a `QWidget`, with no
-  `QApplication`, and `python -m chisurf.plugins.chimol.chimol` died on
+  `QApplication`, and `python -m chimol` died on
   `SIGABRT` before a frame. Split into `QT_AVAILABLE` (importable) and `HAS_QT`
   (to be used), gated by `CHIMOL_TOOLKIT` = `auto`|`none`|`qt`. It must be an
   environment variable: `class MolView(WidgetBase)` binds its base at
@@ -36310,3 +36376,56 @@
   `~/.chisurf/chimol_display.json` and two "defaults" were really that
   developer's saved settings. Isolation moved to import time (`_DISPLAY_CONFIG`
   loads during collection) with a guard that fails if it regresses.
+- 2026-08-14 -- chimol: the settings directory is *injected* by the host rather
+  than asked for. `chimol/settings_dir.py` no longer imports ChiSurf at all;
+  `chisurf/plugins/chimol/__init__.py` calls `set_settings_dir` at import. The
+  ChiSurf allow-list lost an entry instead of keeping an explanation, and SOFT
+  is down to three. Pattern to apply to `analysis/ss.py` and `io/atoms.py`:
+  a guarded import is the tolerable shape for a wrong-way dependency, not the
+  correct one. See okf/plugins/chimol-relocation.md.
+- 2026-08-14 -- chimol browser: clicks now pick. `web/demo.py` had no
+  click-vs-drag case, so every click was a zero-length drag and
+  `handle_mouse_click` was never called. Fixed with a travel threshold and a
+  duck-typed event shim; the shared `CanvasRenderer.CLICK_SLOP` is reused rather
+  than a second constant. Found on the way: clicking empty space does not clear
+  the selection (strict xfail, okf/references/known-issues.md), and the browser
+  is missing five host features because `SceneSink` is a *sibling* of
+  `CanvasRenderer` rather than a child -- blocked on splitting `init_viewport`
+  into input state and GPU setup. See okf/plugins/chimol-relocation.md.
+- 2026-08-14 -- chimol desktop and browser photographed side by side. The
+  browser was missing the menu bar and the toolbar because `MENU_BAR`/`TOOLBAR`
+  are data that lived in the Qt package; split into `chimol/menus.py`, which
+  also dissolves the `host/run.py` -> `app/` edge. Exposed a latent
+  import-time `IndexError` in `demos/catalog.py` (`parents[5]` in a shallow
+  bundle) that took the page down. Also found: `test/screenshot.py` cannot
+  photograph the WebGPU viewer and returns a blank grey image -- the working
+  route is `CanvasRenderer.grab_image(chrome=True)`.
+- 2026-08-14 -- chimol independence: `atom_dtype` ownership inverted (ticket
+  T-20260814-03). `chimol/io/atoms.py` now defines `ATOM_DTYPE` unconditionally
+  -- the guarded `from chisurf... import atom_dtype` is gone, so reading a PDB
+  no longer pulls the host application (the browser portability leak, finally
+  fixed by construction rather than by a fallback copy). The host
+  `chisurf/core/fio/structure/coordinates.py` imports it from chimol and
+  re-exports `atom_dtype`/`keys`/`formats`/`keys_formats`, so `topology.py`,
+  `rmf.py` and `fret/results.py` are untouched; the derived `keys`/`formats`
+  build a dtype equal to the original. The seam allow-list lost `io/atoms.py`,
+  `SOFT` in `test_chisurf_seam.py` is down to three, and
+  `test_engine_is_portable.py` now asserts identity (`is`) rather than equality
+  -- the same-object guard that keeps the inversion from silently drifting back.
+  Pattern to apply next: `analysis/ss.py` and `cli.py`, via the injection shape
+  (`set_settings_dir`) rather than another guarded fallback. See
+  okf/plugins/chimol-relocation.md.
+
+- 2026-08-14 -- chigame: the NinjaAdventure reference is ported (ticket
+  T-20260814-05). The engine's second draft draws with real art: a texture
+  atlas built at load from a vendored CC0 pack (`assets/pixel/`, credited),
+  sheet-animated actors with the damage model, steering behaviors, numpy tile
+  maps, the room-locked 320x176 camera, transitions and weather — all on the
+  existing AssetPack/InputMap/Audio seams and covered by
+  `test/gui/test_chigame_port.py`. Lumis Quest's cast moves onto the sheets
+  via `gui/sheetart.py`, a resolver inside the game's own atlas pipeline that
+  answers the game's sprite names with pack frames; string art stands in for
+  anything the sheets do not carry, and the 98-test overworld surface holds.
+  The player/companion reversal of the morning handover is recorded in
+  PRD-91. The overworld/pixelart/capture edits remain uncommitted, interleaved
+  with a peer's rename work in the same files; they land together.

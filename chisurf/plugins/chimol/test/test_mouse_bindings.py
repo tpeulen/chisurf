@@ -66,7 +66,7 @@ def measured():
     """Drive every cell in its own viewer and report what moved."""
     cells = [(m, b, k) for m, b, k, _a, _e in CELLS]
     return probe(f'''
-        from chisurf.plugins.chimol.chimol.host.events import (
+        from chimol.host.events import (
             LEFT_BUTTON, MIDDLE_BUTTON, RIGHT_BUTTON,
             NO_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER,
         )
@@ -171,7 +171,7 @@ def clicked():
     """Click each pick cell and report whether the viewer was asked to act."""
     cells = [(m, b, k) for m, b, k, _a in CLICK_CELLS]
     return probe(f'''
-        from chisurf.plugins.chimol.chimol.host.events import (
+        from chimol.host.events import (
             LEFT_BUTTON, MIDDLE_BUTTON, RIGHT_BUTTON,
             NO_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER,
         )
@@ -238,7 +238,7 @@ def test_bond_editing_cells_say_they_are_not_implemented():
     indistinguishable from a broken one costs the same afternoon twice.
     """
     measured = probe('''
-        from chisurf.plugins.chimol.chimol.host.events import (
+        from chimol.host.events import (
             LEFT_BUTTON, RIGHT_BUTTON, CONTROL_MODIFIER,
         )
 
@@ -272,7 +272,7 @@ def test_a_right_click_still_opens_the_menu():
     opening the menu on the press delivered one and silently ate the other.
     """
     measured = probe('''
-        from chisurf.plugins.chimol.chimol.host.events import (
+        from chimol.host.events import (
             RIGHT_BUTTON, NO_MODIFIER,
         )
 

@@ -44,10 +44,10 @@ def qapp():
 
 
 def _window(qapp, path):
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1200, 800)
@@ -379,7 +379,7 @@ def test_the_viewport_gets_most_of_the_window(qapp):
     larger half": there is nothing to take a share. Written against the
     central widget so it keeps meaning if a second widget is ever put back.
     """
-    from chisurf.plugins.chimol.chimol.app import molview_main_window as mw
+    from chimol.app import molview_main_window as mw
 
     win = mw.MolViewPluginWindow()
     win.resize(1600, 950)
@@ -401,7 +401,7 @@ def test_the_default_layout_sizes_are_pixels(qapp):
     ratio is indistinguishable from a very small pixel count, which is exactly
     how this went unnoticed.
     """
-    from chisurf.plugins.chimol.chimol.app import molview_main_window as mw
+    from chimol.app import molview_main_window as mw
 
     def walk(node):
         if node.get("type") == "splitter":

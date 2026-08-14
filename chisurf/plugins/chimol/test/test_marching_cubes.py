@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.plugins.chimol.chimol.geometry.marching_cubes import (
+from chimol.geometry.marching_cubes import (
     _EDGE_TABLE,
     _TRI_TABLE,
     marching_cubes,

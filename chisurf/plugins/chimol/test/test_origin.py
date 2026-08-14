@@ -19,7 +19,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.view_state import (
+from chimol.renderer.view_state import (
     pack_view_state,
     unpack_view_state,
 )
@@ -41,9 +41,9 @@ def qapp():
 def session(qapp):
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.resize(600, 400)

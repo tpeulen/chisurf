@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from chisurf.plugins.chimol.chimol import config, mouse_modes
+from chimol import config, mouse_modes
 
 
 def test_no_drag_style_setting():

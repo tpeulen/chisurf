@@ -1,12 +1,12 @@
 """ImGui-style menu controls for Lumis Quest, drawn onto a chigame scene.
 
 The controls themselves are Chimol's painter-level widgets
-(:mod:`chisurf.plugins.chimol.chimol.renderer.ui.widgets`) -- state, hit tests
+(:mod:`chimol.cmtk.widgets`) -- state, hit tests
 and drawing, all against six rectangle-and-text operations. Nothing here
 reimplements them.
 
 What is here is the *seam*. Chimol hands a widget a
-:class:`~chimol.renderer.ui.painter.Painter` and a top-left box; the game has a
+:class:`~chimol.cmtk.painter.Painter` and a top-left box; the game has a
 :class:`~chisurf.gui.chigame.scene.Scene` and thinks in world units around a
 centre. :class:`ScenePainterAdapter` is the first half of that, and the thin
 subclasses below are the second: they add the game's ``draw(scene, at=...,
@@ -25,8 +25,8 @@ from __future__ import annotations
 
 from typing import Sequence, Tuple
 
-from chisurf.plugins.chimol.chimol.renderer.ui import widgets as _widgets
-from chisurf.plugins.chimol.chimol.renderer.ui.painter import (
+from chimol.cmtk import widgets as _widgets
+from chimol.cmtk.painter import (
     ALIGN_HCENTER,
     ALIGN_RIGHT,
 )

@@ -54,7 +54,7 @@ def measured():
         f'        run({command!r})' for command in COLOUR_COMMANDS
     )
     return probe('''
-        from chisurf.plugins.chimol.chimol.renderer.gui_state import refresh_gui_state
+        from chimol.renderer.gui_state import refresh_gui_state
 
         app = open_app(size=(900, 600))
         app.cmd.do("fetch 148L")

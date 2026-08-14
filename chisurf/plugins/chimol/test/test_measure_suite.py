@@ -43,10 +43,10 @@ def cmd(qapp):
     seconds instead of 15. The one test that touches a global setting restores
     it in a ``finally``.
     """
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -130,7 +130,7 @@ def test_buried_area_is_the_solvent_accessible_one_whatever_dot_solvent_says(cmd
     the failure this plugin keeps finding, so the command pins the surface it
     means.
     """
-    from chisurf.plugins.chimol.chimol.settings import get_setting, set_setting
+    from chimol.settings import get_setting, set_setting
 
     before = get_setting("dot_solvent")
     try:
@@ -204,7 +204,7 @@ def test_the_whole_protein_weighs_what_a_hydrogen_less_structure_should(cmd):
 def test_atoms_of_unknown_element_are_counted_not_guessed(cmd):
     """A weight quietly missing a metal is the kind of wrong number that gets
     published, so the message says how many were skipped."""
-    from chisurf.plugins.chimol.chimol.analysis.elements import masses_for
+    from chimol.analysis.elements import masses_for
 
     masses, unknown = masses_for(["C", "N", "ZZ", "FE"])
     assert unknown == 1

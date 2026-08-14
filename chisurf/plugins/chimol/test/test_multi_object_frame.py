@@ -17,7 +17,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.renderer.view import MolView  # noqa: E402
+from chimol.renderer.view import MolView  # noqa: E402
 
 
 @pytest.fixture(scope="module")

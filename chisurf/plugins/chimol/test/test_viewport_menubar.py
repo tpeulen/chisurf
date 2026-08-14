@@ -15,8 +15,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.app.menu_bar import MENU_BAR  # noqa: E402
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import (  # noqa: E402
+from chimol.app.menu_bar import MENU_BAR  # noqa: E402
+from chimol.renderer.internal_gui import (  # noqa: E402
     InternalGui,
     SequenceRow,
 )

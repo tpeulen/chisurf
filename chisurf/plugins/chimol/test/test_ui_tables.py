@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import tables
+from chimol.cmtk import tables
 
 
 class RecordingPainter:
@@ -1027,7 +1027,7 @@ def test_header_labels_are_clipped_too():
 # --------------------------------------------------------------------------
 def test_the_scrollbar_is_reused_not_reimplemented():
     """It is :class:`~chimol.cmtk.widgets.ScrollBar`, the shared one."""
-    from chisurf.plugins.chimol.chimol.cmtk import widgets
+    from chimol.cmtk import widgets
 
     assert isinstance(make_table().bar, widgets.ScrollBar)
 

@@ -18,9 +18,9 @@ import time
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.config import _DISPLAY_CONFIG
+from chimol.io.atoms import make_bead_rows
+from chimol.renderer.view import MolView
 
 
 @pytest.fixture(scope="module")

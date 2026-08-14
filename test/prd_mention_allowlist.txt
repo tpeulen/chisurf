@@ -87,7 +87,6 @@ chisurf/plugins/calculator/kappa2_dist/gui/tool.py
 chisurf/plugins/calculator/phasor_calculator/__init__.py
 chisurf/plugins/calculator/phasor_calculator/gui/tool.py
 chisurf/plugins/calculator/phasor_calculator/tests/test_phasor_calculator.py
-chisurf/plugins/chimol/chimol/cmd/volumes.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/algorithms.py
 chisurf/plugins/core/f_test/gui/tool.py
 chisurf/plugins/core/f_test/test/test_widgets.py

@@ -35,7 +35,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis import ss as S
+from chimol.analysis import ss as S
 
 #: Two helices of 148L, by residue number, used as the two chains. Real backbone
 #: geometry rather than a built one: the peptide C-N bond has to be a real 1.33 A

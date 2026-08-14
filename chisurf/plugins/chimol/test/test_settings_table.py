@@ -16,7 +16,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.settings import get_setting, set_setting
+from chimol.settings import get_setting, set_setting
 
 
 @pytest.fixture(scope="session")
@@ -28,7 +28,7 @@ def qapp():
 
 @pytest.fixture
 def table(qapp):
-    from chisurf.plugins.chimol.chimol.app.settings_table import SettingsTable
+    from chimol.app.settings_table import SettingsTable
 
     widget = SettingsTable()
     widget.resize(820, 560)
@@ -47,7 +47,7 @@ def _row(widget, name: str):
 
 
 def test_every_registered_setting_is_listed(table):
-    from chisurf.plugins.chimol.chimol.settings import setting_names
+    from chimol.settings import setting_names
 
     widget, _qapp = table
     assert len(widget._rows) == len(setting_names())
@@ -97,7 +97,7 @@ def test_a_rejected_value_is_refused_rather_than_stored(table):
 def test_a_change_asks_the_viewer_to_redraw(qapp):
     """A setting that takes effect only on the next unrelated repaint reads as
     one that did nothing."""
-    from chisurf.plugins.chimol.chimol.app.settings_table import SettingsTable
+    from chimol.app.settings_table import SettingsTable
 
     calls: list[int] = []
     widget = SettingsTable(on_changed=lambda: calls.append(1))

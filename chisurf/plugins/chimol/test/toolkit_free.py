@@ -64,7 +64,7 @@ def emit(key, value):
 
 def open_app(size=(900, 600)):
     """Build the toolkit-free viewer, offscreen."""
-    from chisurf.plugins.chimol.chimol.host.run import ChimolApp
+    from chimol.host.run import ChimolApp
 
     return ChimolApp(backend="offscreen", size=size)
 '''

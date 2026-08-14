@@ -13,7 +13,7 @@ chisurf/plugins/burst/burst_mle_analysis
 chisurf/plugins/calculator/fret_calculator/gui
 chisurf/plugins/calculator/hub/gui
 chisurf/plugins/calculator/phasor_calculator/gui
-chisurf/plugins/chimol/chimol/app
+modules/chimol/chimol/app
 chisurf/plugins/core/acq/gui
 chisurf/plugins/core/batch_analysis/gui
 chisurf/plugins/core/boarding

@@ -17,10 +17,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-from chisurf.plugins.chimol.chimol.renderer import backdrop
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.config import _DISPLAY_CONFIG
+from chimol.io.atoms import make_bead_rows
+from chimol.renderer import backdrop
+from chimol.renderer.view import MolView
 
 
 @pytest.fixture(scope="module")
@@ -200,7 +200,7 @@ def test_a_missing_file_is_refused_rather_than_parsed_into_one_atom(tmp_path):
     at the origin -- `load` reported success, the object panel listed the
     molecule, and the viewport was empty, which reads as a broken *renderer*.
     """
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chimol.io.structure import load_structure_payload
 
     with pytest.raises(FileNotFoundError):
         load_structure_payload(tmp_path / "definitely-not-here.pdb")

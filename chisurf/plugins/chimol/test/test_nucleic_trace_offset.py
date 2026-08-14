@@ -87,7 +87,7 @@ def test_averaging_a_helix_contracts_it(traces):
     changed meaning, and the default should be revisited rather than the number
     here adjusted.
     """
-    from chisurf.plugins.chimol.chimol.geometry.cartoon import (
+    from chimol.geometry.cartoon import (
         _smooth_backbone_points,
     )
 
@@ -108,7 +108,7 @@ def test_the_shipped_default_leaves_the_trace_on_the_atoms(traces):
     The tube radius is 0.4, so anything approaching an Angstrom of displacement
     already detaches the base connectors that start on the curve.
     """
-    from chisurf.plugins.chimol.chimol.geometry.cartoon import (
+    from chimol.geometry.cartoon import (
         _smooth_backbone_points,
     )
 
@@ -167,7 +167,7 @@ def test_the_base_connectors_are_drawn(structure, cycles):
     halves: a rung starts on the array the tube is swept along, so turning
     smoothing on must move the start, never drop the rung.
     """
-    from chisurf.plugins.chimol.chimol.geometry import cartoon
+    from chimol.geometry import cartoon
 
     inputs = _nucleic_chain_inputs(structure)
     if inputs is None:
@@ -205,7 +205,7 @@ def test_the_mesh_is_built_around_the_atoms(structure):
     near the sugar -- so it is here to catch a gross regression in the builder,
     with the two measurements above carrying the actual contract.
     """
-    from chisurf.plugins.chimol.chimol.geometry import cartoon
+    from chimol.geometry import cartoon
 
     atoms = structure
     names = np.char.strip(np.asarray(atoms["atom_name"]).astype(str))

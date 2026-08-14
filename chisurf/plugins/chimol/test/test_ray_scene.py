@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+from chimol.renderer.raytracer import (
     TRACEABLE_KINDS,
     RayCamera,
     Sphere,
@@ -34,7 +34,7 @@ from chisurf.plugins.chimol.chimol.renderer.raytracer import (
     trace,
     traceable_geometry_counts,
 )
-from chisurf.plugins.chimol.chimol.renderer.scene import Geometry, Scene, SceneObject
+from chimol.renderer.scene import Geometry, Scene, SceneObject
 
 
 def _camera(distance: float = 10.0, fov: float = 45.0, far: float | None = None) -> RayCamera:

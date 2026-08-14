@@ -827,7 +827,7 @@ class SetupMixin:
 
         # Chimol display config version check
         try:
-            from chisurf.plugins.chimol.chimol.config import (
+            from chimol.config import (
                 check_for_display_config_update,
                 get_user_display_config_path,
                 get_package_display_config_path,
@@ -856,7 +856,7 @@ class SetupMixin:
                         try:
                             user_path.parent.mkdir(parents=True, exist_ok=True)
                             shutil.copyfile(package_path, user_path)
-                            from chisurf.plugins.chimol.chimol import config as _chimol_config
+                            from chimol import config as _chimol_config
                             _chimol_config.reload_display_config()
                         except Exception as e:
                             cs.logging.error(

@@ -34,7 +34,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmd.presets import load_reference_presets
+from chimol.cmd.presets import load_reference_presets
 
 PRESETS = load_reference_presets()
 KEYS = sorted(PRESETS)
@@ -65,7 +65,7 @@ def test_a_preset_is_documented(key):
 
 def test_the_menu_takes_its_tooltips_from_the_json():
     """Not from a second table beside it -- the second copy is the stale one."""
-    from chisurf.plugins.chimol.chimol.app.menu_bar import PRESET_MENU
+    from chimol.app.menu_bar import PRESET_MENU
 
     described = {
         str(entry.command): str(entry.note)
@@ -80,7 +80,7 @@ def test_the_menu_takes_its_tooltips_from_the_json():
 
 def test_every_preset_is_on_the_menu():
     """Shipped and unreachable is the failure a generated menu exists to avoid."""
-    from chisurf.plugins.chimol.chimol.app.menu_bar import PRESET_MENU
+    from chimol.app.menu_bar import PRESET_MENU
 
     commands = {str(getattr(e, "command", "") or "") for e in PRESET_MENU}
     for key in PRESETS:

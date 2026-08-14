@@ -20,7 +20,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.view_state import (
+from chimol.renderer.view_state import (
     DEFAULT_FOV,
     distance_for_radius,
     framing_radius,

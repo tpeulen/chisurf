@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import color
+from chimol.cmtk import color
 
 
 class RecordingPainter:

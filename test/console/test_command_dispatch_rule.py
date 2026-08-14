@@ -29,7 +29,7 @@ def qapp():
 @pytest.fixture(scope="module")
 def console(qapp):
     """The viewer's own command console, with its dispatcher attached."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 

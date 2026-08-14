@@ -42,8 +42,8 @@ import time
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.marching_cubes import marching_cubes
-from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+from chimol.geometry.marching_cubes import marching_cubes
+from chimol.volume import VolumeGrid
 
 #: Grid edge lengths per case. 180 is a routine cryo-EM working size; 256 is
 #: at the display voxel budget (16.8 M voxels, stride 1 still).

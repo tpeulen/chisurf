@@ -17,8 +17,8 @@ import struct
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.mrc import load_mrc_grid
-from chisurf.plugins.chimol.chimol.volume import VolumeGrid
+from chimol.io.mrc import load_mrc_grid
+from chimol.volume import VolumeGrid
 
 
 # --------------------------------------------------------------------------- #
@@ -324,7 +324,7 @@ def test_an_unsupported_mode_is_named_rather_than_reinterpreted(tmp_path, blob):
 
 def test_the_legacy_point_cloud_still_works_and_is_placed(tmp_path, blob):
     """The old entry point now derives from the grid instead of re-parsing."""
-    from chisurf.plugins.chimol.chimol.io.mrc import load_mrc_as_points
+    from chimol.io.mrc import load_mrc_as_points
 
     path = write_mrc(tmp_path / "points.mrc", blob, xyz_origin=(50.0, 0.0, 0.0))
     positions, meta = load_mrc_as_points(path)
@@ -382,8 +382,8 @@ def qapp():
 @pytest.fixture
 def shell(qapp):
     """A blob map, in a viewer, reachable from the command line."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.renderer.view import MolView
 
     view = MolView()
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
@@ -479,7 +479,7 @@ def test_mesh_style_draws_lines_rather_than_a_filled_surface(shell):
 
 def test_the_wireframe_does_not_send_every_edge_twice():
     """Interior edges are shared; drawing both copies doubles the lines."""
-    from chisurf.plugins.chimol.chimol.renderer.view import _triangle_edges
+    from chimol.renderer.view import _triangle_edges
 
     faces = np.array([[0, 1, 2], [1, 2, 3]])      # two triangles sharing edge 1-2
     edges = _triangle_edges(faces)
@@ -560,7 +560,7 @@ def test_a_contour_is_cut_once_per_level_not_once_per_ask(blob, monkeypatch):
     the same level -- re-running marching cubes for each was most of why the
     map controls felt slow.
     """
-    from chisurf.plugins.chimol.chimol import volume as volume_module
+    from chimol import volume as volume_module
 
     grid = VolumeGrid.from_array(blob)
     calls = {"n": 0}
@@ -693,7 +693,7 @@ def test_a_flat_map_offers_no_level_at_all():
 
 def test_the_negative_lobe_gets_a_distinguishable_colour():
     """Transcribed from `_negative_color`, including the too-dark rescue."""
-    from chisurf.plugins.chimol.chimol.renderer.view import _negative_lobe_color
+    from chimol.renderer.view import _negative_lobe_color
 
     # White inverts to black, which would be invisible; it becomes red.
     assert _negative_lobe_color((1.0, 1.0, 1.0, 1.0)) == (1.0, 0.0, 0.0, 1.0)
@@ -728,7 +728,7 @@ def test_the_panel_is_a_view_of_the_map_not_a_copy(shell):
     failure this codebase keeps finding -- so the view model holds no list.
     """
     view, grid, _cmd, _msgs, _errs = shell
-    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+    from chimol.app.volume_panel import VolumeViewModel
 
     view.add_volume(grid, name="blob")
     model = VolumeViewModel(view)
@@ -759,7 +759,7 @@ def test_the_opening_contours_are_stored_not_only_drawn(shell):
 
 def test_the_panel_summarises_the_map_and_says_when_there_is_none(shell):
     view, grid, _cmd, _msgs, _errs = shell
-    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+    from chimol.app.volume_panel import VolumeViewModel
 
     model = VolumeViewModel(view)
     assert "no map" in model.summary().lower()
@@ -776,7 +776,7 @@ def test_the_panel_summarises_the_map_and_says_when_there_is_none(shell):
 
 def test_the_panel_view_spec_uses_the_shared_section(shell):
     """The panel is AutoForm over a view spec, not a hand-rolled layout."""
-    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+    from chimol.app.volume_panel import VolumeViewModel
 
     view, _grid, _cmd, _msgs, _errs = shell
     spec = VolumeViewModel(view).view_spec()
@@ -789,7 +789,7 @@ def test_the_panel_view_spec_uses_the_shared_section(shell):
 # --------------------------------------------------------------------------- #
 def test_an_identifier_names_its_repository():
     """`fetch 148l` is a structure, `fetch EMD-3061` is a map."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     cmd = Cmd()
     assert cmd._repository_for("148l") == "pdb"
@@ -800,7 +800,7 @@ def test_an_identifier_names_its_repository():
 
 
 def test_every_repository_is_reachable():
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm", "alphafold"}
     for spec in Cmd.REPOSITORIES.values():
@@ -815,8 +815,8 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_p
     for correct input -- which reads as the user's mistake rather than the
     command's. This pins both that a real id parses and that a bad one is named.
     """
-    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd import loader as loader_mod
+    from chimol.cmd.command import Cmd
 
     monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
     cmd = Cmd()
@@ -846,8 +846,8 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_p
 def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
     # An empty download directory: `fetch` re-uses an entry it already has, so a
     # test about *which URL is requested* has to start from one it does not.
-    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd import loader as loader_mod
+    from chimol.cmd.command import Cmd
 
     monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
     cmd = Cmd()
@@ -871,7 +871,7 @@ def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
 
 def test_a_map_file_loads_as_a_map_object_not_a_point_cloud(tmp_path, blob, qapp):
     """The point cloud threw the volume away: no level, nothing for the panel."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 

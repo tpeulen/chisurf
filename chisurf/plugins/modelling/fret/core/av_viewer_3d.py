@@ -8,7 +8,7 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf.core.structure
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.renderer.view import MolView
 
 
 class AVViewer3D(QtWidgets.QWidget):

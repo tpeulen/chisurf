@@ -1882,8 +1882,8 @@ surface-area calculation is a plain function:
 
 ```python
 import numpy as np
-from chisurf.plugins.chimol.chimol.analysis.surface_area import atom_surface_areas
-from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+from chimol.analysis.surface_area import atom_surface_areas
+from chimol.io.structure import _read_full_model
 import chisurf.core.structure as cs_struct
 
 atoms = _read_full_model(cs_struct.Structure, "148l.pdb").atoms
@@ -1905,8 +1905,8 @@ to `Cmd`:
 
 ```python
 from qtpy import QtWidgets
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.cmd.command import Cmd
+from chimol.renderer.view import MolView
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 view = MolView()

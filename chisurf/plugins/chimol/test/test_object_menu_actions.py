@@ -20,8 +20,8 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol import object_menus as om
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+from chimol import object_menus as om
+from chimol.config import _DISPLAY_CONFIG
 
 
 @pytest.fixture(autouse=True)
@@ -105,10 +105,10 @@ def qapp():
 def _open(qapp, path, *, second_object=False):
     """Open a real plugin window on ``path``, with error capture wired in."""
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(700, 500)
@@ -284,6 +284,6 @@ def test_the_colour_menu_spellings_are_accepted(window, mode):
 )
 def test_every_tint_in_the_menu_exists(colour):
     """The tints menu once listed `yellowtint`, which is not a PyMOL colour."""
-    from chisurf.plugins.chimol.chimol.colors import get_pymol_color
+    from chimol.colors import get_pymol_color
 
     assert get_pymol_color(colour) is not None

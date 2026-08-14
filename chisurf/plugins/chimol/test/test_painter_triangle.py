@@ -13,7 +13,7 @@ import math
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import painter as painter_mod
+from chimol.cmtk import painter as painter_mod
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 
@@ -62,7 +62,7 @@ def test_qt_painter_fills_a_triangle_at_its_three_corners(qapp):
     qtgui = pytest.importorskip("qtpy.QtGui")
     from qtpy import QtCore
 
-    from chisurf.plugins.chimol.chimol.cmtk.qt_painter import QtPainter
+    from chimol.cmtk.qt_painter import QtPainter
 
     image = qtgui.QImage(20, 20, qtgui.QImage.Format_ARGB32_Premultiplied)
     image.fill(QtCore.Qt.transparent)

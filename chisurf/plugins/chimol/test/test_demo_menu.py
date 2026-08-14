@@ -14,8 +14,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.app.demos import DEMOS  # noqa: E402
-from chisurf.plugins.chimol.chimol.app.menu_bar import (  # noqa: E402
+from chimol.app.demos import DEMOS  # noqa: E402
+from chimol.app.menu_bar import (  # noqa: E402
     DEMO_MENU,
     MENU_BAR,
 )
@@ -63,7 +63,7 @@ def test_the_viewport_bar_lists_demo_exactly_once(qapp_window):
 def qapp_window():
     from qtpy import QtWidgets
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -78,7 +78,7 @@ def qapp_window():
 
 
 def test_demo_with_no_argument_lists_them(qapp_window):
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     said: list[str] = []
     shared.set_window(qapp_window)
@@ -91,7 +91,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
 
 
 def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     errors: list[str] = []
     shared.set_window(qapp_window)

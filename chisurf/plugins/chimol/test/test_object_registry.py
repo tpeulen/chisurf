@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.object_registry import (
+from chimol.renderer.object_registry import (
     Change,
     ObjectRegistry,
 )

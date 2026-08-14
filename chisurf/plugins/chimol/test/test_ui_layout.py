@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import widgets
-from chisurf.plugins.chimol.chimol.cmtk.layout import Layout, LayoutStyle
+from chimol.cmtk import widgets
+from chimol.cmtk.layout import Layout, LayoutStyle
 
 
 class RecordingPainter:

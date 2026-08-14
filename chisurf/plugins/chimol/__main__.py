@@ -16,6 +16,6 @@ from __future__ import annotations
 import sys
 
 if __name__ == "__main__":
-    from .chimol.__main__ import _dispatch
+    from chimol.__main__ import _dispatch
 
     raise SystemExit(_dispatch(sys.argv[1:]))

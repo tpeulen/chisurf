@@ -75,6 +75,17 @@ class GuiPlugin:
             # looks there too, so accept it as the directory when it exists.
             gui = path / "gui"
             return gui if gui.is_dir() else path
+        # A plugin whose GUI lives in a sibling checkout (chimol is
+        # ``modules/chimol`` -> ``~/dev/chimol``, the same pattern as mmfdb and
+        # imp-tricks): the module ``X.rest`` sits in the repo at
+        # ``modules/X/X.rest``. Path arithmetic, not import, for the same
+        # reason as above -- a plugin whose import raises is still checked.
+        first, dot, rest = module.partition(".")
+        external = _ROOT / "modules" / first / first / (rest.replace(".", "/") if dot else "")
+        if external.with_suffix(".py").is_file():
+            return external.parent
+        if external.is_dir():
+            return external
         return None
 
     @property

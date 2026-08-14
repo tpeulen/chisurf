@@ -18,7 +18,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.app.demos import (
+from chimol.app.demos import (
     DEMOS,
     DEMO_DIR,
     demo_path,
@@ -82,7 +82,7 @@ def test_the_structures_the_demos_name_can_be_found():
     generated path produces a file. Where the simulator is not installed it is
     skipped rather than failed: that is an environment, not a broken demo.
     """
-    from chisurf.plugins.chimol.chimol.demos.data import DemoDataUnavailable
+    from chimol.demos.data import DemoDataUnavailable
 
     for key, _t, _d in DEMOS:
         for line in read_demo(key).splitlines():
@@ -111,10 +111,10 @@ def qapp():
 @pytest.fixture
 def window(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(900, 650)
@@ -142,11 +142,11 @@ def _vertices(viewer):
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""
-    from chisurf.plugins.chimol.chimol.demos.data import (
+    from chimol.demos.data import (
         DemoDataUnavailable,
         GENERATED_DEMO_DATA,
     )
-    from chisurf.plugins.chimol.chimol.app.demos import resolve_structure
+    from chimol.app.demos import resolve_structure
 
     for name in GENERATED_DEMO_DATA:
         if f"load {name}" in read_demo(key):
@@ -232,7 +232,7 @@ def test_the_demo_menu_comes_from_the_menu_bar_and_appears_once(window):
     is a trap, not a spare.
     """
     win, _shared, _errors, qapp = window
-    from chisurf.plugins.chimol.chimol.app import demos
+    from chimol.app import demos
 
     assert not hasattr(demos, "build_demo_menu"), (
         "the bolted-on demo menu builder is back"

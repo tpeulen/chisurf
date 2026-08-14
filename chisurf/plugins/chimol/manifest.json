@@ -15,7 +15,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.chimol.chimol.app:MolViewPluginWindow"
+    "gui": "chimol.app:MolViewPluginWindow"
   },
   "menu_hidden": false,
   "deprecated": false

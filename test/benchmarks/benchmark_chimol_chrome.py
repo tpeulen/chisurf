@@ -63,7 +63,7 @@ RESIDUES = 600
 
 def build_gui():
     """Return an ``InternalGui`` carrying a realistic panel."""
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
+    from chimol.renderer.internal_gui import (
         GuiRow,
         InternalGui,
         SequenceRow,
@@ -104,7 +104,7 @@ def median_ms(call, repeats: int = REPEATS) -> float:
 
 def measure(width: int, height: int) -> dict:
     """Time one viewport size."""
-    from chisurf.plugins.chimol.chimol.renderer.ui.quad_painter import (
+    from chimol.cmtk.quad_painter import (
         FLOATS_PER_QUAD,
         QuadPainter,
     )

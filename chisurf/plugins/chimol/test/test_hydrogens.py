@@ -23,7 +23,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.hydrogens import (
+from chimol.analysis.hydrogens import (
     LINEAR,
     PLANAR,
     RESIDUE_TEMPLATES,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry.wireframe import (
+from chimol.geometry.wireframe import (
     bond_line_segments,
     nonbonded_crosses,
     unbonded_mask,
@@ -123,8 +123,8 @@ def view(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

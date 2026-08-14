@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.plugins.chimol.chimol.geometry.neighbors import (
+from chimol.geometry.neighbors import (
     blocked_cross_pairs,
     count_within_radius,
     cross_pairs_within,
@@ -19,7 +19,7 @@ from chisurf.plugins.chimol.chimol.geometry.neighbors import (
     shade_from_atoms,
     within_distance_mask,
 )
-from chisurf.plugins.chimol.chimol.geometry.surface import _distance_transform_edt
+from chimol.geometry.surface import _distance_transform_edt
 
 
 def test_count_within_radius_matches_brute_force():
@@ -161,7 +161,7 @@ def test_pair_indices_are_intp_so_bincount_accepts_them():
     """
     import numpy as np
 
-    from chisurf.plugins.chimol.chimol.geometry.grid_pairs import (
+    from chimol.geometry.grid_pairs import (
         pairs_within,
         self_pairs_within_grid,
     )

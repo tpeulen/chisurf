@@ -30,8 +30,11 @@ import pathlib
 
 import pytest
 
-#: The package root, ``chimol/``.
-PACKAGE = pathlib.Path(__file__).resolve().parent.parent / "chimol"
+#: The package root: the relocated engine, installed from ``modules/chimol``
+#: (``~/dev/chimol``) as the top-level ``chimol`` package. Resolved through
+#: the import system rather than a relative path so the test follows whatever
+#: installation the host actually uses.
+PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 #: Modules still importing ChiSurf. **Shrinking**: never add to this.
 ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "chisurf_import_allowlist.txt"
@@ -116,8 +119,10 @@ def test_no_new_module_imports_chisurf():
         + "\n  ".join(new)
         + "\n\nchimol is moving to its own repository, where ChiSurf is not on "
         "the path. Take what you need through a seam chimol owns (see "
-        "`settings_dir.py` for the shape: ask inside a `try`, fall back to "
-        "chimol's own answer), or leave the code in the `app/` integration "
+        "`cmd/exporting.py` for the shape: ask inside a `try`, fall back to "
+        "chimol's own answer -- or better, have the host *inject* the answer as "
+        "`chisurf/plugins/chimol/__init__.py` does for the settings directory), "
+        "or leave the code in the `app/` integration "
         "layer. Do not add a line to the allow-list."
     )
 
@@ -143,12 +148,11 @@ def test_the_allowlist_has_no_stale_entries():
 #: degrade rather than fail; that is what :func:`test_soft_dependencies_are_guarded`
 #: checks.
 SOFT = {
-    "settings_dir.py",
     "cmd/exporting.py",
-    # Already carried its own copy of the dtype, with `test_engine_is_portable`
-    # asserting the two are equal so the copy cannot drift -- this was the
-    # portability leak the browser port found after Qt.
-    "io/atoms.py",
+    # `io/atoms.py` used to be here -- it imported chisurf's `atom_dtype`
+    # inside a try. The direction was inverted on 2026-08-14: chimol owns
+    # `ATOM_DTYPE` and the host re-exports it, so the guarded import is gone
+    # entirely and there is nothing left to sever.
     # Falls back to chimol's own secondary-structure path.
     "analysis/ss.py",
     # Attaches ChiSurf's console as the prompt's router when it is importable,

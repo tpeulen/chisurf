@@ -46,10 +46,10 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1000, 700)
@@ -242,7 +242,7 @@ def test_zoom_on_everything_still_frames_everything(session):
 
 def test_the_camera_commands_agree_about_what_a_selection_is(session):
     """All three go through one seam, so they cannot disagree about the atoms."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     assert hasattr(MolView, "_selection_coords")
     import inspect

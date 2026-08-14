@@ -9,8 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol import config
-from chisurf.plugins.chimol.chimol.analysis.ss import assign_ss_c3_from_atoms
+from chimol import config
+from chimol.analysis.ss import assign_ss_c3_from_atoms
 
 
 @pytest.fixture(autouse=True)
@@ -132,7 +132,7 @@ def _write(tmp_path, text, name="rec.pdb"):
 
 
 def test_secondary_structure_records_are_parsed(tmp_path):
-    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+    from chimol.io.structure import parse_pdb_secondary_structure
 
     records = parse_pdb_secondary_structure(_write(tmp_path, _PDB_WITH_RECORDS))
     assert records is not None
@@ -153,7 +153,7 @@ def test_secondary_structure_records_are_parsed(tmp_path):
 
 
 def test_no_records_returns_none(tmp_path):
-    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+    from chimol.io.structure import parse_pdb_secondary_structure
 
     stripped = "\n".join(
         ln for ln in _PDB_WITH_RECORDS.splitlines()
@@ -163,7 +163,7 @@ def test_no_records_returns_none(tmp_path):
 
 
 def test_records_after_the_coordinates_are_not_read(tmp_path):
-    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+    from chimol.io.structure import parse_pdb_secondary_structure
 
     # The scan stops at the first coordinate record, so a stray HELIX line in
     # the middle of a large trajectory file cannot cost a full-file scan.
@@ -176,8 +176,8 @@ def test_records_after_the_coordinates_are_not_read(tmp_path):
 
 def test_dss_recomputes_and_reports(tmp_path):
     """``dss`` must reach the viewer's assignment, not just redraw."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
+    from chimol.cmd.command import Cmd
+    from chimol.testing.mock_viewer import MockViewer, MockWindow
 
     viewer = MockViewer()
     cmd = Cmd(MockWindow(viewer))
@@ -197,8 +197,8 @@ def test_dss_recomputes_and_reports(tmp_path):
 
 
 def test_dss_without_a_backbone_reports_an_error():
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
+    from chimol.cmd.command import Cmd
+    from chimol.testing.mock_viewer import MockViewer, MockWindow
 
     viewer = MockViewer()
     cmd = Cmd(MockWindow(viewer))
@@ -210,7 +210,7 @@ def test_dss_without_a_backbone_reports_an_error():
 
 
 def test_mismatched_chain_span_is_skipped(tmp_path):
-    from chisurf.plugins.chimol.chimol.io.structure import parse_pdb_secondary_structure
+    from chimol.io.structure import parse_pdb_secondary_structure
 
     text = _PDB_WITH_RECORDS.replace(
         "HELIX    1  H1 ILE E    3  GLU E   11  1",

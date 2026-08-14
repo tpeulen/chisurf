@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol import settings
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer, MockWindow
+from chimol import settings
+from chimol.cmd.command import Cmd
+from chimol.config import _DISPLAY_CONFIG
+from chimol.testing.mock_viewer import MockViewer, MockWindow
 
 
 @pytest.fixture
@@ -269,7 +269,7 @@ def test_max_fps_reaches_the_viewer(cmd_and_viewer):
 def test_nerd_tick_writes_through_to_the_config(cmd_and_viewer):
     """Unlike `max_fps`, the nerd tick is read live from the config -- it has
     no renderer state to push, so `set` only needs to land in the config."""
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
 
     cmd, _viewer, _, errors = cmd_and_viewer
     cmd.do("set nerd_tick, 0.2")

@@ -21,10 +21,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.pack import pack_scene
-from chisurf.plugins.chimol.chimol.renderer.scene import Geometry, Scene, SceneObject
-from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
-from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+from chimol.renderer.pack import pack_scene
+from chimol.renderer.scene import Geometry, Scene, SceneObject
+from chimol.renderer.view_state import pack_view_state
+from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)
 
@@ -77,7 +77,7 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
     primitive -- 0.3 s against 114 s for 148L. The impostor path has to carry
     the same record, or switching representation silently makes ``ray`` slow.
     """
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     centres = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     colours = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -94,7 +94,7 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
 
 
 def test_the_impostor_floor_is_a_setting_and_defaults_to_every_sphere():
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     assert MolView._spheres_as_impostors(1) is True
     assert MolView._spheres_as_impostors(100_000) is True
@@ -125,7 +125,7 @@ def _silhouette(frame: np.ndarray) -> np.ndarray:
 
 def test_a_cylinder_impostor_matches_the_tube_it_replaces(renderer):
     """Silhouette IoU against the twelve-sided mesh, on the same bond."""
-    from chisurf.plugins.chimol.chimol.geometry.primitives import _build_stick_mesh
+    from chimol.geometry.primitives import _build_stick_mesh
 
     start = np.array([-3.0, -1.0, 0.0])
     end = np.array([3.0, 1.5, 0.0])

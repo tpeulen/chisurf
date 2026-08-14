@@ -14,7 +14,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+from chimol.io.structure import _read_full_model
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -104,7 +104,7 @@ def test_a_factory_that_raises_is_not_swallowed():
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def loaded_view(qapp, structure_factory):
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.add_structure(
@@ -181,7 +181,7 @@ def test_a_degraded_load_is_reported(tmp_path):
     reader is unavailable" on its own is not something a user can do anything
     with.
     """
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -207,7 +207,7 @@ def test_a_degraded_load_is_reported(tmp_path):
 
 def test_a_degraded_load_without_a_panel_does_not_raise(tmp_path):
     """Chimol also runs headless, where there is nothing to append to."""
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
 
@@ -246,7 +246,7 @@ def test_hetero_atoms_reach_the_scene(loaded_view):
 
 
 def test_solvent_and_its_spellings_agree(loaded_view):
-    from chisurf.plugins.chimol.chimol.cmd.sele_parser import Evaluator
+    from chimol.cmd.sele_parser import Evaluator
 
     oid = loaded_view.get_active_object_id()
     evaluator = Evaluator(loaded_view, oid)
@@ -259,7 +259,7 @@ def test_solvent_and_its_spellings_agree(loaded_view):
 
 def test_polymer_is_the_complement_of_hetero(loaded_view):
     """The two must partition the atoms, or `hide polymer` leaves orphans."""
-    from chisurf.plugins.chimol.chimol.cmd.sele_parser import Evaluator
+    from chimol.cmd.sele_parser import Evaluator
 
     oid = loaded_view.get_active_object_id()
     evaluator = Evaluator(loaded_view, oid)
@@ -277,7 +277,7 @@ def test_hiding_by_a_selection_name_works(loaded_view):
     nothing is deliberately left to fail as an unknown representation, which is
     the more useful message in that case.
     """
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     class _Window:
         def __init__(self, viewer):
@@ -302,7 +302,7 @@ def test_hiding_by_a_selection_name_works(loaded_view):
 
 def test_a_name_that_selects_nothing_is_still_an_error(loaded_view):
     """148L has no waters, so `hide water` there is a typo, not an instruction."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     class _Window:
         def __init__(self, viewer):

@@ -38,10 +38,10 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def session(qapp):
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     path = PDB if PDB.is_file() else FALLBACK
     if not path.is_file():
@@ -197,8 +197,8 @@ def test_atom_selection_merges_like_the_residue_one(session):
 
 def test_the_block_row_cycles_and_is_hit_testable(session):
     """The row was drawn and unreachable, which is what made the word a label."""
-    from chisurf.plugins.chimol.chimol.mouse_modes import SELECTION_LEVELS
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+    from chimol.mouse_modes import SELECTION_LEVELS
+    from chimol.renderer.internal_gui import InternalGui
 
     sent: list[str] = []
     gui = InternalGui(run_command=sent.append)

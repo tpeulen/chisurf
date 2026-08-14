@@ -13,7 +13,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.atom_classes import (
+from chimol.analysis.atom_classes import (
     BACKBONE_NAMES,
     classify_atoms,
     is_metal,
@@ -228,7 +228,7 @@ def test_no_atoms_gives_no_runs():
 @pytest.fixture(scope="module")
 def lysozyme_atoms():
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+    from chimol.io.structure import _read_full_model
 
     return _read_full_model(cs_struct.Structure, _PDB_148L).atoms
 

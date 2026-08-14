@@ -32,6 +32,16 @@ import textwrap
 
 import pytest
 
+#: The baselines were captured under the offscreen platform plugin (see the
+#: capture command in :mod:`chrome_baseline`). The repaint is a QPainter
+#: rasterisation, so it follows the *ambient* platform otherwise: under a
+#: native session plugin the app font is larger and the device pixel ratio is
+#: 2, and the same chrome paints different pixels — not a regression, an
+#: environment dependence. Pin it here, at import time (before any QApplication
+#: exists), so a single-test run matches what the suite and the baseline both
+#: use. ``setdefault`` so a runner that pinned something else keeps it.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 from chisurf.plugins.chimol.test import chrome_baseline
 
 #: Where the committed before-half lives.
@@ -78,14 +88,14 @@ def test_the_panel_imports_without_a_gui_toolkit():
         print("ok")
         """
     )
-    # The parent's environment, with the plugin root prepended -- not a
+    # The parent's environment, with the relocated engine prepended -- not a
     # hand-built one. ``internal_gui`` reaches ``object_menus`` and
     # ``mouse_modes``, and those want the same paths the rest of the suite
     # runs with; a minimal env turns a passing guard into an unrelated
     # ImportError that reads like the guard failing.
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(root / "chisurf" / "plugins" / "chimol"), env.get("PYTHONPATH", "")]
+        [str(root / "modules" / "chimol"), env.get("PYTHONPATH", "")]
     ).rstrip(os.pathsep)
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -155,7 +165,7 @@ def test_the_disabled_colour_button_greys_the_way_qcolor_did():
     fully-saturated rainbow stop greys to the same 145. Pinned because the
     equivalence is the whole reason the hex strings could become tuples.
     """
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
+    from chimol.renderer.internal_gui import (
         COLOR_BUTTON_STOPS,
         _grey_of,
     )

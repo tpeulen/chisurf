@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol import settings as settings_api
-from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-from chisurf.plugins.chimol.chimol.renderer import settings_window
-from chisurf.plugins.chimol.chimol.cmtk import settings_editor
+from chimol import settings as settings_api
+from chimol.config import _DISPLAY_CONFIG
+from chimol.renderer import settings_window
+from chimol.cmtk import settings_editor
 
 
 class RecordingPainter:

@@ -31,11 +31,18 @@ import textwrap
 
 import pytest
 
-#: The shipped package.
-_CHIMOL = pathlib.Path(__file__).resolve().parents[1] / "chimol"
+#: The shipped package: the relocated engine, installed from ``modules/chimol``
+#: (``~/dev/chimol``) as top-level ``chimol``. Resolved through the import
+#: system so the test follows the installation the host actually uses.
+_CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 #: The repository root, for the subprocess' working directory.
 _ROOT = pathlib.Path(__file__).resolve().parents[4]
+
+#: Where the engine is importable from in a subprocess: the sibling checkout
+#: symlinked at ``modules/chimol``. The installed (editable) chimol also works;
+#: this keeps the test independent of the install.
+_ENGINE_ROOT = _ROOT / "modules" / "chimol"
 
 #: The modules that make up the engine: everything needed to build a scene,
 #: shade it, lay the panel out and decide what a click means. Deliberately not
@@ -171,7 +178,7 @@ def test_the_engine_imports_without_a_gui_toolkit():
     )
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(_ROOT / "chisurf" / "plugins" / "chimol"), env.get("PYTHONPATH", "")]
+        [str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]
     ).rstrip(os.pathsep)
     result = subprocess.run(
         [sys.executable, "-c", script],
@@ -228,7 +235,7 @@ def _run_without_qt(script: str) -> subprocess.CompletedProcess:
     """
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
-        [str(_ROOT / "chisurf" / "plugins" / "chimol"), env.get("PYTHONPATH", "")]
+        [str(_ENGINE_ROOT), env.get("PYTHONPATH", "")]
     ).rstrip(os.pathsep)
     # The offscreen canvas, forced: `rendercanvas.auto`'s last resort is to
     # `import PyQt5` and pick its Qt backend if that succeeds, so "automatic"
@@ -424,23 +431,20 @@ def test_the_host_list_is_not_padded():
 
 
 def test_the_atom_dtype_matches_the_host():
-    """chimol's atom row is byte-identical to the host application's.
+    """chimol's atom row is the host's -- because the host takes it from chimol.
 
-    :data:`chimol.io.atoms.ATOM_DTYPE` used to be imported from
-    ``chisurf.core.fio.structure.coordinates``, which made reading a PDB pull in
-    the whole host application -- the second kind of portability leak this port
-    found, after Qt, and one that only showed up when the browser ran chimol's
-    own self-contained PDB parser.
-
-    Stated locally now, and asserted against the authority here. Not a
-    duplicate to drift: every reader in the plugin produces this layout and
-    every builder consumes it, so a change on either side has to fail rather
-    than silently produce arrays that do not round-trip.
+    The direction was inverted on 2026-08-14: ``chimol.io.atoms.ATOM_DTYPE``
+    is the single definition, and ``chisurf.core.fio.structure.coordinates``
+    re-exports it, the same inversion the trajectory DCD reader follows.
+    Reading a PDB no longer pulls in the host application from the engine
+    side -- the portability leak this test originally guarded against is gone
+    by construction, and this assertion is the guard that keeps it that way:
+    the two must stay the same object, not a drifted copy.
     """
     coordinates = pytest.importorskip(
         "chisurf.core.fio.structure.coordinates",
         reason="the host application is not importable here",
     )
-    from chisurf.plugins.chimol.chimol.io.atoms import ATOM_DTYPE
+    from chimol.io.atoms import ATOM_DTYPE
 
-    assert ATOM_DTYPE == coordinates.atom_dtype
+    assert ATOM_DTYPE is coordinates.atom_dtype

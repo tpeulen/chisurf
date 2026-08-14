@@ -17,7 +17,7 @@ import re
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmd.loader import LoaderCommands
+from chimol.cmd.loader import LoaderCommands
 
 
 def _repository_for(code: str) -> str:
@@ -144,7 +144,7 @@ def test_binarycif_reads_the_same_as_mmcif(tmp_path):
     saw a truncated nonsense document and said the file had no coordinates.
     """
     pytest.importorskip("ihm.format_bcif", reason="BinaryCIF needs ihm + msgpack")
-    from chisurf.plugins.chimol.chimol.io.structure import _parse_mmcif_backbone
+    from chimol.io.structure import _parse_mmcif_backbone
 
     text_path = tmp_path / "model.cif"
     binary_path = tmp_path / "model.bcif"

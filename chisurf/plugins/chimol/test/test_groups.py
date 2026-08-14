@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS, targets_for
+from chimol.object_menus import OBJECT_MENUS, targets_for
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -40,10 +40,10 @@ def qapp():
 def session(qapp):
     """A window with three derived objects to group in various ways."""
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1000, 700)
@@ -416,7 +416,7 @@ def test_an_ordinary_object_is_its_own_target(session):
 # the display-order helper on its own
 # --------------------------------------------------------------------------- #
 def test_grouped_display_order_keeps_blocks_together():
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow as W,
     )
 
@@ -432,7 +432,7 @@ def test_grouped_display_order_keeps_blocks_together():
 
 
 def test_grouped_display_order_is_identity_without_groups():
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow as W,
     )
 

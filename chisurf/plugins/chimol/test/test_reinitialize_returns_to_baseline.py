@@ -57,7 +57,7 @@ MUTATIONS = (
 @pytest.fixture(scope="module")
 def measured():
     return probe(f'''
-        from chisurf.plugins.chimol.chimol import settings as s
+        from chimol import settings as s
         app = open_app(size=(700, 500))
         r = app.renderer
 
@@ -174,7 +174,7 @@ def test_the_shipped_defaults_are_compared_at_every_depth():
     one top-level scalar in the shipped config was invisible to it -- and to
     the start-up "your settings differ" prompt as well.
     """
-    from chisurf.plugins.chimol.chimol import config as cfg
+    from chimol import config as cfg
 
     shipped = {"background": "k", "camera": {"field_of_view": 20.0},
                "deep": {"a": {"b": 1.0}}}

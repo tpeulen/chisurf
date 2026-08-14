@@ -40,9 +40,9 @@ SCRIPTS = [
 
 def _build_scene(renderer_factory, script, qapp):
     """Run ``script`` through a viewer using ``renderer_factory`` and return its Scene."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chimol.io.structure import load_structure_payload
 
     viewer = MolView(renderer_factory=renderer_factory)
     # The one route from a file into the viewer, and the Qt-free one: the parser
@@ -55,7 +55,7 @@ def _build_scene(renderer_factory, script, qapp):
         for _ in range(10):
             qapp.processEvents()
 
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     cmd = Cmd(None)
     cmd.set_window(_WindowStub(viewer))
@@ -109,8 +109,8 @@ def test_headless_scene_matches_qt_scene(qapp, script):
     that scene assembly does not depend on having a window.
     """
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.renderer import wgpu_view
-    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
+    from chimol.renderer import wgpu_view
+    from chimol.renderer.headless import SceneSink
 
     if not wgpu_view.is_available():
         pytest.skip("no WebGPU adapter")
@@ -151,7 +151,7 @@ def test_view_state_survives_a_round_trip():
     """
     import numpy as np
 
-    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
+    from chimol.renderer.headless import SceneSink
 
     sink = SceneSink()
     sink.fit_to_radius(25.0)
@@ -169,7 +169,7 @@ def test_view_state_survives_a_round_trip():
 
 def test_scene_sink_builds_a_scene_without_a_widget(qapp):
     """The point of the exercise: geometry with no window involved."""
-    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
+    from chimol.renderer.headless import SceneSink
 
     scene, viewer = _build_scene(SceneSink, ["hide everything", "show cartoon"], qapp)
     assert viewer._renderer is not None, (
@@ -200,10 +200,10 @@ def test_apply_payload_makes_the_viewer_non_empty(qapp):
     """
     from pathlib import Path
 
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
-    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import load_structure_payload
+    from chimol.renderer.headless import SceneSink
+    from chimol.renderer.view import MolView
 
     viewer = MolView(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)

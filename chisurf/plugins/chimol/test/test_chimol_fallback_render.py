@@ -17,8 +17,8 @@ import numpy as np
 import pytest
 from qtpy import QtWidgets
 
-from chisurf.plugins.chimol.chimol.io.structure import _parse_pdb_backbone
-from chisurf.plugins.chimol.chimol.renderer.view import (
+from chimol.io.structure import _parse_pdb_backbone
+from chimol.renderer.view import (
     _DISPLAY_CONFIG,
     MolView,
 )
@@ -135,7 +135,7 @@ def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
     _load_fallback(view)
     view.set_metaballs_visible(True)
 
-    from chisurf.plugins.chimol.chimol.renderer.view import _DISPLAY_CONFIG as _CFG
+    from chimol.renderer.view import _DISPLAY_CONFIG as _CFG
 
     objs = view._update_metaballs(
         np.asarray(view._coords), _CFG.get("metaball", {}), view._colors_per_ca

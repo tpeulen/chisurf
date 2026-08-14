@@ -29,10 +29,12 @@ import pytest
 
 from chisurf.core.dataspec.schema import validate_guide, validate_view_spec
 
-_CHIMOL = pathlib.Path(__file__).resolve().parents[1]
+#: The relocated engine, resolved through the import system (see
+#: test_chisurf_seam.PACKAGE).
+_CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 VIEW_SPECS = sorted(p for p in _CHIMOL.rglob("*.view.json") if "build" not in p.parts)
-TOURS = sorted(p for p in (_CHIMOL / "chimol" / "demos" / "tours").glob("*.json"))
+TOURS = sorted(p for p in (_CHIMOL / "demos" / "tours").glob("*.json"))
 
 
 def _label(path: pathlib.Path) -> str:
@@ -79,7 +81,7 @@ def test_the_adapter_only_claims_kinds_the_loader_implements():
     from the loader, would reject the file while chimol drew it happily.
     """
     from chisurf.core.dataspec.schema import VALUE_KINDS
-    from chisurf.plugins.chimol.chimol.cmtk.view_spec import FIELD_KINDS
+    from chimol.cmtk.view_spec import FIELD_KINDS
 
     unknown = set(FIELD_KINDS) - set(VALUE_KINDS)
     assert not unknown, f"chimol renders kinds that do not exist: {sorted(unknown)}"
@@ -88,7 +90,7 @@ def test_the_adapter_only_claims_kinds_the_loader_implements():
 def test_the_adapter_only_binds_real_section_types():
     """Same, one level up: the types it edits have to be types."""
     from chisurf.core.dataspec import _SECTION_TYPES
-    from chisurf.plugins.chimol.chimol.cmtk.view_spec import (
+    from chimol.cmtk.view_spec import (
         CONTAINER_TYPES,
         SECTION_KINDS,
     )
@@ -110,7 +112,7 @@ def test_every_kind_the_loader_implements_is_handled_or_deliberately_not():
     lands on a text row, which is a control that looks like it works.
     """
     from chisurf.core.dataspec.schema import VALUE_KINDS
-    from chisurf.plugins.chimol.chimol.cmtk.view_spec import FIELD_KINDS
+    from chimol.cmtk.view_spec import FIELD_KINDS
 
     missing = set(VALUE_KINDS) - set(FIELD_KINDS)
     assert not missing, (

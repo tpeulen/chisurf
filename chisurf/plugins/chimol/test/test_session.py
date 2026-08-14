@@ -48,10 +48,10 @@ def _new_window(qapp):
     shared command layer's output to its own console when it is built, so a test
     that set them earlier would silently stop hearing anything.
     """
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1000, 700)
@@ -309,7 +309,7 @@ def test_a_zip_without_a_manifest_says_so(session, tmp_path):
 
 def test_a_newer_session_version_is_refused_with_the_number(session, tmp_path):
     win, shared, do, _messages, errors = session
-    from chisurf.plugins.chimol.chimol.renderer.session import SESSION_VERSION
+    from chimol.renderer.session import SESSION_VERSION
 
     future = tmp_path / "future.cms"
     with zipfile.ZipFile(future, "w") as archive:

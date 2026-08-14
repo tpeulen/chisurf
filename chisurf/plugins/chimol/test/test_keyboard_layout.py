@@ -55,7 +55,7 @@ def typed():
     Built with ``__new__``: a real one needs a GPU device, and what is under
     test is the translation from events to text, not the canvas.
     """
-    from chisurf.plugins.chimol.chimol.renderer.canvas_view import CanvasView
+    from chimol.renderer.canvas_view import CanvasView
 
     seen: list[tuple[int, str]] = []
     view = object.__new__(CanvasView)
@@ -121,7 +121,7 @@ def test_a_glfw_canvas_is_recognised_as_char_capable():
     Deciding on the first char event would mis-handle exactly one character and
     be impossible to reproduce.
     """
-    from chisurf.plugins.chimol.chimol.renderer.canvas_view import _event_types
+    from chimol.renderer.canvas_view import _event_types
 
     assert "char" in _event_types(_Canvas("rendercanvas.glfw"))
     assert "char" not in _event_types(_Canvas("rendercanvas.offscreen"))
@@ -149,7 +149,7 @@ def test_the_backend_list_matches_what_the_backends_do():
 
     import rendercanvas
 
-    from chisurf.plugins.chimol.chimol.renderer.canvas_view import _CHAR_BACKENDS
+    from chimol.renderer.canvas_view import _CHAR_BACKENDS
 
     base = _pathlib.Path(rendercanvas.__file__).parent
     emitting = set()
@@ -172,7 +172,7 @@ def test_the_qt_host_passes_the_character_qt_produced():
     other host.
     """
     pytest.importorskip("qtpy")
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_view import WgpuRenderer
+    from chimol.renderer.wgpu_view import WgpuRenderer
 
     seen = []
 
@@ -217,7 +217,7 @@ def test_the_qt_host_passes_the_character_qt_produced():
 def test_the_browser_host_passes_the_character_the_page_produced():
     """The browser path. `KeyboardEvent.key` is layout-aware and already
     shifted, so the page's text is passed through untouched."""
-    from chisurf.plugins.chimol.chimol.web import demo as web_demo
+    from chimol.web import demo as web_demo
 
     seen = []
 

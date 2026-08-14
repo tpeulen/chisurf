@@ -23,11 +23,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.atom_order import (
+from chimol.analysis.atom_order import (
     permute_atom_state,
     subset_atom_state,
 )
-from chisurf.plugins.chimol.chimol.geometry.cartoon import (
+from chimol.geometry.cartoon import (
     _build_trace_ups,
     _extrusion_faces,
     _flip_for_sign_continuity,
@@ -143,7 +143,7 @@ def test_reordering_the_atoms_discards_the_map(operation):
 
 def test_the_state_field_is_classified():
     """`backbone_map` has to be in one of the two lists or `sort` guesses."""
-    from chisurf.plugins.chimol.chimol.analysis.atom_order import (
+    from chimol.analysis.atom_order import (
         ATOM_INDEXED_FIELDS,
         NON_ATOM_INDEXED_FIELDS,
     )
@@ -219,8 +219,8 @@ def test_draft_only_coarsens_and_never_invents_a_setting():
     A typo here would not raise -- it would add a key nothing reads, and the
     setting it was meant to lower would stay at full quality with no sign of it.
     """
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.config import _DISPLAY_CONFIG
+    from chimol.renderer.view import MolView
 
     real = _DISPLAY_CONFIG.get("cartoon", {})
     for key, value in MolView._DRAFT_CARTOON.items():
@@ -236,7 +236,7 @@ def test_the_ribbons_facing_is_never_drafted():
     Dropping these would make the ribbon flip face while scrubbing and snap back
     on settle, which reads as a glitch rather than as a redraw.
     """
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     for setting in ("refine_normals", "flat_sheets", "refine_tips", "smooth_loops"):
         assert setting not in MolView._DRAFT_CARTOON
@@ -260,7 +260,7 @@ def test_one_frame_change_on_its_own_is_never_drafted(qapp):
     the playback path -- would silently produce a coarse picture and say nothing.
     Nothing here can downgrade an isolated frame.
     """
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -271,7 +271,7 @@ def test_one_frame_change_on_its_own_is_never_drafted(qapp):
 
 
 def test_frames_arriving_back_to_back_are_drafted(qapp):
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -286,7 +286,7 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
     """The settle timer is a bonus; the rate test alone must recover."""
     import time as _time
 
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -307,7 +307,7 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
 # Playback: step, interpolation, and not starving the event loop
 # --------------------------------------------------------------------------- #
 def test_a_fractional_position_splits_into_a_pair_and_a_weight():
-    from chisurf.plugins.chimol.chimol.renderer.view import _frame_blend
+    from chimol.renderer.view import _frame_blend
 
     assert _frame_blend(3.0, 10) == (3, 0.0, 3)
     index, blend, nxt = _frame_blend(3.25, 10)
@@ -330,7 +330,7 @@ def test_interpolation_lands_between_the_two_frames(qapp):
     the obvious thing to build a fixture from -- is subtracted straight back out
     of them and every frame compares equal.
     """
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -362,7 +362,7 @@ def test_interpolation_lands_between_the_two_frames(qapp):
 
 def test_the_whole_frame_setter_does_not_keep_its_own_position(qapp):
     """One position, or a spinbox and a picture will disagree about the frame."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -390,7 +390,7 @@ def test_playback_reschedules_itself_instead_of_repeating(qapp):
     """
     from qtpy import QtCore
 
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     try:
@@ -447,8 +447,8 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -515,8 +515,8 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

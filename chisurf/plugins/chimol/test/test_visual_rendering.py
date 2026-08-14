@@ -5,8 +5,8 @@ import numpy as np
 from PIL import Image
 
 import chisurf.core.structure as cs_struct
-from chisurf.plugins.chimol.chimol.geometry.primitives import _compute_center_radius
-from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+from chimol.geometry.primitives import _compute_center_radius
+from chimol.renderer.raytracer import (
     RayCamera,
     Sphere,
     trace,
@@ -152,7 +152,7 @@ class TestVisualRendering(unittest.TestCase):
 
     def test_render_148l_ses(self) -> None:
         """Render T4 Lysozyme (148L) Solvent Excluded Surface (SES)."""
-        from chisurf.plugins.chimol.chimol.geometry.surface import _generate_surface_mesh_edt
+        from chimol.geometry.surface import _generate_surface_mesh_edt
         self.assertTrue(self._pdb_148l.is_file(), f"Structure not found: {self._pdb_148l}")
 
         struct = cs_struct.Structure(str(self._pdb_148l))
@@ -220,7 +220,7 @@ class TestVisualRendering(unittest.TestCase):
 
     def test_render_1rtd_sas(self) -> None:
         """Render HIV Reverse Transcriptase (1RTD) Solvent Accessible Surface (SAS)."""
-        from chisurf.plugins.chimol.chimol.geometry.surface import _generate_surface_mesh_edt
+        from chimol.geometry.surface import _generate_surface_mesh_edt
         self.assertTrue(self._pdb_1rtd.is_file(), f"Structure not found: {self._pdb_1rtd}")
 
         struct = cs_struct.Structure(str(self._pdb_1rtd))
@@ -288,7 +288,7 @@ class TestVisualRendering(unittest.TestCase):
 
     def test_1rtd_trace_extraction(self) -> None:
         """Verify that trace extraction for 1RTD returns both protein and nucleic residues."""
-        from chisurf.plugins.chimol.chimol.geometry.trace import _extract_ca_trace
+        from chimol.geometry.trace import _extract_ca_trace
         self.assertTrue(self._pdb_1rtd.is_file(), f"Structure not found: {self._pdb_1rtd}")
 
         struct = cs_struct.Structure(str(self._pdb_1rtd))

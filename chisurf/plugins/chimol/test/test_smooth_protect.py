@@ -30,7 +30,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.smoothing import (
+from chimol.analysis.smoothing import (
     END_MODES,
     smooth_frames,
 )
@@ -263,10 +263,10 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(900, 650)

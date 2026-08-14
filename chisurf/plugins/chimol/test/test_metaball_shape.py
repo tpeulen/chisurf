@@ -25,9 +25,9 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.config import get_package_display_config_path
-from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.config import get_package_display_config_path
+from chimol.io.atoms import make_bead_rows
+from chimol.renderer.view import MolView
 
 
 @pytest.fixture(scope="module")
@@ -217,7 +217,7 @@ def _connected_pieces(vertices, faces) -> int:
 
 def _load(name: str, view_name: str):
     """Load a structure from the test data into a viewer showing metaballs."""
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+    from chimol.io.structure import load_structure_payload
 
     root = (
         pathlib.Path(__file__).resolve().parents[4]

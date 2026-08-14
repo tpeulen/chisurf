@@ -26,7 +26,7 @@ def _qt_app():
 @pytest.fixture
 def viewer(_qt_app):
     """Return a viewer framed on a 30 Å scene, so the planes have a baseline."""
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view._renderer.fit_to_radius(30.0)

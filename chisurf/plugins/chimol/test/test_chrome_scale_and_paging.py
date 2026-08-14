@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.object_menus import MenuEntry
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
+from chimol.object_menus import MenuEntry
+from chimol.renderer.internal_gui import (
     BASE_FONT_PT,
     GuiRow,
     InternalGui,

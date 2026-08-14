@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk.painter import (
+from chimol.cmtk.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_RIGHT,
@@ -26,8 +26,8 @@ from chisurf.plugins.chimol.test import chrome_baseline, quad_raster
 
 def _painter():
     """Return a fresh :class:`QuadPainter`, skipping if the atlas is unbaked."""
-    from chisurf.plugins.chimol.chimol.cmtk.font import load_atlas
-    from chisurf.plugins.chimol.chimol.cmtk.quad_painter import QuadPainter
+    from chimol.cmtk.font import load_atlas
+    from chimol.cmtk.quad_painter import QuadPainter
 
     try:
         atlas = load_atlas()
@@ -193,7 +193,7 @@ def test_every_region_of_the_panel_draws_something(state):
     """
     from PIL import Image
 
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+    from chimol.renderer.internal_gui import InternalGui
 
     p, atlas = _painter()
     width, height = chrome_baseline.SIZE

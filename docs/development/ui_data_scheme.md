@@ -81,6 +81,44 @@ exceptions are deliberate and named:
 - `options` on a `custom` section — free-form by design, forwarded verbatim to a
   registered factory whose signature is Python, not JSON.
 
+For the eight **documented** custom-section keys (`help`, `embed`,
+`scalar_table`, `background_run`, `rate_matrix`, `path_list`, `lcurve`,
+`fitting_parameter`), the option names are validated against the factory's
+declared set. A typo in one of these — `"tite"` instead of `"title"` on a
+`help` section — is caught by the scheme. Unknown custom keys stay opaque.
+
+## Editor support
+
+Any view spec, guide, or manifest may carry a `$schema` key pointing at the
+schema's `$id` (`https://chisurf.org/schemas/view.schema.json` etc.).  This is
+the standard JSON Schema convention — editors that understand it (VS Code,
+JetBrains, neovim/lspconfig) pick it up without project-specific config.
+
+## The manifest scheme
+
+The same treatment applies to `manifest.json`: a schema generated from
+`PluginManifest` dataclasses by `build_manifest_schema()` in
+`chisurf/core/plugin/manifest.py`, with a test that asserts every shipped
+manifest follows it. Regenerate with:
+
+```python
+from chisurf.core.plugin.manifest import write_manifest_schema
+write_manifest_schema()
+```
+
+## Generating a starter view spec
+
+`generate_starter_view_spec(model)` walks a model's parameter-group attributes
+and produces a valid `view.json` — one `parameter_group_table` per group plus
+the standard plots — so the common case never has to be spelled from memory:
+
+```python
+from chisurf.core.dataspec.schema import generate_starter_view_spec
+spec = generate_starter_view_spec(my_model)
+```
+
+The result passes `validate_view_spec` unchanged; edit it into the final spec.
+
 (#rebuild-on-change)=
 ## `rebuild_on_change` is a `choice` key on purpose
 
@@ -99,10 +137,10 @@ path — and a view spec becomes rows in the painted settings editor instead of
 widgets:
 
 ```text
-form chisurf/plugins/chimol/chimol/gui/appearance.view.json
+form modules/chimol/chimol/gui/appearance.view.json
 ```
 
-That is an adapter (`chimol/renderer/ui/view_spec.py`), not a second renderer,
+That is an adapter (`chimol/cmtk/view_spec.py`), not a second renderer,
 and the shared scheme is what keeps it one dialect: ChiMOL's own spec is
 validated by the same test as every other, so it cannot quietly grow a
 convenient spelling of its own. Sections a painted panel cannot draw — a

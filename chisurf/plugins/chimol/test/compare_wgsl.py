@@ -83,10 +83,10 @@ def background_for(viewer) -> tuple[float, float, float]:
 
 def build(scene_name: str, entry: dict):
     """Replay one baseline scene headlessly and return ``(viewer, errors)``."""
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
-    from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import load_structure_payload
+    from chimol.renderer.headless import SceneSink
+    from chimol.renderer.view import MolView
 
     viewer = MolView(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_DATA / entry["structure"])
@@ -113,8 +113,8 @@ def compare(scene_name: str):
     """Render ``scene_name`` both ways and return ``(pair_image, errors, iou)``."""
     from PIL import Image
 
-    from chisurf.plugins.chimol.chimol.renderer.pack import pack_scene
-    from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.renderer.pack import pack_scene
+    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
     manifest = json.loads((_BASELINE / "manifest.json").read_text())
     entry = manifest[scene_name]

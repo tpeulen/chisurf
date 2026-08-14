@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmd.argparse2 import (
+from chimol.cmd.argparse2 import (
     CommandError,
     bind_and_call,
     split_statements,
     tokenize,
 )
-from chisurf.plugins.chimol.chimol.cmd.base import BaseCmd
-from chisurf.plugins.chimol.chimol.cmd.registry import collect_commands, command
-from chisurf.plugins.chimol.chimol.cmd.selection_types import Selection
+from chimol.cmd.base import BaseCmd
+from chimol.cmd.registry import collect_commands, command
+from chimol.cmd.selection_types import Selection
 
 
 # --------------------------------------------------------------------------- #

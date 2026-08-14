@@ -29,7 +29,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.symmetry import (
+from chimol.analysis.symmetry import (
     CELL_EDGES,
     SPACE_GROUP_OPERATORS,
     UnitCell,
@@ -584,10 +584,10 @@ def crystal_cmd(qapp, tmp_path):
     """A window with 1RTD -- a file that carries its own CRYST1 record."""
     import shutil
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     if not _CRYSTAL.is_file():
         pytest.skip("no crystal fixture")

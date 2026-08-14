@@ -10,8 +10,8 @@ from __future__ import annotations
 import pytest
 from qtpy import QtCore
 
-from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
-from chisurf.plugins.chimol.chimol.renderer.internal_gui import (
+from chimol.object_menus import OBJECT_MENUS
+from chimol.renderer.internal_gui import (
     GuiRow,
     InternalGui,
     char_width,
@@ -232,7 +232,7 @@ def test_a_submenu_never_covers_the_menu_it_came_from(gui):
 
 def test_a_submenu_opens_to_the_right_when_there_is_room(gui):
     """PyMOL's preferred side, and the one a chain keeps until it must flip."""
-    from chisurf.plugins.chimol.chimol.object_menus import COLOR_MENU
+    from chimol.object_menus import COLOR_MENU
 
     gui._open_menu("Color:", "148l", COLOR_MENU, 40.0, 40.0)
     parent = gui._menus[-1]
@@ -477,7 +477,7 @@ def test_the_block_shows_pymols_own_matrix(gui):
     Someone reads this to find out what ctrl-shift-middle does; a table that is
     nearly right is worse than none.
     """
-    from chisurf.plugins.chimol.chimol.mouse_modes import rows_for
+    from chimol.mouse_modes import rows_for
 
     labels = [label for label, _cells in rows_for(gui.mouse_mode)]
     assert labels == ["& Keys", "Shft", "Ctrl", "CtSh", "SnglClk", "DblClk"]
@@ -498,7 +498,7 @@ def test_the_transcription_still_matches_pymol():
     """
     controlling = pytest.importorskip("pymol.controlling")
 
-    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_BINDINGS, MODE_NAMES
+    from chimol.mouse_modes import MODE_BINDINGS, MODE_NAMES
 
     for mode, bindings in MODE_BINDINGS.items():
         theirs = {(b, m): a for b, m, a in controlling.mode_dict[mode]}
@@ -643,7 +643,7 @@ def test_the_splitter_takes_its_own_press_only(gui):
 @pytest.fixture
 def sequences(gui):
     """Return the panel with two sequences shown."""
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import SequenceRow
+    from chimol.renderer.internal_gui import SequenceRow
 
     gui.sequence_visible = True
     gui.set_sequences([
@@ -826,7 +826,7 @@ def test_double_click_on_blank_sequence_area_clears(sequences):
 # The `sele` pseudo-object
 # --------------------------------------------------------------------------- #
 def _panel_with_sele(commands):
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+    from chimol.renderer.internal_gui import InternalGui
 
     panel = InternalGui(run_command=commands.append)
     panel.commands = commands
@@ -883,7 +883,7 @@ def test_the_sele_row_buttons_address_the_selection():
 @pytest.fixture
 def long_sequence(gui):
     """Return the panel with a sequence far longer than the strip."""
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import SequenceRow
+    from chimol.renderer.internal_gui import SequenceRow
 
     gui.sequence_visible = True
     gui.set_sequences([
@@ -964,7 +964,7 @@ def test_the_letters_take_the_structures_colours(sequences):
     A sequence in one flat colour says nothing about a molecule coloured by
     chain or by spectrum.
     """
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import _residue_color
+    from chimol.renderer.internal_gui import _residue_color
 
     row = sequences.sequences[0]
     row.colors = [(1.0, 0.0, 0.0)] * len(row.codes)
@@ -984,7 +984,7 @@ def test_the_mode_line_cycles_within_pymols_ring(gui):
     lights or maestro modes, which is the point of having a ring: cycling all
     ten walks someone through modes they did not choose.
     """
-    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_RINGS
+    from chimol.mouse_modes import MODE_RINGS
 
     ring = MODE_RINGS[gui.mouse_ring]
     seen = []
@@ -1000,7 +1000,7 @@ def test_the_ring_matches_pymols():
     """Checked against the source it came from, where PyMOL is installed."""
     controlling = pytest.importorskip("pymol.controlling")
 
-    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_RINGS
+    from chimol.mouse_modes import MODE_RINGS
 
     for name, modes in MODE_RINGS.items():
         assert list(modes) == list(controlling.ring_dict[name]), f"{name} drifted"
@@ -1120,7 +1120,7 @@ def test_the_table_and_the_mouse_read_the_same_bindings():
     from qtpy import QtCore, QtWidgets
 
     QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.chimol.chimol.mouse_modes import action_of, rows_for
+    from chimol.mouse_modes import action_of, rows_for
 
     mode = "three_button_viewing"
     cells = dict(rows_for(mode))
@@ -1143,7 +1143,7 @@ def test_ctrl_shift_is_its_own_row_not_a_ctrl_row():
     from qtpy import QtCore, QtWidgets
 
     QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.chimol.chimol.mouse_modes import modifier_of
+    from chimol.mouse_modes import modifier_of
 
     assert modifier_of(QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier) == "ctsh"
     assert modifier_of(QtCore.Qt.ControlModifier) == "ctrl"
@@ -1155,7 +1155,7 @@ def test_the_wheel_bindings_come_from_the_table_too():
     from qtpy import QtCore, QtWidgets
 
     QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.chimol.chimol.mouse_modes import wheel_action_of
+    from chimol.mouse_modes import wheel_action_of
 
     mode = "three_button_viewing"
     assert wheel_action_of(mode, QtCore.Qt.NoModifier) == "slab"
@@ -1228,7 +1228,7 @@ def test_a_dragged_window_snaps_to_the_edge_and_anchors_in_corners(gui):
 
 def test_window_states_survive_a_restart(tmp_path, monkeypatch):
     """The ask: chimol must remember window states between restarts."""
-    from chisurf.plugins.chimol.chimol.renderer import window_state
+    from chimol.renderer import window_state
 
     path = tmp_path / "chimol_windows.json"
     monkeypatch.setattr(window_state, "state_path", lambda: path)
@@ -1254,7 +1254,7 @@ def test_window_states_survive_a_restart(tmp_path, monkeypatch):
 
 def test_a_bare_panel_never_touches_the_saved_states(tmp_path, monkeypatch):
     """Tests and headless probes must not read or write real preferences."""
-    from chisurf.plugins.chimol.chimol.renderer import window_state
+    from chimol.renderer import window_state
 
     path = tmp_path / "chimol_windows.json"
     monkeypatch.setattr(window_state, "state_path", lambda: path)
@@ -1336,7 +1336,7 @@ def test_snapping_can_be_turned_off(gui):
 
 def test_the_snap_setting_is_declared():
     """`set window_snap, off` must reach a real, documented setting."""
-    from chisurf.plugins.chimol.chimol.settings import SETTINGS
+    from chimol.settings import SETTINGS
 
     spec = SETTINGS.get("window_snap")
     assert spec is not None, "window_snap is not a registered setting"
@@ -1379,7 +1379,7 @@ def _title_grab(gui, win):
 
 
 def test_a_window_dragged_near_another_snaps_flush(gui):
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiWindow
+    from chimol.renderer.internal_gui import GuiWindow
 
     a = gui.add_window(GuiWindow(key="a", title="A", x=100, y=200, w=120, h=90))
     b = gui.add_window(GuiWindow(key="b", title="B", x=400, y=210, w=120, h=90))
@@ -1397,7 +1397,7 @@ def test_a_window_dragged_near_another_snaps_flush(gui):
 
 
 def test_stuck_windows_move_together_and_shift_detaches(gui):
-    from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiWindow
+    from chimol.renderer.internal_gui import GuiWindow
 
     a = gui.add_window(GuiWindow(key="a", title="A", x=100, y=200, w=120, h=90))
     b = gui.add_window(GuiWindow(key="b", title="B", x=220, y=200, w=120, h=90))

@@ -26,10 +26,10 @@ def qapp():
 @pytest.fixture
 def shell(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

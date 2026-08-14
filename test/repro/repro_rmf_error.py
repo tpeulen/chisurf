@@ -5,7 +5,7 @@ import numpy as np
 # Add the project root to sys.path
 sys.path.append(str(Path(r"E:\dev\chisurf")))
 
-from chisurf.plugins.chimol.chimol.io.rmf import load_rmf_full
+from chimol.io.rmf import load_rmf_full
 
 def verify():
     path = Path(r"E:\dev\chisurf\chisurf\plugins\chimol\tests\data\0.rmf3")

@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.pack import pack_scene
-from chisurf.plugins.chimol.chimol.renderer.scene import Geometry, Scene, SceneObject
-from chisurf.plugins.chimol.chimol.renderer.surface_quality import apply_surface_quality
-from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
-from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+from chimol.renderer.pack import pack_scene
+from chimol.renderer.scene import Geometry, Scene, SceneObject
+from chimol.renderer.surface_quality import apply_surface_quality
+from chimol.renderer.view_state import pack_view_state
+from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)
 

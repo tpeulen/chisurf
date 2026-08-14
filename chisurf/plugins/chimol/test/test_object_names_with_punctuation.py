@@ -18,8 +18,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chisurf.plugins.chimol.chimol.cmd.sele_parser import tokenize  # noqa: E402
-from chisurf.plugins.chimol.chimol.object_menus import (  # noqa: E402
+from chimol.cmd.sele_parser import tokenize  # noqa: E402
+from chimol.object_menus import (  # noqa: E402
     quote_selection_name,
 )
 
@@ -69,10 +69,10 @@ def hyphenated(request):
 
     from qtpy import QtWidgets
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

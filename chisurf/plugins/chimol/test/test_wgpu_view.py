@@ -10,7 +10,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer import wgpu_view
+from chimol.renderer import wgpu_view
 
 pytestmark = pytest.mark.slow
 
@@ -58,7 +58,7 @@ class TestFactorySelection:
         having no widget -- the viewer already handles that, because
         ``SceneSink`` is what makes headless scene assembly work.
         """
-        from chisurf.plugins.chimol.chimol.renderer.headless import SceneSink
+        from chimol.renderer.headless import SceneSink
 
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
         assert wgpu_view.default_renderer() is SceneSink
@@ -90,7 +90,7 @@ class TestRendererContract:
         assert renderer.get_view_state() == pytest.approx(before)
 
     def test_a_scene_is_packed_once_not_per_frame(self, renderer):
-        from chisurf.plugins.chimol.chimol.renderer.scene import (
+        from chimol.renderer.scene import (
             Geometry,
             Scene,
             SceneObject,
@@ -189,7 +189,7 @@ class TestChrome:
 
     def test_the_image_path_still_serves_labels(self, renderer):
         """A scene with labels still gets a premultiplied image."""
-        from chisurf.plugins.chimol.chimol.renderer.wgpu_view import Label
+        from chimol.renderer.wgpu_view import Label
 
         renderer._labels = [
             Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))
@@ -208,13 +208,13 @@ class TestItDrawsTheSamePictureAsTheComparisonHarness:
     """The window and the offscreen baseline comparison share one code path."""
 
     def test_a_frame_comes_back_with_the_scene_in_it(self, renderer):
-        from chisurf.plugins.chimol.chimol.renderer.pack import (
+        from chimol.renderer.pack import (
             PackedGeometry,
             PackedObject,
             PackedScene,
         )
-        from chisurf.plugins.chimol.chimol.renderer.scene import Geometry, Scene, SceneObject
-        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+        from chimol.renderer.scene import Geometry, Scene, SceneObject
+        from chimol.renderer.view_state import pack_view_state
 
         # One big triangle, so "did anything draw" cannot be answered by noise.
         geom = Geometry(
@@ -242,7 +242,7 @@ class TestTheDefaultBackend:
 
     def test_the_default_is_wgpu(self, monkeypatch):
         monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
-        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+        from chimol.config import _DISPLAY_CONFIG
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {})
         assert wgpu_view.selected_backend() == "wgpu"
@@ -253,7 +253,7 @@ class TestTheDefaultBackend:
         import json
         import pathlib
 
-        import chisurf.plugins.chimol.chimol as chimol_pkg
+        import chimol as chimol_pkg
 
         path = pathlib.Path(chimol_pkg.__file__).with_name("chimol_display.json")
         shipped = json.loads(path.read_text())
@@ -267,14 +267,14 @@ class TestTheDefaultBackend:
         ``wgpu`` is the only value that draws anything today.
         """
         monkeypatch.delenv("CHIMOL_RENDERER", raising=False)
-        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+        from chimol.config import _DISPLAY_CONFIG
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "something"})
         assert wgpu_view.selected_backend() == "something"
 
     def test_the_environment_overrides_the_config(self, monkeypatch):
         """What makes a bug report reproducible without editing a config file."""
-        from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+        from chimol.config import _DISPLAY_CONFIG
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "opengl"})
         monkeypatch.setenv("CHIMOL_RENDERER", "wgpu")
@@ -285,7 +285,7 @@ class TestLabels:
     """``kind == "text"`` geometry, which leaves the GPU path and returns as glyphs."""
 
     def test_text_geometry_becomes_labels(self):
-        from chisurf.plugins.chimol.chimol.renderer.pack import (
+        from chimol.renderer.pack import (
             PackedGeometry,
             PackedObject,
             PackedScene,
@@ -307,7 +307,7 @@ class TestLabels:
 
     def test_more_positions_than_texts_is_not_an_error(self):
         """A builder that emits a position per atom and a text per residue."""
-        from chisurf.plugins.chimol.chimol.renderer.pack import (
+        from chimol.renderer.pack import (
             PackedGeometry,
             PackedObject,
             PackedScene,
@@ -325,7 +325,7 @@ class TestLabels:
 
     def test_labels_are_drawn_into_the_chrome(self, renderer):
         """A label that is collected but never painted is not a label."""
-        from chisurf.plugins.chimol.chimol.host.qt_overlay import paint_chrome
+        from chimol.host.qt_overlay import paint_chrome
 
         renderer._internal_gui.visible = False
         centre = np.array(renderer._target, dtype=float)
@@ -345,9 +345,9 @@ class TestSilhouette:
     """The depth-outline post-pass."""
 
     def test_off_by_default(self):
-        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
-        from chisurf.plugins.chimol.chimol.renderer.view_state import unpack_view_state
-        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.renderer.view_state import unpack_view_state
+        from chimol.renderer.view_state import pack_view_state
 
         state = unpack_view_state(
             pack_view_state(np.eye(3), 50.0, (0, 0, 0), 1.0, 100.0, 20.0)
@@ -356,11 +356,11 @@ class TestSilhouette:
 
     def test_enabled_resolves_the_linearising_ratio(self):
         """`depth_jump` is a fraction of the scene, which needs near/far."""
-        from chisurf.plugins.chimol.chimol.renderer.view_state import (
+        from chimol.renderer.view_state import (
             pack_view_state,
             unpack_view_state,
         )
-        from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
 
         state = unpack_view_state(
             pack_view_state(np.eye(3), 50.0, (0, 0, 0), 2.0, 200.0, 20.0)
@@ -377,12 +377,12 @@ class TestSilhouette:
         implementation that changed it for the wrong reason -- which is how an
         inverted occlusion switch survived here once.
         """
-        from chisurf.plugins.chimol.chimol.renderer.scene import (
+        from chimol.renderer.scene import (
             Geometry,
             Scene,
             SceneObject,
         )
-        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+        from chimol.renderer.view_state import pack_view_state
 
         # Two offset quads, so there is an internal depth step to outline.
         quads, indices = [], []
@@ -407,8 +407,8 @@ class TestSilhouette:
         )
         renderer._internal_gui.visible = False
         try:
-            from chisurf.plugins.chimol.chimol.renderer.pack import pack_scene
-            from chisurf.plugins.chimol.chimol.renderer.wgpu_backend import (
+            from chimol.renderer.pack import pack_scene
+            from chimol.renderer.wgpu_backend import (
                 WgpuMeshRenderer,
             )
 
@@ -444,7 +444,7 @@ class TestPickingProjection:
             renderer.look_at(np.zeros(3))
             renderer.set_view_state(
                 __import__(
-                    "chisurf.plugins.chimol.chimol.renderer.view_state",
+                    "chimol.renderer.view_state",
                     fromlist=["pack_view_state"],
                 ).pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
             )
@@ -472,7 +472,7 @@ class TestPickingProjection:
         assert renderer.scene_origin_y() == renderer.height() - renderer.scene_height()
 
     def test_a_point_behind_the_camera_is_not_visible(self, renderer):
-        from chisurf.plugins.chimol.chimol.renderer.view_state import pack_view_state
+        from chimol.renderer.view_state import pack_view_state
 
         renderer.set_view_state(
             pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)

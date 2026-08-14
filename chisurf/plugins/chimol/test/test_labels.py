@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.labels import (
+from chimol.analysis.labels import (
     ATOM_PROPERTIES,
     evaluate_labels,
     label_expression,
@@ -187,9 +187,9 @@ def loaded(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -275,7 +275,7 @@ def test_labelling_nothing_is_reported(loaded):
 
 def test_the_label_menu_is_no_longer_disabled():
     """It was greyed out in its entirety because there was no label support."""
-    from chisurf.plugins.chimol.chimol.object_menus import LABEL_MENU
+    from chimol.object_menus import LABEL_MENU
 
     live = [
         e for e in LABEL_MENU

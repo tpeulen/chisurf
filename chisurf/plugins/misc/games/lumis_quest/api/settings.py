@@ -14,7 +14,7 @@ and its default here; the menu renders whatever is declared, in order, with the
 control the type implies; and stepping a setting is the *model* moving a value
 inside its own declared range. Adding a setting is adding one entry.
 
-The declaration is Chimol's (:mod:`chimol.renderer.ui.settings_editor`), which
+The declaration is Chimol's (:mod:`chimol.cmtk.settings_editor`), which
 is also what draws the settings panel inside the 3-D view -- the game and the
 molecular viewer describe their settings the same way and are edited by the
 same controls. That is the whole reason Lumis Quest depends on Chimol.
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable, Optional
 
-from chisurf.plugins.chimol.chimol.renderer.ui.settings_editor import (
+from chimol.cmtk.settings_editor import (
     ACTION,
     BOOL,
     CHOICE,
@@ -78,6 +78,12 @@ SETTINGS: tuple[Setting, ...] = (
     _setting("options.camera", CHOICE, "camera", CAMERA_MODES[0],
              options=CAMERA_MODES,
              description="Follow Iris, or hold the screen she is standing in."),
+    _setting("options.camera_lag", FLOAT, "camera smooth", 7.0,
+             v_min=2.0, v_max=14.0, step=1.0, fmt="%.0f",
+             description="How fast the camera catches up with Iris."),
+    _setting("options.companion_trail", FLOAT, "lumi distance", 26.0,
+             v_min=14.0, v_max=50.0, step=4.0, fmt="%.0f",
+             description="How closely Lumi trails behind Iris."),
     _setting("options.walk_speed", FLOAT, "walk speed", 190.0,
              v_min=120.0, v_max=260.0, step=20.0, fmt="%.0f",
              description="World units a second, before the sprint multiplier."),
@@ -90,6 +96,12 @@ SETTINGS: tuple[Setting, ...] = (
     _setting("options.sfx_volume", FLOAT, "sound volume", 0.5,
              v_min=0.0, v_max=1.0, step=0.1, fmt="%.0%",
              description="Everything that is not music."),
+    _setting("options.text_speed", FLOAT, "text speed", 32.0,
+             v_min=8.0, v_max=96.0, step=8.0, fmt="%.0f cps",
+             description="How fast dialogue letters appear."),
+    _setting("options.autosave_interval", FLOAT, "autosave", 60.0,
+             v_min=15.0, v_max=300.0, step=15.0, fmt="%.0fs",
+             description="How often free-roam play saves itself."),
     _setting("options.llm", ACTION, "llm provider", False,
              description="Which model answers the keepers, and whether it is wired."),
     _setting("options.regenerate", ACTION, "regenerate the wilderness", False,
@@ -103,6 +115,18 @@ SETTINGS: tuple[Setting, ...] = (
     _setting("gamelogic.enemy_aggro_radius", FLOAT, "enemy aggro", 4.5,
              v_min=2.0, v_max=8.0, step=0.5, fmt="%.1f tiles",
              description="How close Iris gets before a beast comes for her."),
+    _setting("gamelogic.sprint_multiplier", FLOAT, "sprint boost", 2.6,
+             v_min=1.4, v_max=4.0, step=0.2, fmt="%.1fx",
+             description="How much faster holding Confirm makes Iris go."),
+    _setting("gamelogic.encounter_rate", FLOAT, "encounter rate", 1.0,
+             v_min=0.3, v_max=2.5, step=0.1, fmt="%.1fx",
+             description="How often wild beasts approach Iris on the map."),
+    _setting("gamelogic.jump_power", FLOAT, "jump power", 235.0,
+             v_min=140.0, v_max=340.0, step=20.0, fmt="%.0f",
+             description="How high a tap of Confirm launches Iris."),
+    _setting("gamelogic.gravity", FLOAT, "gravity", 900.0,
+             v_min=500.0, v_max=1400.0, step=100.0, fmt="%.0f",
+             description="How fast Iris falls back after a jump."),
     _setting("gamelogic.action_combat", BOOL, "action combat", True,
              description="Real-time swings in the overworld, rather than only turns."),
     _setting("gamelogic.particles", BOOL, "particle effects", True,
@@ -142,7 +166,7 @@ def row_text(setting: Setting, value: Any) -> str:
     if setting.kind == BOOL:
         return f"{setting.label}: {'[✓] enabled' if value else '[ ] disabled'}"
     if setting.kind == FLOAT:
-        from chisurf.plugins.chimol.chimol.renderer.ui.widgets import _format
+        from chimol.cmtk.widgets import _format
 
         return f"{setting.label}: {_format(setting.fmt or '%.2f', float(value))}"
     return f"{setting.label}: {value}"

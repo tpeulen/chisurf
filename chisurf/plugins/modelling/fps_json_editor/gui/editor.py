@@ -13,7 +13,7 @@ import chisurf.gui.widgets as gui_widgets
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor import SimpleCodeEditor
 
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
+from chimol.renderer.view import MolView
 from ..core.model import FpsJsonModel
 from .distance_panel import DistancePanel
 from .flexfit_panel import FlexFitPanel

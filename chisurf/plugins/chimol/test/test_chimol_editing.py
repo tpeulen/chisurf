@@ -4,9 +4,9 @@ import pytest
 from dataclasses import dataclass
 from pathlib import Path
 
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-from chisurf.plugins.chimol.chimol.io.atoms import empty_atoms
+from chimol.testing.mock_viewer import MockViewer
+from chimol.cmd.command import Cmd
+from chimol.io.atoms import empty_atoms
 
 class MockWindow:
     def __init__(self, viewer):
@@ -199,7 +199,7 @@ def test_chimol_cmd_cartoon_spectrum_settings(editing_context):
     assert np.asarray(colors)[:, :3].std() > 0.0   # a ramp, not one colour
 
     cmd.do("cartoon tube")
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
     assert _DISPLAY_CONFIG["cartoon"]["style"] == "tube"
 
     cmd.do("set cartoon_oval_width, 0.33")
@@ -308,7 +308,7 @@ def test_chimol_cmd_get_color_index(editing_context):
 
 def test_raytracer_single_sphere():
     """A single sphere renders a non-background pixel at its center."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
 
@@ -338,7 +338,7 @@ def test_raytracer_single_sphere():
 
 def test_raytracer_no_spheres():
     """Zero spheres produce a fully-background image."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         RayCamera, trace,
     )
 
@@ -356,7 +356,7 @@ def test_raytracer_no_spheres():
 
 def test_raytracer_shadow():
     """A sphere behind another (w.r.t. light) is in shadow."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
 
@@ -406,7 +406,7 @@ def test_chimol_cmd_ray_integration(editing_context, tmp_path: Path):
 
 def test_raytracer_multi_light():
     """Two lights produce different lighting than one light."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -433,7 +433,7 @@ def test_raytracer_multi_light():
 
 def test_raytracer_direct_specular():
     """Direct specular (head-on) adds a bright highlight with power 55."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -463,7 +463,7 @@ def test_raytracer_direct_specular():
 
 def test_raytracer_lower_ambient():
     """Lower ambient produces higher contrast (darker shadow side)."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     # Use a larger sphere closer so pixels definitely hit it
@@ -507,8 +507,8 @@ def test_raytracer_lower_ambient():
 
 def test_raytracer_gamma_background():
     """Gamma correction changes effective background color."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import trace
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import RayCamera
+    from chimol.renderer.raytracer import trace
+    from chimol.renderer.raytracer import RayCamera
 
     camera = RayCamera(
         origin=np.array([0.0, 0.0, 0.0]),
@@ -540,7 +540,7 @@ def test_raytracer_soft_shadow():
     """Soft shadow makes shadowed region brighter than hard shadow."""
     # Numba is a hard requirement of the tracer now -- the pure-NumPy twin that
     # this used to skip for is gone, because nothing ran it and it had rotted.
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         RayCamera,
         Sphere,
         trace,
@@ -579,7 +579,7 @@ def test_raytracer_soft_shadow():
 
 def test_raytracer_shadow_fudge():
     """Shadow fudge prevents self-shadowing; without it shadow may alias."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -607,7 +607,7 @@ def test_raytracer_shadow_fudge():
 
 def test_raytracer_depth_cue():
     """Depth cueing makes far spheres fade to background."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -645,7 +645,7 @@ def test_raytracer_depth_cue():
 
 def test_raytracer_antialias_levels():
     """Different SSAA levels produce different images."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -680,7 +680,7 @@ def test_raytracer_antialias_levels():
 
 def test_raytracer_color_blend():
     """Color blend raises minimum per-channel values."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace, _apply_color_blend,
     )
     import numpy as np
@@ -708,7 +708,7 @@ def test_raytracer_color_blend():
 
 def test_raytracer_color_blend_sphere():
     """Ray trace with color_blend=True produces valid output."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -737,7 +737,7 @@ def test_raytracer_color_blend_sphere():
 
 def test_raytracer_pymol_defaults():
     """Render with PyMOL defaults produces reasonable output."""
-    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+    from chimol.renderer.raytracer import (
         Sphere, RayCamera, trace,
     )
     spheres = [
@@ -778,7 +778,7 @@ def test_raytracer_pymol_defaults():
 def test_cmd_ray_uses_config_settings(editing_context, tmp_path):
     """The ray command reads settings from the config's ray section."""
     viewer, cmd = editing_context
-    from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+    from chimol.config import _DISPLAY_CONFIG
     messages = []
     errors = []
     cmd.set_message_callback(messages.append)

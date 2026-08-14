@@ -629,10 +629,10 @@ def _grab_chimol_viewer():
     """
     import pathlib as _pathlib
 
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+    from chimol.cmd.command import Cmd
 
     pdb = _pathlib.Path(
         "test/data/atomic_coordinates/pdb_files/148l.pdb"
@@ -689,8 +689,8 @@ def _grab_chimol_viewer():
     # window `ray` hands the trace to a worker, which a script with no event loop
     # of its own never lets finish ("ray: cancelled").
     import chisurf.core.structure as cs_struct
-    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.io.structure import _read_full_model
+    from chimol.renderer.view import MolView
 
     view = MolView()
     view.resize(900, 650)
@@ -740,10 +740,10 @@ def _grab_chimol_biofilm():
     A frame early in the run and a frame at the end, because the point of the
     demo is the difference between them.
     """
-    from chisurf.plugins.chimol.chimol.app.demo_data import generated_demo_path
-    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
-    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
-    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+    from chimol.app.demo_data import generated_demo_path
+    from chimol.cmd.command import Cmd
+    from chimol.io.structure import load_structure_payload
+    from chimol.renderer.view import MolView
 
     rmf = generated_demo_path("biofilm_growth.rmf")
     _reader, payload = load_structure_payload(str(rmf))

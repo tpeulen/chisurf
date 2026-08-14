@@ -225,6 +225,12 @@ ninja = "*"
  # tttrlib's only provider: there is no conda package dependency to fall back on,
  # so this builds the source under the modules/tttrlib symlink and fails loudly
  # when it is missing rather than leaving the environment without tttrlib.
+ # chimol: editable install of the relocated engine (~/dev/chimol via the
+ # modules/chimol symlink) -- the same sibling-checkout pattern as mmfdb.
+ # Pure python, no deps: the host environment provides numpy/wgpu/windowing.
+ build-chimol = { cmd = "pip install -e modules/chimol --no-deps", inputs = [
+     "modules/chimol/pyproject.toml",
+ ] }
  build-tttrlib = { cmd = "python build_tools/build_tttrlib.py", inputs = [
      "build_tools/build_tttrlib.py",
      "modules/tttrlib/pyproject.toml",
@@ -238,6 +244,7 @@ ninja = "*"
      "build-quest",
      "build-chinet",
      "build-tttrlib",
+     "build-chimol",
  ] }
  chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }
 

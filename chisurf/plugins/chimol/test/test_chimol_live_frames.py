@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from qtpy import QtWidgets
 
-from chisurf.plugins.chimol.chimol.renderer.chimol_state import _MolViewObjectState
-from chisurf.plugins.chimol.chimol.renderer.view import MolView
-from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer
+from chimol.renderer.chimol_state import _MolViewObjectState
+from chimol.renderer.view import MolView
+from chimol.testing.mock_viewer import MockViewer
 
 
 def test_mock_viewer_append_frame_tracks_raw_frames() -> None:
@@ -44,7 +44,7 @@ def test_select_state_frame_preserves_ca_trace_for_all_atom_frames():
     atoms["res_id"] = np.repeat(np.arange(n_res), 5)
     atoms["res_name"] = "ALA"
 
-    from chisurf.plugins.chimol.chimol.geometry.primitives import (
+    from chimol.geometry.primitives import (
         _compute_center_radius,
     )
 
@@ -164,8 +164,8 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     else, but the property it was fixed to have is exactly as load-bearing, so
     it is pinned here against the new seam.
     """
-    from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
-    from chisurf.plugins.chimol.chimol.io.structure import StructurePayload
+    from chimol.io.atoms import make_bead_rows
+    from chimol.io.structure import StructurePayload
 
     widget = MolView()
     widget._update_view = lambda *args, **kwargs: None

@@ -18,8 +18,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.geometry import ambient, neighbors, surface
-from chisurf.plugins.chimol.chimol.renderer import compute
+from chimol.geometry import ambient, neighbors, surface
+from chimol.renderer import compute
 
 pytestmark = pytest.mark.skipif(
     not compute.available(), reason="no WebGPU adapter on this machine"

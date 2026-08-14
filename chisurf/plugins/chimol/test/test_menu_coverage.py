@@ -25,8 +25,8 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol import object_menus as om
-from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+from chimol import object_menus as om
+from chimol.cmd.command import Cmd
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -111,10 +111,10 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+    from chimol.app.molview_main_window import (
         MolViewPluginWindow,
     )
-    from chisurf.plugins.chimol.chimol.cmd import cmd as shared
+    from chimol.cmd import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(800, 600)
@@ -257,7 +257,7 @@ DISABLED_ENTRIES = {
 
 def _disabled_leaves():
     """Every leaf entry with no command, as ``"A > preset > ..."`` paths."""
-    from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
+    from chimol.object_menus import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:
@@ -291,7 +291,7 @@ def test_the_disabled_entries_are_the_inventory():
 
 def test_every_disabled_entry_says_why():
     """A greyed-out row with no tooltip is indistinguishable from a bug."""
-    from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
+    from chimol.object_menus import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:

@@ -11,11 +11,11 @@ import pathlib
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.analysis.bond_orders import (
+from chimol.analysis.bond_orders import (
     DOUBLE_BONDS,
     assign_bond_orders,
 )
-from chisurf.plugins.chimol.chimol.geometry.wireframe import (
+from chimol.geometry.wireframe import (
     bond_line_segments,
     valence_offsets,
 )
@@ -101,11 +101,11 @@ def test_an_aromatic_ring_alternates():
 
 def test_a_real_protein_is_mostly_backbone_carbonyls():
     """148L: 258 double bonds of 1384, and every residue's C=O among them."""
-    from chisurf.plugins.chimol.chimol.analysis.clashes import VDW_RADII
-    from chisurf.plugins.chimol.chimol.geometry.bonds import (
+    from chimol.analysis.clashes import VDW_RADII
+    from chimol.geometry.bonds import (
         build_bond_pairs_by_element,
     )
-    from chisurf.plugins.chimol.chimol.io.structure import _parse_pdb_backbone
+    from chimol.io.structure import _parse_pdb_backbone
 
     if not PDB.exists():
         pytest.skip("no 148l fixture")

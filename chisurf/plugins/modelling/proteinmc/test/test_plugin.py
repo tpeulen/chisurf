@@ -93,7 +93,7 @@ def test_direct_labeling_potential_scores_148l(tmp_path: Path) -> None:
 def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
-    from chisurf.plugins.chimol.chimol.io.rmf import load_rmf_full
+    from chimol.io.rmf import load_rmf_full
 
     structure = load_structure(PDB_148L)
     labeling_file = _labeling_json(structure, tmp_path / "labeling.fps.json")
@@ -136,7 +136,7 @@ def test_rmf_writer_replaces_blank_chain_ids(tmp_path: Path) -> None:
 def test_rmf_writer_writes_pmi_stat_metadata(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
-    from chisurf.plugins.chimol.chimol.io.rmf import load_rmf_full
+    from chimol.io.rmf import load_rmf_full
     from chisurf.plugins.modelling.proteinmc.rmf import ProteinMCRmfWriter
 
     atoms = np.zeros(

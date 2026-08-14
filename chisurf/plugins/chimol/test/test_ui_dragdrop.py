@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.cmtk import dragdrop
-from chisurf.plugins.chimol.chimol.cmtk.dragdrop import (
+from chimol.cmtk import dragdrop
+from chimol.cmtk.dragdrop import (
     DELAY_NONE,
     DELAY_NORMAL,
     STATIONARY_DELAY,
