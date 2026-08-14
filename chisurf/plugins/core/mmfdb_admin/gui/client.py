@@ -1045,13 +1045,27 @@ class MMFDBClient:
     def token(self, value: str | None) -> None:
         self._token = value
 
-    def login(self, user_id: str, password: str = "", client_metadata: dict | None = None) -> dict[str, Any]:
-        """Login and store the session token."""
+    def login(self, user_id: str, password: str = "", client_metadata: dict | None = None, quiet: bool = False) -> dict[str, Any]:
+        """Login and store the session token.
+
+        Parameters
+        ----------
+        user_id : str
+            MMFDB user id.
+        password : str, optional
+            Account password.
+        client_metadata : dict, optional
+            Metadata attached to the new session.
+        quiet : bool, default False
+            Suppress ERROR logging for rejected logins. Autologin probes a
+            stored token and a passwordless login first and *expects* those
+            to be declined, so they must not spam the log.
+        """
         result = self._call_raw("mmfdb.security.auth.login", {
             "user_id": user_id,
             "password": password,
             "client_metadata": client_metadata,
-        })
+        }, quiet=quiet)
         if result.get("ok"):
             self._token = result.get("token")
         return result
@@ -1062,9 +1076,16 @@ class MMFDBClient:
         self._token = None
         return result
 
-    def me(self) -> dict[str, Any]:
-        """Return current authenticated user info."""
-        return self._call("mmfdb.security.auth.me")
+    def me(self, quiet: bool = False) -> dict[str, Any]:
+        """Return current authenticated user info.
+
+        Parameters
+        ----------
+        quiet : bool, default False
+            Suppress ERROR logging when no session token is present (the
+            autologin probe path, where "Authentication required" is expected).
+        """
+        return self._call("mmfdb.security.auth.me", quiet=quiet)
 
     def sessions_list(self, user_id: str | None = None) -> list[dict[str, Any]]:
         """List active sessions."""
@@ -1348,21 +1369,31 @@ class MMFDBClient:
 
     # ---- Internal ----
 
-    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def call(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
         """Public RPC entry point (auth-injecting, envelope-unwrapping).
 
         External consumers (the dataset browser widget, plugin GUIs) call
         ``client.call(...)``; keep this in sync with ``_call``.
-        """
-        return self._call(method, params)
 
-    def _call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        Parameters
+        ----------
+        method : str
+            RPC method name.
+        params : dict, optional
+            Method parameters.
+        quiet : bool, default False
+            Suppress ERROR logging when the call fails (expected-failure
+            probes).
+        """
+        return self._call(method, params, quiet=quiet)
+
+    def _call(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
         params = dict(params or {})
         if self._token and "auth" not in params:
             params["auth"] = {"token": self._token}
-        return self._call_raw(method, params)
+        return self._call_raw(method, params, quiet=quiet)
 
-    def _call_raw(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _call_raw(self, method: str, params: dict[str, Any] | None = None, quiet: bool = False) -> dict[str, Any]:
         result = self._client.call(method, params or {})
         if result.get("jsonrpc") == "2.0" and "error" in result:
             error = result["error"]
@@ -1370,10 +1401,12 @@ class MMFDBClient:
                 message = str(error.get("message", error))
             else:
                 message = str(error)
-            logging.error("MMFDB RPC failed: %s: %s", method, message)
+            if not quiet:
+                logging.error("MMFDB RPC failed: %s: %s", method, message)
             raise RuntimeError(message)
         if not result.get("ok", True):
             error = result.get("error", method)
-            logging.error("MMFDB RPC failed: %s: %s", method, error)
+            if not quiet:
+                logging.error("MMFDB RPC failed: %s: %s", method, error)
             raise RuntimeError(error)
         return result.get("result", result)

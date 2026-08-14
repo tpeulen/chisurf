@@ -2066,7 +2066,7 @@ def get_app():
                 if token:
                     try:
                         client.token = token
-                        result = client.me()
+                        result = client.me(quiet=True)
                         current_user = result.get("user") or {}
                         trigger_login = current_user.get("user_id") != default_user
                         if not trigger_login:
@@ -2078,7 +2078,7 @@ def get_app():
                         delete_session_token(credential_host, credential_port, default_user)
                 if trigger_login:
                     try:
-                        result = client.login(user_id=default_user, password="")
+                        result = client.login(user_id=default_user, password="", quiet=True)
                         trigger_login = not (result.get("ok") or result.get("authenticated"))
                         if not trigger_login:
                             token = result.get("token", "")
@@ -2105,7 +2105,7 @@ def get_app():
                     password = DESKTOP_CREDENTIALS.get(user)
                     if password is not None:
                         try:
-                            result = client.login(user_id=user, password=password)
+                            result = client.login(user_id=user, password=password, quiet=True)
                             ok = result.get("ok") or result.get("authenticated")
                             trigger_login = not ok
                             if not trigger_login:
