@@ -219,6 +219,14 @@ def names() -> tuple[str, ...]:
     every = [f"iris_{facing}_{frame}"
              for facing in _COLUMNS for frame in "0123ajd"]
     every.extend(f"{kind}_{frame}" for kind in _SHEETS for frame in "0123")
+    # Facing-qualified names only where the game constructs them: the player
+    # (``iris_{facing}_{pose}``) and the companion (``lumi_{facing}_{frame}``,
+    # mirroring the left). Everyone else is drawn frame-only, and a name the
+    # resolver answers but names() does not list never gets a uv — the frame
+    # dies with a KeyError. The list stays small on purpose: the atlas packs
+    # in a single row and WebGPU's default texture cap is 8192 px.
+    every.extend(f"lumi_{facing}_{frame}"
+                 for facing in _COLUMNS for frame in "0123")
     every.extend(f"weapon_{key}{suffix}"
                  for key in _WEAPON_ART for suffix in ("", "_held"))
     every.extend(f"hearts_{style}_{step}"

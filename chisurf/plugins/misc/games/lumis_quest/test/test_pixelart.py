@@ -212,3 +212,46 @@ def test_a_missing_bigart_pack_degrades_instead_of_crashing(monkeypatch):
         art = pixelart.sprite_image(name)
         assert art.shape == (pixelart.SIZE, pixelart.SIZE, 4), name
         assert art[..., 3].any(), f"{name} fallback is entirely transparent"
+
+
+def test_every_name_the_game_can_construct_is_in_the_atlas():
+    """A drawable name with no uv is a crash waiting for a frame.
+
+    The overworld builds sprite names by template -- ``{kind}_{frame}`` for
+    the townsfolk and beasts, ``iris_{facing}_{pose}`` and
+    ``lumi_{facing}_{frame}`` for the player and her hound -- and the
+    character-sheet resolver (:mod:`~.gui.sheetart`) answers those names
+    only if they were *listed* at pack time. A name it resolves but nobody
+    listed gets no uv rectangle and the render loop dies with a KeyError the
+    first time the figure turns that way -- which is exactly how
+    ``lumi_right_2`` shipped once.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import sheetart
+
+    image, uvs, _tiles = pixelart.build_atlas(resolver=sheetart)
+    kinds = ("villager", "townsfolk", "healer", "emissary", "keeper",
+             "warden", "wraith", "lanternwright", "beast", "lumi", "animal",
+             "ninja_beast", "samurai_beast", "spirit_beast", "squid_beast")
+    wanted = {f"{kind}_{frame}" for kind in kinds for frame in range(4)}
+    wanted |= {f"iris_{facing}_{frame}"
+               for facing in ("down", "up", "left", "right")
+               for frame in ("0", "1", "2", "3", "a")}
+    wanted |= {f"lumi_{facing}_{frame}"
+               for facing in ("down", "up", "left", "right")
+               for frame in range(4)}
+    missing = sorted(wanted - set(uvs))
+    assert not missing, missing
+
+
+def test_the_atlas_stays_inside_the_gpu_texture_cap():
+    """The atlas packs in a single row, and WebGPU caps textures at 8192.
+
+    wgpu's default ``max_texture_dimension2d`` is 8192 px; a wider atlas is
+    not a soft degradation but a device error on texture creation. Adding a
+    family of sprites (sixteen kinds x sixteen facings was the one that did
+    it) silently crosses it, so the cap is asserted, not assumed.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import sheetart
+
+    image, _uvs, _tiles = pixelart.build_atlas(resolver=sheetart)
+    assert max(image.shape[:2]) <= 8192, image.shape
