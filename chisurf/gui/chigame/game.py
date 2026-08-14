@@ -130,6 +130,12 @@ class GameHost:
         if with_text:
             self.font = FontAtlas(context.device)
             self.batch.set_atlas(self.font.texture)
+        # A pack that carries pixel art binds its atlas here, so every SPRITE
+        # draw in the frame samples real art. The procedural pack has no
+        # ``texture`` and leaves the 1x1 white placeholder in place.
+        texture_of_pack = getattr(self.pack, "texture", None)
+        if texture_of_pack is not None:
+            self.batch.set_sprites(texture_of_pack(context.device))
         # The decoder shares the renderer's device rather than asking the
         # driver for a second one purely to decompress audio.
         try:
