@@ -4791,3 +4791,13 @@ would discard the peer's work. Whoever lands the npcs change owns the test;
 if it is still red after their landing, the hitch-step resolution in
 `npcs.update` lets a beast end a 0.75 s step inside a solid (observed at
 (710.0, 376.0), a `beast` inside a wall of the test world).
+
+## test_keyboard_layout's browser-host case fails on T-20260814-01's in-flight rewire (open)
+
+**Found 2026-08-14, during the relocation's full-suite run.** The test builds
+`object.__new__(Viewer)` and stubs `viewer.gui`; the half-finished
+`web/demo.py` on disk routes `key()` through `self.sink.on_key_press`
+instead. Fails identically on the pre-move disk state — carried verbatim to
+`~/dev/chimol` — so it is that ticket's to finish, not relocation fallout.
+Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one
+failure.

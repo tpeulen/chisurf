@@ -75,6 +75,12 @@ could not have become the final state.
 
 ### The open front, in order
 
+0. **The full-suite verdict on the move itself**: 3625 passed, 41 skipped,
+   one failure — `test_keyboard_layout`'s browser case, which is
+   T-20260814-01's half-finished `web/demo.py` rewire (`key()` reads
+   `self.sink`, the test stubs `.gui`) and fails identically on the pre-move
+   disk state (see known-issues). Everything else the move touched was
+   either green on arrival or fixed in the same change.
 1. **`test_prd_mentions.py` and `test_plugin_help_guide_seam.py` were red
    before the move** (offenders: `mfd_prepare`, `plot_settings`,
    `tttr_to_pto`, `filetools`, `lumis_quest` help.md, fret-core PRD mentions,
