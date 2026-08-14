@@ -1,5 +1,35 @@
 # Update Log
 
+## 2026-08-15
+* **chimol renderer recursion fixed in `~/dev/chimol`** (commit `7fe74ca`).
+  rendercanvas 2.7 stores the `request_draw` callback as an *instance*
+  attribute `_draw_frame`, which shadowed the class method of the same name
+  in `CanvasRenderer` and made `_draw` recurse infinitely — every frame died
+  with `RecursionError` in the live Qt host. Renamed the method to
+  `_render_frame`. Verified: offscreen event loop on `MolViewPluginWindow`
+  draws a real frame (18 distinct colours) with zero draw errors, and the
+  chimol regression suite (wgpu view, chrome painter, scheme, portability)
+  is 54 passed.
+* **mfd_prepare startup failure fixed** (commit `e7f9a3835`).
+  `register_services` decorated handlers with `@dispatcher.method(...)`,
+  an API `ServiceDispatcher` never had (it only offers `register(name,
+  handler)`), so dispatching any mfd_prepare RPC — including at startup —
+  raised `AttributeError`. Rewritten to the `.register` pattern used by every
+  other plugin; the two methods now register and dispatch cleanly against a
+  real dispatcher. The plugin's four PRD-72/PRD-71 module docstrings were
+  cleaned at the same time (rule: a touched file is a cleaned file), pointing
+  at the burst plugin concept instead; the PRD-mention guard is closer to
+  green.
+* **MMFDB autologin probe noise quieted** (commit `4970fe3e0`). The startup
+  autologin deliberately probes a stored token (`me`), then a passwordless
+  login, then desktop credentials — each declined probe was logged at ERROR,
+  so a first-run startup printed "Authentication required" and "Invalid
+  credentials" spam even though the flow worked as designed. Added a `quiet`
+  flag to `MMFDBClient._call/_call_raw` (and `login`/`me`) and used it in the
+  three expected-failure probes. The `mmfdb_admin` bulk-suite failures seen
+  while verifying are pre-existing order-dependent state leakage between test
+  files (identical at HEAD in a worktree; none call the changed methods).
+
 ## 2026-08-14
 * **The chimol engine moved to its own repository, `~/dev/chimol`.** Step 4
   of the relocation plan is done
@@ -36429,3 +36459,13 @@
   The player/companion reversal of the morning handover is recorded in
   PRD-91. The overworld/pixelart/capture edits remain uncommitted, interleaved
   with a peer's rename work in the same files; they land together.
+- 2026-08-14 -- the Ninja Adventure game is playable (T-20260814-05,
+  `a7ba5bace`): the author's own map_village.tscn converted to shipped JSON
+  (importer decodes Godot tile_data triplets, drops dead atlas cells, reads
+  collision polygons and Curve2D waypoints) and played on chigame - authored
+  spawns, follow chains, patrol, 48 destroyables, paired teleporter, weather
+  areas, plus hostile samurai on the author's enemy team. Engine fixes it
+  forced: GameHost.bind_pack() (scene.pack swap alone left the batch on the
+  old texture - flat-white sprites), Weapon damage-area anchoring moved to
+  update() with a recharge. pygame rejected for the engine (user rule);
+  pyzelda-rpg checkout annotated read-and-skipped.

@@ -728,18 +728,18 @@ and the guard, which exists precisely to keep the list from drifting from the
 code, reads as broken rather than as correct. Verified pre-existing: identical
 at `HEAD~1` and at HEAD, in an isolated `git worktree`, with the same six files.
 
-## `test_prd_mentions` is red on three files that belong to another session
+## `test_prd_mentions` is red on two files that belong to another session
 
-**2026-08-10.** `test/test_prd_mentions.py` fails on three files that name a PRD
-in shipped source:
+**2026-08-10.** `test/test_prd_mentions.py` fails on files that name a PRD in
+shipped source (the `mfd_prepare` files this entry originally listed were
+cleaned **2026-08-15**, commit `e7f9a3835`):
 
 ```
+chisurf/gui/chiplot/backends/__init__.py
 chisurf/gui/chiplot/backends/opengl/__init__.py
-chisurf/plugins/burst/mfd_prepare/api/__init__.py
-chisurf/plugins/burst/mfd_prepare/backend/services.py
 ```
 
-All three are **untracked** — they are new files from other sessions' in-flight
+All are **untracked** — they are new files from other sessions' in-flight
 work in the shared tree, so editing them would collide with whoever is writing
 them. The fix is one line each (point at the OKF concept that owns the area, or
 drop the reference) and belongs to the session that lands those files.
@@ -4761,22 +4761,24 @@ cause — verified against HEAD before touching anything).
 Two guardrail suites fail on plugins whose modernisation is in flight
 elsewhere:
 
-* `test_prd_mentions.py`: `dcd.py`, `chiplot/backends/{__init__,opengl}`, five
-  `mfd_prepare` files, `fcs/flc_2d` parity test, `lumis_quest` CREDITS.md and
-  four `fret/core` files name PRDs without allow-list entries; conversely the
-  allow-list still carries `core/fio/trajectory/{__init__,xtc}.py`, which no
-  longer name one. All of these are exactly the state at HEAD — the offenders
-  named PRDs in HEAD's blobs and were absent from HEAD's allow-list.
+* `test_prd_mentions.py`: `dcd.py`, `chiplot/backends/{__init__,opengl}`, the
+  `fcs/flc_2d` parity test, `lumis_quest` CREDITS.md and the `fret/core` files
+  name PRDs without allow-list entries; conversely the allow-list still carries
+  `core/fio/trajectory/{__init__,xtc}.py`, which no longer name one. The five
+  `mfd_prepare` offenders were cleaned **2026-08-15** (commit `e7f9a3835`).
+  All of these are exactly the state at HEAD — the offenders named PRDs in
+  HEAD's blobs and were absent from HEAD's allow-list.
 * `test_plugin_help_guide_seam.py`: `mfd_prepare`, `plot_settings`,
   `tttr_to_pto`, `tttr/filetools` lack help/guide without allow-list entries,
   `lumis_quest` lacks help.md, and the allow-list still carries
   `tttr/converter/gui`, which matches no manifest.
 
-`mfd_prepare` is mid-restructure (its files are staged for deletion in the
-shared index), which is why the fix did not land with the relocation: cleaning
-PRD mentions inside a plugin another change is deleting would collide. Whoever
-finishes `mfd_prepare` strikes its lines; the fret-core PRD mentions and the
-stale trajectory/converter lines are free wins.
+`mfd_prepare` was mid-restructure (its files were staged for deletion in the
+shared index), which is why the PRD fix did not land with the relocation; the
+restructure finished **2026-08-15** and its PRD mentions and the broken
+`ServiceDispatcher.method` registration were fixed together (commit
+`e7f9a3835`). The fret-core PRD mentions and the stale trajectory/converter
+lines remain free wins.
 
 ## lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
 
