@@ -36469,3 +36469,19 @@
   old texture - flat-white sprites), Weapon damage-area anchoring moved to
   update() with a recharge. pygame rejected for the engine (user rule);
   pyzelda-rpg checkout annotated read-and-skipped.
+- 2026-08-15 -- ninja village tiles: the 67ab53442 layer-order "fix" was
+  inverted and buried the village under its ground sheet; flipped back.
+  The commit read Godot's stacking right (layer 0 is the front) but built
+  the TileMaps in ascending index order, painting the 2850-cell floor LAST
+  -- every roof, tree and bush vanished under plain sand, which the user
+  reported as "tile broken". The reference's base map scene
+  (system/map/map.tscn) is the authority: layer_3 "Floor" z_index -2,
+  layer_2 "FloorDetail" -1, layers 0/1 "Wall" on top. ninja_adventure/game.py
+  now sorts layers descending (ground first, canopy over it). Verified with
+  a ground-truth walk of the converted map against the render (topmost
+  layer first; walking in draw order would just re-derive the renderer's
+  own bug, which is how 67ab53442's 7.7% "verification" validated a wrong
+  render). Gallery recaptured, 52 chigame+ninja tests green. Known gap,
+  not ported yet: the reference y-sorts the wall layers with the actors
+  (y_sort_origin -5) so a player behind a house is occluded; chigame draws
+  all tiles under actors.

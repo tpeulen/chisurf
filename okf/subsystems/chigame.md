@@ -9,25 +9,93 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
-**Phase 1 in progress (2026-08-10).** The engine is being stood up alongside its
-first consumer, the `pong` port. Read [PRD-91](../prds/prd-91.md) for what the
-engine is ultimately for.
+**Tile stacking fixed by the reference's own z-indices (2026-08-15).** The
+`67ab53442` "layer order" fix was inverted: it read "Godot layer 0 is the
+front" correctly but then *built* the TileMaps in ascending index order, which
+paints the ground sheet **last** — every roof, tree and bush in the village
+ended up buried under plain sand (the user saw "tile broken": uniform bands
+where structures belong). The authority is the reference's base map scene
+`system/map/map.tscn`, which pins the stacking explicitly: `layer_3 "Floor"`
+at `z_index -2`, `layer_2 "FloorDetail"` at `-1`, layers 0/1 (`"Wall"`) on
+top, y-sorted. `ninja_adventure/game.py` now builds the layers in descending
+index order — ground painted first, canopy over it — verified per-pixel
+against the converted map (the ground-truth walk must take layers *topmost
+first*, i.e. reversed draw order; walking it in draw order just re-derives
+the renderer's own mistake). Still not ported: the reference y-sorts the wall
+layers *with the actors* (`y_sort_origin -5`), so a player behind a house
+should be occluded by its front wall; chigame draws all tiles under actors.
 
-**Phases 1 and 2 are done: all five arcade games are on the engine**, off
-`QPainter`, each verified against a before/after screenshot pair in
-`chisurf/plugins/misc/games/test/renders/`.
+**The reference game itself is playable now (2026-08-14, T-20260814-05).**
+`chisurf/plugins/misc/games/ninja_adventure/` runs the author's own village
+map: ``build_tools/dev_utils.import_ninja_map`` converts the Godot scene to
+shipped JSON (tile triplets decoded, dead atlas cells dropped, collision
+polygons → solids, Curve2D points → patrol waypoints), and the game plays it
+on the ported systems — the authored spawn, the pig-follows-samurai-follows-
+you chains, the patrol with its waits, 48 destroyables, the paired
+teleporter, weather areas. Hostile samurai (the checkout ships no enemy
+scene) sense, chase and swing on the author's enemy team. The port forced two
+engine fixes now pinned in `test/gui/test_chigame_port.py`:
+`GameHost.bind_pack()` (a pack swapped on `scene.pack` alone left the batch
+sampling the old texture — every sprite flat white) and `Weapon` anchoring
+its damage area in `update()` (an undrawn enemy weapon struck from a stale
+origin) with a recharge so polled swings cannot machine-gun. pygame is **not**
+an option for the engine (user rule); the pyzelda-rpg checkout is annotated
+read-and-skipped.
+
+**The NinjaAdventure port landed (2026-08-14, ticket T-20260814-05).** The
+engine now has the reference game's systems, not just its renderer:
+
+- `atlas.py` + `assets/pixel/` + `pack.py` — one RGBA texture atlas built at
+  load from the vendored CC0 pack (credited in `assets/pixel/CREDITS.md`),
+  sliced into named sub-frames; `SheetPack` resolves the AssetPack vocabulary
+  to atlas frames and falls through to the procedural look for names it does
+  not carry. `GameHost` binds a pack's atlas automatically.
+- `actors.py` — the character stack: accel/decel bodies with axis-separated
+  collision, the 4-direction x 7-row sheet animation (walk rows 0-3, attack 4,
+  airborne 5, downed 6, six cells a second), `Health`/`Team`/`Damage`,
+  `Weapon` swings with a hit-once `strike()`, `Destroyable` crates with
+  knockback and burst. All tested in `test/gui/test_chigame_port.py`.
+- `behavior.py` — follow-with-comfort-band, waypoint patrol with wait modes,
+  radius sensing, wander.
+- `tilemap.py` — numpy tile grid to one bulk instance array per frame, with
+  solid lookup.
+- `camera.py` — `RoomCamera`: the view locks to a 320x176 room grid and glides
+  between rooms (0.8 s sine), snapping on teleport. Room *centres* sit at
+  multiples of the room size — a room whose centre lands between cells
+  rounds the wrong way under banker's rounding, so compose maps onto cell
+  centres (see `test/gui/renders/chigame_port_demo.py`).
+- `fx.py` — screen-fade `Transition` and `Weather` (rain/snow/leaves/clouds/
+  fog), with a `particles()` accessor for games that draw weather through
+  their own sprite names rather than the pack vocabulary.
+
+The demo render (`test/gui/renders/chigame_port_demo.py`) composes one room
+through every system and is the fastest way to see the port working.
+
+**Lumis Quest's cast is the pack art now.** `gui/sheetart.py` answers the
+game's sprite names (`iris_down_1`, `warden_0`, `hearts_a_4`) with sheet
+frames inside the game's own atlas pipeline (`pixelart.build_atlas(resolver=...)`),
+so tints, mirrors and footprints are untouched and the whole overworld test
+surface holds. This reverses the 2026-08-14 morning handover in PRD-91
+("iris should be no ninja") — the evening direction was "use all from ninja
+game"; see the PRD for the record.
 
 Next, in order:
 
-1. **The consumer that motivated the engine**: the top-down world of Lumis Quest
-   ([PRD-91](../prds/prd-91.md)) — toctree → regions → villages → rooms, then
-   combat, then the AI layer.
+1. **Commit the overworld half.** The re-skin edits in `overworld.py`,
+   `pixelart.py` and `test/capture.py` are interleaved in the working tree
+   with a peer agent's uncommitted rename work (constants `_IRIS_*` →
+   `_PLAYER_*`, `game.iris` → `game.player_pos`) and cannot be committed
+   separately; they land as one commit once the peer's work lands. The tree
+   state is green (444 games+engine tests).
 2. **A gamepad backend** behind the existing `InputMap`. Nothing is installed
    (this Qt5 build has no `QtGamepad`; Qt6 removed it), and every game is already
    written against the abstract actions, so this is additive.
-3. **A second `AssetPack`** would be the real proof that the seam holds. The
-   procedural pack is the only implementation today, so "swappable" is so far an
-   argument rather than a demonstration.
+3. **A second `AssetPack`** — now half-answered: `SheetPack` and
+   `ProceduralPack` coexist behind one vocabulary; the remaining proof is a
+   third look, not a second.
+4. **Buildings from the village sheet.** Lumis Quest's houses come from a
+   different CC0 pack (`gui/art/bigart.png`); composing them from the same
+   ninja village sheet as the tiles would unify the look.
 
 **What the five ports actually taught**, since that was their purpose:
 
