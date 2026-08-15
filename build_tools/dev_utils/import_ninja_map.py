@@ -207,9 +207,15 @@ def convert() -> dict:
         cells = []
         for index in range(0, len(values), 3):
             packed, mid, third = values[index : index + 3]
+            # Godot packs each tile as three little-endian uint16 pairs
+            # (tile_map.cpp, encode_uint16): cell x,y | source, atlas_x |
+            # atlas_y, alternative. The atlas x sits in the SECOND int's
+            # high half and the atlas y in the THIRD int's low half —
+            # transposing them renders every tile from the wrong sheet cell
+            # (and reads 111 cells as undefined that the tileset defines).
             source = mid & 0xFFFF
-            atlas_y = (mid >> 16) & 0xFFFF
-            atlas_x = third & 0xFFFF
+            atlas_x = (mid >> 16) & 0xFFFF
+            atlas_y = third & 0xFFFF
             alternative = (third >> 16) & 0xFFFF
             if source == 5:
                 # Scene-collection source: the alternative slot carries the

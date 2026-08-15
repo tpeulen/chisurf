@@ -76,7 +76,7 @@ def test_the_shipped_map_is_the_authors():
     """
     data = json.loads((DATA / "map_village.json").read_text(encoding="utf-8"))
     cells = sum(len(layer["cells"]) for layer in data["layers"])
-    assert cells == 3477
+    assert cells == 3588
     assert len(data["characters"]) == 4
     assert len(data["teleporters"]) == 2
     assert {character["sheet"] for character in data["characters"]} == {
@@ -224,5 +224,11 @@ def test_it_renders_the_authors_village(qapp, tmp_path):
     pixels = np.asarray(Image.open(tmp_path / "ninja_village.png").convert("RGB"))
     colours = np.unique(pixels.reshape(-1, 3), axis=0)
     assert len(colours) > 20  # real art, not a placeholder wash
-    warm = (pixels[..., 0] > 180) & (pixels[..., 1] > 140) & (pixels[..., 2] < 180)
-    assert warm.mean() > 0.2  # the village's sand tones are present
+    green = (
+        (pixels[..., 1] > pixels[..., 0])
+        & (pixels[..., 1] > pixels[..., 2])
+        & (pixels[..., 1] > 70)
+    )
+    assert green.mean() > 0.2  # the village's grass tones are present
+    browns = (pixels[..., 0] > 140) & (pixels[..., 0] > pixels[..., 2]) & (pixels[..., 2] < 120)
+    assert browns.mean() > 0.05  # its dirt and timber structures too

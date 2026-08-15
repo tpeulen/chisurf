@@ -78,8 +78,9 @@ METEO = {0: RAIN, 1: SNOW, 2: FOG, 3: CLOUD, 4: LEAF}
 #: ``just_teleport`` timer).
 TELEPORT_LOCKOUT = 1.0
 
-#: How far off a teleporter's target the player lands, in the teleporter's
-#: own direction — the reference places at ``target + direction * 25``.
+#: How far the arrival is pushed along the *target* portal's direction —
+#: the reference lands her at ``target + relative + direction * 25``, keeping
+#: wherever she stood relative to the source portal.
 TELEPORT_OFFSET = 25.0
 
 #: Hostile samurai beyond the teleporter: positions relative to the swamp
@@ -522,10 +523,10 @@ class NinjaAdventure(chigame.Game):
                 target = next(
                     item for item in self._teleporters if item["name"] == portal["target"]
                 )
-                dx, dy = portal["direction"]
+                tdx, tdy = target["direction"]
                 self.player.position[:] = self._free_spot(
-                    target["position"][0] + dx * TELEPORT_OFFSET,
-                    target["position"][1] + dy * TELEPORT_OFFSET,
+                    target["position"][0] + (x - px) + tdx * TELEPORT_OFFSET,
+                    target["position"][1] + (y - py) + tdy * TELEPORT_OFFSET,
                 )
                 self.camera.snap_to(self.player.position)
                 self._teleport_lockout = TELEPORT_LOCKOUT
