@@ -341,10 +341,14 @@ class TextureAtlas:
             ((name, array) for name, array in self._pending if name),
             key=lambda item: (-item[1].shape[0], -item[1].shape[1]),
         )
-        total_area = sum(a.shape[0] * a.shape[1] for _, a in entries)
+        # Images are shelved with their extruded margins included, and each
+        # frame's own rectangle sits inset by the pad — so a sample that
+        # rounds past the edge reads the extrusion, never the neighbour.
+        padded_entries = [(name, _pad_image(array)) for name, array in entries]
+        total_area = sum(a.shape[0] * a.shape[1] for _, a in padded_entries)
         width = 1 << max(4, (int(total_area**0.5) - 1).bit_length())
         while True:
-            layout = self._shelve(entries, width)
+            layout = self._shelve(padded_entries, width)
             if layout is not None:
                 break
             if width >= MAX_ATLAS_SIZE:
@@ -352,11 +356,12 @@ class TextureAtlas:
             width *= 2
         height, placed = layout
         canvas = np.zeros((height, width, 4), dtype=np.uint8)
-        for name, (x, y, array) in placed.items():
-            canvas[y : y + array.shape[0], x : x + array.shape[1]] = array
+        for name, (x, y, padded) in placed.items():
+            original = dict(entries)[name]
+            canvas[y : y + padded.shape[0], x : x + padded.shape[1]] = padded
             frame = self._frames[name]
-            frame.x0, frame.y0 = x, y
-            frame.width, frame.height = array.shape[1], array.shape[0]
+            frame.x0, frame.y0 = x + 1, y + 1
+            frame.width, frame.height = original.shape[1], original.shape[0]
         for frame in self._frames.values():
             if frame.derived is None:
                 continue
@@ -414,6 +419,40 @@ class TextureAtlas:
             cursor_x += w
             shelf_h = max(shelf_h, h)
         return shelf_y + shelf_h, placed
+
+
+def _pad_image(array: np.ndarray, pad: int = 1) -> np.ndarray:
+    """Extrude an image's edge pixels into a margin.
+
+    Point sampling does not interpolate *within* a texel, but the uv the
+    vertex shader interpolates across a quad lands between texels at any
+    non-integer screen scale, and a sample rounded one texel past the
+    sprite's edge reads the *neighbour* sprite's first column. Extruding the
+    sprite's own edge into a one-pixel margin gives that stray sample
+    somewhere harmless to land — the same fix the game's own string-art
+    atlas (:mod:`.pixelart`) arrived at independently, with a drawn-out
+    diagnosis recorded there.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+        ``(h, w, 4)`` uint8.
+    pad : int, optional
+        Margin on every side, in pixels.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(h + 2*pad, w + 2*pad, 4)`` with edges extruded.
+    """
+    if pad <= 0:
+        return array
+    top = np.repeat(array[:1], pad, axis=0)
+    bottom = np.repeat(array[-1:], pad, axis=0)
+    padded = np.concatenate([top, array, bottom], axis=0)
+    left = np.repeat(padded[:, :1], pad, axis=1)
+    right = np.repeat(padded[:, -1:], pad, axis=1)
+    return np.concatenate([left, padded, right], axis=1)
 
 
 def load_pixel_pack(directory: str | pathlib.Path, device) -> TextureAtlas:

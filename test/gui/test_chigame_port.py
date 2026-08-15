@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import pathlib
 
+import random
+
 import numpy as np
 import pytest
 
@@ -271,7 +273,8 @@ def test_a_sense_drops_its_target_when_it_dies():
     assert sense.update(hunter, [prey]) is None
 
 
-def test_wander_stays_near_its_start():
+def test_wander_stays_near_its_start(monkeypatch):
+    random.seed(1789)
     beast = Actor(alias="beast", speed=30.0)
     beast.position[:] = (100.0, 100.0)
     for _ in range(600):

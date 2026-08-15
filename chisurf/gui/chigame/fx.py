@@ -267,9 +267,14 @@ class Weather:
                            at=(x - 30.0, top + y * 0.3),
                            size=(80.0 * scale, 36.0 * scale), alpha=0.5)
         if self.fog_alpha > 0.01:
+            # The reference's fog is a slow-breathing veil over the scene, not
+            # a wall: one drifting sheet at low alpha, with the second layer
+            # half as strong again for depth. Two full-view sheets at 0.8
+            # washed every tile into paste — the reference's own fog shader
+            # peaks around a quarter.
             drift = (self._fog_scroll % self.view[0])
-            for layer in (0.0, 0.5):
+            for layer, strength in ((0.0, 0.30), (0.5, 0.15)):
                 x = cx - self.view[0] * (0.5 - layer) + drift * 0.2
                 scene.draw("sprite", "fog", at=(x, cy),
                            size=(self.view[0], self.view[1]),
-                           alpha=self.fog_alpha * 0.8)
+                           alpha=self.fog_alpha * strength)

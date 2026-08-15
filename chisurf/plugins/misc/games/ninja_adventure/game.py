@@ -162,7 +162,11 @@ class NinjaAdventure(chigame.Game):
         self.destroyables: list[Destroyable] = []
         self.layers: list[TileMap] = []
         self.solid_cells: set[tuple[int, int]] = set()
-        for layer in sorted(data["layers"], key=lambda item: -item["index"]):
+        # Godot tile layers draw in index order: layer 0 is the FRONT and
+        # higher indices recede behind it. The village's layer 3 is the
+        # ground, layer 0 the tree canopy and props, so the draw order is
+        # ascending index - which is also the order they sit in the data.
+        for layer in sorted(data["layers"], key=lambda item: item["index"]):
             cells = layer["cells"]
             spawn = [c for c in cells if c["source"] == 5]
             plain = [c for c in cells if c["source"] != 5]

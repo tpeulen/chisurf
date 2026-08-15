@@ -166,6 +166,10 @@ class SpriteBatch:
         )
         # Point sampling, because pixel art that is interpolated is not pixel
         # art. This is the whole difference between a 16-bit look and a blur.
+        # The sampler stays *filtering-capable* (nearest is a filtering mode):
+        # the layout types it non_filtering, and textureSample with a
+        # non-filtering sampler is invalid WGSL -- on Metal that showed up as
+        # every sprite gamma-lifted and hue-shifted rather than as an error.
         self._sprite_sampler = self._device.create_sampler(
             mag_filter=wgpu.FilterMode.nearest, min_filter=wgpu.FilterMode.nearest
         )
@@ -199,7 +203,7 @@ class SpriteBatch:
                 {
                     "binding": 5,
                     "visibility": wgpu.ShaderStage.FRAGMENT,
-                    "sampler": {"type": wgpu.SamplerBindingType.non_filtering},
+                    "sampler": {"type": wgpu.SamplerBindingType.filtering},
                 },
             ]
         )

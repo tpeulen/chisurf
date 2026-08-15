@@ -41,6 +41,8 @@ DEFAULT_BINDINGS: dict[str, Action] = {
     "a": Action.LEFT,
     "d": Action.RIGHT,
     "Enter": Action.CONFIRM,
+    "\r": Action.CONFIRM,
+    "\n": Action.CONFIRM,
     " ": Action.CONFIRM,
     "Escape": Action.CANCEL,
     "Backspace": Action.CANCEL,
