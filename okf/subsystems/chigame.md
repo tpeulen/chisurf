@@ -9,6 +9,28 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+**The real "tiles are shit" cause: the importer transposed Godot's atlas
+coords (2026-08-15, commit 2d6d8d9a4).** The layer-order fix above was real
+but only half the story. `import_ninja_map` decoded `atlas_y = int2 >> 16`
+and `atlas_x = int3 & 0xFFFF` — swapped: Godot's `tile_map.cpp` packs the
+triplet as int2 = `source | atlas_x<<16`, int3 = `atlas_y | alternative<<16`.
+Every tile therefore drew from the wrong sheet cell (roofs where grass
+belongs, a sand wash where the village is), and 111 cells whose transposed
+coords fell outside defined atlas cells were silently dropped ("dead-cell
+census": 111 under the swap, 0 under the correct decode — the census is the
+cheap first probe for any future importer doubt). With the fix the render is
+**99.3% byte-exact against the author's own art** (remaining 0.7% is the
+HUD). Two traps made the earlier verification bless this wrong render, and
+both live in any future per-pixel verifier: (a) walking the ground truth in
+*draw* order re-derives the renderer's mistake — walk source-data layers
+topmost-first; (b) sample pixel **centers** (`(px + 0.5 - W/2)/scale`), not
+corners — the GPU samples centers, and corner sampling alone moved agreement
+from 88.8% to 99.3%. Also ported with it: the teleporter's real arrival
+semantics (`character.gd`: land at `target + (player − source) +
+target.direction*25` — the port had used the *source's* direction, mirroring
+her 25 px to the wrong side). Still not ported: wall-layer y-sort with
+actors, below.
+
 **Tile stacking fixed by the reference's own z-indices (2026-08-15).** The
 `67ab53442` "layer order" fix was inverted: it read "Godot layer 0 is the
 front" correctly but then *built* the TileMaps in ascending index order, which

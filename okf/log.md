@@ -36485,3 +36485,27 @@
   not ported yet: the reference y-sorts the wall layers with the actors
   (y_sort_origin -5) so a player behind a house is occluded; chigame draws
   all tiles under actors.
+- 2026-08-15 -- ninja tiles, round two: the importer read Godot's atlas
+  coords transposed -- every tile came from the wrong sheet cell. The
+  layer fix above was real but only half the story; the second "tiles
+  are shit" report was import_ninja_map decoding atlas_y from int2's high
+  bits and atlas_x from int3's low ones, the exact swap of Godot's
+  tile_map.cpp packing (int2 = source | atlas_x<<16, int3 = atlas_y |
+  alternative<<16). Consequences: the whole village drew transposed
+  (roofs where grass belongs, a sand wash) and 111 cells whose
+  transposed coords fell outside defined atlas cells were silently
+  dropped -- the dead-cell census (111 swapped vs 0 correct, counted
+  against tileset.tres) is the cheap probe that settled it. Fixed in
+  commit 2d6d8d9a4; the regenerated map carries all 3540 tiles and the
+  render is 99.3% byte-exact against the author's art (rest is HUD).
+  Two verifier traps found on the way, both now recorded in
+  okf/subsystems/chigame.md: a ground-truth walk must take layers
+  topmost-first from source data (draw-order walks re-derive the
+  renderer's bug), and per-pixel comparison must sample pixel CENTERS
+  ((px+0.5-W/2)/scale), not corners -- center sampling alone moved
+  agreement 88.8% -> 99.3%, i.e. corner sampling had been hiding real
+  defects. Same commit ports the teleporter's real arrival semantics
+  from character.gd (land at target + player's delta from source +
+  target.direction*25; the port had used the source's direction) and
+  re-points the palette test at the village's actual grass/dirt art.
+  52 chigame+ninja tests green; gallery recaptured.
