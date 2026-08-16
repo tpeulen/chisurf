@@ -1,6 +1,18 @@
 # Update Log
 
 ## 2026-08-15
+* **`chisurf.Structure` ruled closed to new code** (rule, 2026-08-15). New
+  ChiSurf code MUST NOT use `chisurf.Structure`
+  (`chisurf.core.structure.structure.Structure`); a place that needs a
+  structure reaches for chimol's atoms/payload path
+  (`chimol.io.structure.load_structure_payload` → `MolView.apply_payload`),
+  and ChiSurf code carrying structure data imports it **from** chimol. The
+  surviving `Structure(...)` callers (the `potentials_*` GUI widgets,
+  `gui_services.py`, `pdb.py`) are deletion-path legacy debt — port, don't
+  extend. Recorded in `okf/specs/chimol.md` ("Rule — `chisurf.Structure` is
+  closed to new code") and strengthened in `okf/plugins/chimol-relocation.md`.
+  The surviving call sites are tracked as cleanup backlog in
+  `okf/specs/assessment.md` (INC-17).
 * **chimol renderer recursion fixed in `~/dev/chimol`** (commit `7fe74ca`).
   rendercanvas 2.7 stores the `request_draw` callback as an *instance*
   attribute `_draw_frame`, which shadowed the class method of the same name
@@ -36469,6 +36481,169 @@
   old texture - flat-white sprites), Weapon damage-area anchoring moved to
   update() with a recharge. pygame rejected for the engine (user rule);
   pyzelda-rpg checkout annotated read-and-skipped.
+- 2026-08-15 -- chimol dye labelling made functional, and its surfaces
+  finished (T-20260815-01). The previous session's core shipped with a
+  crash in the entry point: `DyePreset.to_position_params` used a
+  `dict_factory` that returned a *list*, so every `add_dye` died in
+  `params.update(...)` — "tests green" was the suite, not the feature.
+  Fixed; `add_dye` verified end-to-end (1,203-point AV on 148l CB-119).
+  Also fixed the viewer half it exposed: `add_av` stole the *active
+  object*, so `orient` after `add_dye` measured the dye cloud and reported
+  "nothing to orient" — the AV now leaves the structure active. GUI
+  integration: `LabellingWizard` (pick atom via the `_wizard_pick` hook,
+  dye-preset menu, Attach keeps the wizard up for the next site, Delete
+  Last on AV objects) wired as `wizard labelling` in the `wizard`
+  dispatch; tour target `{"wizard": true}` added to the chrome. Demo and
+  tour ship as `demos/labelling.cml` and `demos/tours/labelling.json`,
+  walked end-to-end by the tour tests (typed *and* Run-button paths).
+  Demo scripts renamed `.pml` -> `.cml` (chimol's own language: close to
+  PyMOL, not identical — noted in the compatibility contract,
+  okf/specs/chimol.md) and the DEMOS catalog is now *auto-populated* from
+  the scripts' `# title:` / `# note:` headers, only the order curated.
+  Dependency reversal removed: `app/demos.py` no longer imports chisurf
+  (own ScriptEditor always, never the host's CodeEditor). `demo` with no
+  argument lists the demos in the info panel — the same filterable window
+  `help` uses — and a click *runs* (listings can now carry per-entry
+  commands; command listings keep browse-then-type). The Action menu's
+  `state` entry only appears when the scene has multiple frames. `load
+  <bare-name>` resolves against the demo data directories at the prompt
+  the way the demo runner already did.
+- 2026-08-15 (later) -- the dye demo "broke" in the browser: three causes,
+  all bundle-side (T-20260815-01). The desktop hosts were clean -- the
+  report came from the web host, whose `chimol.zip` predates the `add_av`
+  active-object fix. Repacking alone would not have fixed it: the bundle
+  also (1) never shipped the demo scripts at all (`.cml` was not in
+  `serve.py`'s `INCLUDE_SUFFIXES`, and `.pml` never was -- the browser's
+  demo menu has been empty of runnable scripts since it existed),
+  (2) never injected a data directory, so a demo's `load 148l.pdb` could
+  not resolve (the failure reads "nothing is loaded" -> `orient: nothing
+  to orient`), and (3) had no AV backend, so `add_dye` itself would have
+  failed. Fixed: `.cml` in `INCLUDE_SUFFIXES`; `BrowserHost` injects
+  `web/data` (where 148l.pdb already ships for the opening scene) via
+  `set_data_dirs`; a third **numpy** AV backend (geometric
+  linker-ball/van-der-Waals rejection sampling, fixed seed, last in the
+  `auto` preference) so labelling works where neither physics library can
+  run -- documented in `av.py` as coarse, not dye-density-weighted, "not
+  the number to publish". Bundle repacked; tests in
+  `test_av_backends.py` pin availability, clash clearance, reach,
+  determinism, and that `auto` still prefers imp-bff. Suite: 147 passed.
+- 2026-08-15 (later still) -- AVs drawn like the reference labelling viewers:
+  a translucent shell (T-20260815-01). `_update_av_objects` now meshes the
+  AV's **own dye-density grid** (marching cubes at an iso level enclosing 90%
+  of the density mass, grids >160^3 strided) instead of meshing its ~1k
+  sampled points -- a scatter lumps, a field envelopes. Mesh verified
+  numerically: closed (Euler chi=2), 83% outward normals, centroid within
+  0.9 A of the density-weighted mean, render_mode transparent + two_sided,
+  vertex alpha 0.5 (palette raised from 0.35: the shader's transparency curve
+  dims a face-on sheet to ~55% of it, so 0.35 read as a ghost). Render
+  measured: 75% of the AV-covered pixels are partial blends -- see-through
+  shell over the cartoon, not an overwrite. Point-cloud fallback (numpy
+  backend, the browser) still meshes its 21k points into a shell. Pinned in
+  `test_av_display.py`. Also this round: chimol logging (`logging_setup.py`,
+  rotating file under the settings dir in every mode, console only when the
+  root logger is bare so an embedded run never double-prints, records
+  propagate into the host's session log -- that is the chisurf connect, no
+  import), `log` command showing the session tail in the info-panel overlay
+  like `help`/`keys`, and `load` misses now say **where it looked**
+  ("'x.pdb' not found; looked in: ..." of existing dirs). Suite 113 passed;
+  bundle repacked.
+- 2026-08-15 (night) -- the AVs were never on screen at all; user screenshot
+  was the ground truth (T-20260815-01). Two defects: (1) `_update_view`'s
+  composition filter kept only objects with coords or a volume -- an AV
+  object has neither, so `_update_av_objects` was unreachable from the
+  composed scene and the viewport showed the molecule with nothing on it.
+  Earlier "verified rendering" pixel diffs were confounded: `add_av` calls
+  `_update_view(fit_camera=True)`, and the re-framed camera changed 10% of
+  pixels on its own. Fixed the filter; proved with a camera-locked A/B
+  (`get_view_state`/`set_view_state` around the add): 24.5% of pixels
+  change, 69% of them partial blends. (2) The attachment-residue strip the
+  user called out: numpy/labellib strip in memory, but **imp-bff ignores the
+  passed atoms** (API-compat param) and re-reads the PDB, leaving the
+  attachment residue as obstacles except a small free sphere -- zero cloud
+  points within 3.4 A of the residue (vs ~80 stripped). Fixed with
+  `_stripped_pdb_for`: a cached per-(file,site) PDB with the residue's
+  records removed, attachment atom kept (the backend selects the source by
+  identity); imp-bff cloud 1,203 -> 3,849 points, 20 in the freed space,
+  mean 13.88 -> 15.59 A -- the FPS convention. Tests:
+  `test_av_display.py::...composed_scene...` (scene membership with the
+  structure active) and `test_av_backends.py::...not_an_obstacle` +
+  stripped-file shape, both backends. Lesson recorded: a pixel diff without
+  a locked camera is not evidence. Suite 153 passed; bundle repacked.
+- 2026-08-15 (late) -- AV placement wrong + too low res: reverted the display
+  to exactly what the replaced tool did (T-20260815-01). Diagnosis first:
+  the AV *data* was right (attachment point == PDB CB to 3 decimals; 0/770
+  sampled points collide with the protein) -- the density-grid mesh was the
+  culprit: it landed off its own point cloud (p95 NN 13.6 A) because the
+  backend's grid arrives in its own axis layout, and at the sampling step
+  the iso shell read coarse. Checked the original (fps_json_editor
+  `position_panel._update_3d_overlays`): it NEVER meshed the grid -- it
+  meshed the **points** (`add_surface_overlay`: spacing=disc_step,
+  padding=2*step, smoothing_sigma 0.75, dilation 1, max_dim 112, alpha 0.35
+  "beautiful default transparency"). Chimol now draws that path verbatim;
+  `_av_density_mesh` deleted; palette alpha back to 0.35. Measured after:
+  mesh 2,934v/5,864f closed (chi=2), centroid 1.6 A from the cloud mean,
+  shell reaches 4.1 A of the attachment CB, camera-locked render 36% pixels
+  changed / 94% partial blends. `test_av_display.py` rewritten around the
+  orig-path contract (closed, transparent at 0.35, centered on the cloud
+  mean <3 A, near the attachment atom; the displaced-grid failure mode is
+  the named counter-example). Suite 116 passed; bundle repacked. Screenshot:
+  /tmp/av_orig_look.png.
+- 2026-08-15 (final round) -- AVs are density objects (user direction:
+  "treat avs as densities", "displayed in density ctl", "default surface
+  rep, color via obj menu"). `add_av` now wraps the AV's dye grid into
+  `state.volume` as a `VolumeGrid` (binary -> default level 0.5, style
+  surface, the position's palette colour) -- the same contour/level/alpha/
+  quality machinery a map gets, so the Density panel histograms and
+  contours the dye, `isosurface`/`volume_level` apply, and the panel's
+  close unloads it. The displaced-grid root cause was measured and fixed
+  at the seam: imp-bff's tile grid is x/z-swapped (correlation +1.0000 at
+  transpose (2,1,0) vs its own voxelized points, +0.35 as delivered) --
+  the adapter transposes; pinned by an overlap test. The numpy backend now
+  builds a real binary grid from its points (voxelized, not the old
+  (1,1,1) placeholder), so the browser draws the same density path.
+  `color <name>, <object>` gained a density branch: selections that name a
+  volume-carrying object recolour its contour levels (and the marker),
+  which is what the object menu's C entries send -- previously
+  atom-mask-only, so AVs/maps were uncolourable. `_update_av_objects`
+  shrank to the density-weighted-mean marker; the point-mesh shell code is
+  gone. Camera-locked render: 33.6% pixels change, 83% partial blends.
+  Tests: `test_av_display.py` rewritten around the density contract
+  (density object, panel edits it, closed+centered contour, marker,
+  obj-menu colour, numpy backend); `test_av_backends.py` pins the axis
+  order. Suite 221 passed; bundle repacked; screenshot
+  /tmp/av_density_final.png.
+- 2026-08-15 (round 8) -- the labelling scene's panel and measurement
+  finishes (user direction). (1) The Density window now reaches **every**
+  density in the scene: a ‹ name › switcher row (only drawn when there is
+  more than one) moves an explicit selection through
+  `VolumeViewModel.density_objects/cycle_object`; the implicit
+  active-or-newest rule survives as the fallback and a dead selection is
+  dropped, not stuck to. (2) A **continuous Smooth slider** (0-10 relaxation
+  passes) beside the quality presets: `state.volume_smoothing` (-1 =
+  preset), `set_volume_smoothing(preview=)` -- throttled preview while
+  dragging, full on release. (3) The **alpha slider no longer re-contours**:
+  an alpha edit changes no geometry, so `recolor_volume` patches the live
+  mesh's colour arrays (measured: full rebuild 4 ms vs recolor ~0 ms on the
+  30^3 AV; on a 180^3 map the gap is the whole march); solid-mode transfer
+  functions still take the real rebuild. (4) The **measurement wizard
+  measures between AVs** with the fps `distance_type` vocabulary: a Type
+  menu (atoms / Rmp / RDAMean <R_DA> / RDAMeanE <R_DA>_E); Rmp is exact,
+  the means are Monte Carlo over both clouds' points (fixed seed); picks
+  are now **scene-wide** while a wizard runs (`_wizard_pick_all`, address
+  `obj:idx` -- the hook already parsed it). Measured on 148L E44-E119:
+  Rmp 49.94, RDAMean 52.22, RDAMeanE 40.97 A -- correctly ordered by the
+  r^-6 weighting. (5) `fps_load` draws the document's **Distances** as
+  labelled lines between the mean beads ("1 distances drawn"), skipping
+  positions without AVs with a note. (6) Mean positions ship as
+  `av_<position>_mp` **objects** (one bead, spheres, the position colour,
+  back-link `mp_for_av`); they adopt the structure's scene frame (a lone
+  bead centres on itself otherwise -- caught before it rendered wrong),
+  and `remove_object` takes the bead with its dye (`delete all` counts the
+  already-removed as deleted). Shared guide schema gained the `wizard`
+  target. Tests: new `test_density_labelling.py` (5) + display tests
+  updated; suites green (44 in the touched set; full plugin suite 424
+  passed before the schema fix, which the follow-the-scheme test now
+  validates). Bundle repacked. Screenshot /tmp/av_full_scene.png.
 - 2026-08-15 -- ninja village tiles: the 67ab53442 layer-order "fix" was
   inverted and buried the village under its ground sheet; flipped back.
   The commit read Godot's stacking right (layer 0 is the front) but built
@@ -36485,6 +36660,58 @@
   not ported yet: the reference y-sorts the wall layers with the actors
   (y_sort_origin -5) so a player behind a house is occluded; chigame draws
   all tiles under actors.
+- 2026-08-15 (round 9) -- the menu bar and toolbar are config, not code:
+  `chimol/gui/menus.json` + a loader in `chimol/menus.py` (user direction
+  "menus must be json config no hardcode"). Every menu (File/Edit/Display/
+  Setting/Demo/Tools/Help, plus Build and Wizard folded under Tools) is rows
+  in the JSON; the three data-driven sections are `{"generate":
+  "demos"|"presets"|"tours"}` and the folds are `{"include": "<menu>"}` --
+  both SPLICE rows rather than wrapping, so Tools>Wizard is the whole Wizard
+  menu one level down (a wrapping first draft drew a submenu one level
+  deeper than the config reads; caught by the include test). A broken
+  config fails loudly at import. All 382 existing menu tests pass
+  unchanged -- including the PyMOL-order, every-command-registered and
+  every-setting-real guardrails -- and new `test_menus_json.py` (10) pins
+  the loading contract: JSON-is-the-bar, add-an-entry-needs-no-code,
+  loud-failure, splicing semantics, and that the Dye Labelling wizard is
+  reachable via Tools>Wizard and Tools>Measure (the entry that prompted
+  the move). Trap hit and recorded: non-ASCII labels must survive the
+  transcription verbatim ("Edit a demo script…" with U+2026) -- the
+  demo-menu test compares exact strings. Also this round, from the full
+  suite's 9 failures: the density panel's implicit read was caching itself
+  into an opinion (loading a second map stopped following the newest --
+  the exact bug the model comments describe; `_object_pinned` now persists
+  only explicit switcher choices), `color`'s density branch missed the
+  resolver's empty-hits spelling (silent no-op; the object-menu test
+  caught it), the chrome baseline regenerated with exactly the one
+  expected diff (`menu:state` gone from the single-frame scene -- the
+  multi-frame gating), and `app/demos.py` struck from the chisurf-import
+  allowlist (kept on HOSTS: it is legitimately a Qt dialog). Suite:
+  3741 passed / 2 failed -> fixed; only the pre-existing
+  test_keyboard_layout remains (T-20260814-01). Bundle repacked
+  (menus.json ships in it).
+- 2026-08-15 (round 10) -- the density panel became the reference volume
+  viewer's per-density stack, with its settings on a context menu (user
+  direction). The plot area is now **one row per density in the scene**
+  (eye | histogram+markers+name | alpha slider), each row carrying its own
+  value range and levels -- two dyes and a map all visible at once, where
+  the panel used to show only the edited one. Per-row **eye**
+  (`visible_for/set_visible_for` -> `set_object_visible`, visibility-only
+  path) and per-row **alpha** (`set_alpha_for`: store-unsent + patch live
+  mesh colours -- measured ~1 ms per drag; the header eye is gone in
+  stacked mode, one control one place). Clicking a row selects it. New
+  chrome hook: `GuiWindow.on_context`, dispatched on a **right**-press in
+  a window body (mouse_press -> _press_window now carries `right`);
+  DensityWindow opens a row-local menu (the panel's own popup pattern,
+  browser-safe) with this density's display style (surface/mesh/solid),
+  contour quality, smoothing, show/hide and edit-here -- every choice
+  landing on that row's object alone (`mode_for/set_mode_for`,
+  `quality_for/set_quality_for`; verified: mesh+fine+4-passes on one dye
+  leave the other surface/normal/preset). Tests: 3 new in
+  `test_density_labelling.py` (stacked rows carry eye+alpha; the context
+  menu's per-density isolation; the chrome right-press route). 97 tests in
+  the touched set green; ruff clean (2 remaining errors pre-exist at
+  HEAD); bundle repacked.
 - 2026-08-15 -- ninja tiles, round two: the importer read Godot's atlas
   coords transposed -- every tile came from the wrong sheet cell. The
   layer fix above was real but only half the story; the second "tiles
@@ -36509,3 +36736,128 @@
   target.direction*25; the port had used the source's direction) and
   re-points the palette test at the village's actual grass/dirt art.
   52 chigame+ninja tests green; gallery recaptured.
+- 2026-08-15 (round 11) -- snappy by architecture: UI answers the mouse,
+  compute lands later (user direction). New
+  `chimol/compute_dispatch.py`: one worker thread + a supersede-by-key job
+  queue (`dispatch(key, fn, on_done)`); `poll()` runs finished applies on
+  the UI thread once per frame (wired into `canvas_base._chrome_quads`,
+  ahead of the fingerprint read), the status line narrates start/finish
+  ("contour done in 2 ms"), and where there is no thread (Pyodide) the same
+  jobs run one-per-frame at poll -- newest first, after the UI already
+  answered. The density panel's drag is restructured around it: every tick
+  is marker-store + chrome-revision **only** (measured worst tick 0.15 ms
+  over a 30-tick drag while contours ran), the preview contour is
+  dispatched (throttled; each dispatch supersedes the last for the same
+  object, so the queue never holds a backlog), and the release's
+  full-quality contour is dispatched too -- it warms the grid's per-(level,
+  budget) isosurface memo with EXACTLY the call the apply will make (a
+  `voxel_limit_m=None` warm was a different memo key and silently killed
+  the apply -- found by the landed-level test), so the landing apply is an
+  upload, not a march. The global (header) colour/alpha controls are gone:
+  each stacked row carries eye | colour swatch | histogram | alpha, the
+  swatch selecting its row and opening the palette for that row's selected
+  level; per-row alpha is that density's contour opacity (all its levels).
+  Tests: new `test_compute_dispatch.py` (6: supersede, sync-mode
+  one-per-frame, status narration, failure reporting, job-on-worker /
+  apply-on-UI-thread, and the end-to-end immediate-tick + landed-level
+  contract); `test_density_window.py` updated to the dispatched release
+  (poll before asserting the one full contour) and per-row controls.
+  142 tests green in the touched set; ruff clean; bundle repacked.
+- 2026-08-15 (round 12) -- the sliders slide free; a click cannot buy
+  compute (user direction, after "adj slow again"). The per-tick alpha
+  write -- even the colour-patch path -- was still on the drag; the rule
+  is now absolute: a slider tick moves the thumb and bumps the chrome
+  revision, nothing else (worst tick measured 0.055 ms over 40 ticks; the
+  model asserted untouched mid-drag). The release applies once (alpha:
+  store + colour patch; smoothing: one contour). Click-to-add-level is
+  **double**-click now: adding a contour is the heaviest ask this panel
+  can make, and a stray single click used to trigger one -- new chrome
+  hook `GuiWindow.on_double` (the chrome already knows a double; the
+  panel does not guess from timing), footer text updated to say
+  "2xclick adds". Tests: single-click-does-not-add + double-adds (both
+  the panel method and the chrome `_press_window(double=True)` route),
+  free-slide-mid-drag-model-untouched. 73 green in the touched set;
+  ruff clean (pre-existing aside); bundle repacked.
+- 2026-08-15 (round 13) -- "sliders only work on click" + tick
+  accumulation, both root-caused. (1) The press on an empty histogram
+  returned False after the double-click change, and the chrome only arms a
+  **body drag** when on_press consumes -- so mouse-driven marker/slider
+  drags silently stopped (the direct panel API still worked, which is why
+  tests passed). Every body press now consumes; the empty-plot press
+  swallows the click (it must not reach the camera) without grabbing.
+  (2) The accumulation was `_changed()` per **mouse event**: each bump
+  invalidated the chrome and the frame rebuilt its ~7k quads per event --
+  several per frame at mouse rate, stacking with applies during a long
+  drag. `_changed` now coalesces during drags to frame cadence
+  (60 Hz floor; a swallowed tick sets a due flag the release flushes) --
+  50 fast ticks + release now cost 2 chrome rebuilds, not 51. Verified via
+  the chrome route end-to-end: slider drag armed/held/applies on release,
+  marker drag lands its level, ticks flat at 0.003 ms first/mid/last
+  hundred. 55 green in the touched set; ruff clean; bundle repacked.
+- 2026-08-15 (round 14) -- the alpha slider works like the level tool, and
+  the double-click add no longer steals presses (user direction). The
+  `on_double` chrome hook had taken every second press of a quick pair
+  unconditionally -- so double-clicking a slider disarmed its own drag
+  ("slider only works on click", one level up from the previous fix). The
+  hook now has **first refusal**: `double_press` runs first and only a
+  *handled* double (the empty-plot level add) consumes the press; anything
+  else falls through to `on_press`, so the slider keeps press-jump /
+  drag-free / release-apply and the marker keeps its grab. Pinned by a test
+  that double-presses the slider and then drags it to a new value. 48
+  green in the touched set; bundle repacked.
+- 2026-08-15 (round 15) -- "still click and drag does not work on alpha
+  slider": could not reproduce in the current tree, and that is the
+  finding. The gesture was driven through EVERY layer -- Qt translation
+  (`wgpu_view.mousePress/Move/ReleaseEvent`), the host pointer routing
+  (`on_pointer_press/move/release` with `_gui_grab`), the chrome dispatch
+  (`mouse_press`/`drag`/`release`), the panel handlers, and the apply --
+  in a fresh layout and in a stale small persisted one: press consumes and
+  arms the body drag, the thumb tracks free with no mid-drag write, the
+  release applies exactly once. New regression test drives the host
+  pointer layer specifically (the layer whose gap once hid the
+  `_window_body_drag` bug while direct-API tests passed). Conclusion: the
+  session under test was running pre-fix bytecode -- a live process (or an
+  un-reloaded page) keeps the old code however many times the tree is
+  fixed. Bundle verified to contain the current handlers; repacked. 43
+  green in the touched set.
+- 2026-08-15 (round 16) -- browser-chain verification, no Qt (user
+  direction: "no qt allowed, must work on browser"). The slider gesture
+  was verified green through every host -- Qt translation, the
+  toolkit-free offscreen host (CHIMOL_TOOLKIT=none, Qt unimportable), and
+  the shared `on_pointer_*` abstraction the page drives -- with the
+  browser's own shim audited at source (boot.js: pointerdown/dblclick/
+  pointermove-with-buttons-mask/pointerup with capture;
+  `button_from_dom` DOM 0/1/2 -> engine buttons; serve already sends
+  Cache-Control: no-store). New `test_browser_chain.py` (3): a
+  subprocess where Qt cannot import drives the exact chain -- alpha
+  press consumes + arms the body drag, the slide is free (model asserted
+  untouched per tick), the release applies once and does not leak to the
+  other row; single press adds no level, the double adds exactly one;
+  the per-row eye toggles only its object; plus a unit pin of the DOM
+  button translation (a wrong left-button mapping is precisely the
+  "takes a press, ignores the moves" failure, one layer out). 46 green
+  in the touched set. Note for future rounds: verify host behaviour at
+  the `on_pointer_*` abstraction, not through MolViewPluginWindow -- the
+  Qt pass proved nothing about the page.
+- 2026-08-16 (round 17) -- `load *.fps.json` wires the FPS editor (user:
+  "just wire via load cmd if load *.fps.json open edit and label struct").
+  chimol: `load` dispatches the compound suffix to `fps_load`; `fps_load`
+  resolves its structure from the document's own `pdb_path` when the scene
+  is empty (fixed: `_active_object_info` *raises* on an empty scene, the
+  new path must catch it), and offers the finished document to the host
+  through the window's `on_open_fps_editor` hook -- same host-hook shape
+  as `on_open_structure`, chimol names no editor. chisurf plugin:
+  `_open_fps_editor` opens `FpsJsonEditorTool` populated, held on the
+  chimol window, reusing an open instance. Regression test
+  `test_fps_load_wiring.py` (2, toolkit-free probe): empty scene + doc
+  with pdb_path -> 4 objects, 2 AVs, 1 measurement, hook once with both
+  positions; bare `.json` does NOT route to fps. Fixture trap: 148l's
+  chain is E (segid reads A) -- chain_identifier must be "E". chimol
+  commit c974c6b also swept in 12 demo assets (`chimol/demos/*.cml`,
+  `demos/data/148l.pdb`) that another session had staged -- they are
+  intact and belong to the demos-rework stream; noted so nobody hunts for
+  them. AGENTS.md landed in chimol (Qt provides the window and nothing
+  else; softened per maintainer from "no Qt at all"), plus BUGS/001
+  (alpha slider dead in browser after dblclick) and BUGS/002 (engine
+  stale `_gui_grab` on lost release) with the round-16 reproduction
+  numbers. Browser zip rebuilt after the Python changes.

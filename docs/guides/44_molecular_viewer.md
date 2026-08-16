@@ -94,6 +94,17 @@ Structure files load as PDB, mmCIF or **BinaryCIF** (`.bcif`) — the last is th
 same content as an mmCIF in a compact binary encoding, and reads to exactly the
 same model.
 
+A **labelling document** loads the same way — the compound suffix routes it
+(`load myprotein.fps.json`). The document is a measurement plan, not a
+structure, so `load` does three things with it: the structure named by the
+document's own `pdb_path` fields is loaded when the scene is empty, every
+position's dye **accessible volume** is computed and added as its own object
+(see [accessible-volume calculations](23_accessible_volume.md)), and the
+document's FRET distances are drawn between the AV mean positions. Inside
+ChiSurf the finished document is also handed to the
+[FPS JSON Editor](plugin-fps_json_editor), opened populated — the same editor
+the **Structure ▸ FRET ▸ FPS JSON Editor** menu opens.
+
 Objects appear in the **Objects** panel, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:
 

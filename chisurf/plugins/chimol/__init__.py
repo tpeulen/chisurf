@@ -116,6 +116,38 @@ def __dir__() -> list[str]:
     return sorted({*globals(), *__all__})
 
 
+def _open_fps_editor(window, payload: dict) -> None:
+    """Open the FPS JSON Editor on ``payload``, reusing an open instance.
+
+    The end of the ``load <file>.fps.json`` wiring: chimol's command layer
+    labels the structure and then offers the document to the host through the
+    ``on_open_fps_editor`` window hook (the same host-hook shape ``load`` uses
+    for ``on_open_structure``), and this is what the hook runs. chiMOL stays
+    editor-agnostic -- it names no editor -- and ChiSurf answers with the
+    plugin that owns fps.json editing.
+
+    Parameters
+    ----------
+    window : chimol.app.MolViewPluginWindow
+        The window the hook was called on; the editor is kept alive on it.
+    payload : dict
+        The fps.json document, as :attr:`FpsJsonEditor.fps_json_payload` takes.
+    """
+    from chisurf.plugins.modelling.fps_json_editor.gui.tool import FpsJsonEditorTool
+
+    tool = getattr(window, "_fps_json_editor", None)
+    if tool is None:
+        tool = FpsJsonEditorTool()
+        # Held on the chimol window, or Qt collects the editor the moment the
+        # command returns -- the same reason the plugin launcher keeps its
+        # windows on the main window.
+        window._fps_json_editor = tool
+    tool.editor.fps_json_payload = dict(payload)
+    tool.show()
+    tool.raise_()
+    tool.activateWindow()
+
+
 def _create_window():
     """Build the Qt plugin window at a usable size.
 
@@ -130,6 +162,10 @@ def _create_window():
         win.resize(1000, 700)
     except Exception:
         pass
+    # The host half of ``load <file>.fps.json``: chimol's command layer calls
+    # this when a labelling document is loaded, and this side opens the
+    # editor that owns fps.json.
+    win.on_open_fps_editor = lambda payload: _open_fps_editor(win, payload)
     return win
 
 
