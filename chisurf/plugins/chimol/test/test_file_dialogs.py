@@ -1,32 +1,30 @@
-"""Open and Save are the **system's** dialogs on every host that can have one.
+"""Open and Save are the **in-viewport file dialog** -- every host, no Qt.
 
-The Qt window reaches a file dialog through Qt and the browser cannot have
-one at all; the toolkit-free host used to have **neither** -- its File ▸
-Open answered with a usage line and Save As wrote ``save {text}`` into the
-command line for the user to finish typing, which lands a file wherever the
-process happens to run. ``chimol.host.file_dialog`` asks the operating
-system itself (``osascript`` on macOS, ``zenity``/``kdialog`` on Linux,
-PowerShell on Windows) with no GUI toolkit, and ``ChimolApp`` wires it into
-the two hooks every file choice flows through: ``load`` with no path, and a
-menu entry carrying a ``file_prompt``.
+The hosts that could show a file chooser each had a different answer -- Qt
+on the desktop, the operating system's own panels on the toolkit-free host
+(``osascript``/``zenity``, removed once this landed), and *nothing* in a
+browser, where a page cannot spawn a process at all. The dialog is now one
+code path drawn by the same engine that draws the menus (a port of the
+L2DFileDialog interaction model; the annotated reference lives in the
+chisurf checkout's ``junk/``): folders left, files right, ".." goes up, a
+single click selects, a double click enters or takes, a read-only line
+carries the path, Cancel / Choose at the bottom, a red error when Choose
+runs with nothing chosen.
 
-What is pinned here, in the toolkit-free subprocess probe:
+What is pinned here, in the toolkit-free subprocess probe (Qt
+**unimportable** in the child):
 
-* both hooks are attached when the platform has a dialog, and neither is a
-  Qt object (nothing may import Qt on this host);
-* ``open`` with no path routes through the system dialog (patched -- a test
-  that opened a real modal panel would hang waiting for a person) and loads
-  what it returns. The assertion is on the *object*, not on a count: a
-  fresh viewer keeps a placeholder object that the first real load
-  replaces, so "one in, one out" is a count difference of zero and every
-  arithmetic assertion on ``len(_objects)`` lies;
-* a ``file_prompt`` entry substitutes the chosen path for ``{text}`` and
-  runs the entry's command, quoted, and runs nothing on cancel;
-* the script builders -- what would be asked of the OS -- without spawning
-  any dialog;
-* ``load`` strips one pair of surrounding quotes (the root fix that made
-  quoted paths from a dialog loadable at all; before it,
-  ``Path('"x.pdb"')`` was a filename starting with a quote).
+* the dialog model: filtering, navigation, the save-name default
+  extension, the choose/cancel contract;
+* the wiring: ``open`` with no path opens the dialog, a double click on a
+  row loads that file, a ``file_prompt`` menu entry runs its command on
+  the chosen path quoted, and nothing runs on cancel;
+* the render: the grab actually contains the dialog -- buttons in the
+  chrome's button blue, panes dark, title bar the active-window blue --
+  because a panel that layout forgot to draw passes every behaviour test
+  and helps nobody;
+* the quote fix this surfaced: ``png "<path>"`` used to write a file
+  *named with the quotes*; ``save``/``png``/``edit`` strip them now.
 """
 
 from __future__ import annotations
@@ -37,130 +35,159 @@ pytest.importorskip("rendercanvas", reason="the offscreen canvas host")
 
 from toolkit_free import DATA, probe  # noqa: E402
 
-_PDB = DATA / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+_PDB_DIR = DATA / "atomic_coordinates" / "pdb_files"
+_PDB = _PDB_DIR / "148l.pdb"
 
 
-def _builders() -> "object":
-    from chimol.host import file_dialog
+def test_filter_sections_and_dialog_model():
+    """Filters parse; navigation, selection and save names behave."""
+    import tempfile
+    from pathlib import Path
 
-    return file_dialog
+    from chimol.renderer.file_dialog import FileDialog, parse_filter
 
+    pairs = parse_filter("Structures (*.pdb *.cif);;All files (*.*)")
+    assert pairs[0] == ("Structures", ["*.pdb", "*.cif"])
+    assert pairs[1] == ("All files", ["*.*"])
 
-def test_filter_sections_translate_to_clean_parts():
-    """A Qt-style filter string parses; ``*`` never reaches a type list."""
-    fd = _builders()
-    pairs = fd._parse_filter(
-        "Structures (*.pdb *.cif *.mmcif);;All files (*.*)"
+    tmp = Path(tempfile.mkdtemp())
+    (tmp / "sub").mkdir()
+    (tmp / "a.pdb").write_text("x")
+    (tmp / "b.png").write_text("x")
+    (tmp / "c.txt").write_text("x")
+
+    d = FileDialog(mode="open", file_type="PDB (*.pdb);;All files (*.*)",
+                   start_dir=tmp)
+    assert d.folders == ["sub"] and d.files == ["a.pdb"]
+    d.selected_file = "a.pdb"
+    assert d.selected_path() == tmp / "a.pdb"
+    d.filter_index = 1
+    d.refresh()
+    assert sorted(d.files) == ["a.pdb", "b.png", "c.txt"]
+    d.enter("sub")
+    assert d.path.name == "sub"
+    d.enter("..")
+    assert d.path == tmp.resolve()
+
+    s = FileDialog(mode="save", file_type="Images (*.png)", start_dir=tmp)
+    s.name_field.set_text("out")
+    assert s.selected_path() == tmp / "out.png", (
+        "a typed name without a suffix must gain the filter's default"
     )
-    assert pairs[0] == ("Structures", ["*.pdb", "*.cif", "*.mmcif"])
-    assert fd._osascript_type_list(pairs) == ["cif", "mmcif", "pdb"], (
-        "the 'All files' star must not become an of-type entry"
-    )
-
-
-def test_mac_scripts_are_single_and_multiple_choice():
-    """The open script iterates only a list; the save script returns a path."""
-    fd = _builders()
-    single = fd._mac_open_script("Open it", False, "Structures (*.pdb)")
-    assert "multiple selections" not in single
-    assert 'choose file with prompt "Open it"' in single
-    assert 'of type {"pdb"}' in single
-    assert single.strip().endswith("return POSIX path of theChoice")
-
-    multi = fd._mac_open_script("Open", True, "All files (*.*)")
-    assert "with multiple selections allowed" in multi
-    assert "of type" not in multi, "an unfiltered panel must not carry a type"
-    assert "repeat with aChoice in theChoices" in multi
-
-    save = fd._mac_save_script("Save molecule", "lyso.pdb")
-    assert 'choose file name with prompt "Save molecule"' in save
-    assert 'default name "lyso.pdb"' in save
-    assert 'POSIX path of theChoice' in save
-
-
-def test_windows_and_x11_builders_shape():
-    """The Windows snippet composes one dialog with the filter in it."""
-    fd = _builders()
-    ps = fd._windows_ps("Save image", "Images (*.png)", save=True,
-                        multiple=False, default_name="out.png")
-    assert "SaveFileDialog" in ps and "OpenFileDialog" not in ps
-    assert "Images (*.png)|*.png" in ps
-    assert "$d.FileName = 'out.png'" in ps
-
-    zen = fd._zenity_args("Open", "Images (*.png)", save=False,
-                          multiple=True, default_name="")
-    assert zen is None or (
-        zen[0] == "zenity" and "--file-selection" in zen and "--multiple" in zen
-    )
+    s.name_field.set_text("")
+    assert s.selected_path() is None
+    picked = []
+    s.on_choose = picked.append
+    s._closer = lambda: None
+    s.name_field.set_text("shot")
+    assert s.choose() is True
+    assert picked == [str(tmp / "shot.png")]
 
 
 _DRIVE = '''
-    import sys
+    import pathlib
 
-    app = open_app(size=(900, 600))
+    app = open_app(size=(1000, 780))
     errors = []
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(errors.append)
 
-    from chimol.host import file_dialog as fd
-    emit("supported", str(fd.supported()))
-    emit("qt_imported", str(any("qtpy" == m or m.startswith("PyQt")
-                                or m.startswith("PySide") for m in sys.modules)))
-
-    emit("open_hook", str(callable(getattr(app.host, "on_open_structure", None))))
+    # `open` with no path opens the in-viewport dialog, rooted where the
+    # host's last-open guess says -- pointed at the pdb_files dir here.
+    app._open_structure_dialog()
     gui = app.renderer._internal_gui
-    emit("prompt_hook", str(callable(getattr(gui, "on_file_prompt", None))))
+    win = gui.window("file_dialog")
+    emit("visible", str(bool(win and win.visible)))
+    d = win.on_key
+    d.path = pathlib.Path({start!r})
+    d.refresh()
+    emit("folders", ",".join(d.folders[:4]))
+    emit("files", ",".join(n for n in d.files if n.endswith(".pdb")))
 
-    # The system dialog, patched: no panel may ever open from a test.
-    fd.open_files = lambda **k: [{pdb!r}]
-    app.cmd.do("open")
+    # A double click on a row chooses it: press pair through the renderer,
+    # exactly as a host delivers it.
+    from chimol.host.events import LEFT_BUTTON
+    body = gui.window_body(win)
+    d.layout(body)
+    row = next(r for r, n in d._file_rows if n == "148l.pdb")
+    cx, cy = row.x + row.w / 2, row.y + row.h / 2
+    app.renderer.on_pointer_press(cx, cy, LEFT_BUTTON, 0, double=True)
+    app.renderer.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     sources = [str(getattr(e, "source_path", "") or "")
                for e in app.viewer._objects.values()]
-    emit("open_loaded", str(any(s == {pdb!r} for s in sources)))
+    emit("loaded", str(any(s.endswith("148l.pdb") for s in sources)))
+    emit("closed_after_choose", str(not win.visible))
 
-    # A file_prompt entry: open mode fills the placeholder from the dialog; a
-    # cancelled save runs nothing at all.
-    runs = []
-    real_do = app.cmd.do
-    app.cmd.do = lambda line: runs.append(line)
-    app._on_file_prompt('load {{text}}', 'open', 'Open', 'All files (*.*)')
-    fd.save_file = lambda **k: None
-    app._on_file_prompt('png {{text}}', 'save', 'Save image', 'Images (*.png)')
-    emit("cancelled_ran_nothing", str(len(runs) == 1))
-    fd.save_file = lambda **k: "/tmp/out.png"
-    app._on_file_prompt('png {{text}}', 'save', 'Save image', 'Images (*.png)')
-    app.cmd.do = real_do
-    emit("ran_open", runs[0] if runs else "none")
-    emit("ran_save", runs[-1] if runs else "none")
+    # A file_prompt entry in save mode: the typed name gains .png, the
+    # command runs on the quoted path, and the PNG is real.
+    out = pathlib.Path({out!r})
+    app._on_file_prompt("png {{text}}", "save", "Save image", "Images (*.png)")
+    win2 = gui.window("file_dialog")
+    d2 = win2.on_key
+    d2.path = out.parent
+    d2.refresh()
+    d2.name_field.set_text(out.stem)
+    emit("chose", str(d2.choose()))
+    emit("png_written", str(out.is_file() and out.stat().st_size > 500))
+    emit("quoted_junk", str((out.parent / ('"' + out.name + '"')).exists()))
 
-    # The root fix: quotes around a typed path are an accident of the
-    # keyboard or the dialog, not part of the filename.
-    app.cmd.do(f'load "{pdb}"')
-    sources = [str(getattr(e, "source_path", "") or "")
-               for e in app.viewer._objects.values()]
-    emit("quoted_loaded", str(sum(1 for s in sources if s == {pdb!r})))
-    emit("errors", "; ".join(errors[:2]) or "none")
+    # Render: the dialog must actually draw, not only compute.
+    app.host.on_open_structure()
+    win3 = gui.window("file_dialog")
+    win3.on_key.path = pathlib.Path({start!r})
+    win3.on_key.refresh()
+    gui.raise_window("file_dialog")
+    import numpy as np
+    arr = np.array(app.renderer.grab_image()).astype(int)
+    body3 = gui.window_body(win3)
+    win3.on_key.layout(body3)
+    boxes = win3.on_key._boxes
+    def px(box):
+        y = int(min(max(boxes[box].y + boxes[box].h / 2, 0), arr.shape[0] - 1))
+        x = int(min(max(boxes[box].x + boxes[box].w / 2, 0), arr.shape[1] - 1))
+        return tuple(int(v) for v in arr[y, x])
+    emit("up_px", px("up"))
+    emit("choose_px", px("choose"))
+    emit("pane_px", px("files"))
+    ty = int(min(max(win3.y + 6, 0), arr.shape[0] - 1))
+    tx = int(min(max(win3.x + win3.w / 2, 0), arr.shape[1] - 1))
+    emit("title_px", tuple(int(v) for v in arr[ty, tx]))
+    emit("errors", "; ".join(errors[:3]) or "none")
 '''
 
 
-def test_the_toolkit_free_host_opens_and_saves_through_the_system_dialog():
-    """Both host hooks exist, work, with Qt unimportable in the child."""
-    m = probe(_DRIVE.format(pdb=str(_PDB)), block_qt=True)
-    assert m["supported"] == "True"
-    assert m["qt_imported"] == "False", (
-        "a Qt binding imported although the probe made it unimportable"
-    )
-    assert m["open_hook"] == "True", "load-with-no-path has no dialog on this host"
-    assert m["prompt_hook"] == "True", "Save As entries have no dialog on this host"
-    assert m["open_loaded"] == "True", (
-        "File > Open did not load the file the system dialog returned"
-    )
-    assert m["ran_open"] == f'load "{_PDB}"'
-    assert m["cancelled_ran_nothing"] == "True", (
-        "a cancelled save dialog still ran a command"
-    )
-    assert m["ran_save"] == 'png "/tmp/out.png"'
-    assert m["quoted_loaded"] == "2", (
-        "a quoted typed path did not load as its own object"
-    )
+def test_open_save_and_render_through_the_dialog():
+    """Open loads, save writes a real PNG, and the panel actually draws."""
+    import tempfile
+    from pathlib import Path
+
+    out = Path(tempfile.mkdtemp(prefix="fdlg-test-")) / "shot.png"
+    m = probe(_DRIVE.format(start=str(_PDB_DIR), out=str(out)), block_qt=True)
+    assert m["visible"] == "True"
+    assert "148l" in m["files"]
+    assert m["loaded"] == "True", "the double click did not load the file"
+    assert m["closed_after_choose"] == "True"
+    assert m["chose"] == "True"
+    assert m["png_written"] == "True", "save did not write the PNG"
+    assert m["quoted_junk"] == "False", "the quotes leaked into the filename"
+    # BUTTON_BG (157,157,255) buttons, dark panes, active-blue title bar.
+    assert m["up_px"] == "(157, 157, 255)", m["up_px"]
+    assert m["choose_px"] == "(157, 157, 255)", m["choose_px"]
+    assert sum(int(v) for v in m["pane_px"].strip("()").split(", ")) < 200
+    assert m["title_px"] == "(41, 74, 122)", m["title_px"]
     assert m["errors"] == "none", m["errors"]
+
+
+def test_browser_host_gets_the_same_dialog():
+    """The page wires the same two hooks -- no system panel exists there."""
+    from chimol.renderer.file_dialog import open_file_dialog
+    from chimol.web.demo import Viewer  # noqa: F401 - import proves Qt-free
+
+    import inspect
+
+    source = inspect.getsource(Viewer)
+    assert "open_file_dialog" in source, (
+        "the browser host no longer wires the in-viewport file dialog"
+    )
+    assert "on_open_structure" in source and "on_file_prompt" in source
+    assert callable(open_file_dialog)

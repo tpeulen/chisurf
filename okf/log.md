@@ -36903,3 +36903,28 @@
   Tests: test_file_dialogs.py (4) -- script builders pinned without
   spawning panels; wiring proven with Qt unimportable. 50 green in the
   touched set. chimol.zip rebuilt.
+- 2026-08-16 (round 20) -- the file dialog is drawn **in the viewport**
+  (user: "must work also without qt, port L2DFileDialog, own dialog
+  within ui"). chimol ae3e921: chimol/renderer/file_dialog.py -- a port
+  of the L2DFileDialog interaction model (annotated reference in junk/;
+  TAKEN: two panes / '..' / click-select / double-enters / readonly path
+  line / Cancel-Choose / red error; SKIPPED: sortable metadata columns,
+  new/delete-folder (a viewer must not mutate the fs from a render
+  panel), SelectFolder, Windows separators) as a floating GuiWindow
+  body, so every host that can render a frame can pick a file -- the
+  browser included, where nothing may spawn a process. host/file_dialog.py
+  (osascript/zenity/PowerShell, round 19) REMOVED; Qt-free host and the
+  browser page wire load-with-no-path + file_prompt entries to it; the
+  dialog opens at the active object's directory. Chrome additions:
+  GuiWindow.on_wheel + InternalGui.wheel_window (a notch over a
+  scrolling body must not dolly the molecule behind it). Save mode types
+  its filename via the chrome TextField (focused-field route) and a
+  suffix-less typed name gains the filter's default. Quote bug surfaced:
+  png/save/edit wrote files NAMED WITH THE QUOTES from dialog-quoted
+  paths -- they unquote_argument now. Tests rewritten
+  (test_file_dialogs.py, 3): model, wiring, and the RENDER asserted
+  pixel-wise (BUTTON_BG buttons 157,157,255; dark panes; title bar
+  41,74,122) with Qt unimportable -- layout-only panels pass behaviour
+  tests and draw nothing. Verification note: this session's model cannot
+  read images, so the mandatory screenshot check was done as pixel
+  samples at layout-derived coordinates instead of eyeballing.
