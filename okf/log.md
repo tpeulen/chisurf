@@ -36963,3 +36963,20 @@
   grab loop are the screenshot path, not the window path (window-path
   quad rebuild measured 0.13ms cached). 40 green in the touched set;
   zip rebuilt.
+- 2026-08-16 (round 23) -- the architectural half (user: "this seems to
+  be a general issue, architectural issue... if it is beyond the file
+  window, must not happen"). chimol 71ef843: the framework bumps
+  GuiWindow.body_revision on EVERY input routed to a window body --
+  body press, body drag, wheel over a scrolling body, keystrokes
+  through a window's on_key -- before the body hears about it. A panel
+  cannot forget; interactive panels repaint by construction (over-
+  bumping is the fingerprint's own safe direction; rebuilds coalesce to
+  the frame). What stays a panel duty: invalidation for input-less
+  changes (async compute, programmatic refresh) -- density's coalesced
+  on_change is the worked example; rule recorded in chimol AGENTS.md
+  ("assert the quad array changed, never the model"). Guardrail
+  test_window_body_invalidation.py: a panel that bumps NOTHING itself
+  still repaints on press/drag/wheel/key. 41 green in the touched set.
+  NOTE: the double/context bumps ride in the working tree with the
+  uncommitted on_double routing (other stream owns that landing); HEAD
+  cannot route doubles to bodies so nothing at HEAD misses them.
