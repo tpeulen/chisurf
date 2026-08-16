@@ -36943,3 +36943,23 @@
   test_file_dialogs.py::test_keys_scrollbars_and_save_typing drives all
   of it through the renderer's real pointer/key paths, Qt unimportable.
   10 green in the touched set; zip rebuilt.
+- 2026-08-16 (round 22) -- the frozen dialog was the chrome cache, not
+  the drag (user: "click and drag does not work!!!", after "super
+  laggy"). chimol 87e674d: the drag/keys/wheel all worked on the MODEL
+  but the picture never moved -- gui.chrome_fingerprint's windows_key
+  covered only the window FRAME (x/y/w/h/visible/collapsed/title),
+  never the BODY, so any body-content change returned the cached quads
+  forever. Fix: GuiWindow.body_revision (bumped by bodies whose picture
+  changed; included in windows_key); the file dialog bumps it from
+  every mutator (refresh/enter/_set_scroll/press/drag/wheel/key/choose/
+  name-field on_change). Regression
+  test_file_dialogs.py::test_dialog_changes_reach_the_picture_not_just_
+  the_model asserts on the chrome cache itself (the quad ARRAY must
+  change on key/wheel/drag) -- model-level assertions cannot see this
+  class of bug; two probe-script red herrings recorded so they are not
+  re-chased: (1) a save dialog filtered to *.png pointed at .pdb files
+  legitimately has no scrollbar; (2) grab_image builds a fresh
+  WgpuMeshRenderer per call, so pipeline/atlas 'per frame' costs in a
+  grab loop are the screenshot path, not the window path (window-path
+  quad rebuild measured 0.13ms cached). 40 green in the touched set;
+  zip rebuilt.

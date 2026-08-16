@@ -285,6 +285,75 @@ def test_keys_scrollbars_and_save_typing():
     assert m["errors"] == "none", m["errors"]
 
 
+_PICTURE_DRIVE = """
+    import pathlib, tempfile
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="fdlg-pic-"))
+    for i in range(200):
+        (tmp / f"file{i:03d}.pdb").write_text("x")
+    app = open_app(size=(1000, 780))
+    app.cmd.set_message_callback(lambda _m: None)
+    app.cmd.set_error_callback(lambda _e: None)
+    app.cmd.do("load 148l.pdb")
+    from chimol.host.events import LEFT_BUTTON
+    from chimol.host.keys import KEY_DOWN
+    r = app.renderer
+    gui = r._internal_gui
+    app._open_structure_dialog()
+    win = gui.window("file_dialog")
+    d = win.on_key
+    d.path = tmp
+    d.refresh()
+    d.layout(gui.window_body(win))
+
+    # Click a row (focus + selection), then a key must move the PICTURE.
+    row = next(rr for rr, n in d._file_rows if n == "file000.pdb")
+    r.on_pointer_press(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    r.on_pointer_release(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    q0 = r._chrome_quads()
+    r.on_key_press(KEY_DOWN, "", 0)
+    emit("key_moves_picture", str(q0 is not r._chrome_quads()))
+
+    # The wheel must move the picture.
+    q0 = r._chrome_quads()
+    r.on_wheel(d._boxes["files"].x + 10, 200.0, 3, 0)
+    emit("wheel_moves_picture", str(q0 is not r._chrome_quads()))
+
+    # The thumb drag must move the picture AND the list.
+    d._set_scroll("files", 0)
+    r._chrome_quads()
+    d.layout(gui.window_body(win))
+    thumb = d._boxes["files_thumb"]
+    track = d._boxes["files_track"]
+    r.on_pointer_press(thumb.x + 3, thumb.y + 5, LEFT_BUTTON, 0)
+    q_drag_start = r._chrome_quads()
+    for step in range(1, 6):
+        r.on_pointer_move(track.x + 3, thumb.y + 5 + step * 50.0,
+                          LEFT_BUTTON, 0)
+        r._chrome_quads()
+    r.on_pointer_release(track.x + 3, track.y + track.h, LEFT_BUTTON, 0)
+    emit("drag_scrolled", d._file_scroll)
+    emit("drag_moved_picture", str(q_drag_start is not r._chrome_quads()))
+"""
+
+
+def test_dialog_changes_reach_the_picture_not_just_the_model():
+    """Scrolling, keys and drags repaint -- the frozen-chrome-cache bug.
+
+    The chrome fingerprint covered a window's frame and never its body, so
+    the dialog scrolled, selected and typed on the **model** while the
+    screen kept the cached quads: the thumb drag genuinely looked dead.
+    GuiWindow.body_revision is bumped by every dialog mutator and included
+    in the fingerprint; this test asserts on the chrome cache itself --
+    the quad array must CHANGE, which model-level assertions cannot see
+    (the round-16 lesson, one port later).
+    """
+    m = probe(_PICTURE_DRIVE, block_qt=True)
+    assert m["key_moves_picture"] == "True", "a key did not repaint the dialog"
+    assert m["wheel_moves_picture"] == "True", "the wheel did not repaint"
+    assert int(m["drag_scrolled"]) > 0, "the thumb drag did not scroll"
+    assert m["drag_moved_picture"] == "True", "the drag did not repaint"
+
+
 def test_browser_host_gets_the_same_dialog():
     """The page wires the same two hooks -- no system panel exists there."""
     from chimol.renderer.file_dialog import open_file_dialog
