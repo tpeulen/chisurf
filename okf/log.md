@@ -36882,3 +36882,24 @@
   all exercise the other session's uncommitted chimol rework
   (menus/internal_gui/view); none intersect loader/labelling/base
   script-dirs or the fps wiring, which is green.
+- 2026-08-16 (round 19) -- system open/save dialogs on the Qt-free host
+  (user: "open and save dialogs must open display system file open/save
+  dialogs"). chimol 3cff9cc: new chimol/host/file_dialog.py asks the OS
+  itself -- osascript choose file / choose file name (macOS), zenity/
+  kdialog (Linux), one-shot PowerShell forms (Windows); no toolkit, no
+  Tk. ChimolApp wires it into the two hooks every file choice takes:
+  on_open_structure (load with no path = File > Open) and
+  gui.on_file_prompt (Save Molecule/Image/exports). Previously the
+  Qt-free host answered File > Open with a usage line and Save As wrote
+  a placeholder into the command line. Root fix en route: load never
+  stripped quotes from its argument, so a quoted path (typed or from a
+  dialog) became a filename starting with a quote; unquote_argument in
+  cmd/base, used by load. Probe placeholder trap: a fresh viewer keeps a
+  placeholder object that the first real load REPLACES, so
+  len(_objects) assertions lie (one in, one out = 0) -- assert on
+  object source_path, not counts. Probe grew block_qt=True: a meta-path
+  finder makes every Qt binding unimportable, because view.py imports
+  qtpy opportunistically when present, so sys.modules is not evidence.
+  Tests: test_file_dialogs.py (4) -- script builders pinned without
+  spawning panels; wiring proven with Qt unimportable. 50 green in the
+  touched set. chimol.zip rebuilt.

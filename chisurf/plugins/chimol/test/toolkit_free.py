@@ -94,8 +94,28 @@ def open_app(size=(900, 600)):
     return ChimolApp(backend="offscreen", size=size)
 '''
 
+#: Prepended when a probe asks for ``block_qt``: Qt must be *unimportable*,
+#: not merely unused. ``view`` imports the toolkit inside a ``try`` and
+#: tolerates its absence, so the only honest form of "this host has no Qt"
+#: is a finder that raises -- on a machine with Qt installed, "not in
+#: sys.modules" would just mean "nothing happened to import it yet".
+_QT_BLOCK = '''
 
-def probe(script: str, *, timeout: int = 300) -> dict[str, str]:
+class _NoQtFinder:
+    """A meta-path hook that refuses to import any Qt binding."""
+
+    def find_spec(self, fullname, path=None, target=None):
+        root = fullname.split(".")[0]
+        if root in ("qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6"):
+            raise ImportError(f"{root} is blocked in this probe")
+        return None
+
+
+sys.meta_path.insert(0, _NoQtFinder())
+'''
+
+
+def probe(script: str, *, timeout: int = 300, block_qt: bool = False) -> dict[str, str]:
     """Run *script* against the toolkit-free viewer and return what it emitted.
 
     Parameters
@@ -104,6 +124,11 @@ def probe(script: str, *, timeout: int = 300) -> dict[str, str]:
         Python, dedented for you. ``open_app`` and ``emit`` are in scope.
     timeout : int, optional
         Seconds before the child is killed.
+    block_qt : bool, optional
+        Make every Qt binding **unimportable** in the child, so a probe can
+        prove a feature works with no Qt on the machine at all. Not the
+        default: ``view`` imports the toolkit opportunistically when it is
+        present, and most probes do not care.
 
     Returns
     -------
@@ -120,7 +145,7 @@ def probe(script: str, *, timeout: int = 300) -> dict[str, str]:
         "CHIMOL_SETTINGS_DIR", str(ROOT / "build" / "test-chimol-settings")
     )
 
-    source = _PREAMBLE + textwrap.dedent(script)
+    source = _PREAMBLE + (_QT_BLOCK if block_qt else "") + textwrap.dedent(script)
     try:
         result = subprocess.run(
             [sys.executable, "-c", source],
