@@ -36861,3 +36861,24 @@
   (alpha slider dead in browser after dblclick) and BUGS/002 (engine
   stale `_gui_grab` on lost release) with the round-16 reproduction
   numbers. Browser zip rebuilt after the Python changes.
+- 2026-08-16 (round 18) -- shipped example: a complete labelling network
+  (user: "create example folder... ship fps.json and pml... complete
+  labeling network"). chimol `examples/` (commit 4350cd9):
+  labeling_network.fps.json = 5 positions on 148l chain E (3/44/90/119/
+  144 CB; Alexa488 + Cy3/ATTO550/Cy5/ATTO647N), all 10 pairwise
+  distances from real CB-CB geometry, one chi2 set -- complete graph;
+  labeling_network.pml loads it. Two portability fixes the example
+  forced: @-scripts resolve loads against the script's dir
+  (BaseCmd._script_dirs stack, consulted in load before demo-data
+  fallback), and fps_load resolves relative pdb_path against the
+  document. Probe harness hardened (emit prints a leading newline --
+  the PDB reader's stdout WARNING has no trailing newline and swallowed
+  the first result line; parser now requires identifier keys).
+  Regression: test_fps_load_wiring.py::test_the_shipped_example_shape_
+  is_portable assembles the same shape in a tempdir (alien cwd) and
+  asserts both flows. Full-suite note: 31 failed + 22 errors in the
+  chimol plugin suite are NOT this stream's -- chrome_cache,
+  colour_revision, fov, tours, mouse_bindings (fetch-factory warnings)
+  all exercise the other session's uncommitted chimol rework
+  (menus/internal_gui/view); none intersect loader/labelling/base
+  script-dirs or the fps wiring, which is green.

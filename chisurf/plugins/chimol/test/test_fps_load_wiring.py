@@ -22,6 +22,8 @@ behaviour.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 pytest.importorskip("rendercanvas", reason="the offscreen canvas host")
@@ -148,3 +150,77 @@ def test_a_plain_json_is_not_treated_as_a_labelling_document():
     m = probe(_PLAIN_DRIVE.format(payload=_document()))
     assert m["hook_calls"] == "0", "a bare .json reached the fps editor hook"
     assert m["av_objects"] == "0", "a bare .json computed accessible volumes"
+
+
+_PORTABLE_DRIVE = '''
+    import json, pathlib
+
+    # The example shape, assembled in a directory that is *not* the working
+    # directory: a pml that loads the document by bare name, a document whose
+    # pdb_path is relative -- relative to the *document*, not to the cwd.
+    import shutil
+    import tempfile
+
+    tmp = tempfile.mkdtemp(prefix="chimol-example-")
+    struct = pathlib.Path(tmp) / "struct"
+    struct.mkdir()
+    shutil.copy({pdb!r}, struct / "148l.pdb")
+
+    doc = json.loads({payload!r})
+    for fields in doc["Positions"].values():
+        fields["pdb_path"] = "struct/148l.pdb"
+    (pathlib.Path(tmp) / "net.fps.json").write_text(json.dumps(doc))
+    (pathlib.Path(tmp) / "run.pml").write_text("load net.fps.json\\n")
+
+    app = open_app(size=(900, 600))
+    errors = []
+    app.cmd.set_message_callback(lambda _m: None)
+    app.cmd.set_error_callback(errors.append)
+    opened = []
+    app.cmd.window.on_open_fps_editor = opened.append
+
+    # The @script, by absolute path, from this (alien) working directory.
+    app.cmd.do(f"@{{tmp}}/run.pml")
+    n_av = 0
+    for e in app.viewer._objects.values():
+        if getattr(getattr(e, "state", None), "av", None) is not None:
+            n_av += 1
+    emit("script_av", n_av)
+    emit("script_meas", len(app.viewer.measurements))
+    emit("script_hook", len(opened))
+    emit("script_dirs", len(app.cmd._script_dirs))
+
+    # And the document alone, empty scene, same alien cwd -- the pdb_path must
+    # resolve beside the document, not beside the process.
+    app2 = open_app(size=(900, 600))
+    app2.cmd.set_message_callback(lambda _m: None)
+    app2.cmd.set_error_callback(errors.append)
+    app2.cmd.do(f"load {{tmp}}/net.fps.json")
+    m_av = 0
+    for e in app2.viewer._objects.values():
+        if getattr(getattr(e, "state", None), "av", None) is not None:
+            m_av += 1
+    emit("doc_alone_av", m_av)
+    emit("doc_alone_meas", len(app2.viewer.measurements))
+    emit("errors", "; ".join(errors[:3]) or "none")
+'''
+
+
+def test_the_shipped_example_shape_is_portable():
+    """A shipped example opens from any working directory.
+
+    This is the shape of ``chimol/examples/`` (a pml beside an fps.json whose
+    ``pdb_path`` is relative), assembled here in a tempdir outside the repo so
+    the test owns every file it asserts about: the ``@``-script resolves its
+    bare ``load`` against the script's own directory, and the document's
+    relative ``pdb_path`` resolves beside the document -- neither against the
+    process cwd, which is the chisurf repo root and holds neither file.
+    """
+    m = probe(_PORTABLE_DRIVE.format(payload=json.dumps(_document()), pdb=str(_PDB)))
+    assert m["script_av"] == "2", "the script's bare load did not find the document"
+    assert m["script_meas"] == "1"
+    assert m["script_hook"] == "1", "the script load did not reach the editor hook"
+    assert m["script_dirs"] == "0", "the script-dir stack did not unwind"
+    assert m["doc_alone_av"] == "2", "the document's relative pdb_path did not resolve"
+    assert m["doc_alone_meas"] == "1"
+    assert m["errors"] == "none", m["errors"]

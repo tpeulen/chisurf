@@ -52,14 +52,39 @@ ROOT = pathlib.Path(__file__).resolve().parents[4]
 #: Test data, for scripts that need a structure or a trajectory.
 DATA = ROOT / "test" / "data"
 
-_PREAMBLE = '''
+#: Sample-data directories injected into every probe viewer, matching what
+#: the chisurf plugin injects at load -- so ``load 148l.pdb`` resolves in a
+#: probe the way it does in the application.
+_DATA_DIRS = (
+    DATA / "atomic_coordinates" / "pdb_files",
+    DATA / "atomic_coordinates" / "trajectory" / "hgbp1",
+)
+
+_PREAMBLE = f'''
 import json, os, sys
 import numpy as np
 
 
 def emit(key, value):
     """Report one result back to the parent."""
-    print(f"{key}={value}")
+    # The leading newline is load-bearing: the PDB reader can write a
+    # ``WARNING ...`` to stdout with no trailing newline, and a plain print
+    # would merge this result onto that line -- the parent would never see
+    # ``key=value`` as a line of its own.
+    print(f"\\n{{key}}={{value}}", flush=True)
+
+
+#: Sample-data directories this repository carries -- resolved in the parent
+#: (the child runs as ``<string>`` and has no ``__file__``), injected into the
+#: viewer the same way the chisurf plugin injects them, so a probe script
+#: that says ``load 148l.pdb`` works regardless of which host imported the
+#: package first.
+from chimol.demos.catalog import set_data_dirs as _set_data_dirs
+
+_set_data_dirs(
+    {str(_DATA_DIRS[0])!r},
+    {str(_DATA_DIRS[1])!r},
+)
 
 
 def open_app(size=(900, 600)):
@@ -111,7 +136,13 @@ def probe(script: str, *, timeout: int = 300) -> dict[str, str]:
     results = {
         line.split("=", 1)[0]: line.split("=", 1)[1]
         for line in result.stdout.splitlines()
-        if "=" in line and not line.startswith(" ")
+        if "=" in line
+        and not line.startswith(" ")
+        # A bare ``key=`` at the line start: chimol's progress rendering can
+        # emit output without a trailing newline, and an ``emit`` that lands
+        # on the same line as it ("Computing…n_av=5") must not become a key
+        # -- a real key is an identifier at the start of its own line.
+        and line.split("=", 1)[0].replace("_", "a").isalnum()
     }
     if not results:
         tail = (result.stdout + result.stderr)[-3000:]
