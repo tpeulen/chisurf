@@ -36928,3 +36928,18 @@
   tests and draw nothing. Verification note: this session's model cannot
   read images, so the mandatory screenshot check was done as pixel
   samples at layout-derived coordinates instead of eyeballing.
+- 2026-08-16 (round 21) -- file-dialog usability fixes (user: "keys not
+  working missing scrollbar, etc."). chimol e674089: (1) KEYS -- open
+  mode declined the keyboard entirely and save mode focused the bare
+  TextField, which ignores Enter, so typing worked and committing it did
+  not; the dialog is now the focused object in both modes (open: Up/Down
+  select, PgUp/PgDn page, Enter takes file / enters selected folder,
+  Backspace goes up, selection kept on screen; save: everything but
+  Enter forwards to the field, Enter = Choose). (2) SCROLLBARS -- the
+  3px 'more below' strip replaced by real ones in BOTH panes:
+  proportional thumb (14px floor), draggable, track press pages, wheel
+  scrolls the pane under the pointer (folders vs files). (3) enter("..")
+  selects the folder you came from. Regression
+  test_file_dialogs.py::test_keys_scrollbars_and_save_typing drives all
+  of it through the renderer's real pointer/key paths, Qt unimportable.
+  10 green in the touched set; zip rebuilt.

@@ -178,6 +178,113 @@ def test_open_save_and_render_through_the_dialog():
     assert m["errors"] == "none", m["errors"]
 
 
+_KEYS_DRIVE = """
+    import pathlib, tempfile
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="fdlg-keys-"))
+    for i in range(30):
+        (tmp / f"file{i:02d}.pdb").write_text("x")
+    for i in range(25):
+        (tmp / f"dir{i:02d}").mkdir()
+    app = open_app(size=(1000, 780))
+    errors = []
+    app.cmd.set_message_callback(lambda _m: None)
+    app.cmd.set_error_callback(errors.append)
+    from chimol.host.keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_RETURN
+    from chimol.host.events import LEFT_BUTTON
+
+    app._open_structure_dialog()
+    gui = app.renderer._internal_gui
+    win = gui.window("file_dialog")
+    d = win.on_key
+    d.path = tmp
+    d.refresh()
+    body = gui.window_body(win)
+    d.layout(body)
+
+    # A press focuses the dialog: keys must route somewhere after a click.
+    row = next(r for r, n in d._file_rows if n == "file00.pdb")
+    app.renderer.on_pointer_press(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    emit("focused", str(gui.focused_field is d))
+
+    for _ in range(4):
+        app.renderer.on_key_press(KEY_DOWN, "", 0)
+    emit("nav", d.selected_file)
+    app.renderer.on_key_press(KEY_PAGE_DOWN, "", 0)
+    emit("paged", d.selected_file)
+    emit("nav_scrolled", d._file_scroll)
+
+    # The scrollbar is real: a proportional thumb, dragged through the
+    # pointer path, moves the list.
+    d._set_scroll("files", 0)
+    d.layout(body)
+    track = d._boxes["files_track"]
+    thumb = d._boxes["files_thumb"]
+    emit("thumb_h", f"{thumb.h:.0f}")
+    app.renderer.on_pointer_press(thumb.x + 3, thumb.y + 5, LEFT_BUTTON, 0)
+    for step in range(1, 6):
+        app.renderer.on_pointer_move(track.x + 3, thumb.y + 5 + step * 50,
+                                     LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(track.x + 3, track.y + track.h,
+                                    LEFT_BUTTON, 0)
+    emit("thumb_drag", d._file_scroll)
+    emit("thumb_bounds_ok", str(d._file_scroll <= d._scroll_bounds("files")))
+
+    # The wheel scrolls the pane under the pointer: folders over folders.
+    d._set_scroll("files", 0)
+    d._set_scroll("folders", 0)
+    fbox = d._boxes["folders"]
+    app.renderer.on_wheel(fbox.x + 10, fbox.y + 10, 2, 0)
+    emit("folders_wheeled", d._folder_scroll)
+    app.renderer.on_wheel(d._boxes["files"].x + 10, fbox.y + 10, 2, 0)
+    emit("files_wheeled", d._file_scroll)
+
+    # Save mode: click the name line, type, Enter -- Enter must be Choose,
+    # which it was not when the bare field held the focus.
+    app._on_file_prompt("png {text}", "save", "Save image", "Images (*.png)")
+    d2 = gui.window("file_dialog").on_key
+    d2.path = tmp
+    d2.refresh()
+    d2.layout(gui.window_body(gui.window("file_dialog")))
+    sel = d2._boxes["selected"]
+    app.renderer.on_pointer_press(sel.x + 5, sel.y + 5, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(sel.x + 5, sel.y + 5, LEFT_BUTTON, 0)
+    emit("save_focused", str(gui.focused_field is d2))
+    for ch in "typed":
+        app.renderer.on_key_press(0, ch, 0)
+    emit("typed", d2.name_field.text)
+    app.renderer.on_key_press(KEY_RETURN, "", 0)
+    emit("typed_png", str((tmp / "typed.png").is_file()))
+    emit("errors", "; ".join(errors[:2]) or "none")
+"""
+
+
+def test_keys_scrollbars_and_save_typing():
+    """Keyboard navigation, real scrollbars, wheel-per-pane, Enter=Choose.
+
+    The round-21 report: "keys not working, missing scrollbar". Keys did
+    nothing because the dialog declined them in open mode and let the bare
+    TextField take them in save mode (Enter then went nowhere); the
+    scrollbar was a 3-pixel strip that could not be dragged. All of it is
+    pinned here through the renderer's real input paths, Qt unimportable.
+    """
+    m = probe(_KEYS_DRIVE, block_qt=True)
+    assert m["focused"] == "True", "a press did not give the dialog the keys"
+    assert m["nav"] == "file04.pdb", "arrow navigation did not move the selection"
+    assert m["paged"].startswith("file"), "page-down did not page"
+    assert int(m["paged"][4:-4]) > 4, f'page-down did not page: {m["paged"]}'
+    assert int(m["nav_scrolled"]) > 0, "navigation did not keep the row on screen"
+    assert float(m["thumb_h"]) > 20, "the thumb is not proportional to the list"
+    assert int(m["thumb_drag"]) > 0, "dragging the thumb did not scroll"
+    assert m["thumb_bounds_ok"] == "True"
+    assert int(m["folders_wheeled"]) > 0, "the wheel over folders scrolled nothing"
+    assert int(m["files_wheeled"]) > 0, "the wheel over files scrolled nothing"
+    assert m["save_focused"] == "True"
+    assert m["typed"] == "typed"
+    assert m["typed_png"] == "True", "Enter after typing did not Choose"
+    assert m["errors"] == "none", m["errors"]
+
+
 def test_browser_host_gets_the_same_dialog():
     """The page wires the same two hooks -- no system panel exists there."""
     from chimol.renderer.file_dialog import open_file_dialog
