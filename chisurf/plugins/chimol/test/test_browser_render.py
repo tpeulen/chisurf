@@ -43,7 +43,7 @@ CHROMIUM_FLAGS = [
     "--ignore-gpu-blocklist",
 ]
 
-_WEB = pathlib.Path(__file__).resolve().parents[1] / "chimol" / "web"
+_WEB = pathlib.Path(__import__("chimol").__file__).resolve().parent / "web"
 
 
 def _free_port() -> int:

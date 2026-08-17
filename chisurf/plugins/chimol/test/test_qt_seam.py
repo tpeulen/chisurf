@@ -162,6 +162,7 @@ def test_the_toolkit_free_core_stays_toolkit_free(module):
     a line to a list; naming the files that matter is not.
     """
     path = PACKAGE / module
-    if not path.is_file():
-        pytest.skip(f"{module} does not exist")
+    # An assertion, not a skip: after a rename a stale entry would otherwise
+    # pass silently for ever, and the file it names would be unguarded.
+    assert path.is_file(), f"{module} does not exist -- update this list to the file's new path"
     assert not _imports_qt(path), f"{module} must not import Qt"

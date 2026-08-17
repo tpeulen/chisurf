@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-CHIMOL = pathlib.Path(__file__).resolve().parents[1] / "chimol"
+CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 #: Empty, and it stays that way. The ray tracer was the last holdout: its
 #: traversal and its shading are `wgsl/bvh.wgsl` and `wgsl/raytrace.wgsl` now,

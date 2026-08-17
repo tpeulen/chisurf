@@ -26,7 +26,7 @@ import pytest
 from chimol.renderer.gpu import enums
 
 #: The engine's source root.
-_CHIMOL = Path(__file__).resolve().parents[1] / "chimol"
+_CHIMOL = Path(__import__("chimol").__file__).resolve().parent
 
 #: The only module allowed to name the binding.
 _BACKEND = _CHIMOL / "renderer" / "gpu" / "native.py"

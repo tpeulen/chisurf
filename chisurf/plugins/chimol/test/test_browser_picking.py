@@ -187,7 +187,7 @@ def _run_in_page_configuration(tmp_path):
     import subprocess
     import sys
 
-    pkg = pathlib.Path(__file__).resolve().parents[1] / "chimol"
+    pkg = pathlib.Path(__import__("chimol").__file__).resolve().parent
     script = tmp_path / "page_config.py"
     script.write_text(
         "import sys, importlib\n"
