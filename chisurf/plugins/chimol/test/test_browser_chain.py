@@ -68,7 +68,7 @@ _DRIVE = '''
     viewer = app.viewer
     renderer = app.renderer
     gui = renderer._internal_gui
-    panel = getattr(viewer, "_density_controls", None)
+    panel = viewer._renderer._internal_gui.panels.get("density")
     emit("panel", "yes" if panel is not None else "no")
     if panel is None:
         raise SystemExit(1)

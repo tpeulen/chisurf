@@ -221,7 +221,7 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
-    panel = getattr(viewer, "_density_controls", None)
+    panel = viewer._renderer._internal_gui.panels.get("density")
     assert panel is not None, "the density panel is not open"
 
     class _Recorder:
@@ -298,7 +298,7 @@ def test_a_rows_context_menu_sets_that_densitys_display(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
-    panel = viewer._density_controls
+    panel = viewer._renderer._internal_gui.panels["density"]
     gui = viewer._renderer._internal_gui
     _draw_rows(panel, gui)
     oid1 = panel._row_boxes[0][1]
@@ -347,7 +347,7 @@ def test_the_chrome_routes_a_window_right_press(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     gui = viewer._renderer._internal_gui
-    panel = viewer._density_controls
+    panel = viewer._renderer._internal_gui.panels["density"]
     _draw_rows(panel, gui)
     from chimol.chrome.gui import _WINDOW_BODY
 
