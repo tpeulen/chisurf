@@ -307,7 +307,7 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
 # Playback: step, interpolation, and not starving the event loop
 # --------------------------------------------------------------------------- #
 def test_a_fractional_position_splits_into_a_pair_and_a_weight():
-    from chimol.core.viewer import _frame_blend
+    from chimol.core.trajectory import _frame_blend
 
     assert _frame_blend(3.0, 10) == (3, 0.0, 3)
     index, blend, nxt = _frame_blend(3.25, 10)

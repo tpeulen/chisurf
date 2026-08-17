@@ -48,7 +48,7 @@ import numpy as np
 import pytest
 
 from chimol.io.structure import load_trajectory_cell
-from chimol.core.viewer import _minimum_image, _smooth_frame
+from chimol.core.trajectory import _minimum_image, _smooth_frame
 
 DCD = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -125,7 +125,7 @@ def test_a_triclinic_cell_images_along_its_own_vectors():
     against the edge lengths -- moves them somewhere else entirely, and for a
     90-degree box the two agree, which is how a wrong transpose survives.
     """
-    from chimol.core.viewer import _cell_matrix
+    from chimol.core.trajectory import _cell_matrix
 
     lengths = np.array([30.0, 40.0, 50.0])
     angles = np.array([70.0, 80.0, 110.0])
@@ -148,7 +148,7 @@ def test_a_triclinic_cell_images_along_its_own_vectors():
 
 def test_the_cell_matrix_has_the_right_volume():
     """A sanity check on the six-numbers-to-three-vectors construction."""
-    from chimol.core.viewer import _cell_matrix
+    from chimol.core.trajectory import _cell_matrix
 
     matrix = _cell_matrix(np.array([10.0, 10.0, 10.0]), np.full(3, 90.0))
     assert np.isclose(abs(np.linalg.det(matrix)), 1000.0)
@@ -160,7 +160,7 @@ def test_the_cell_matrix_has_the_right_volume():
 
 def test_a_degenerate_cell_is_refused_rather_than_producing_nonsense():
     """Zero edges and flat angles have no inverse to image with."""
-    from chimol.core.viewer import _cell_matrix
+    from chimol.core.trajectory import _cell_matrix
 
     assert _cell_matrix(np.array([0.0, 10.0, 10.0]), np.full(3, 90.0)) is None
     assert _cell_matrix(np.array([10.0, 10.0, 10.0]), np.array([90.0, 90.0, 0.0])) is None

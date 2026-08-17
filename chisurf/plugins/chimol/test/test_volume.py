@@ -479,7 +479,7 @@ def test_mesh_style_draws_lines_rather_than_a_filled_surface(shell):
 
 def test_the_wireframe_does_not_send_every_edge_twice():
     """Interior edges are shared; drawing both copies doubles the lines."""
-    from chimol.core.viewer import _triangle_edges
+    from chimol.geometry.edges import _triangle_edges
 
     faces = np.array([[0, 1, 2], [1, 2, 3]])      # two triangles sharing edge 1-2
     edges = _triangle_edges(faces)
@@ -693,7 +693,7 @@ def test_a_flat_map_offers_no_level_at_all():
 
 def test_the_negative_lobe_gets_a_distinguishable_colour():
     """Transcribed from `_negative_color`, including the too-dark rescue."""
-    from chimol.core.viewer import _negative_lobe_color
+    from chimol.core.volume import _negative_lobe_color
 
     # White inverts to black, which would be invisible; it becomes red.
     assert _negative_lobe_color((1.0, 1.0, 1.0, 1.0)) == (1.0, 0.0, 0.0, 1.0)
