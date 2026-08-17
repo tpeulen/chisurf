@@ -28,6 +28,6 @@ cmtk/qt_host.py
 cmtk/qt_painter.py
 hosts/qt/overlay.py
 hosts/toolkit.py
-core/viewer.py
+core/viewer/_common.py
 hosts/qt/wgpu_view.py
 testing/mock_viewer.py

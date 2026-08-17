@@ -23,7 +23,7 @@ _GETATTR = re.compile(r'getattr\((?:viewer|ctx\.viewer|self\.viewer|self\._viewe
 
 def _used() -> set[str]:
     out: set[str] = set()
-    for scope in ("commands", "plugins"):
+    for scope in ("commands", "plugins", "ui/wizards"):
         for path in (ROOT / scope).rglob("*.py"):
             text = path.read_text()
             out.update(_ATTR.findall(text))

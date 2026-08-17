@@ -129,10 +129,12 @@ def test_the_charset_covers_what_the_chrome_draws():
     is not passed to :meth:`Painter.text`.
     """
     _alpha, meta = _load()
-    source = (
-        pathlib.Path(__import__("chimol").__file__).resolve().parent
-        / "ui" / "gui.py"
-    ).read_text(encoding="utf-8")
+    # The chrome is the ``ui/gui`` package now (the framework and its topical
+    # mixins); every file of it draws.
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((pathlib.Path(__import__("chimol").__file__).resolve().parent / "ui" / "gui").glob("*.py"))
+    )
 
     tree = ast.parse(source)
     docstrings = {

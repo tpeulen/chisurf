@@ -18,7 +18,7 @@ import pytest
 import chimol
 
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
-SCOPES = ("commands", "plugins")
+SCOPES = ("commands", "plugins", "ui/wizards")
 
 #: What still reaches a private, and why it may. Empty: every reach has a public door
 #: (viewer.active_state(), scale_factor, selected_residues, selected_atoms, info_visible,

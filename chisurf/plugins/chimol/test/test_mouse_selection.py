@@ -145,7 +145,7 @@ def test_selection_merges_like_pymol_actions(window):
 
 
 def test_rect_selection_honours_the_action(window, monkeypatch):
-    from chimol.core import viewer as view_mod
+    from chimol.core.viewer import picking as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(
@@ -195,7 +195,7 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
     """PyMOL: "left-clicking away from any atom should deactivate the
     selection." With nothing picked, `+/-` (toggle) has nothing to toggle, so
     it clears -- it must not leave a stale selection behind."""
-    from chimol.core import viewer as view_mod
+    from chimol.core.viewer import picking as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
@@ -216,7 +216,7 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
 def test_an_empty_space_pick_leaves_the_selection_alone(window, monkeypatch):
     """`pkat` is an editing pick: it highlights but never owns the selection,
     so an empty pick must not wipe what is selected."""
-    from chimol.core import viewer as view_mod
+    from chimol.core.viewer import picking as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
