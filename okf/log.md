@@ -36980,3 +36980,32 @@
   NOTE: the double/context bumps ride in the working tree with the
   uncommitted on_double routing (other stream owns that landing); HEAD
   cannot route doubles to bodies so nothing at HEAD misses them.
+
+- 2026-08-17 — AV strip: the FPS convention in real selection syntax, and
+  no escalation. chimol's selection parser is at PyMOL parity for open
+  ranges (`100:`, `:100`, `10-`, leading `-20` reads as `:20`), verified
+  A/B against real PyMOL on 148L (both-reject counts as agree); PyMOL
+  rejects space-separated value lists and so does chimol, so every fps
+  document now spells them `+`-separated (olga_t4l 33 masks, imp.bff
+  examples 43). The strip itself: default removes the attachment residue's
+  side chain minus the attachment atom (backbone stays), a declared
+  `strip_mask` is honoured as given, and the attachment atom survives any
+  mask (the backend resolves the source from the stripped file). chimol
+  evaluates masks with the viewer's own parser (headless record shim);
+  imp.bff owns the same strip at the compute seam with a strict
+  fps-dialect parser that raises on anything it cannot read -- nothing is
+  silently ignored. The clearance escalation ladder was removed (user
+  direction: escalation is a silent failure); a declared
+  `allowed_sphere_radius` is honoured exactly and an empty AV is logged,
+  not retried. Measured: olga screening positions declared `1` (FPS
+  whole-residue-reduction calibration) -- the bonded backbone (CA at
+  d-r = -0.15 A) walls any 1 A sphere under the side-chain convention, so
+  the documents were updated to `3`, at which all three sites compute
+  (3303/3274/3560 points). Drive-by fixes in the fret plugin:
+  `av._LABELLIB_BACKEND`/`_HAS_LABELLIB` attr rot replaced with an import
+  probe plus `_active_backend_name` (api/router.py, cli/main.py), the olga
+  example tests repointed from a dead `~/dev/olga` path to the vendored
+  copies, and the project-save pin updated to the `.csp` archive layout.
+  chimol landed sele_parser.py only; the labelling/ subsystem stays
+  uncommitted until the chrome work lands (its renderer hunks share
+  view.py with that uncommitted diff).

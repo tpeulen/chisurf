@@ -107,6 +107,31 @@ def test_a_value_list_unions(select):
     )
 
 
+def test_a_space_separated_value_list_is_rejected_like_pymol(select):
+    """Real PyMOL rejects `name CG1 CG2 CD1` (`Invalid selection name "CG2"`).
+
+    The fps documents used to spell their strip masks with spaces; a parser
+    that silently evaluated them would be a private dialect, so the same
+    spelling raises here -- lists are `+`-separated, and documents that used
+    spaces were rewritten to `+`.
+    """
+    with pytest.raises(UnknownSelectionName):
+        select("name CG1 CG2 CD1")
+
+
+def test_an_open_ended_residue_range(select, atoms):
+    """`resi 100:`, `resi :100` and `resi -20` are PyMOL's open ranges.
+
+    A leading minus reads as an open start in PyMOL (`-20` is ":20"),
+    not as a negative residue number.
+    """
+    ids = np.asarray(atoms["res_id"], dtype=int)
+    assert _count(select("resi 100:")) == _count(ids >= 100)
+    assert _count(select("resi :100")) == _count(ids <= 100)
+    assert _count(select("resi 10-")) == _count(ids >= 10)
+    assert _count(select("resi -20")) == _count(ids <= 20)
+
+
 def test_a_residue_range(select, atoms):
     ids = np.asarray(atoms["res_id"], dtype=int)
     assert _count(select("resi 10-20")) == _count((ids >= 10) & (ids <= 20))

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import pathlib
 import tempfile
 import pytest
 import numpy as np
@@ -12,7 +13,8 @@ from .. import av as _av
 from .. import io as _io
 from .. import evaluate as _evaluate
 
-OLGA_T4L_DIR = "/Users/tpeulen/dev/olga/doc/data/T4L"
+_OLGA_T4L_DIR = pathlib.Path(__file__).resolve().parents[1] / "examples" / "olga_t4l"
+OLGA_T4L_DIR = str(_OLGA_T4L_DIR)
 SCREENING_JSON = os.path.join(OLGA_T4L_DIR, "screening_tutorial.fps.json")
 PAIR_SEL_JSON = os.path.join(OLGA_T4L_DIR, "pair_selection_tutorial.fps.json")
 PDB_FILE = os.path.join(OLGA_T4L_DIR, "3GUN_NMSim_cl-rep-001.pdb")
@@ -99,10 +101,10 @@ def test_project_save_load():
             ui_state={"fret_dock_wizard": ui_fret}
         )
         
-        # Save
+        # Save (a directory target becomes ``project.csp`` inside it)
         project.save(proj_dir)
-        assert os.path.exists(os.path.join(proj_dir, "project.json"))
-        
+        assert os.path.exists(os.path.join(proj_dir, "project.csp"))
+
         # Load
         loaded_project = Project.load(proj_dir)
         loaded_ui = loaded_project.ui_state.get("fret_dock_wizard", {})

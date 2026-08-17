@@ -31,21 +31,23 @@ def main():
 @main.command("info-backends")
 def info_backends():
     """Print information about available and active AV backends."""
-    ll_avail = "AVAILABLE" if av._HAS_LABELLIB else "not available"
-    if av._HAS_LABELLIB:
+    try:
+        import LabelLib as _ll
+
         ll_ver = "unknown"
-        if hasattr(av._ll, "__version__"):
-            ll_ver = av._ll.__version__
-        elif hasattr(av._ll, "version"):
-            ll_ver = av._ll.version
-        ll_avail += f"  (version: {ll_ver})"
+        if hasattr(_ll, "__version__"):
+            ll_ver = _ll.__version__
+        elif hasattr(_ll, "version"):
+            ll_ver = _ll.version
+        ll_avail = f"AVAILABLE  (version: {ll_ver})"
+    except ImportError:
+        ll_avail = "not available"
     imp_avail = "AVAILABLE"  # IMP is a mandatory dependency
-    
+
     click.echo("AV backends:")
     click.echo(f"  LabelLib : {ll_avail}")
     click.echo(f"  IMP.bff  : {imp_avail}")
-    active = "labellib" if av._LABELLIB_BACKEND else "imp-bff"
-    click.echo(f"\nActive backend: {active}")
+    click.echo(f"\nActive backend: {av._active_backend_name()}")
 
 
 @main.command("convert-fps")

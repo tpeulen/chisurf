@@ -29,7 +29,7 @@
     },
     "Positions": {
         "A132": {
-            "allowed_sphere_radius": 1,
+            "allowed_sphere_radius": 3,
             "anchor_atoms": "",
             "atom_name": "CB",
             "chain_identifier": "A",
@@ -47,7 +47,7 @@
             "strip_mask": ""
         },
         "D36": {
-            "allowed_sphere_radius": 1,
+            "allowed_sphere_radius": 3,
             "anchor_atoms": "",
             "atom_name": "CB",
             "chain_identifier": "A",
@@ -65,7 +65,7 @@
             "strip_mask": ""
         },
         "D60": {
-            "allowed_sphere_radius": 1,
+            "allowed_sphere_radius": 3,
             "anchor_atoms": "",
             "atom_name": "CB",
             "chain_identifier": "A",

@@ -2658,7 +2658,7 @@
             "residue_seq_number": 115,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 115 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 115 and not name CA+CB+C+N+O"
         },
         "A116": {
             "allowed_sphere_radius": 1,
@@ -2676,7 +2676,7 @@
             "residue_seq_number": 116,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 116 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 116 and not name CA+CB+C+N+O"
         },
         "A117": {
             "allowed_sphere_radius": 1,
@@ -2694,7 +2694,7 @@
             "residue_seq_number": 117,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 117 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 117 and not name CA+CB+C+N+O"
         },
         "A118": {
             "allowed_sphere_radius": 1,
@@ -2712,7 +2712,7 @@
             "residue_seq_number": 118,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 118 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 118 and not name CA+CB+C+N+O"
         },
         "A119": {
             "allowed_sphere_radius": 1,
@@ -2730,7 +2730,7 @@
             "residue_seq_number": 119,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 119 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 119 and not name CA+CB+C+N+O"
         },
         "A120": {
             "allowed_sphere_radius": 1,
@@ -2748,7 +2748,7 @@
             "residue_seq_number": 120,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 120 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 120 and not name CA+CB+C+N+O"
         },
         "A35": {
             "allowed_sphere_radius": 1,
@@ -2766,7 +2766,7 @@
             "residue_seq_number": 35,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 35 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 35 and not name CA+CB+C+N+O"
         },
         "A36": {
             "allowed_sphere_radius": 1,
@@ -2784,7 +2784,7 @@
             "residue_seq_number": 36,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 36 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 36 and not name CA+CB+C+N+O"
         },
         "A37": {
             "allowed_sphere_radius": 1,
@@ -2802,7 +2802,7 @@
             "residue_seq_number": 37,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 37 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 37 and not name CA+CB+C+N+O"
         },
         "A38": {
             "allowed_sphere_radius": 1,
@@ -2820,7 +2820,7 @@
             "residue_seq_number": 38,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 38 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 38 and not name CA+CB+C+N+O"
         },
         "A39": {
             "allowed_sphere_radius": 1,
@@ -2838,7 +2838,7 @@
             "residue_seq_number": 39,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 39 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 39 and not name CA+CB+C+N+O"
         },
         "A40": {
             "allowed_sphere_radius": 1,
@@ -2856,7 +2856,7 @@
             "residue_seq_number": 40,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 40 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 40 and not name CA+CB+C+N+O"
         },
         "A41": {
             "allowed_sphere_radius": 1,
@@ -2874,7 +2874,7 @@
             "residue_seq_number": 41,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 41 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 41 and not name CA+CB+C+N+O"
         },
         "A42": {
             "allowed_sphere_radius": 1,
@@ -2892,7 +2892,7 @@
             "residue_seq_number": 42,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 42 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 42 and not name CA+CB+C+N+O"
         },
         "A43": {
             "allowed_sphere_radius": 1,
@@ -2910,7 +2910,7 @@
             "residue_seq_number": 43,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 43 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 43 and not name CA+CB+C+N+O"
         },
         "A44": {
             "allowed_sphere_radius": 1,
@@ -2928,7 +2928,7 @@
             "residue_seq_number": 44,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 44 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 44 and not name CA+CB+C+N+O"
         },
         "A45": {
             "allowed_sphere_radius": 1,
@@ -2946,7 +2946,7 @@
             "residue_seq_number": 45,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 45 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 45 and not name CA+CB+C+N+O"
         },
         "A46": {
             "allowed_sphere_radius": 1,
@@ -2964,7 +2964,7 @@
             "residue_seq_number": 46,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 46 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 46 and not name CA+CB+C+N+O"
         },
         "A47": {
             "allowed_sphere_radius": 1,
@@ -2982,7 +2982,7 @@
             "residue_seq_number": 47,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 47 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 47 and not name CA+CB+C+N+O"
         },
         "A48": {
             "allowed_sphere_radius": 1,
@@ -3000,7 +3000,7 @@
             "residue_seq_number": 48,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 48 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 48 and not name CA+CB+C+N+O"
         },
         "A49": {
             "allowed_sphere_radius": 1,
@@ -3018,7 +3018,7 @@
             "residue_seq_number": 49,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 49 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 49 and not name CA+CB+C+N+O"
         },
         "A50": {
             "allowed_sphere_radius": 1,
@@ -3036,7 +3036,7 @@
             "residue_seq_number": 50,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 50 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 50 and not name CA+CB+C+N+O"
         },
         "A85": {
             "allowed_sphere_radius": 1,
@@ -3054,7 +3054,7 @@
             "residue_seq_number": 85,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 85 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 85 and not name CA+CB+C+N+O"
         },
         "A86": {
             "allowed_sphere_radius": 1,
@@ -3072,7 +3072,7 @@
             "residue_seq_number": 86,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 86 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 86 and not name CA+CB+C+N+O"
         },
         "A87": {
             "allowed_sphere_radius": 1,
@@ -3090,7 +3090,7 @@
             "residue_seq_number": 87,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 87 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 87 and not name CA+CB+C+N+O"
         },
         "A88": {
             "allowed_sphere_radius": 1,
@@ -3108,7 +3108,7 @@
             "residue_seq_number": 88,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 88 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 88 and not name CA+CB+C+N+O"
         },
         "A89": {
             "allowed_sphere_radius": 1,
@@ -3126,7 +3126,7 @@
             "residue_seq_number": 89,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 89 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 89 and not name CA+CB+C+N+O"
         },
         "A90": {
             "allowed_sphere_radius": 1,
@@ -3144,7 +3144,7 @@
             "residue_seq_number": 90,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 90 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 90 and not name CA+CB+C+N+O"
         },
         "A91": {
             "allowed_sphere_radius": 1,
@@ -3162,7 +3162,7 @@
             "residue_seq_number": 91,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 91 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 91 and not name CA+CB+C+N+O"
         },
         "A92": {
             "allowed_sphere_radius": 1,
@@ -3180,7 +3180,7 @@
             "residue_seq_number": 92,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 92 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 92 and not name CA+CB+C+N+O"
         },
         "A93": {
             "allowed_sphere_radius": 1,
@@ -3198,7 +3198,7 @@
             "residue_seq_number": 93,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 93 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 93 and not name CA+CB+C+N+O"
         },
         "A94": {
             "allowed_sphere_radius": 1,
@@ -3216,7 +3216,7 @@
             "residue_seq_number": 94,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 94 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 94 and not name CA+CB+C+N+O"
         },
         "A95": {
             "allowed_sphere_radius": 1,
@@ -3234,7 +3234,7 @@
             "residue_seq_number": 95,
             "simulation_grid_resolution": 0.9,
             "simulation_type": "AV1",
-            "strip_mask": "chain A and resid 95 and not name CA CB C N O"
+            "strip_mask": "chain A and resid 95 and not name CA+CB+C+N+O"
         }
     }
 }
