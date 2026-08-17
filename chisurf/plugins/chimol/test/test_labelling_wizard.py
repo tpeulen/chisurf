@@ -197,3 +197,24 @@ def test_a_pick_without_a_dye_attach_says_so(session):
     shared.do("wizard apply")   # no dye chosen: refused, not crashed
     assert not viewer.wizard.created
     shared.do("wizard done")
+
+
+def test_a_residue_picked_in_the_sequence_strip_is_the_wizards_pick(session):
+    """The strip's click applies a selection; a running wizard adopts it (bus: selection.changed)."""
+    from chimol.hosts.base import apply_sequence_selection
+
+    win, shared, errors, qapp = session
+    shared.do("wizard labelling")
+    viewer = win.viewer
+    state = viewer.wizard
+    assert state.residue == ()
+    oid = viewer.get_active_object_id()
+    residue_ids = np.asarray(viewer.active_state().residue_ids)
+    index = int(np.where(residue_ids == 44)[0][0])
+    apply_sequence_selection(viewer, oid, [index])          # what the strip's click does
+    assert state.residue[:3] == (oid, "E", 44), state.residue
+    labels = [row.label for row in state.panel()]
+    assert any("44" in label for label in labels)
+    shared.do("wizard done")
+    # and the subscription went with the wizard
+    assert viewer.bus.count("selection.changed") == 0

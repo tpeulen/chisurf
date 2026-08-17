@@ -1,5 +1,99 @@
 # Update Log
 
+## 2026-08-17
+* **`chisurf/core/structure/av/` no longer implements accessible volumes
+  (PRD-109).** The AV computation, the dye-diffusion field model and the
+  distance metrics moved to `IMP.bff`
+  ([imp.bff okf/prds/prd-109.md](../../imp.bff/okf/prds/prd-109.md)); the
+  package is now the ChiSurf-facing shape only — `BasicAV`, `ACV` and
+  `DynamicAV` built from a `Structure` and a labelling site, exposing the
+  attribute names the rest of ChiSurf reads. **2 906 lines deleted**;
+  `__init__.py` is what remains, beside a `parameters.py` holding the
+  `Dye`/`Sticking`/`ProteinQuenching` parameter groups (application layer — a
+  group a Qt form edits is exactly what does not belong in a library).
+
+  Nothing of value went with it, and most of it was already dead:
+
+  * `static.py` — `calculate_1_radius`/`calculate_3_radius` were thin
+    **LabelLib** wrappers, their native paths commented out. `IMP.bff`'s C++
+    `AV`/`PathMap` supersedes them, and one backend is now the rule: the two
+    never agreed (136 707 points against 151 869 on the same site), so which
+    one ran silently decided every distance downstream.
+  * `dynamic.py` — `simulate_trajectory` raised `ImportError` because its
+    `fps_.pyx` had not existed for a long time, and `_quenching_rate_per_frame`
+    had no caller but its own test. The kernel went upstream as
+    `IMP.bff.quenching_rate_per_frame` (jitted, which its docstring had already
+    claimed) and `test_av_dynamic_quenching.py` now points at it.
+  * `functions.py` — the metrics all exist upstream; the grid/diffusion half
+    became `IMP.bff.quenching.{maps,solver,dynamic}`.
+  * `utils.py` — `atoms_in_reach` served only the LabelLib AV.
+  * `potential.py` — moved sideways to
+    `chisurf/core/structure/potential/av_potential.py`. It is **not** AV
+    machinery: `calc_avs` and `calc_distances` are `pass` and `getChi2` returns
+    0.0. The real thing is `IMP.bff.AVNetworkRestraint`.
+
+* **Three defects fixed in the field model on the way upstream**, each now a
+  test there. None was visible here, because the output stayed plausible.
+
+  1. **Half the evolution was discarded.** `DiffusionIterator` swapped its
+     ping-pong buffers only on odd steps (`if time_i % 2 > 0`) while always
+     computing `n <- f(p)`, so every even step recomputed the previous one from
+     a stale buffer. Against analytic free diffusion, ⟨x²⟩/2Dt measured
+     **0.503**; it is 0.9991 now.
+  2. **The map builders never wrote the outer slab.** `for ix in range(-npm, npm)`
+     is one short on each axis — two short for an even `ng`. In
+     `assign_diffusion_to_grid_1`, the variant `DynamicAV` actually used, the
+     output was `np.empty_like`, so that slab was **uninitialised memory** read
+     back as a diffusion coefficient.
+  3. **The outer shell held stale population.** The 7-point stencil skips it,
+     and with ping-pong buffers those voxels kept the state from two steps ago
+     — never decaying, never diffusing, and added into every population sum.
+     Now zeroed, and a domain that reaches the grid edge raises instead of
+     quietly losing population.
+
+  Plus a copy-paste slip: `update_fret_map` read the donor's radiative rate out
+  of the `foerster_radius` keyword (`kf = kwargs.get('foerster_radius', 1./tau0)`),
+  so passing a Förster radius set the radiative rate to it as well.
+
+* **`_select_av_backend` deleted** from the FRET trajectory plugin. It chose
+  between LabelLib and an `imp` branch importing `quest.lib.imp_av` — a module
+  QuEst stopped shipping in July 2026 — so `HAS_IMP_BFF` was always False and
+  that branch was unreachable. The surviving path already went through
+  `BasicAV`, which now computes with `IMP.bff`.
+
+* **Verified end to end on 148l chain E**, since no test builds an AV:
+  `BasicAV` ng=41 / 5 830 points / density normalised; ⟨R_DA⟩_E 36.07 >
+  ⟨R_DA⟩ 34.06 > R_mp 30.67 (the right ordering); `ACV` puts exactly the
+  requested weight in the contact volume and re-weighting does not compound;
+  `DynamicAV` gives a mobility field of 6.1–8.0 Å²/ns that is zero outside the
+  AV, a quenching field whose floor is exactly 1/τ₀, a non-uniform equilibrium
+  occupancy (max/mean 1.29 — the whole point of the field model) and a donor
+  decay with τ_app 3.79 ns against τ₀ = 4.0.
+
+  `test/structure/` 105 passed. `test/fluorescence/` has **no new failures**:
+  the 6 that remain (`test_change_dihedral`, `test_mfd_prepare`, 4 ×
+  `test_mfd_burst_roundtrip`) were verified failing on the pre-change tree.
+
+
+## 2026-08-17
+* **Lumis Quest: resolution matched to the ninja game, real tile variety,
+weather unfixed, towns un-stamped** (chigame). The overworld view dropped
+330→176 (11 tiles tall, same framing as the ninja room; `options.view_height`
+range now 128–320 step 16) and battle kept its own framing as
+`BATTLE_VIEW = 330`. Ground per-material variant families (grass x5, sand x4,
+road x3, water x2 — cut in `import_tileart.py`, aliased in `pixelart.py`)
+picked per tile by a positional hash in `_draw_tiles`, so fields stop reading
+as one repeated cell. The "missing clouds and leaves" report was dead code:
+`_weather_kinds` read `Region.state`, which never existed, so weather was
+empty everywhere but the dark manifold — added `Region.state` (worst-first
+over its rooms) and a `Weather.clouds()` accessor, taught `_draw_weather` to
+draw CLOUD (it never did), widened kinds (wild = leaf + cloud, scouted =
+cloud). Towns get four house styles instead of two: `house_temple` (48x48)
+and `house_lodge` (32x48) cut from the CC0 village sheet, crops verified
+bleed-free by connected-component analysis of the sheet's alpha. 524
+games+chigame tests green (the red `test_pyqtgraph_seam` is the chimol
+front, not this).
+
 ## 2026-08-15
 * **`chisurf.Structure` ruled closed to new code** (rule, 2026-08-15). New
   ChiSurf code MUST NOT use `chisurf.Structure`
@@ -37023,3 +37117,37 @@
   screening A132/D36/D60 all at 1.75 (104573/101788/101827 points), the
   33 pair-selection positions likewise. No escalation: the documents state
   values that compute, the code honours them exactly.
+
+- 2026-08-17 — games: the ninja village is pixel-exact and y-sorted, and the
+  chimol round-2 tree's fallout in Lumis Quest is fixed. The wall layers of
+  the Ninja Adventure map (Godot layers 0/1, `y_sort_origin -5`) now join
+  the actors' painter queue instead of being bulk-drawn under them, so a
+  player behind a house is occluded by its front wall — the last known
+  visual divergence from the author's game. Proven three ways: an
+  independent ground-truth walker composed straight from `map_village.json`
+  + the shipped sheets (themselves byte-identical to the author's PNGs)
+  agrees with the tiles-only render on 100% of pixels; a draw-order probe
+  shows wall tiles sorting before/after the player by position; 529 games
+  tests green. Trap recorded in chigame.md: a full-frame diff must
+  neutralise the spawn fade/weather first — `update()` re-applies the
+  environment every frame, so a script-side `weather.set(())` is undone.
+  Fallout of the chimol round-2 tree (`330a7eb24` and friends) fixed in
+  Lumis Quest: `settings.py` re-pointed at `chimol.cmtk.style.format_value`
+  (the old `widgets.basic.basic._format` module is gone), the slider test
+  moved from the removed `step()` method to `nudge()`, and a real NPC bug
+  the broken test was hiding: `_passage`'s `passable()` closed over the
+  NPC's LIVE mid-leg position while `steering.advance` decides from the
+  snapped tile centre, so near a cell boundary a leg was validated against
+  the wrong target cell and creatures ended hitched inside walls
+  (`test_a_hitched_frame_does_not_throw_anybody_through_a_wall`). The
+  decision position is now handed through the `passable(direction, x, y)`
+  protocol.
+
+- 2026-08-17 — chigame: sound is opt-in. `GameHost(with_audio=...)` now
+  defaults to False, so no game dock starts playing music on open; every
+  game window (ninja_adventure, lumis_quest, pong, breakout, tetris,
+  minesweeper, number_quest) carries a shared checkable **Sound** button
+  (`chigame.sound_button`) wired to `GameHost.set_audio_enabled`, which
+  rebuilds the mixer live and resumes the tracked music context. Drive-by:
+  `test_chigame_audio.py` still used the pre-rename `game.iris`, repointed
+  at `player_pos`. 558 tests green.

@@ -4,7 +4,7 @@ import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.structure
 import chisurf.gui.widgets
-from chisurf.core.structure.av.dynamic import ProteinQuenching, Dye, Sticking
+from chisurf.core.structure.av.parameters import ProteinQuenching, Dye, Sticking
 from chisurf.gui.widgets.fitting import FittingParameterWidget
 from chisurf.gui.widgets.fluorescence.av.accessible_volume import AVProperties
 

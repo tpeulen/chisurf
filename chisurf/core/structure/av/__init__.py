@@ -1,18 +1,54 @@
+"""Accessible volumes — computed by ``IMP.bff``, presented in ChiSurf's shape.
+
+**This package no longer implements accessible volumes** (PRD-109,
+`imp.bff okf/prds/prd-109.md`). The AV computation, the dye-diffusion field
+model and the distance metrics all live in ``IMP.bff``; what is left here is the
+ChiSurf-facing shape — classes built from a
+:class:`chisurf.core.structure.Structure` and a labelling site, exposing the
+attribute names the rest of ChiSurf reads.
+
+What went, and why none of it is a loss:
+
+``static.py``
+    ``calculate_1_radius`` / ``calculate_3_radius`` were thin **LabelLib**
+    wrappers — their native paths had been commented out — so ``IMP.bff``'s C++
+    ``AV``/``PathMap`` supersedes them outright.
+``functions.py``
+    ``density2points``, ``random_distances``, ``split_av_acv``, ``RDAMean``,
+    ``RDAMeanE``, ``dRmp``, ``widthRDA`` and ``histogram_rda`` all exist
+    upstream. The grid/diffusion half (``assign_diffusion_to_grid*``,
+    ``create_quenching_map``, ``create_fret_rate_map``, ``DiffusionIterator``)
+    moved to ``IMP.bff.quenching`` with **three defects fixed**: the solver
+    swapped its ping-pong buffers only on odd steps and so threw away half the
+    evolution (⟨x²⟩/2Dt measured 0.503, now 0.9991); the map builders looped
+    ``range(-npm, npm)`` and never wrote the outer slab, which in
+    ``assign_diffusion_to_grid_1`` meant **uninitialised memory** read back as a
+    diffusion coefficient; and the stencil's outer shell kept population from
+    two steps ago, never decaying, in every sum.
+``dynamic.py``
+    ``simulate_trajectory`` raised ``ImportError`` — its ``fps_.pyx`` had not
+    existed for a long time — and ``_quenching_rate_per_frame`` had no caller
+    but its own test. The working model is ``IMP.bff.DynamicAccessibleVolume``.
+``utils.py``
+    ``atoms_in_reach`` served only the LabelLib AV that is gone.
+
+One backend, deliberately. ``IMP.bff`` and LabelLib never agreed — 136 707
+points against 151 869 on the same site — so which one ran silently decided
+every distance downstream.
+"""
+
 from __future__ import annotations
-from chisurf import typing
 
 import json
 import os
+
 import numpy as np
 
-import chisurf.core.structure
-import chisurf.core.settings
-import chisurf.core.base
+import chisurf as cs
 import chisurf.core.fio as io
 import chisurf.core.fio.structure
-
-from . import static
-from . static import calculate_1_radius, calculate_3_radius, HAS_LABELLIB
+import chisurf.core.fio.structure.coordinates
+import chisurf.core.settings
 
 package_directory = os.path.dirname(__file__)
 dye_file = os.path.join(
@@ -27,23 +63,37 @@ except IOError:
 
 dye_names = dye_definition.keys()
 
+__all__ = ["BasicAV", "ACV", "DynamicAV", "dye_definition", "dye_names"]
 
-class BasicAV(object):
-    """Simulates the accessible volume of a dye
+
+def _compute_av():
+    """``IMP.bff.av.compute.compute_av``, imported on first use.
+
+    Lazy on purpose: importing ``IMP`` pulls a large native stack in, and
+    ``import chisurf.core.structure`` must stay cheap.
+    """
+    from IMP.bff.av.compute import compute_av
+
+    return compute_av
+
+
+class BasicAV:
+    """The accessible volume of a dye at one labelling site.
+
+    Computed by ``IMP.bff``; this class resolves the attachment atom, hands over
+    plain arrays, and presents the result under the names ChiSurf reads
+    (``density``, ``bounds``, ``points``, ``x0``, ``dg``, ``ng``).
 
     Examples
     --------
-
     >>> import chisurf.core.structure
-    >>> import chisurf.core.fluorescence
     >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
     >>> av = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-
     """
 
     def __init__(
             self,
-            structure: chisurf.core.structure.Structure,
+            structure,
             simulation_grid_resolution: float = None,
             allowed_sphere_radius: float = None,
             radius1: float = 1.5,
@@ -57,22 +107,19 @@ class BasicAV(object):
             residue_seq_number: int = None,
             atom_name: str = None,
             position_name: str = None,
-            *args,
+            verbose: bool = False,
             **kwargs
     ):
-        """Initialize a BasicAV (accessible volume) from a structure and labeling parameters."""
-        super().__init__(*args, **kwargs)
-        if not HAS_LABELLIB:
-            raise RuntimeError(
-                "LabelLib (labellib) is not available. Accessible volume functionality (chisurf.core.structure.av) requires labellib."
-            )
         if simulation_grid_resolution is None:
-            simulation_grid_resolution = chisurf.core.settings.fps['simulation_grid_resolution']
+            simulation_grid_resolution = chisurf.core.settings.fps[
+                'simulation_grid_resolution']
         self.dg = simulation_grid_resolution
         if allowed_sphere_radius is None:
-            allowed_sphere_radius = chisurf.core.settings.fps['allowed_sphere_radius']
+            allowed_sphere_radius = chisurf.core.settings.fps[
+                'allowed_sphere_radius']
         self.allowed_sphere_radius = allowed_sphere_radius
 
+        self.verbose = verbose
         self.position_name = position_name
         self.residue_name = residue_name
         self.attachment_residue = residue_seq_number
@@ -97,39 +144,46 @@ class BasicAV(object):
             )
         )
 
-        x, y, z = self.atoms['xyz'][:, 0], self.atoms['xyz'][:, 1], self.atoms[
-                                                                        'xyz'][
-                                                                    :, 2]
-        vdw = self.atoms['radius']
+        # AV1 is one sphere, AV3 uses all three radii. Upstream reads the model
+        # off the radii rather than off a string, so the string maps here.
+        dye_radii = (
+            (radius1, radius2, radius3) if self.simulation_type == 'AV3'
+            else (radius1, 0.0, 0.0)
+        )
 
-        if self.simulation_type == 'AV3':
-            density, ng, x0 = calculate_3_radius(
-                self.linker_length,
-                self.linker_width,
-                self.radius1,
-                self.radius2,
-                self.radius3,
-                attachment_atom_index,
-                x, y, z, vdw,
-                linkersphere=self.allowed_sphere_radius,
-                dg=self.dg, **kwargs
-            )
-        else:
-            density, ng, x0 = calculate_1_radius(
-                self.linker_length,
-                self.linker_width,
-                self.radius1,
-                attachment_atom_index,
-                x, y, z, vdw,
-                linkersphere=self.allowed_sphere_radius,
-                dg=self.dg, **kwargs
-            )
+        result = _compute_av()(
+            np.ascontiguousarray(self.atoms['xyz'], dtype=np.float64),
+            np.ascontiguousarray(self.atoms['radius'], dtype=np.float64),
+            np.ascontiguousarray(
+                self.atoms['xyz'][attachment_atom_index], dtype=np.float64),
+            linker_length=self.linker_length,
+            linker_width=self.linker_width,
+            dye_radii=dye_radii,
+            grid_resolution=self.dg,
+            backend="imp_bff",
+            allowed_sphere_radius=self.allowed_sphere_radius,
+        )
 
-        self.x0 = x0
-        self._bounds = density.astype(dtype=np.uint8)
-        density /= density.sum()
+        nx, ny, nz = result.grid_shape
+        if not (nx == ny == nz):
+            raise ValueError(
+                "Accessible-volume grid is not cubic (%d, %d, %d); every grid "
+                "consumer here takes a single edge length." % (nx, ny, nz)
+            )
+        density = np.ascontiguousarray(
+            result.density, dtype=np.float64).reshape(nx, ny, nz)
+
+        self.x0 = np.asarray(result.attachment_point, dtype=np.float64)
+        self._bounds = (density > 0).astype(np.uint8)
+        total = density.sum()
+        density = density / total if total else density
+        #: The unsplit, uniformly-weighted volume. `ACV` re-weights *this* into
+        #: `_density`, so re-weighting twice cannot compound.
+        self._base_density = density
         self._density = density
         self._points = None
+
+    # -- the grid -----------------------------------------------------------
 
     @property
     def bounds(self):
@@ -137,21 +191,30 @@ class BasicAV(object):
         return self._bounds
 
     @property
-    def ng(self):
-        """Number of grid points in one dimension of the density cube."""
+    def ng(self) -> int:
+        """Number of grid points along one edge of the density cube."""
         return self.density.shape[0]
 
     @property
     def density(self):
-        """Normalized density of dye positions on the grid."""
+        """Normalised density of dye positions on the grid."""
         return self._density
 
     @property
     def points(self):
-        """Array of (x, y, z, weight) points sampled from the density."""
+        """``(n, 4)`` array of ``(x, y, z, weight)`` sampled from the density."""
         if self._points is None:
             self.update_points()
         return self._points
+
+    @property
+    def n_points(self) -> int:
+        """Number of points in the cloud.
+
+        Also what makes this duck-type as an ``IMP.bff.AccessibleVolume``, so
+        upstream helpers such as ``histogram_rda`` accept it directly.
+        """
+        return int(self.points.shape[0])
 
     @property
     def atoms(self) -> np.ndarray:
@@ -159,687 +222,383 @@ class BasicAV(object):
         return self.structure.atoms
 
     def update_points(self) -> None:
-        """Recompute sample points from the current density on the grid."""
-        from . import functions
+        """Recompute the point cloud from the density grid."""
+        from IMP.bff.av._kernels import density2points
+
         ng = self.ng
-        density = self.density
-        x0, dg = self.x0, self.dg
-        n, p = functions.density2points(ng, dg, density, x0)
+        # `x0` is the grid *anchor*, sitting on the middle voxel; the kernel
+        # wants the centre of voxel (0, 0, 0). The offset is the **integer**
+        # `(ng - 1) // 2`, which differs from the float corner on every even
+        # edge — and even is the normal case, not an edge case.
+        origin = self.x0 - ((ng - 1) // 2) * float(self.dg)
+        n, p = density2points(
+            ng, ng, ng, float(self.dg),
+            np.ascontiguousarray(self.density, dtype=np.float64),
+            np.ascontiguousarray(origin, dtype=np.float64),
+        )
         self._points = p[:n]
 
     def update(self):
         """Recalculate the point cloud from the density grid."""
         self.update_points()
 
-    def save(
-            self,
-            filename: str,
-            mode: str = 'xyz',
-            **kwargs
-    ):
-        """Saves the accessible volume as xyz-file or open-dx density file
-
-        Examples
-        --------
-
-        >>> import chisurf
-        >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av.save('c:/temp/test', reading_routine='xyz')
-        >>> av.save('c:/temp/test', reading_routine='dx')
-
-        """
+    def save(self, filename: str, mode: str = 'xyz', **kwargs):
+        """Save the accessible volume as an xyz file or an OpenDX density."""
         if mode == 'dx':
             density = kwargs.get('density', self.density)
             d = density / density.max() * 0.5
-            ng = self.ng
-            dg = self.dg
+            ng, dg = self.ng, self.dg
             offset = (ng - 1) / 2 * dg
             io.structure.density.write_open_dx(
-                filename,
-                d,
-                self.x0 - offset,
-                ng, ng, ng,
-                dg, dg, dg
+                filename, d, self.x0 - offset, ng, ng, ng, dg, dg, dg
             )
         else:
             p = kwargs.get('points', self.points)
             d = p[:, [3]].flatten()
             d /= max(d) * 50.0
-            xyz = p[:, [0, 1, 2]]
             io.structure.write_points(
                 filename=filename + '.' + mode,
-                points=xyz,
-                mode=mode,
-                verbose=self.verbose,
-                density=d
+                points=p[:, [0, 1, 2]], mode=mode,
+                verbose=self.verbose, density=d,
             )
 
-    def dRmp(
-            self,
-            av: typing.Type[BasicAV],
-    ):
-        """
-        Calculate the distance between the mean positions with respect to the accessible volume `av`
+    # -- distances to a second accessible volume ----------------------------
+    #
+    # `av_pair_statistics` takes a *sample* of pair distances and returns
+    # ⟨R_DA⟩, R_mp, ⟨R_DA⟩_E and ⟨E⟩ in one pass, so one sample serves all of
+    # them. The seed is fixed on purpose: a reported distance that changes when
+    # you ask for it twice is not a reported distance.
 
-        :param av: accessible volume object
-        :return:
+    #: Fixed so repeated calls agree. Sampling noise on ⟨R_DA⟩ at this count is
+    #: well under 0.1 Å.
+    N_DISTANCE_SAMPLES = 50_000
+    DISTANCE_SEED = 0
 
-        Examples
-        --------
+    def _pair_sample(self, av, n_samples: int = None, seed: int = None):
+        from IMP.bff.av._kernels import random_distances
 
-        >>> import chisurf
-        >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av1 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av2 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> av1.dRmp(av2)
-        """
-        from . import functions
-        return functions.dRmp(self, av)
-
-    def dRDA(
-            self,
-            av: typing.Type[BasicAV],
-            **kwargs
-    ):
-        """Calculate the mean distance to the second accessible volume
-
-        :param av:
-        :return:
-
-        Examples
-        --------
-
-        >>> import chisurf
-        >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av1 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av2 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> av1.dRDA(av2)
-        """
-        from . import functions
-        return functions.RDAMean(self, av, **kwargs)
-
-    def widthRDA(
-            self,
-            av: BasicAV,
-    ):
-        """Calculates the width of a DA-distance distribution
-
-        :param av:
-        :return:
-
-        Examples
-        --------
-
-        >>> import chisurf
-        >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av1 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av2 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> av1.widthRDA(av2)
-
-        """
-        from . import functions
-        return functions.widthRDA(self, av)
-
-    def dRDAE(
-            self,
-            av: typing.Type[BasicAV],
-            forster_radius: float
-    ):
-        """Calculate the FRET-averaged mean distance to the second accessible volume
-
-        :param av: Accessible volume
-        :return:
-
-        Examples
-        --------
-
-        >>> import chisurf
-        >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av1 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av2 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> av1.dRDAE(av2)
-        """
-        from . import functions
-        return functions.RDAMeanE(self, av, forster_radius)
-
-    def pRDA(
-            self,
-            av: typing.Type[BasicAV],
-            **kwargs
-    ) -> typing.Tuple[
-        np.ndarray,
-        np.ndarray
-    ]:
-        """Calculates the distance distribution with respect to a second accessible volume and returns the
-        distance axis and the probability of the respective distance. By default the distance-axis "mfm.rda_axis"
-        is taken to generate the histogram.
-
-        :param av: Accessible volume
-        :param kwargs:
-        :return:
-
-        Examples
-        --------
-
-        >>> import chisurf
-        >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av1 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av2 = chisurf.core.structure.av.BasicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> y, x = av1.pRDA(av2)
-
-        """
-        from . import functions
-        return functions.histogram_rda(
-            self,
-            av,
-            **kwargs
+        sample = random_distances(
+            np.ascontiguousarray(self.points, dtype=np.float64),
+            np.ascontiguousarray(av.points, dtype=np.float64),
+            int(self.N_DISTANCE_SAMPLES if n_samples is None else n_samples),
+            int(self.DISTANCE_SEED if seed is None else seed),
         )
+        return sample[:, 0], sample[:, 1]
+
+    def _pair_statistics(self, av, forster_radius: float = 52.0, **kwargs):
+        from IMP.bff.distance_metrics import av_pair_statistics
+
+        distances, weights = self._pair_sample(av, **kwargs)
+        return av_pair_statistics(distances, weights, forster_radius)
+
+    def dRmp(self, av) -> float:
+        """Distance between the two mean positions, R_mp.
+
+        **Not** ⟨R_DA⟩. ``|⟨r_D⟩ − ⟨r_A⟩|`` is a property of the two clouds and
+        cannot be recovered from a sample of pair distances at all, which is why
+        it is computed from the centroids here and why
+        :func:`av_pair_statistics` returns NaN in that slot. Measured on 148l
+        E15/E90 the two differ by 8 %: 47.65 Å against 51.53 Å.
+        """
+        from IMP.bff.distance_metrics import mean_position_distance
+
+        # The clouds are (n, 4) — xyz plus weight — and the kernel takes the
+        # coordinates and the weights separately.
+        return float(mean_position_distance(
+            self.points[:, :3], av.points[:, :3],
+            self.points[:, 3], av.points[:, 3],
+        ))
+
+    def dRDA(self, av, **kwargs) -> float:
+        """Mean donor–acceptor distance ⟨R_DA⟩."""
+        return float(self._pair_statistics(av, **kwargs)[0])
+
+    def widthRDA(self, av, **kwargs) -> float:
+        """Width (weighted standard deviation) of the D–A distance distribution."""
+        distances, weights = self._pair_sample(av, **kwargs)
+        w_sum = weights.sum()
+        if w_sum == 0.0:
+            return 0.0
+        mean = float(np.dot(distances, weights) / w_sum)
+        variance = float(np.dot((distances - mean) ** 2, weights) / w_sum)
+        return float(np.sqrt(max(variance, 0.0)))
+
+    def dRDAE(self, av, forster_radius: float = 52.0, **kwargs) -> float:
+        """FRET-averaged distance ⟨R_DA⟩_E."""
+        return float(self._pair_statistics(av, forster_radius, **kwargs)[2])
+
+    def pRDA(self, av, rda_axis=None, same_size: bool = True, **kwargs):
+        """Distance distribution against a second accessible volume.
+
+        Two ChiSurf conventions the upstream kernel does not carry, applied
+        here because they are ChiSurf's and not the library's:
+
+        * the default axis is ``chisurf.core.fluorescence.rda_axis``, so every
+          distribution in the application shares one distance grid;
+        * ``same_size`` pads the histogram with a trailing zero so it is as long
+          as the axis. ``np.histogram`` returns ``len(bins) - 1`` counts, and
+          ChiSurf plots ``(p, rda_axis)`` as a pair.
+        """
+        import chisurf.core.fluorescence
+        from IMP.bff.fret.distance import histogram_rda
+
+        if rda_axis is None:
+            rda_axis = chisurf.core.fluorescence.rda_axis
+        p, axis = histogram_rda(self, av, rda_axis=rda_axis, **kwargs)
+        if same_size and len(p) == len(axis) - 1:
+            p = np.append(p, [0])
+        return p, axis
 
     @property
     def Rmp(self) -> np.ndarray:
-        """
-        The mean position of the accessible volume (average x, y, z coordinate)
-        """
-        weights = self.points[:, 3]
+        """Mean position of the accessible volume."""
+        weights = self.points[:, 3].copy()
         weights /= weights.sum()
-        xyz = self.points[:, [0, 1, 2]]
-        return np.average(xyz, weights=weights, axis=0)
+        return np.average(self.points[:, [0, 1, 2]], weights=weights, axis=0)
+
+    def __repr__(self) -> str:
+        return "%s(%s, n_points=%d)" % (
+            type(self).__name__, self.position_name or "?", len(self.points))
 
 
 class ACV(BasicAV):
+    """An accessible volume split into a free and a *contact* part.
+
+    A dye spends a disproportionate share of its time near the protein surface,
+    so a uniform accessible volume over-weights the free region. The contact
+    volume — voxels within ``slow_radius`` of a slow centre — is given
+    ``contact_volume_trapped_fraction`` of the total weight.
+
+    Examples
+    --------
+    >>> av = chisurf.core.structure.av.ACV(structure, residue_seq_number=18,
+    ...                                    atom_name='CB',
+    ...                                    contact_volume_trapped_fraction=0.5)
     """
-    Example
-    -------
 
-    >>> import chisurf
-    >>> import chisurf.core.structure
-    >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-    >>> trapped_fraction = 0.5
-    >>> av1 = chisurf.core.structure.av.ACV(structure, residue_seq_number=18, atom_name='CB', contact_volume_trapped_fraction=trapped_fraction)
-    >>> av2 = chisurf.core.structure.av.ACV(structure, residue_seq_number=577, atom_name='CB', contact_volume_trapped_fraction=trapped_fraction)
-    >>> av1.save('c:/temp/test_05', reading_routine='dx')
-    >>> y1, x1 = av1.pRDA(av2)
-
-    >>> import chisurf
-    >>> structure = chisurf.core.structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-    >>> trapped_fraction = 0.9
-    >>> av1 = chisurf.core.structure.av.ACV(structure, residue_seq_number=18, atom_name='CB', contact_volume_trapped_fraction=trapped_fraction)
-    >>> av2 = chisurf.core.structure.av.ACV(structure, residue_seq_number=577, atom_name='CB', contact_volume_trapped_fraction=trapped_fraction)
-    >>> av1.save('c:/temp/test_09', reading_routine='dx')
-    >>> y2, x2 = av1.pRDA(av2)
-
-    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._slow_centers = None
+        self._slow_radius = None
+        self._contact_density = None
+        self._contact_volume_trapped_fraction = kwargs.get(
+            'contact_volume_trapped_fraction', 0.8)
+        self.slow_centers = kwargs.get('slow_centers', 'CB')
+        self.slow_radius = kwargs.get('slow_radius', 10.0)
+        self.update_density()
 
     @property
     def contact_volume_trapped_fraction(self) -> float:
-        """Fraction of dye positions trapped in the contact volume."""
+        """Share of the total weight carried by the contact volume."""
         return self._contact_volume_trapped_fraction
 
     @contact_volume_trapped_fraction.setter
-    def contact_volume_trapped_fraction(
-            self,
-            v: float
-    ):
-        """Set the trapped-fraction and trigger an update."""
-        self._contact_volume_trapped_fraction = v
-        self.update()
+    def contact_volume_trapped_fraction(self, v: float):
+        self._contact_volume_trapped_fraction = float(v)
+        self.update_density()
 
     @property
-    def slow_centers(self):
-        """Coordinates of centers where dye diffusion is slowed."""
+    def slow_centers(self) -> np.ndarray:
+        """Coordinates the contact volume is measured from."""
         return self._slow_centers
 
     @slow_centers.setter
     def slow_centers(self, v):
-        """Set the slow-diffusion centers (by name, ``'all'``, or coords)."""
-        atoms = self.atoms
         if isinstance(v, str):
-            if v == 'all':
-                slow_centers = atoms['xyz']
-            else:
-                a = np.where(atoms['atom_name'] == v)[0]
-                slow_centers = atoms['xyz'][a]
-        self._slow_centers = slow_centers
+            atoms = self.atoms
+            selection = (
+                np.ones(atoms.shape[0], dtype=bool) if v == 'all'
+                else atoms['atom_name'] == v
+            )
+            v = atoms['xyz'][selection]
+        self._slow_centers = np.ascontiguousarray(v, dtype=np.float64)
 
     @property
-    def slow_radius(self) -> float:
-        """Radius around slow centers where diffusion is reduced."""
+    def slow_radius(self) -> np.ndarray:
+        """Radius around each slow centre counted as contact."""
         return self._slow_radius
 
     @slow_radius.setter
     def slow_radius(self, v):
-        """Set the per-center slow radius; broadcasts a scalar to all centers."""
-        slow_centers = self.slow_centers
+        n = 1 if self._slow_centers is None else self._slow_centers.shape[0]
         if isinstance(v, (int, float)):
-            slow_radii = np.ones(slow_centers.shape[0]) * v
+            self._slow_radius = np.ones(n, dtype=np.float64) * float(v)
         else:
-            slow_radii = np.array(v)
-            if slow_radii.shape[0] != slow_centers.shape[0]:
-                raise ValueError(
-                    "The size of the slow_radius doesnt match the number of slow_centers")
-        self._slow_radius = slow_radii
+            self._slow_radius = np.ascontiguousarray(v, dtype=np.float64)
 
     @property
     def contact_density(self):
-        """Density portion that belongs to the contact (slow) volume."""
+        """The contact ("slow") part of the density grid."""
         return self._contact_density
 
     def update_density(self):
-        """Recompute the split contact/non-contact density maps."""
-        from . import functions
-        av = self
-        contact_volume_trapped_fraction = av.contact_volume_trapped_fraction
-        dg, x0 = av.dg, av.x0
-        slow_radius = av.slow_radius
-        slow_centers = av.slow_centers
-        density = av.density
-        nc, nn, cd, nd = functions.split_av_acv(density, dg, slow_radius,
-                                                slow_centers, x0)
+        """Re-split the volume into its free and contact parts."""
+        if self._slow_centers is None or self._slow_radius is None:
+            return
+        from IMP.bff.av._kernels import split_av_acv
 
-        cd *= contact_volume_trapped_fraction / nc
-        self._contact_density = cd
+        ng = self.ng
+        base = np.ascontiguousarray(self._base_density, dtype=np.float64)
+        # Returns counts first, then two **binary masks** — not weighted
+        # densities — so the base density is what gets partitioned.
+        _n_contact, _n_free, contact_mask, free_mask = split_av_acv(
+            base,
+            float(self.dg),
+            self._slow_radius,
+            self._slow_centers,
+            np.ascontiguousarray(self.x0, dtype=np.float64),
+        )
+        contact = base * contact_mask.reshape(base.shape)
+        free = base * free_mask.reshape(base.shape)
 
-        nd *= (1. - contact_volume_trapped_fraction) / nn
-        density = np.zeros(self.density.shape, dtype=np.float64)
-        density += cd
-        density += nd
-
-        self._density = density
+        weight = self._contact_volume_trapped_fraction
+        contact_sum, free_sum = contact.sum(), free.sum()
+        if contact_sum:
+            contact = contact / contact_sum * weight
+        if free_sum:
+            free = free / free_sum * (1.0 - weight)
+        self._contact_density = contact.reshape(ng, ng, ng)
+        self._density = (free + contact).reshape(ng, ng, ng)
+        self._points = None
 
     def update(self):
-        """Update the contact volume density and then the point cloud."""
         self.update_density()
-        BasicAV.update(self)
+        self.update_points()
+
+
+class DynamicAV(BasicAV):
+    """An accessible volume carrying mobility, quenching and FRET fields.
+
+    A thin binding of :class:`IMP.bff.DynamicAccessibleVolume` to ChiSurf's
+    ``Structure``. The physics — the maps, the explicit solver for
+    ``dp/dt = div(D grad p) - k p``, the equilibrium occupancy and the donor
+    decay — is upstream's (PRD-109), with the three defects listed in the module
+    docstring fixed on the way there.
+    """
 
     def __init__(
             self,
             *args,
+            diffusion_coefficient: float = 8.0,
+            contact_distance: float = 3.5,
+            slow_factor: float = 0.985,
+            fluorescence_lifetime: float = 4.0,
+            rC_electron_transfer: float = 1.5,
             **kwargs
     ):
-        """Initialize a BaseACV; see :meth:`BasicAV.__init__` for full params.
+        super().__init__(*args, **kwargs)
+        self.diffusion_coefficient = diffusion_coefficient
+        self.contact_distance = float(contact_distance) + max(
+            self.radius1, self.radius2, self.radius3)
+        self.slow_factor = slow_factor
+        self.fluorescence_lifetime = fluorescence_lifetime
+        self.rC_electron_transfer = rC_electron_transfer
+        self._dynamic = None
 
-        Note
-        ----
-        Parameters are intentionally not duplicated here because the
-        constructor forwards them to :class:`BasicAV`.
-        """
-        super().__init__(
-            *args,
-            **kwargs
+    def _atom_view(self) -> np.ndarray:
+        """ChiSurf's atom array in the field layout upstream reads."""
+        atoms = self.atoms
+        view = np.zeros(
+            atoms.shape[0],
+            dtype=[("res_name", "U4"), ("atom_name", "U4"), ("coord", "f8", 3)],
         )
-        self._slow_centers = None
-        self.slow_centers = kwargs.get('slow_centers', 'CB')
+        view["res_name"] = atoms["res_name"]
+        view["atom_name"] = atoms["atom_name"]
+        view["coord"] = atoms["xyz"]
+        return view
 
-        self._slow_radius = None
-        self.slow_radius = kwargs.get('slow_radius', 10.0)
+    @property
+    def dynamic(self):
+        """The upstream model object, built on first use."""
+        if self._dynamic is None:
+            from IMP.bff.quenching.dynamic import DynamicAccessibleVolume
 
-        self._contact_volume_trapped_fraction = None
-        self.contact_volume_trapped_fraction = kwargs.get(
-            'contact_volume_trapped_fraction', 0.8)
+            class _AVView:
+                """This object in the ``AccessibleVolume`` shape upstream reads."""
 
-        self._contact_density = None
-        self.update_density()
+                def __init__(self, owner):
+                    self.density = owner.bounds
+                    self.grid_step = owner.dg
+                    self.attachment_point = owner.x0
 
-
-class DynamicAV(BasicAV):
+            self._dynamic = DynamicAccessibleVolume(
+                _AVView(self), self._atom_view(),
+                tau0=self.fluorescence_lifetime,
+                dye_radius=min(self.radius1, self.radius2, self.radius3),
+                free_diffusion=self.diffusion_coefficient,
+                contact_distance=self.contact_distance,
+                slow_factor=self.slow_factor,
+            )
+        return self._dynamic
 
     @property
     def diffusion_map(self):
-        """Map of diffusion coefficients on the grid (3D)."""
-        return self._diffusion_coefficient_map
-
-    @property
-    def rate_map(self):
-        """Total rate map (quenching + FRET) on the grid."""
-        if self._fret_rate_map is not None:
-            return self._quenching_rate_map + self._fret_rate_map
-        else:
-            return self._quenching_rate_map
-
-    @property
-    def fret_rate_map(self):
-        """Map of FRET rate constants on the donor grid."""
-        return self._fret_rate_map
+        """Per-voxel diffusion coefficient (Å²/ns)."""
+        return self.dynamic.diffusion_map
 
     @property
     def quenching_rate_map(self):
-        """Map of quenching rate constants on the grid."""
-        return self._quenching_rate_map
+        """Per-voxel decay rate (1/ns): intrinsic plus exponential PET."""
+        return self.dynamic.quenching_rate_map
 
     @property
-    def fluorescence_lifetime(self):
-        """Fluorescence lifetime of the dye without quencher (tau0)."""
-        return self._tau0
-
-    @fluorescence_lifetime.setter
-    def fluorescence_lifetime(self, v):
-        """Set the unquenched fluorescence lifetime (tau0)."""
-        self._tau0 = float(v)
+    def fret_rate_map(self):
+        """Per-voxel effective FRET rate, once an acceptor has been set."""
+        return self.dynamic.fret_rate_map
 
     @property
-    def contact_distance(self):
-        """Distance threshold for dye-protein contact."""
-        return self._contact_distance
-
-    @contact_distance.setter
-    def contact_distance(self, v):
-        """Set the contact distance; adds the dye-radius offsets."""
-        av = self
-        self._contact_distance = float(v) + max(av.radius1, av.radius2,
-                                                av.radius3)
-
-    @property
-    def slow_factor(self):
-        """Factor by which diffusion is slowed near slow centers."""
-        return self._slow_factor
-
-    @slow_factor.setter
-    def slow_factor(self, v):
-        """Set the slow-diffusion factor."""
-        self._slow_factor = v
-
-    @property
-    def donor_only_fluorescence(self):
-        """Donor-only fluorescence time axis and fluorescence values."""
-        return self._d0_time, self._d0_fluorescence
+    def rate_map(self):
+        """Total decay rate per voxel: quenching, plus FRET if set."""
+        return self.dynamic.rate_map
 
     @property
     def excited_state_map(self):
-        """Map of the excited state population on the grid."""
-        return self._ex_state
+        """The equilibrium occupancy of the volume."""
+        return self.dynamic.occupancy
 
     def update_diffusion_map(self, **kwargs):
-        """Updates the diffusion coefficient map.
+        return self.dynamic.update_diffusion_map(**kwargs)
 
-        Example
-        -------
-        >>> import chisurf
-        >>> import chisurf.core.fluorescence
-        >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> free_diffusion = 8.0
-        >>> av = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=18, atom_name='CB', slow_factor=0.9, contact_distance=1.5, diffusion_coefficients=free_diffusion)
-        >>> p.imshow(av.bounds[:,:,20])
-        >>> p.show()
-        >>> p.imshow(av.diffusion_map[:,:,20])
-        >>> p.show()
-        >>> p.imshow(av.density[:,:,20])
-        >>> p.show()
-        >>> p.hist(av.diffusion_map.flatten(), bins=np.arange(0.01, free_diffusion, 0.5))
+    def update_quenching_map(self, quencher=None, **kwargs):
+        if quencher is None:
+            quencher = cs.core.common.quencher
+        return self.dynamic.update_quenching_map(
+            quencher, rC=self.rC_electron_transfer)
+
+    def update_fret_map(self, acceptor, forster_radius: float = 52.0, **kwargs):
+        """Build the FRET field against an acceptor volume.
+
+        The donor's radiative rate comes from ``tau0``. ChiSurf used to read it
+        out of the ``foerster_radius`` keyword by a copy-paste slip
+        (``kf = kwargs.get('foerster_radius', 1./tau0)``), so passing a Förster
+        radius set the radiative rate to it as well.
         """
-        from . import functions
-        diffusion_coefficient = kwargs.get('diffusion_coefficient',
-                                           self._diffusion_coefficient)
-        slow_factor = kwargs.get('slow_factor', self.slow_factor)
-        stick_distance = kwargs.get('stick_distance', self.contact_distance)
-
-        av = self
-        coordinates = av.atoms['xyz']
-        ds_sq = stick_distance ** 2.0
-        density = av._density
-        r0 = av.x0
-        dg = av.dg
-
-        # diffusion_mode = kwargs.get('diffusion_mode', self.diffusion_mode)
-
-        def f(x):
-            """Three-Gaussian helper (parameters hard-coded in body)."""
-            a1, a2, a3 = 10.5, 500., 37.2
-            m1, m2, m3 = 20.2, 11.7, 1.40
-            s1, s2, s3 = 0.47, 11.8, 1.54
-            b = -11.0
-            y = a1 * np.exp(-.5 * ((x - m1) / s1) ** 2) / (
-                        s1 * (2 * np.pi) ** .5
-            ) + a2 * np.exp(-.5 * ((x - m2) / s2) ** 2) / (
-                            s2 * (2 * np.pi) ** .5
-            ) + a3 * np.exp(-.5 * ((x - m3) / s3) ** 2) / (
-                            s3 * (2 * np.pi) ** .5
-            ) + b
-            return np.maximum(y, 0)
-
-        d_map = functions.assign_diffusion_to_grid_3(
-            density, r0, dg, f
-        )
-        d_map = functions.assign_diffusion_to_grid_1(
-            d_map, density, r0, dg, coordinates,
-            ds_sq, slow_factor
-        )
-        # d_map = assign_diffusion_to_grid_2(density, r0, dg, diffusion_coefficient, coordinates, stick_distance, slow_factor)
-        self._diffusion_coefficient_map = d_map
+        return self.dynamic.update_fret_map(
+            acceptor.dynamic if isinstance(acceptor, DynamicAV) else acceptor,
+            forster_radius=forster_radius, **kwargs)
 
     def update_equilibrium(self, **kwargs):
-        """ Updates the equilibrium probabilities of the dye
-        Example
-        -------
-        >>> import chisurf.core.structure
-        >>> import chisurf.core.fluorescence
-        >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> free_diffusion = 8.0
-        >>> av = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=577, atom_name='CB', slow_factor=0.985, contact_distance=3.5, diffusion_coefficients=free_diffusion, simulation_grid_resolution=2.0)
-        >>> p.imshow(av.diffusion_map[:,:,20])
-        >>> p.show()
-        >>> p.imshow(av.density[:,:,20])
-        >>> p.show()
-        >>> av.update_diffusion_map()
-        >>> av.update_equilibrium()#t_max=100.)
-        >>> p.imshow(av.density[:,:,20])
-        >>> p.show()
-        >>> y, x = np.histogram(av.diffusion_map.flatten(), tac_range=(0.01, 10), bins=20, weights=av.density.flatten())
-        >>> p.plot(x[1:], y)
+        """Relax the density to its equilibrium occupancy.
 
+        This is what turns a uniform accessible volume into an *occupancy*: with
+        a position-dependent diffusion coefficient the dye dwells where it moves
+        slowly, and the stationary distribution is not flat.
         """
-        t_step = kwargs.get('t_step', self.t_step_eq)
-        t_max = kwargs.get('t_max', 250.0)
-        max_it = kwargs.get('max_it', 1e6)
-        n_it = min(int(t_max / t_step), max_it)
-        n_out = kwargs.get('n_out', n_it + 1)
+        occupancy = self.dynamic.update_occupancy(**kwargs)
+        self._density = occupancy
+        self._points = None
+        return occupancy
 
-        k = np.zeros_like(self.quenching_rate_map)
-        d = self.diffusion_map
-        b = self.bounds
-        p = np.ones_like(self._density) * b
-        self._di.to_device(k=k, p=p, d=d, b=b, it=0, t_step=t_step)
-        t, n, c = self._di.execute(n_it=n_it, n_out=n_out, **kwargs)
-        cs = c.sum()
-        c /= cs
-        self._density = c
+    def get_donor_only_decay(self, t_max: float = 50.0, **kwargs):
+        """Integrate the donor decay on the grid.
 
-    def update_quenching_map(self, **kwargs):
-        """ Assigns a quenching rate constant to each grid point of the AV
-        
-        Example
-        -------
-
-        >>> import chisurf.core.structure
-        >>> import chisurf.core.fluorescence
-        >>> structure = mfm.structure.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> p.imshow(av.quenching_rate_map[:,:,20])
-        >>> p.show()
-        >>> p.hist(av.quenching_rate_map.flatten(), bins=np.arange(0.01, av.fluorescence_lifetime, 0.5))
-
+        :returns: ``(time, fluorescence, density)`` — the time axis in ns, the
+            surviving excited-state fraction, and the final density.
         """
-        from . import functions
-        av = self
-        atoms = av.atoms
-        r0 = av.x0
-        dg = av.dg
-        density = av.density
+        return self.dynamic.donor_decay(t_max=t_max, **kwargs)
 
-        quencher = self.quencher = kwargs.get('quencher', self.quencher)
-        kQ, rC = functions.get_kQ_rC(
-            atoms, quencher=quencher
-        )
-        tau0 = self.fluorescence_lifetime
-        dye_radius = min(self.radius1, self.radius2, self.radius3)
-        # self._quenching_rate_map = create_quenching_map(density, r0, dg, atoms['xyz'], tau0, kQ, rC, dye_radius)
-        v = np.ones_like(rC) * self.rC_electron_transfer
-        self._quenching_rate_map = functions.create_quenching_map(
-            density, r0, dg,
-            atoms['xyz'], tau0, kQ,
-            v, dye_radius
-        )
-
-    def update_fret_map(self, acceptor, **kwargs):
-        """ Calculates an average FRET-rate constant for every AV grid point.
-        
-        In the FRET-map the average time of FRET to occur is used as FRET rate constant for each grid point
-        of the donor. In an excat solution it should be considered, that the FRET-rate constants of the donor
-        at each grid points follow a distribution the function create_fret_rate_map approximates this
-        distribution by the average time of FRET.
-
-        Example
-        -------
-
-        >>> import chisurf.core.structure
-        >>> import chisurf.core.fluorescence
-        >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av_d = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=18, atom_name='CB')
-        >>> av_a = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> av_d.update_fret_map(av_a)
-        #
-        >>> rda = (av_d._fret_rate_map.flatten() * av_d.fluorescence_lifetime) ** (-1./6.) * 52.
-        >>> y, x = np.histogram(rda, tac_range=(0.0, 100), bins=100, weights=av_d.density.flatten())
-        >>> p.plot(x[1:], y)
-        >>> y, x = av_d.pRDA(av=av_a)
-        >>> p.plot(x, y)
-        >>> p.show()
-        >>> average_rate = np.dot(av_d._fret_rate_map.flatten(), av_d.density.flatten())
-        >>> (average_rate * av_d.fluorescence_lifetime) ** (-1./6.) * 52.
-        >>> np.dot(x, y)
-
-        >>> p.imshow(av_d.fret_rate_map[:,:,20])
-        >>> p.show()
-        >>> p.imshow(av_d.quenching_rate_map[:,:,20])
-        >>> p.show()
-        >>> p.imshow(av_d.rate_map[:,:,20])
-        >>> p.show()
-
-        """
-        from . import functions
-        density_donor = self.density
-        density_acceptor = acceptor.density
-        x0_donor = self.x0
-        x0_acceptor = acceptor.x0
-        dg_donor = self.dg
-        dg_acceptor = acceptor.dg
-        foerster_radius = kwargs.get('foerster_radius', 52.0)
-        kf = kwargs.get('foerster_radius', 1. / self.fluorescence_lifetime)
-
-        self._fret_rate_map = functions.create_fret_rate_map(
-            density_donor,
-            density_acceptor,
-            x0_donor,
-            x0_acceptor,
-            dg_donor,
-            dg_acceptor,
-            foerster_radius,
-            kf
-        )
-
-    def get_donor_only_decay(self, **kwargs):
-        """
-
-        :param kwargs:
-        :return:
-
-        Example
-        -------
-        >>> import chisurf.core.structure
-        >>> import chisurf.core.fluorescence
-        >>> import chisurf.core.curve
-        >>> structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
-        >>> av = chisurf.core.structure.av.DynamicAV(structure, residue_seq_number=577, atom_name='CB')
-        >>> p.imshow(av.density[:,:,20])
-        >>> p.show()
-        >>> t_step = 0.0141
-        >>> times, density, counts = av.get_donor_only_decay(n_it=4095, t_step=0.0141, n_out=1)
-        >>> av.save(filename='c:/temp/0t2', density=density, reading_routine='dx')
-        >>> irf = chisurf.core.curve.DataCurve(filename='./test/data/tcspc/ibh_sample/Prompt.txt', skiprows=9)
-        >>> data = experiments.c.DataCurve(filename='./test/data/tcspc/ibh_sample/Decay_577D.txt', skiprows=9)
-        >>> irf.x *= t_step; data.x *= t_step
-        >>> convolve = chisurf.core.fluorescence.tcspc.convolve.Convolve(fit=None, dt=t_step, rep_rate=10, irf=irf, data=data)
-        >>> decay = convolve.convolve(counts, reading_routine='full')
-        >>> p.semilogy(times, decay)
-        
-        """
-        t_step = kwargs.get('t_step', self.t_step_fl)
-        t_max = kwargs.get('t_max', 50.0)
-        max_it = kwargs.get('max_it', 1e6)
-        n_out = kwargs.get('n_out', 10)
-        n_it = kwargs.get('n_it', min(int(t_max / t_step), max_it))
-
-        self._di.to_device(
-            k=self.quenching_rate_map,
-            p=self.density,
-            d=self.diffusion_map,
-            b=self.bounds,
-            it=0,
-            t_step=t_step
-        )
-        t, n, c = self._di.execute(n_it=n_it, n_out=n_out)
-        self._d0_time = t
-        self._d0_fluorescence = n
-        self._ex_state = c
-        return t, c, n
-
-    def __init__(self, *args, **kwargs):
-        """Initialize a DynamicAV; sets up internal state and density."""
-        from . import functions
-        BasicAV.__init__(self, *args, **kwargs)
-
-        # Initialization of internal variables
-        self._tau0 = None
-        self._contact_distance = None
-        self._quenching_rate_map = None
-        self._fret_rate_map = None
-        self._di = None
-        self._slow_factor = None
-        self._diffusion_coefficient_map = None
-        self._d0_time, self._d0_fluorescence = None, None
-        self._ex_state = None
-        self.rC_electron_transfer = 1.5
-
-        self.fluorescence_lifetime = kwargs.get(
-            'tau0',
-            4.2
-        )
-        self._diffusion_coefficient = kwargs.get(
-            'diffusion_coefficient',
-            8.0
-        )
-
-        # These values were "manually" optimized that the diffusion coefficient distribution
-        # matches more or less what is expected by MD-simulations on nucleic acids (Stas-paper)
-        # the contact distance is deliberately big, so that the dye does not stick in very
-        # tinny pockets.
-        self.slow_factor = kwargs.get('slow_factor', 0.99)
-        self.contact_distance = kwargs.get('contact_distance', 3.5)  # th
-
-        self.quencher = kwargs.get(
-            'quencher',
-            chisurf.core.common.quencher
-        )
-        # self.diffusion_mode = kwargs.get('diffusion_mode', 'two_state')
-        self.t_step_fl = kwargs.get(
-            't_step_fl',
-            0.001
-        )  # integration time step of fluorescence decay
-        self.t_step_eq = kwargs.get(
-            't_step_eq',
-            0.02
-        )  # integration time step of equilibration
-
-        self.update_diffusion_map()
-        self.update_quenching_map()
-
-        # Iterator for equilibration and calculation of fluorescence decay
-        self._di = functions.DiffusionIterator(
-            self.diffusion_map,
-            self.bounds,
-            self.density,
-            dg=self.dg,
-            t_step=self.t_step_eq
-        )
-        self._di.build_program()
-        self.update_equilibrium()
+    @property
+    def donor_only_fluorescence(self):
+        """``(time, fluorescence)`` of the donor-only decay."""
+        result = self.get_donor_only_decay()
+        return result.time, result.fluorescence

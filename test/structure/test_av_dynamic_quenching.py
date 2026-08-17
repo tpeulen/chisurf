@@ -1,4 +1,9 @@
-"""The dye-quenching reduction in :mod:`chisurf.core.structure.av.dynamic`.
+"""The dye-quenching reduction, now :func:`IMP.bff.quenching_rate_per_frame`.
+
+The kernel moved to `IMP.bff` with PRD-109 (it is general fluorescence
+machinery, and here it had no caller but this file). The test moved with it in
+spirit and stays here as the consumer-side check that the upstream kernel still
+reduces the way ChiSurf expects.
 
 This kernel replaced a ``numexpr.evaluate('sum(k_quench * collided,axis=1)')``,
 so the tests are written as the properties that expression had rather than as a
@@ -11,7 +16,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.core.structure.av.dynamic import _quenching_rate_per_frame
+from IMP.bff.quenching.pet import (
+    quenching_rate_per_frame as _quenching_rate_per_frame,
+)
 
 
 def _reference(collided, k_quench):

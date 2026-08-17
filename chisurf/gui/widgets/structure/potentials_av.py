@@ -5,7 +5,7 @@ from qtpy import QtWidgets
 
 import chisurf.gui.widgets
 import chisurf.core.structure
-from chisurf.core.structure.av.potential import AvPotential
+from chisurf.core.structure.potential.av_potential import AvPotential
 
 
 class AvPotentialWidget(AvPotential, QtWidgets.QWidget):

@@ -164,30 +164,11 @@ def compute_efficiencies(
     return (1.0 / (1.0 + x ** 6)).astype(np.float32, copy=False)
 
 
-def _select_av_backend() -> str:
-    prefer_labellib = sys.platform.startswith('win')
-    try:
-        from quest.lib.imp_av import HAS_IMP_BFF
-    except Exception:
-        HAS_IMP_BFF = False
-
-    try:
-        from chisurf.core.structure.av.static import HAS_LABELLIB
-    except Exception:
-        HAS_LABELLIB = False
-
-    if prefer_labellib:
-        if HAS_LABELLIB:
-            return 'labellib'
-        if HAS_IMP_BFF:
-            return 'imp'
-    else:
-        if HAS_IMP_BFF:
-            return 'imp'
-        if HAS_LABELLIB:
-            return 'labellib'
-
-    raise RuntimeError('Neither IMP.bff nor LabelLib are available to compute accessible volumes.')
+# `_select_av_backend` is gone with PRD-109. It chose between LabelLib and an
+# `imp` branch that imported `quest.lib.imp_av` — a module QuEst stopped
+# shipping in July 2026 when `quest/lib` became `quest/core` — so `HAS_IMP_BFF`
+# was always False and the `imp` branch was unreachable. There is now one
+# backend, `IMP.bff`, reached through `chisurf.core.structure.av.BasicAV`.
 
 
 def _downsample_points(points: np.ndarray, max_points: int) -> np.ndarray:
@@ -224,8 +205,6 @@ def compute_efficiencies_from_fps_av(
     n_samples: int = 5000,
     max_points_per_av: int = 20000,
 ) -> np.ndarray:
-    backend = _select_av_backend()
-
     pos_cfg = fps.get('Positions') or {}
     if not isinstance(pos_cfg, dict):
         raise ValueError("fps.json: 'Positions' must be a dict")
@@ -246,63 +225,31 @@ def compute_efficiencies_from_fps_av(
             traj[frame_idx].save_pdb(tmp_pdb)
 
             av_points: Dict[str, np.ndarray] = {}
-            if backend == 'imp':
-                from quest.lib.imp_av import build_imp_accessible_volume
+            import chisurf.core.structure
+            import chisurf.core.structure.av
 
-                for name in needed_positions:
-                    cfg = pos_cfg[name] or {}
-                    chain_identifier = str(cfg.get('chain_identifier') or '').strip() or None
-                    residue_seq_number = int(cfg.get('residue_seq_number'))
-                    atom_name = str(cfg.get('atom_name') or 'CA').strip() or 'CA'
-                    linker_length = float(cfg.get('linker_length', 20.0))
-                    linker_width = float(cfg.get('linker_width', 0.5))
-                    radius1 = float(cfg.get('radius1', 3.5))
-                    radius2 = float(cfg.get('radius2', 0.0))
-                    radius3 = float(cfg.get('radius3', 0.0))
-                    allowed_sphere_radius = float(cfg.get('allowed_sphere_radius', 1.5))
-                    simulation_grid_resolution = float(cfg.get('simulation_grid_resolution', 1.5))
-
-                    av = build_imp_accessible_volume(
-                        structure=tmp_pdb,
-                        residue_seq_number=residue_seq_number,
-                        atom_name=atom_name,
-                        chain_identifier=chain_identifier,
-                        linker_length=linker_length,
-                        linker_width=linker_width,
-                        radii=(radius1, radius2, radius3),
-                        allowed_sphere_radius=allowed_sphere_radius,
-                        simulation_grid_resolution=simulation_grid_resolution,
-                    )
-                    pts = np.asarray(av.points, dtype=np.float64)
-                    pts = _downsample_points(pts, max_points_per_av)
-                    av_points[name] = pts
-
-            else:
-                import chisurf.core.structure
-                import chisurf.core.structure.av
-
-                structure = chisurf.core.structure.Structure(tmp_pdb)
-                for name in needed_positions:
-                    cfg = pos_cfg[name] or {}
-                    av_obj = chisurf.core.structure.av.BasicAV(
-                        structure,
-                        simulation_grid_resolution=float(cfg.get('simulation_grid_resolution', None) or 1.5),
-                        allowed_sphere_radius=float(cfg.get('allowed_sphere_radius', None) or 1.5),
-                        radius1=float(cfg.get('radius1', 3.5)),
-                        radius2=float(cfg.get('radius2', 4.5)),
-                        radius3=float(cfg.get('radius3', 3.5)),
-                        linker_width=float(cfg.get('linker_width', 0.5)),
-                        linker_length=float(cfg.get('linker_length', 20.0)),
-                        simulation_type=str(cfg.get('simulation_type', 'AV1')),
-                        chain_identifier=str(cfg.get('chain_identifier') or '').strip() or None,
-                        residue_name=str(cfg.get('residue_name') or '').strip() or None,
-                        residue_seq_number=int(cfg.get('residue_seq_number')),
-                        atom_name=str(cfg.get('atom_name') or 'CA').strip() or 'CA',
-                        position_name=str(name),
-                    )
-                    pts = np.asarray(av_obj.points[:, :3], dtype=np.float64)
-                    pts = _downsample_points(pts, max_points_per_av)
-                    av_points[name] = pts
+            structure = chisurf.core.structure.Structure(tmp_pdb)
+            for name in needed_positions:
+                cfg = pos_cfg[name] or {}
+                av_obj = chisurf.core.structure.av.BasicAV(
+                    structure,
+                    simulation_grid_resolution=float(cfg.get('simulation_grid_resolution', None) or 1.5),
+                    allowed_sphere_radius=float(cfg.get('allowed_sphere_radius', None) or 1.5),
+                    radius1=float(cfg.get('radius1', 3.5)),
+                    radius2=float(cfg.get('radius2', 4.5)),
+                    radius3=float(cfg.get('radius3', 3.5)),
+                    linker_width=float(cfg.get('linker_width', 0.5)),
+                    linker_length=float(cfg.get('linker_length', 20.0)),
+                    simulation_type=str(cfg.get('simulation_type', 'AV1')),
+                    chain_identifier=str(cfg.get('chain_identifier') or '').strip() or None,
+                    residue_name=str(cfg.get('residue_name') or '').strip() or None,
+                    residue_seq_number=int(cfg.get('residue_seq_number')),
+                    atom_name=str(cfg.get('atom_name') or 'CA').strip() or 'CA',
+                    position_name=str(name),
+                )
+                pts = np.asarray(av_obj.points[:, :3], dtype=np.float64)
+                pts = _downsample_points(pts, max_points_per_av)
+                av_points[name] = pts
 
             for pair_idx, (p1, p2) in enumerate(pair_position_names):
                 e = _mean_efficiency_from_points(
