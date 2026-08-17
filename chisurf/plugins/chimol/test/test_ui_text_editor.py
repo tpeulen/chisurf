@@ -17,8 +17,8 @@ import pathlib
 
 import pytest
 
-from chimol.hosts.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
-from chimol.hosts.keys import (
+from chimol.cmtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
+from chimol.cmtk.keys import (
     KEY_BACKSPACE,
     KEY_DOWN,
     KEY_END,

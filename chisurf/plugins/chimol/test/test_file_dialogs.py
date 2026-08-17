@@ -106,7 +106,7 @@ _DRIVE = '''
 
     # A double click on a row chooses it: press pair through the renderer,
     # exactly as a host delivers it.
-    from chimol.hosts.events import LEFT_BUTTON
+    from chimol.cmtk.events import LEFT_BUTTON
     body = gui.window_body(win)
     d.layout(body)
     row = next(r for r, n in d._file_rows if n == "148l.pdb")
@@ -189,8 +189,8 @@ _KEYS_DRIVE = """
     errors = []
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(errors.append)
-    from chimol.hosts.keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_RETURN
-    from chimol.hosts.events import LEFT_BUTTON
+    from chimol.cmtk.keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_RETURN
+    from chimol.cmtk.events import LEFT_BUTTON
 
     app._open_structure_dialog()
     gui = app.renderer._internal_gui
@@ -294,8 +294,8 @@ _PICTURE_DRIVE = """
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(lambda _e: None)
     app.cmd.do("load 148l.pdb")
-    from chimol.hosts.events import LEFT_BUTTON
-    from chimol.hosts.keys import KEY_DOWN
+    from chimol.cmtk.events import LEFT_BUTTON
+    from chimol.cmtk.keys import KEY_DOWN
     r = app.renderer
     gui = r._internal_gui
     app._open_structure_dialog()

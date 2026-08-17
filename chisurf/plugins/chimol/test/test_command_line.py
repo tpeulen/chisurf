@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.hosts import events, keys
+from chimol.cmtk import events, keys
 from chimol.chrome.gui import GuiRow, InternalGui
 from chimol.cmtk.command_line import CommandLine
 

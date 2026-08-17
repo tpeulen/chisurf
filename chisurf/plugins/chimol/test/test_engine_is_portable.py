@@ -58,8 +58,8 @@ ENGINE_MODULES = (
     "chimol.hosts.qt.menu_bar",
     "chimol.render.picking",
     "chimol.hosts.base",
-    "chimol.hosts.events",
-    "chimol.hosts.keys",
+    "chimol.cmtk.events",
+    "chimol.cmtk.keys",
     "chimol.hosts.native.app",
     "chimol.io.structure",
     "chimol.render.backend",
@@ -297,7 +297,7 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
         # A click, all the way through: the press/release pair is what the
         # window's own pointer handlers call, and picking used to be gated on
         # there being a QWidget.
-        from chimol.hosts.events import LEFT_BUTTON
+        from chimol.cmtk.events import LEFT_BUTTON
 
         app.renderer.click(320.0, 240.0, LEFT_BUTTON)
 

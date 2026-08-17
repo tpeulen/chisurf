@@ -50,7 +50,7 @@ from chimol_pkg.core.viewer import MolView
 from chimol_pkg.render.wgpu_backend import WgpuMeshRenderer
 from chimol_pkg.commands import Cmd
 from chimol_pkg.hosts.base import ViewerHost
-from chimol_pkg.hosts.events import LEFT_BUTTON
+from chimol_pkg.cmtk.events import LEFT_BUTTON
 from chimol_pkg.hosts.toolkit import HAS_QT
 
 assert not HAS_QT, "the toolkit was not stripped; this is not the page's configuration"

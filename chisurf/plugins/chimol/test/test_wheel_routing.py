@@ -125,7 +125,7 @@ app.cmd.do("help")
 app.draw_frame()
 gui.info_visible = True
 gui.focus_command(True)
-from chimol.hosts.keys import KEY_ESCAPE
+from chimol.cmtk.keys import KEY_ESCAPE
 gui.key_press(KEY_ESCAPE, "", 0)
 check("esc_leaves_prompt_first", gui.info_visible and not gui.command_line.focused,
       "the first Escape closed the panel instead of leaving the prompt")
@@ -162,7 +162,7 @@ check("click_closes_listing", not gui.info_visible,
       "picking a name left the listing covering the prompt it was typed into")
 
 # and all three closers through the *renderer*, which is what the window calls
-from chimol.hosts.events import LEFT_BUTTON
+from chimol.cmtk.events import LEFT_BUTTON
 for label, act in (
     ("esc", lambda: renderer.on_key_press(KEY_ESCAPE, "", 0)),
     ("outside", lambda: renderer.on_pointer_press(

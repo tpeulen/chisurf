@@ -37,7 +37,7 @@ _DRIVE = """
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(lambda _e: None)
     app.cmd.do("load 148l.pdb")
-    from chimol.hosts.events import LEFT_BUTTON
+    from chimol.cmtk.events import LEFT_BUTTON
     from chimol.chrome.gui import GuiWindow
 
     r = app.renderer
@@ -97,7 +97,7 @@ _DRIVE = """
     r.on_wheel(bx, by, 2, 0)
     emit("wheel_moves_picture", str(q_mid is not r._chrome_quads()))
 
-    from chimol.hosts.keys import KEY_DOWN
+    from chimol.cmtk.keys import KEY_DOWN
     q_before_key = r._chrome_quads()
     r.on_key_press(KEY_DOWN, "", 0)
     emit("key_moves_picture", str(q_before_key is not r._chrome_quads()))

@@ -12,7 +12,7 @@ import struct
 
 import pytest
 
-from chimol.hosts.keys import KEY_DOWN, KEY_RIGHT
+from chimol.cmtk.keys import KEY_DOWN, KEY_RIGHT
 from chimol.core import memory_probe
 from chimol.cmtk import memory_editor as me
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter

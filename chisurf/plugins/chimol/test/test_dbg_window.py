@@ -449,7 +449,7 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     object that handled nothing was a black hole: Return never reached the
     command line and the viewport could not be typed into at all.
     """
-    from chimol.hosts.keys import KEY_RETURN
+    from chimol.cmtk.keys import KEY_RETURN
     from chimol.chrome.gui import InternalGui
 
     class _Deaf:

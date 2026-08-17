@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.hosts import keys
+from chimol.cmtk import keys
 from chimol.cmtk import inputs
 
 
