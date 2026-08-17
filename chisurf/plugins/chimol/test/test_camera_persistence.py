@@ -45,7 +45,7 @@ def session(qapp):
 
     win = MolViewPluginWindow()
     shared = win.cmd
-    win._load_structure_from_path(_PDB / "148l.pdb")
+    win.load_structure_from_path(_PDB / "148l.pdb")
     for _ in range(20):
         qapp.processEvents()
 
@@ -149,7 +149,7 @@ def test_loading_a_second_structure_frames_it(session):
     win, do, _errors, qapp = session
     do("zoom resi 20-26")
     framed = _distance(win)
-    win._load_structure_from_path(_PDB / "1rtd.pdb")
+    win.load_structure_from_path(_PDB / "1rtd.pdb")
     for _ in range(20):
         qapp.processEvents()
     assert _distance(win) > framed, "a newly loaded structure was not framed"

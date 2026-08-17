@@ -41,7 +41,7 @@ def session(qapp):
     win = MolViewPluginWindow()
     shared = win.cmd
     win.resize(800, 640)
-    win._load_structure_from_path(_PDB)
+    win.load_structure_from_path(_PDB)
     for _ in range(20):
         qapp.processEvents()
 

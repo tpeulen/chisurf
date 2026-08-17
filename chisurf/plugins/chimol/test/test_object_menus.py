@@ -286,7 +286,7 @@ def window(qapp, tmp_path):
     shutil.copyfile(src, pdb)
 
     win = MolViewPluginWindow()
-    win._load_structure_from_path(pdb, name="1abc")
+    win.load_structure_from_path(pdb, name="1abc")
     return win
 
 
@@ -360,7 +360,7 @@ def test_a_rows_menu_targets_that_row(window, monkeypatch):
 
     src = next(iter(window._object_store.values()))["path"]
     other = shutil.copyfile(src, str(src).replace("1abc", "2xyz"))
-    window._load_structure_from_path(pathlib.Path(other), name="2xyz")
+    window.load_structure_from_path(pathlib.Path(other), name="2xyz")
     window.sync_internal_gui()
 
     gui = window.viewer.gui

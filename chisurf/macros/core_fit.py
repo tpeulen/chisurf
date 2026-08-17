@@ -2417,7 +2417,7 @@ def _restore_chimol_project_files(
         window = MolViewPluginWindow(parent=gui)
         window.resize(1000, 700)
         for path in paths:
-            window._load_structure_from_path(path)
+            window.load_structure_from_path(path)
         window.show()
         refs = getattr(gui, "_project_chimol_windows", None)
         if refs is None:

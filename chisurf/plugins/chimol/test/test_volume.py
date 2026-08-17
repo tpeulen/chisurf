@@ -883,7 +883,7 @@ def test_a_map_file_loads_as_a_map_object_not_a_point_cloud(tmp_path, blob, qapp
     path = write_mrc(tmp_path / "loaded.mrc", blob, step=(1.5, 1.5, 1.5))
     window = MolViewPluginWindow()
     try:
-        object_id = window._load_structure_from_path(path)
+        object_id = window.load_structure_from_path(path)
         assert window.viewer.get_volume(object_id) is not None
         assert window.viewer.get_volume_levels(object_id), "it should open contoured"
     finally:

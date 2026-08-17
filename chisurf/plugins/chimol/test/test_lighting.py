@@ -43,7 +43,7 @@ def session(qapp):
     win.show()
     for _ in range(12):
         qapp.processEvents()
-    win._load_structure_from_path(_PDB)
+    win.load_structure_from_path(_PDB)
     for _ in range(20):
         qapp.processEvents()
 
@@ -383,7 +383,7 @@ def _window_with_molecule(qapp):
     window.show()
     for _ in range(10):
         qapp.processEvents()
-    window._load_structure_from_path(pdb, name="148l")
+    window.load_structure_from_path(pdb, name="148l")
     for _ in range(20):
         qapp.processEvents()
 

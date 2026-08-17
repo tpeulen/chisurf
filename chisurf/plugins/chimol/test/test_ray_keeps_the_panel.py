@@ -57,7 +57,7 @@ def viewport(qapp):
     for _ in range(30):
         qapp.processEvents()
 
-    window._load_structure_from_path(PDB, name="148l")
+    window.load_structure_from_path(PDB, name="148l")
     for _ in range(20):
         qapp.processEvents()
 

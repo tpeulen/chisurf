@@ -52,7 +52,7 @@ def session(qapp):
     win.show()
     for _ in range(10):
         qapp.processEvents()
-    win._load_structure_from_path(_FRAGMENT)
+    win.load_structure_from_path(_FRAGMENT)
     for _ in range(20):
         qapp.processEvents()
 

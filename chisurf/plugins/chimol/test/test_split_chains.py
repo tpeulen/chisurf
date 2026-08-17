@@ -42,7 +42,7 @@ def session(qapp):
     win.show()
     for _ in range(12):
         qapp.processEvents()
-    win._load_structure_from_path(_PDB)
+    win.load_structure_from_path(_PDB)
     for _ in range(25):
         qapp.processEvents()
 
@@ -112,7 +112,7 @@ def test_hiding_survives_a_panel_rebuild(session):
     source = next(iter(_visibility(win)))
     do("split_chains")
     assert _visibility(win)[source] is False
-    win._refresh_objects_from_viewer()
+    win.refresh_objects()
     # The rebuild that used to re-show it. `sync_internal_gui` is what rebuilds
     # the panel now the Qt dock is gone -- same act, one list instead of two.
     win.sync_internal_gui()
@@ -126,8 +126,8 @@ def test_an_explicitly_hidden_object_stays_hidden_across_a_rebuild(session):
     object_id = next(
         o["id"] for o in win.viewer.list_objects() if o["name"] == name
     )
-    win._set_object_visible(object_id, False)
-    win._refresh_objects_from_viewer()
+    win.set_object_visible(object_id, False)
+    win.refresh_objects()
     assert _visibility(win)[name] is False
 
 

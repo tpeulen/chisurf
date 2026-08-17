@@ -41,7 +41,7 @@ def shell(qapp):
     win.show()
     for _ in range(10):
         qapp.processEvents()
-    win._load_structure_from_path(pdb)
+    win.load_structure_from_path(pdb)
     for _ in range(20):
         qapp.processEvents()
 

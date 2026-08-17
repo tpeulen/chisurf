@@ -40,7 +40,7 @@ def window(qapp, tmp_path):
     shutil.copyfile(src, pdb)
 
     win = MolViewPluginWindow()
-    win._load_structure_from_path(pdb, name="148l")
+    win.load_structure_from_path(pdb, name="148l")
     return win
 
 

@@ -72,7 +72,7 @@ def window(qapp):
     win.show()
     for _ in range(10):
         qapp.processEvents()
-    win._load_structure_from_path(_PDB)
+    win.load_structure_from_path(_PDB)
     for _ in range(20):
         qapp.processEvents()
 

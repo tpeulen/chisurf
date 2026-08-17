@@ -386,7 +386,7 @@ def cmd(qapp, tmp_path):
     shutil.copyfile(PDB, pdb)
 
     window = MolViewPluginWindow()
-    window._load_structure_from_path(pdb, name="148l")
+    window.load_structure_from_path(pdb, name="148l")
     command = Cmd(window)
     errors: list[str] = []
     messages: list[str] = []

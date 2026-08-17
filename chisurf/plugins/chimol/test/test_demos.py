@@ -260,7 +260,7 @@ def trajectory(window):
     win, shared, errors, qapp = window
     if not (_TRAJECTORY.exists() and _TOPOLOGY.exists()):
         pytest.skip("no trajectory fixture")
-    win._load_structure_from_path(_TOPOLOGY)
+    win.load_structure_from_path(_TOPOLOGY)
     for _ in range(30):
         qapp.processEvents()
     shared.load_traj(str(_TRAJECTORY))

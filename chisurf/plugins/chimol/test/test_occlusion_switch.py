@@ -72,7 +72,7 @@ def viewer():
     win.show()
     for _ in range(12):
         app.processEvents()
-    win._load_structure_from_path(Path(_PDB))
+    win.load_structure_from_path(Path(_PDB))
     for _ in range(25):
         app.processEvents()
     shared.set_window(win)

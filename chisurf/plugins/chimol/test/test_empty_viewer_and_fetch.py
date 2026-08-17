@@ -77,7 +77,7 @@ def test_a_loaded_object_makes_it_not_empty(session, tmp_path):
         "ATOM      2  CA  ALA A   2       3.800   0.000   0.000  1.00  0.00           C\n"
         "END\n"
     )
-    win._load_structure_from_path(pdb)
+    win.load_structure_from_path(pdb)
     assert win.viewer.is_empty() is False
 
 

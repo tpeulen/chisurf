@@ -493,7 +493,7 @@ def wizard_cmd(qapp, tmp_path):
     shutil.copyfile(src, pdb)
 
     window = MolViewPluginWindow()
-    window._load_structure_from_path(pdb, name="148l")
+    window.load_structure_from_path(pdb, name="148l")
     cmd = Cmd(window)
     errors: list[str] = []
     cmd.set_error_callback(errors.append)

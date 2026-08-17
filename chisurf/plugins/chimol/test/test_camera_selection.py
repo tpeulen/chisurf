@@ -54,7 +54,7 @@ def session(qapp):
     win.show()
     for _ in range(12):
         qapp.processEvents()
-    win._load_structure_from_path(_PDB)
+    win.load_structure_from_path(_PDB)
     for _ in range(25):
         qapp.processEvents()
 

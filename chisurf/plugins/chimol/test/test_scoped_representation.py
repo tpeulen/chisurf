@@ -48,7 +48,7 @@ def window(qapp):
         pytest.skip(f"missing fixture {PDB}")
 
     win = MolViewPluginWindow()
-    win._load_structure_from_path(PDB, name="1rtd")
+    win.load_structure_from_path(PDB, name="1rtd")
     yield win
     win.close()
 

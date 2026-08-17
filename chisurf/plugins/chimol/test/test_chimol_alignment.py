@@ -9,7 +9,7 @@ from chimol.commands.command import Cmd
 class MockWindow:
     def __init__(self, viewer):
         self.viewer = viewer
-    def _refresh_objects_from_viewer(self):
+    def refresh_objects(self):
         pass
 
 @dataclass

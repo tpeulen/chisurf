@@ -593,7 +593,7 @@ def crystal_cmd(qapp, tmp_path):
     shutil.copyfile(_CRYSTAL, pdb)
 
     window = MolViewPluginWindow()
-    window._load_structure_from_path(pdb, name="1rtd")
+    window.load_structure_from_path(pdb, name="1rtd")
     command = Cmd(window)
     errors: list[str] = []
     messages: list[str] = []

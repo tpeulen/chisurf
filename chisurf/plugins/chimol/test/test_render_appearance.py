@@ -52,7 +52,7 @@ def _window(qapp, path):
     win.show()
     for _ in range(10):
         qapp.processEvents()
-    win._load_structure_from_path(path)
+    win.load_structure_from_path(path)
     for _ in range(20):
         qapp.processEvents()
 

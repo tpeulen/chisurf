@@ -269,3 +269,15 @@ def test_a_plugin_adds_a_wizard_and_a_menu_generator():
         loaded.unload("gen")
     assert "hello" not in WIZARDS
     assert not any(e.label == "Say hi" for e in dict(menus.menu_bar())["Tools"])
+
+
+def test_every_host_is_a_host_services():
+    """The three hosts and the base provide the HostServices contract a plugin may rely on."""
+    from chimol.hosts.base import HostServices, ViewerHost
+
+    for name in ("load_structure_from_path", "refresh_objects", "set_object_visible", "select_object",
+                 "update_sequence_view", "run_script_text", "run_demo", "isFullScreen", "showFullScreen",
+                 "showNormal", "close"):
+        assert callable(getattr(ViewerHost, name, None)), name
+    assert isinstance(ViewerHost(MockViewer()), HostServices)
+    from chimol.hosts.native.app import ChimolApp  # noqa: F401 - imports without a window

@@ -31,7 +31,7 @@ def _restore_display_settings():
     A fresh window per entry is not enough isolation, because some entries are
     not window-scoped at all: several are PyMOL ``set`` commands, and a setting
     lives in one process-wide dict that every window reads. "sequence > hide"
-    runs ``set seq_view, off``, and `_update_sequence_view` returns early when
+    runs ``set seq_view, off``, and `update_sequence_view` returns early when
     that is off -- so every window built *afterwards*, in any later test file,
     silently had no sequence at all.
 
@@ -113,7 +113,7 @@ def _open(qapp, path, *, second_object=False):
     win.show()
     for _ in range(5):
         qapp.processEvents()
-    win._load_structure_from_path(path)
+    win.load_structure_from_path(path)
     for _ in range(10):
         qapp.processEvents()
 

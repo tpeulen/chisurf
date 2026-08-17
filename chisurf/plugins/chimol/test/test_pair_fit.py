@@ -47,7 +47,7 @@ def displaced(qapp):
     class _Window:
         viewer = view
 
-        def _refresh_objects_from_viewer(self):
+        def refresh_objects(self):
             pass
 
         def windowTitle(self):
