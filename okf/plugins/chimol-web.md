@@ -10,12 +10,12 @@ timestamp: '2026-08-10T00:00:00Z'
 # Where to pick this up (2026-08-12, latest) — Qt is an option now
 
 **The default is toolkit-free.** `python -m chisurf.plugins.chimol` opens a
-GLFW window through `rendercanvas` and runs the same `MolView`, the same `Cmd`
+GLFW window through `rendercanvas` and runs the same `Viewer`, the same `Cmd`
 and the same `_draw` the Qt plugin embeds; `--qt` asks for the Qt window and is
 the only thing that reaches it. `--check` builds everything, renders one frame
 and exits, which is what the guard test drives.
 
-**The seam is `renderer/canvas_base.py`.** `CanvasRenderer` holds the surface
+**The seam is `viewport/canvas.py`.** `CanvasRenderer` holds the surface
 configuration, the packing, the chrome quads, the frame, and every decision
 about what a press/drag/wheel/key means — none of which is a window system's
 business. It reaches its surface through `_surface()`: `self` for
@@ -44,7 +44,7 @@ which already draws text, not to add a second image path.
 3. **`ViewerHost` is thinner than `MolViewPluginWindow`**: it does objects,
    sequences, visibility and loading. Measurement rows, groups and the
    trajectory transport are still only in the Qt window's `sync_internal_gui`;
-   `host/app.py:sync_panel` is where they belong.
+   `hosts/base.py:sync_panel` is where they belong.
 
 **Trap: never call `rendercanvas.auto`.** Its last-resort backend generator
 does `import PyQt5` and selects the Qt backend if that succeeds, so
@@ -52,9 +52,9 @@ does `import PyQt5` and selects the Qt backend if that succeeds, so
 `canvas_view.canvas_module()` names the backend it wants instead.
 
 **Trap: importability is not a choice.** chimol runs inside a PyQt application,
-so `import qtpy` works on the Qt-free path too; `host/widget.py` therefore
+so `import qtpy` works on the Qt-free path too; `hosts/toolkit.py` therefore
 selects from `CHIMOL_TOOLKIT` (the entry point sets `none`) rather than from
-whether Qt imports. Picking the base class from importability makes `MolView` a
+whether Qt imports. Picking the base class from importability makes `Viewer` a
 `QWidget` with no `QApplication`, which is a SIGABRT, not an exception.
 
 **Trap: `python -m <package>` runs the package `__init__` first.** A single
@@ -66,25 +66,25 @@ see it. `test_the_real_module_entry_point_runs_without_a_gui_toolkit` uses
 
 # One code path — the page runs the viewer (2026-08-11, latest)
 
-**The browser runs `MolView` and `Cmd`.** Not a browser viewer and a browser
+**The browser runs `Viewer` and `Cmd`.** Not a browser viewer and a browser
 command set: *the* viewer and *the* hundred-odd commands, with a windowless
 renderer whose scene the page rasterises. `load`, `as cartoon`, `as spheres`,
 `as sticks`, `select`, `bg_color`, `count_atoms` — all of them, in a page,
 because they are the same code.
 
-**What made it possible, and it is small.** `MolView` is the object store, the
+**What made it possible, and it is small.** `Viewer` is the object store, the
 scene builder, the camera and everything `cmd/` drives (sixty-seven of its
 methods); being a `QWidget` was incidental to all of it and was the only reason
-a page could not import it. `host/widget.py` supplies the three things it needs
+a page could not import it. `hosts/toolkit.py` supplies the three things it needs
 from a toolkit — a base class, four signals, a timer — and stand-ins when there
 is none. `view.py`'s Qt import is now guarded, and its widget-construction block
 was already guarded on the renderer *being* a widget (since `SceneSink`).
-**`renderer/view.py` has left `HOSTS`: 16 → 15**, and the viewer is an engine
+**`core/viewer.py` has left `HOSTS`: 16 → 15**, and the viewer is an engine
 module in `test_engine_is_portable.py`.
 
 **Deleted with it:** `web/commands.py` (a parallel command set) and `demo.py`'s
 own scene builders — `build_molecule`, `build_cartoon`, `_occlusion*`,
-`_chain_segments`. `web/demo.py` is now a *host*: a canvas, DOM events, and the
+`_chain_segments`. `hosts/web/page.py` is now a *host*: a canvas, DOM events, and the
 thirteen application calls the commands make (`BrowserHost`).
 
 **Three imports stood between the page and the viewer, and each was a one-liner
@@ -93,7 +93,7 @@ with a large consequence:**
   *loadable package*, so the whole command layer failed to import in a page with
   a message about ssl. Now local to `_tls_context`.
 - `fetch` called `urllib.request.urlopen` directly, which cannot open a socket
-  in a tab. `host/net.py` is the seam — `pyodide.http.open_url` in a page,
+  in a tab. `io/net.py` is the seam — `pyodide.http.open_url` in a page,
   `urllib` elsewhere — so `fetch` stays one command.
 - **scipy.** `geometry/__init__` imports `neighbors`, `ambient` and `surface`,
   and all three imported scipy at module scope, so a page paid a ~14 MB download
@@ -102,7 +102,7 @@ with a large consequence:**
 ## Speed: the router was the bug, not the arithmetic (2026-08-11)
 
 **`as cartoon` on T4 lysozyme took 4.4 seconds and now takes 82 ms.** The cause
-was one constant. `renderer/compute.py`'s `MIN_WORK_ITEMS = 20_000` gates every
+was one constant. `render/compute.py`'s `MIN_WORK_ITEMS = 20_000` gates every
 kernel, and a cartoon of 148L is **19,908 vertices** — it missed the GPU by
 ninety-two vertices and fell back to a NumPy route that enumerates vertex/atom
 pairs.
@@ -296,7 +296,7 @@ A screen-space Gaussian surface: one additive splat per atom into an offscreen
 field, resolved by a fullscreen pass. No 3-D grid, no iso-surface, no mesh, and
 nothing to rebuild when the molecule moves. `surface.quality` selects it
 (`splat`) or one of three grid spacings (`fast` / `balanced` / `fine`); the
-levels and their measurements are in `renderer/surface_quality.py`.
+levels and their measurements are in `render/surface_quality.py`.
 
 The meshed path costs **253 ms** on 148L for 27,920 vertices, and the profile
 says where: 106 ms building the 3-D density grid in NumPy, 63 ms in marching
@@ -331,7 +331,7 @@ repository root.
    `molview_main_window` touches it, and the ~110 references that feed it are
    in eight methods. It also costs a real rebuild: the window still fills a
    hidden list widget with one item per residue on every sequence sync.
-4. **The page's renderer is still its own.** `web/demo.py` packs the sink's scene
+4. **The page's renderer is still its own.** `hosts/web/page.py` packs the sink's scene
    and calls `render_into`; `wgpu_view.py` does the same thing with Qt around it.
    That is the last real duplication, and it closes by making the Qt widget a
    thin host over a shared frame builder.
@@ -345,8 +345,8 @@ so a browser -- which has no console to dock -- has a real prompt.
 
 - `renderer/ui/command_line.py` is the model (buffer, caret, history, tab
   completion, a feedback log). No toolkit, no GPU, no host: it draws nothing.
-- `host/keys.py` states the key values (Qt's) and translates
-  `KeyboardEvent.key`, exactly as `host/events.py` does for buttons.
+- `cmtk/keys.py` states the key values (Qt's) and translates
+  `KeyboardEvent.key`, exactly as `cmtk/events.py` does for buttons.
 - `InternalGui` lays it out along the bottom of the scene, paints it as quads,
   hit-tests it, and routes keys through `key_press`.
 - Hosts: `wgpu_view.keyPressEvent` offers keys to the chrome *first*;
@@ -375,7 +375,7 @@ their PNGs stay byte-identical -- they photograph a QPainter chrome that cannot
 be re-taken. `inventory.json` gained one key and changed nothing else.
 
 **Selections work without Qt, and the marker is a marker again.**
-`renderer/markers.py` is the engine module: PyMOL's width rule
+`render/markers.py` is the engine module: PyMOL's width rule
 (`ExecutiveGetAdjustedSelectionWidth`), the indicator geometry, and the
 column→residue→atom mapping that a strip selection needs. `view.py` keeps only
 "which atoms are selected"; the browser calls the same three functions, and
@@ -394,7 +394,7 @@ default* — `impostor.wgsl` converts a pixel size to a view extent whenever
 2. **Three pixels cannot show three bands.** At PyMOL's `selection_width` floor
    of 3 the white core is a fifth of a pixel, so every marker resolved to one
    speck. The band is now 7–16 (`chimol_display.json`, the built-in defaults in
-   `config.py`, and **migration 14**, or the change reaches nobody who already
+   `core/settings/config.py`, and **migration 14**, or the change reaches nobody who already
    has a profile).
 
 Verified by photographing `select sele, resi 20-40` typed into the viewport
@@ -406,7 +406,7 @@ prompt of the real window: 162 markers, square, with visible cores.
    transform; `analysis/{hbonds,surface_area,symmetry}` and `cmd/measurements`
    each import `cKDTree` lazily. Pyodide ships scipy, but it is a large download
    to draw a molecule, and the user's instruction is to move that compute to the
-   GPU. The router in `renderer/compute.py` already picks by size and
+   GPU. The router in `render/compute.py` already picks by size and
    `shade_from_atoms` already has a GPU path — so this is per-primitive work
    behind one module, not a rewrite.
 3. **The `app/` panels into the chrome** — thirteen of `HOSTS`' sixteen entries.
@@ -423,7 +423,7 @@ about having no window rather than opening an empty one, and logged.
 lived in it:**
 
 - the mouse-mode helpers (`normalize_mouse_mode`, `rotation_delta_multiplier`,
-  `pan_delta_multiplier`) → `mouse_modes.py`, beside the table they describe;
+  `pan_delta_multiplier`) → `chrome/mouse_modes.py`, beside the table they describe;
 - `_image_from_rgb` → `gui_overlay.image_from_rgb`, and it now **copies**: a
   QImage over a numpy buffer is a view, and the array is routinely a temporary.
 
@@ -451,7 +451,7 @@ to do with this port; it just had never been searched.
 # WGSL is chimol's default renderer (2026-08-10)
 
 `renderer.backend` defaults to `wgpu`, so the viewport is
-`renderer/wgpu_view.py::WgpuRenderer` unless `CHIMOL_RENDERER=opengl` says
+`hosts/qt/wgpu_view.py::WgpuRenderer` unless `CHIMOL_RENDERER=opengl` says
 otherwise -- and automatically when a machine has no WebGPU adapter, which is
 logged rather than silent.
 
@@ -476,7 +476,7 @@ default, 31 tests failed and each one named something real:
 - the **ground grid** was configured and never drawn.
 
 All of that is ported, and the camera half of it lives in
-`renderer/camera_state.py` where both non-GL backends share it. Two of the
+`core/camera.py` where both non-GL backends share it. Two of the
 tests were themselves measuring the OpenGL widget's accidental geometry rather
 than the framing rule -- an unshown `QOpenGLWidget` reports 100x30, so the
 aspect guard read "no window" and the portrait correction never ran; they now
@@ -497,7 +497,7 @@ Action menu and photographing it.
 # chimol runs on WGSL (2026-08-10)
 
 `CHIMOL_RENDERER=wgpu python -m chisurf.plugins.chimol` opens the real
-application window with `renderer/wgpu_view.py::WgpuRenderer` as its viewport:
+application window with `hosts/qt/wgpu_view.py::WgpuRenderer` as its viewport:
 the molecule, the object panel, the sequence strip and the mouse-mode block, all
 drawn through the WGSL in `renderer/wgsl/`, on Metal. Verified by screenshot
 across cartoon / sticks / lines / spheres / surface / transparency, and the
@@ -512,7 +512,7 @@ the GL baseline is *the* picture the window shows, where two paths that merely
 "do the same thing" drift — as three constants in this port already did.
 
 **Everything a renderer holds rather than draws is in
-`renderer/camera_state.py`**, shared by `SceneSink` and the widget, so a
+`core/camera.py`**, shared by `SceneSink` and the widget, so a
 headless replay and a window frame the same scene identically. PyMOL's
 trackball moved there too, and `qtgl` now delegates to it: two viewers whose
 drags turn the molecule by different amounts are two different programs, and no
@@ -663,12 +663,12 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    painter **as a parameter**, so swapping it is wiring.
 
    **Landed.**
-   - *Phase A* — the engine no longer needs Qt to import. `renderer/base.py`
-     (annotations only), `colors.py` (two `Qt.UserRole` ints), `io/structure.py`
+   - *Phase A* — the engine no longer needs Qt to import. `render/backend.py`
+     (annotations only), `core/colors.py` (two `Qt.UserRole` ints), `io/structure.py`
      (`QFileDialog`), `internal_gui.py` (two modifier masks), `cmd/animation.py`
      (`QTimer`) and `cmd/exporting.py` (a `QThread` subclass, now built by a
      cached factory rather than a module-scope `class` statement). Both
-     `chimol/__init__.py` and `renderer/__init__.py` eagerly imported `MolView`,
+     `chimol/__init__.py` and `renderer/__init__.py` eagerly imported `Viewer`,
      so *every* module in those packages required a window system — both are now
      :pep:`562` lazy. **15/15 engine modules import with Qt blocked.**
    - *Phase B* — `renderer/gpu/` is the only place allowed to name the binding.
@@ -833,7 +833,7 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
 
    **Where to pick this up next — three, asked for directly, in this order.**
 
-   1. **Selections must work without Qt.** `renderer/view.py::_update_selection_highlight`
+   1. **Selections must work without Qt.** `core/viewer.py::_update_selection_highlight`
       (`:8898`) builds the marker geometry and lives in the **Qt widget**, so the
       browser has no path to it and a strip selection highlights nothing in 3-D.
       Move it into the engine beside the other scene builders. It pays twice --
@@ -849,7 +849,7 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
       in-viewport strip already draws with quads. Removing it strikes a line from
       `HOSTS` in `test/test_engine_is_portable.py` -- 16 → 15 -- and it is the
       cheapest of the thirteen `app/` panels to close, because the replacement is
-      already shipping and already tested. Check `app/molview_main_window.py` for
+      already shipping and already tested. Check `hosts/qt/window.py` for
       its registration and the `Seq` toolbar button.
 
    3. **Neighbour counting on the GPU.** The demo's occlusion uses a brute-force
@@ -962,7 +962,7 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    triangles** on 148L where the impostor path would emit ~2,770 — measured, and
    the impostor path itself is verified at **120 triangles against 19,200 with
    silhouette IoU > 0.97** (`test_wgsl_parity.py::TestImpostorsOnTheGpu`). The
-   change is in the **scene builder** (`renderer/view.py::_update_atoms`), not
+   change is in the **scene builder** (`core/viewer.py::_update_atoms`), not
    in the backend. It is now *cheaper* than it was: with OpenGL gone there is no
    second renderer to keep in step, and the baselines it would have invalidated
    are frozen anyway — so the comparison to make is before/after in WGSL.
@@ -1051,9 +1051,9 @@ non-empty, and `test/test_wgsl_parity.py` fails on it with no GPU.
 transcribed between backends instead of shared, which is the same defect as the
 `RESET` list in a different costume:
 
-- `renderer/depth_cue.py` now holds PyMOL's `SceneSetFog` planes; `qtgl` and
+- `render/depth_cue.py` now holds PyMOL's `SceneSetFog` planes; `qtgl` and
   `wgpu_backend` both call it. The WGSL renderer had had **no depth cue at all**.
-- `renderer/lighting.py` now holds the light rig. `wgpu_backend` had carried a
+- `render/lighting.py` now holds the light rig. `wgpu_backend` had carried a
   hand-written `DEFAULT_LIGHTING` dict documented as "matching the OpenGL
   backend's defaults" which matched none of them: key light 25° off-axis where
   the configured one points **straight down the camera**, `fill=0.45` where the
@@ -1088,7 +1088,7 @@ and the eleven shipped demos plus the three tours on the browser page.
 What stood in the way, in the order it was found by *running each demo on
 the page* (`test_browser_demos.py` now does that, plus drop and mount):
 
-- `demo <name>` ran nothing: `web/demo.py` never set `host.cmd`, and
+- `demo <name>` ran nothing: `hosts/web/page.py` never set `host.cmd`, and
   `run_script_text` silently had nowhere to send lines (it reports now).
 - `orient`/`zoom` after `delete all` raised a `TypeError` (`_radius` is
   `None` on an empty viewer) instead of "nothing to orient".
@@ -1099,7 +1099,7 @@ the page* (`test_browser_demos.py` now does that, plus drop and mount):
   numpy+JSON, read back through the same `_parse_rmf`. `resolve_structure`
   falls back to it when the simulator is unavailable.
 - `fetch EMD-3061` "succeeded" with garbage: `pyodide.http.open_url` is text
-  and decoded a gzipped map as UTF-8. `host/net.py` reads a synchronous XHR
+  and decoded a gzipped map as UTF-8. `io/net.py` reads a synchronous XHR
   as `x-user-defined` and masks the code units back to bytes.
 - `fetch PDBDEV_...` needs `ihm`, which PyPI ships as an sdist only; the
   packer copies the pure-Python package from the packing environment.
@@ -1110,8 +1110,8 @@ the page* (`test_browser_demos.py` now does that, plus drop and mount):
   by element now (`h_add` on the fragment went 32 -> 48 hydrogens, the
   correct number, because bond inference switched to the radius-based
   path).
-- `density_panel on` imported `chimol.app.volume_panel` -- Qt package, not
-  shipped. Moved to `renderer/volume_model.py`; the old name re-exports.
+- `density_panel on` imported `chimol.plugins.density.model` -- Qt package, not
+  shipped. Moved to `plugins/density/model.py`; the old name re-exports.
 - `load x.mrc` on the non-Qt hosts fed MRC bytes to the PDB parser; the
   command routes map suffixes to `load_map` for every host.
 - The browser host's PDB-only `_load_structure_from_path` override went; the
@@ -1120,7 +1120,7 @@ the page* (`test_browser_demos.py` now does that, plus drop and mount):
 - Removing the browser host's reader override made every load raise the
   info panel (as the desktop hosts do) -- and the page had never wired the
   panel's close hook to the viewer, so it came back each frame and every
-  scene press dismissed it instead of picking. `host/app.py::connect_info_panel`
+  scene press dismissed it instead of picking. `hosts/base.py::connect_info_panel`
   now wires it for the toolkit-free window and the page alike.
 - Test-harness bug found on the way: `toolkit_free.probe` had started
   dropping every emitted key that was not alphanumeric (`command:fov`,
@@ -1162,14 +1162,14 @@ handle in the test.
 ## Traps that cost real time here
 
 - **The browser host must not refresh the panel from an event handler
-  (round 23, 2026-08-17).** `web/demo.py::Viewer.release` called
+  (round 23, 2026-08-17).** `hosts/web/page.py::Viewer.release` called
   `sync_panel` after every release "so the strip follows the pick";
   `InternalGui.set_rows` dismisses menus, so the menu bar, the object
   list's `A/S/H/L/C` buttons and the right-click object menu all opened on
   the press and closed on the release of the same click. Only the page did
   it, so no probe saw it. Fixed by removing the call, wiring the viewer's
   selection into the strip once for every host
-  (`host/app.py::connect_sequence_mirror`), and making `set_rows` keep the
+  (`hosts/base.py::connect_sequence_mirror`), and making `set_rows` keep the
   menus when the rows did not change. Alongside: the DOM's `dblclick` has no
   trailing `pointerup`, which left `_gui_grab` held and swallowed the next
   click's release (`BUGS/001`, `BUGS/002` — both closed; `boot.js`
@@ -1286,7 +1286,7 @@ Next, in order:
    atomic `show spheres` — that baseline needs a bead/integrative model and is
    still to do.
 2. ✅ **Done — Phase 1, `SceneSink` (2026-08-10, `fa7377580`).**
-   `renderer/headless.py` builds the scene and rasterises nothing;
+   `render/headless.py` builds the scene and rasterises nothing;
    `MolView(renderer_factory=SceneSink)` selects it. Two assumptions went with
    it: the Qt chrome was guarded on the renderer *existing* rather than on it
    being a `QWidget`, so a windowless backend fell into the branch that sets
@@ -1313,13 +1313,13 @@ Next, in order:
 
 3. **Superseded — the original Phase 1 note.** `_update_view` opens with
    `if self._renderer is None: return`, and the Qt chrome after renderer
-   construction (`renderer/view.py:2479`) is one contiguous block guarded by
+   construction (`core/viewer.py:2479`) is one contiguous block guarded by
    `if renderer is not None:`. That single early return is the only reason the
    existing headless CLI can run commands but not build a `Scene`. A null renderer
    plus a `renderer_factory` argument fixes it — not a refactor. Gate it with a
    test asserting the Qt path and `SceneSink` produce bit-identical arrays.
-3. 🔄 **Phase 2 — in progress.** Landed: `renderer/pack.py` (`79b3d6811`) and
-   `renderer/wgsl/mesh.wgsl` + `renderer/wgpu_backend.py` (`128cc86ab`). The
+3. 🔄 **Phase 2 — in progress.** Landed: `render/pack.py` (`79b3d6811`) and
+   `renderer/wgsl/mesh.wgsl` + `render/wgpu_backend.py` (`128cc86ab`). The
    WGSL renderer draws 148L cartoon on Metal and **the fold, orientation and
    cartoon geometry match the baseline**, so replaying `set_view` across backends
    works.
@@ -1368,7 +1368,7 @@ Next, in order:
 
    The cause, once the error callback was finally hooked: `color` and `spectrum`
    were returning **"nothing is loaded -- use 'load <file>' or 'fetch <id>'
-   first"**. A `MolView` built directly with `apply_payload` and a minimal window
+   first"**. A `Viewer` built directly with `apply_payload` and a minimal window
    stub gets geometry — `show cartoon` works against that same viewer — but the
    command layer's *is-anything-loaded* check reads state the stub does not set,
    so the colour commands refuse. That inconsistency is worth fixing on its own:
@@ -1512,7 +1512,7 @@ must be routed by measurement rather than by category.**
 
 Everything data-parallel in chimol's scene building and all of its ray tracing
 now runs as WGSL compute on the same WebGPU stack the renderer draws with —
-`renderer/compute.py` plus `wgsl/{grid,shade_atoms,occlusion,shadow_rays,
+`render/compute.py` plus `wgsl/{grid,shade_atoms,occlusion,shadow_rays,
 distance_grid,edt,mc_active,bvh,bvh_probe,raytrace}.wgsl`. The shaders are plain
 WGSL a browser compiles unchanged, composed by concatenation because WGSL has no
 `#include` — the same rule the render shaders follow.
@@ -1769,7 +1769,7 @@ would invalidate the baselines being captured alongside it.
   chimol's GL writes to a non-sRGB default framebuffer. Every colour will wash out
   if this is not handled explicitly. Caught only by looking at the image — a clear
   value of 0.09 came back as 85, not 23.
-- **`chimol/__init__.py` eagerly imports `MolView`**, so importing *any*
+- **`chimol/__init__.py` eagerly imports `Viewer`**, so importing *any*
   `chimol.geometry` submodule drags in Qt *and* `chisurf`. Bypass it by registering
   `chimol`/`chimol.geometry` as `types.ModuleType` with `__path__` set.
 - **numba's on-disk cache is keyed to the `chisurf.` module path**, so a JIT

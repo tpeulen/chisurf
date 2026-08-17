@@ -45,13 +45,13 @@ Three states existed at move time and none was dropped:
 |---|---|
 | full history (329 commits) | `~/dev/chimol` — extracted with filter-repo, rewritten to `chimol/` at repo root |
 | the **staged index snapshot** (204 files, the cmtk→`renderer/ui` rename direction that never materialised on disk and matches no commit) | `~/dev/chimol` commit `d13209b` — "snapshot: chisurf staged-index engine state, carried verbatim" |
-| the **disk state** the suite was green on (cmtk layout + `menus.py` + working-tree edits) | `~/dev/chimol` HEAD lineage, commit `cf9076d` |
+| the **disk state** the suite was green on (cmtk layout + `chrome/menus.py` + working-tree edits) | `~/dev/chimol` HEAD lineage, commit `cf9076d` |
 
 The staged snapshot is byte-identical (verified by blob-hash comparison) and
 sits in history one commit *before* the disk state, so the renderer/ui
 direction is recoverable with `git checkout d13209b -- .` if it is ever
-wanted. It was a rewind-era index: it deletes `repl.py`/`tour.py`/
-`keybindings.py` that HEAD ships and that the browser host imports, so it
+wanted. It was a rewind-era index: it deletes `repl.py`/`chrome/tours.py`/
+`chrome/keybindings.py` that HEAD ships and that the browser host imports, so it
 could not have become the final state.
 
 ### What the move changed on the ChiSurf side
@@ -67,17 +67,17 @@ could not have become the final state.
   checkouts (`modules/X/X/...`); chimol's allow-list key became
   `modules/chimol/chimol/app`.
 * Found-and-fixed in passing: the `chimol-cli` console script pointed at
-  `chimol.app.cli:main`, which never existed — the REPL moved to
+  `chimol.hosts.qt.cli:main`, which never existed — the REPL moved to
   `chimol.cli` months ago. Now `chimol.cli:main`.
 * `test_qt_seam.py` no longer counts `TYPE_CHECKING`-only imports as Qt
-  (same rule the chisurf seam already applied); `menus.py` was the file that
+  (same rule the chisurf seam already applied); `chrome/menus.py` was the file that
   exposed it.
 
 ### The open front, in order
 
 0. **The full-suite verdict on the move itself**: 3625 passed, 41 skipped,
    one failure — `test_keyboard_layout`'s browser case, which is
-   T-20260814-01's half-finished `web/demo.py` rewire (`key()` reads
+   T-20260814-01's half-finished `hosts/web/page.py` rewire (`key()` reads
    `self.sink`, the test stubs `.gui`) and fails identically on the pre-move
    disk state (see known-issues). Everything else the move touched was
    either green on arrival or fixed in the same change.
@@ -109,7 +109,7 @@ that ratio is the reason to keep checking:
 
 **A third was worse than a defect: the suite was reading the developer's real
 preferences.** `test/conftest.py` isolated `CHISURF_SETTINGS_DIR`, but
-`chimol.settings_dir` reads **`CHIMOL_SETTINGS_DIR`** and falls back to
+`chimol.core.settings.dirs` reads **`CHIMOL_SETTINGS_DIR`** and falls back to
 ChiSurf's directory only when that is unset. So the isolation had been a no-op
 for chimol's own files, and two assertions about *defaults* were really
 assertions about whatever the developer last clicked -- a background asserted
@@ -156,14 +156,14 @@ runs. A session fixture is too late.
 User: *"cm in browser: make demo look 1:1 like desk, still sele and mouse
 clicks not landing only obj rot works."*
 
-**The pick was never asked for.** `web/demo.py`'s `press` sent the pointer
+**The pick was never asked for.** `hosts/web/page.py`'s `press` sent the pointer
 either to the panel or to the trackball and had no third case, so every click
 was consumed as a zero-length drag and `MolView.handle_mouse_click` was never
 called from the page at all. Nothing had to be *written*: the page runs the
-real `MolView`, its windowless renderer projects, and `renderer/picking` is
+real `Viewer`, its windowless renderer projects, and `renderer/picking` is
 duck-typed (`x()`, `y()`, `modifiers()`). A press/release with a travel
 threshold and a small event shim is the whole fix. `boot.js` already builds
-the modifier mask from `chimol.host.events` values, so nothing translates.
+the modifier mask from `chimol.cmtk.events` values, so nothing translates.
 
 ### Why the rest of 1:1 is not a small change
 
@@ -231,20 +231,20 @@ they were the two the browser could not reach:
 
 **Cause, and it was already on this page as the next task.** `MENU_BAR` and
 `TOOLBAR` are plain tuples of labels and command strings, and they lived in
-`app/menu_bar.py` -- the Qt package, which a page cannot import. `InternalGui`
+`hosts/qt/menu_bar.py` -- the Qt package, which a page cannot import. `InternalGui`
 draws both whenever `gui.menubar` is filled and `menubar_visible` is already
 `True` by default, so the page had nothing to draw. The toolkit-free desktop
-host reached across the same boundary (`host/run.py` imported
+host reached across the same boundary (`hosts/native/app.py` imported
 `..app.menu_bar`), which is the same smell from the other side.
 
 Fixed by splitting the file at its natural seam: `chimol/menus.py` holds the
-data (523 lines, no Qt), `app/menu_bar.py` keeps `build_menu_bar`/`_populate`/
+data (523 lines, no Qt), `hosts/qt/menu_bar.py` keeps `build_menu_bar`/`_populate`/
 `_run` and re-exports the names so every caller is unchanged. Both hosts and
 the page now read one source. Engine->`app/` edges: **2** (`cmd/base.py` is a
 `TYPE_CHECKING` annotation; `cmd/volumes.py` -> `volume_panel` is the last real
 one).
 
-**A latent crash the move exposed.** `demos/catalog.py` computed its
+**A latent crash the move exposed.** `plugins/demos/catalog.py` computed its
 sample-data path with `parents[5]` at *module import time*. That index only
 exists five directories inside a ChiSurf checkout; in the browser bundle the
 package is three deep, so it raised `IndexError` and took the whole page down
@@ -254,11 +254,11 @@ sample directory degrades to "no samples", never to an exception.
 
 ## Injection beats a guarded import
 
-User, on seeing `settings_dir.py` keep its `try: import chisurf`: *"why not
+User, on seeing `core/settings/dirs.py` keep its `try: import chisurf`: *"why not
 conf dir inject? chisurf inject conf dir in chimol."* Right, and it generalises.
 
 A guarded import is the *tolerable* shape for a dependency that runs the wrong
-way. It is not the correct one. `settings_dir.py` asked
+way. It is not the correct one. `core/settings/dirs.py` asked
 `chisurf.core.settings` where to keep files and fell back to `~/.chimol` when
 that raised. That worked, and it was wrong twice over:
 
@@ -294,19 +294,19 @@ use them:
 
 | was | is | why it is engine |
 |---|---|---|
-| `app/picking.py` | `renderer/picking.py` | a projection and an `argmin`; the viewer calls it on every click |
+| `app/picking.py` | `render/picking.py` | a projection and an `argmin`; the viewer calls it on every click |
 | `app/command_dispatch.py` | `cmd/dispatch.py` | adapts chimol's command language to a console protocol |
 | `app/command_history.py` | `cmd/history.py` | where the prompt's history file lives |
-| `app/demo_catalog.py` | `demos/catalog.py` | now sits beside the `.pml` scripts it describes |
-| `app/demo_data.py` | `demos/data.py` | generates the material demos run on |
+| `app/demo_catalog.py` | `plugins/demos/catalog.py` | now sits beside the `.pml` scripts it describes |
+| `app/demo_data.py` | `plugins/demos/material.py` | generates the material demos run on |
 | `app/cli.py` | `cli.py` | the REPL; see below |
 
 `demos/` gained an `__init__.py` and `DEMO_DIR` became `parent` rather than
 `parent.parent / "demos"` -- all ten demos still resolve.
 
 Engine->`app/` edges went from ~11 to **three**: `cmd/base.py` (a
-`TYPE_CHECKING` annotation), `cmd/volumes.py` -> `app/volume_panel.py`, and
-`host/run.py` -> `app/menu_bar.py` for `MENU_BAR`/`TOOLBAR`, which are data and
+`TYPE_CHECKING` annotation), `cmd/volumes.py` -> `plugins/density/model.py`, and
+`hosts/native/app.py` -> `hosts/qt/menu_bar.py` for `MENU_BAR`/`TOOLBAR`, which are data and
 should move next.
 
 ### The CLI was the interesting one
@@ -336,7 +336,7 @@ fallback is for.
 
 ## `gui_overlay` moved to `host/`
 
-`renderer/gui_overlay.py` -> `host/qt_overlay.py`. It opens a `QPainter`, and
+`renderer/gui_overlay.py` -> `hosts/qt/overlay.py`. It opens a `QPainter`, and
 `renderer/` is the half that has to run in a browser. Compositing chrome is a
 *host* job: the Qt host paints it into an image, a browser host builds it as
 quads. It could not go in `cmtk` beside `qt_painter.py` -- it calls
@@ -411,7 +411,7 @@ behind.
    that refactor before deciding anything about `app/`**.
 3. **The engine reaches into `app/`** — and this is the trap in the "app stays
    behind" plan: `cmd/volumes.py`, `cmd/loader.py`, `cmd/base.py`,
-   `host/run.py`, `host/app.py`, `renderer/dbg_window.py`, `__init__.py` and
+   `hosts/native/app.py`, `hosts/base.py`, `plugins/dbg/window.py`, `__init__.py` and
    `__main__.py` all import from `app/` (mostly lazily, mostly
    `demo_catalog`/`menu_bar`/`volume_panel`). The split is therefore **not**
    simply "engine moves, `app/` stays" — that coupling has to be inverted or

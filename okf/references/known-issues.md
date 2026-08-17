@@ -2765,7 +2765,7 @@ be, because three of them were defects in the code rather than in the tests.
   _grab_chimol_viewer` rewrote `docs/guides/figures/chimol_accessibility.png`
   with ~41% of pixels changed (max channel delta 144) — the same molecule,
   orientation and blue-white-red colouring, but uniformly lighter in the
-  crevices. The ray tracer has no RNG (`grep random renderer/raytracer.py` is
+  crevices. The ray tracer has no RNG (`grep random render/raytracer.py` is
   empty) and its occlusion is its own code, not the GL shader's, so the GL
   ambient-occlusion floor cannot explain it. The figure was restored to its
   committed bytes rather than churned on an unexplained diff. Worth pinning down
@@ -3788,7 +3788,7 @@ The Chrome tools cannot reach a locally served page on this machine.
 wildly varying size scattered through the cartoon, where PyMOL draws even pink
 markers of a fixed pixel size.
 
-`renderer/view.py` sets `meta["px_mode"] = True` in **three** places — the
+`core/viewer.py` sets `meta["px_mode"] = True` in **three** places — the
 `dots` representation (`:8492`), an overlay path (`:8564`) and the selection
 indicator (`:8942`) — and `px_mode` appears **nowhere** in `wgpu_backend.py` or
 `compute.py`. The backend's geometry signature reads only `meta["size"]` and
@@ -3832,7 +3832,7 @@ green *or* a red run — a collection error here says nothing about the tests.
 selection just colors the entire protein by residue color not by atom". Two
 defects in one menu entry, and a missing menu.
 
-**1 — the selection is ignored.** `object_menus.py:537` issues
+**1 — the selection is ignored.** `chrome/object_menus.py:537` issues
 `color byelement, {sele}`. In `cmd/rendering.py`, `color()` normalises
 `byelement` to the mode `by_element` (`_normalize_color_mode`, l. 1601) and
 hands it to `_apply_color_mode` (l. 1612), which is explicit about what it then
@@ -3852,7 +3852,7 @@ subset"*. The presets (`preset simple`, `ligands`, …) get this right; the C
 menu does not.
 
 **2 — "by residue colour, not by atom" is the cartoon path.** For a molecule
-shown as cartoon the mode is consumed at `renderer/view.py:9287`, which builds
+shown as cartoon the mode is consumed at `core/viewer.py:9287`, which builds
 `_colors_per_ca` from the **CA atoms' elements** — every CA is carbon, so the
 by-element mode has nothing to vary over and the ribbon does not turn CPK. What
 the user sees instead is the previous per-residue colouring, unchanged.
@@ -3892,7 +3892,7 @@ the Sequence strip shows two rows — `1f5n` and a second row labelled
 `mutation` is a real object by design: `cmd/interactions.py:621`
 `_wizard_show_states` creates it (PyMOL's `do_library` does the same, one state
 per rotamer) and `PREVIEW_OBJECT = "mutation"`. The sequence view builds one row
-per entry in `_object_store` (`app/molview_main_window.py:1178`), so while the
+per entry in `_object_store` (`hosts/qt/window.py:1178`), so while the
 preview exists a `mutation` row is expected.
 
 **The leading hypothesis is refresh ordering in `_wizard_finish`**
@@ -3931,9 +3931,9 @@ currently only residues work"). PyMOL's mouse block carries a selection *level*
 — Atoms / Residues / Chains / Segments / Objects / Molecules — and clicking the
 word cycles it. chimol paints the line and stops there:
 
-* `renderer/internal_gui.py:398` `self.selecting = "Residues"`, painted at
+* `chrome/gui.py:398` `self.selecting = "Residues"`, painted at
   `:1835` and **never assigned again**;
-* `renderer/view.py:2461` `self.selection_mode: str = "Residues"`, which has no
+* `core/viewer.py:2461` `self.selection_mode: str = "Residues"`, which has no
   other reader or writer in the tree.
 
 So the level is a constant, there is nothing to cycle it with, and no code
@@ -4559,7 +4559,7 @@ attempt at it -- which is the system working.
 
 **Found 2026-08-12.** `pytest chisurf/plugins/chimol/test` (3,496 tests) dies
 around 16-17% with `Fatal Python error: Segmentation fault`. The dump says
-**`Garbage-collecting`**, then `_mark_closed` in `renderer/wgpu_view.py`, then
+**`Garbage-collecting`**, then `_mark_closed` in `hosts/qt/wgpu_view.py`, then
 whatever was allocating when the collection ran -- twice in a row it was
 `geometry/guide_frames.py:_flip_sweep` calling `.tolist()`, once under
 `create`, once under `spectrum`, i.e. two different tests.
@@ -4656,7 +4656,7 @@ code can run during a collection any more.
 signal (a keyword-only default holding `self.__dict__`, then a closure over
 it). The first exited 134 at interpreter shutdown *after* every test passed;
 the second is the segfault above. The full history is in the comment block
-above `_cpp_alive` in `renderer/wgpu_view.py`.
+above `_cpp_alive` in `hosts/qt/wgpu_view.py`.
 
 
 ## Clicking empty space does not clear the selection (open)
@@ -4719,7 +4719,7 @@ Picking now runs in the page, and it misses. Not a constant shift: the error
 grows toward the bottom and the right, because the projection and the render
 use **differently sized rectangles**.
 
-The renderer draws with (`web/demo.py`):
+The renderer draws with (`hosts/web/page.py`):
 
     viewport=(0.0, 0.0, self.scene_width() * dpr, self.scene_height() * dpr)
 
@@ -4798,7 +4798,7 @@ if it is still red after their landing, the hitch-step resolution in
 
 **Found 2026-08-14, during the relocation's full-suite run.** The test builds
 `object.__new__(Viewer)` and stubs `viewer.gui`; the half-finished
-`web/demo.py` on disk routes `key()` through `self.sink.on_key_press`
+`hosts/web/page.py` on disk routes `key()` through `self.sink.on_key_press`
 instead. Fails identically on the pre-move disk state — carried verbatim to
 `~/dev/chimol` — so it is that ticket's to finish, not relocation fallout.
 Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one

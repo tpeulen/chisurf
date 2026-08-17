@@ -76,7 +76,7 @@ python -m chisurf.plugins.chimol
 - Display parameters (cartoon thickness, colors, AO strength, etc.) are read from
   `chimol_display.json`. Preferred location: the ChiSurf settings directory
   (`chisurf.settings.get_path("settings")`). Fallback: a JSON file next to
-  `config.py`. Legacy `molview_display.json` or `protview_display.json` filenames
+  `core/settings/config.py`. Legacy `molview_display.json` or `protview_display.json` filenames
   are also accepted for backward compatibility.
 
 ## Developer notes
@@ -87,15 +87,14 @@ python -m chisurf.plugins.chimol
   ```
   The `mdtraj`-based DSSP comparison test is skipped automatically if `mdtraj`
   or an external DSSP binary is unavailable.
-- Key modules:
-  - `chimol/app/molview_main_window.py`: UI wiring (Qt docks, sequence, object list).
-  - `chimol/renderer/wgpu_view.py`: the Qt viewport, drawn with WebGPU from the
-    shared WGSL in `chimol/renderer/wgsl/`.
-  - `chimol/geometry/cartoon.py`: cartoon geometry generation.
-  - `chimol/config.py`: display configuration loading and defaults.
+- The engine is the `chimol` package (`~/dev/chimol`): `core/` (object model,
+  `viewer.py::Viewer`), `render/` (WebGPU backend, WGSL), `chrome/` (in-viewport
+  UI on `cmtk/`), `viewport/`, `commands/`, `io/`, `plugins/` (the plugin API and
+  the in-tree plugins), `hosts/{qt,native,web}`. See chimol's `AGENTS.md` for
+  the layering and the plugin API; this ChiSurf package is the Qt dock wrapper
+  (`chimol.hosts.qt`) and the test suite.
 - For standalone development, ensure `QT_API` is set (e.g., `PySide6` or `PyQt5`).
-- Keep user-visible strings using the Chimol name; class names remain `Viewer`
-  for API compatibility.
+- Keep user-visible strings using the Chimol name.
 
 ## Credits — what chimol was built by reading
 

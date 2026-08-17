@@ -105,7 +105,7 @@ CLI emits a friendly "not yet implemented" message.
 
 PyMOL exposes one flat namespace (`cartoon_loop_radius`, `ray_shadow`,
 `field_of_view`); chimol stores its tunables nested by subsystem in
-`_DISPLAY_CONFIG`. `settings.py` is the single table mapping one onto the other,
+`_DISPLAY_CONFIG`. `core/settings/registry.py` is the single table mapping one onto the other,
 and `set`/`get`/`unset`/`toggle` resolve through it — exact name, unambiguous
 prefix (`cartoon_oval_w`), or a dotted config path (`metaball.alpha`) for entries
 with no PyMOL equivalent.
@@ -137,7 +137,7 @@ expects. Implemented as a Qt item widget per list row, so the item keeps its
 check state and the existing handlers still fire; Qt's own check indicator is
 hidden and the item text blanked, or both render underneath the row widget.
 
-**Main menu bar** (`app/menu_bar.py`), in PyMOL's order and wording.
+**Main menu bar** (`hosts/qt/menu_bar.py`), in PyMOL's order and wording.
 
 The two surfaces make **opposite calls about gaps**, deliberately:
 
@@ -230,7 +230,7 @@ call 14.
 from swappable backends. These constraints are **load-bearing** — hold them when
 touching viewer code:
 
-1. **No Qt in controller code.** The `MolView` controller and its
+1. **No Qt in controller code.** The `Viewer` controller and its
    selection/rendering/measurement mixins must import without a `QApplication`.
 2. **`scene.py` stays Qt-free.** `Geometry`, `SceneObject`, `Scene` are plain
    dataclasses — the shared contract every backend consumes.
@@ -478,7 +478,7 @@ bridged.
 
 ## The view tuple is PyMOL's, and its transpose is a mirror
 
-`renderer/view_state.py` is the single Qt-free owner of the 18-float camera
+`core/view_state.py` is the single Qt-free owner of the 18-float camera
 tuple, shared by the GL widget, the raytracer and `get_view`/`set_view`. It emits
 **PyMOL's exact layout** so views can be copied between the two programs.
 
@@ -699,7 +699,7 @@ not just that a mesh exists.
 
 # Display config (`chimol_display.json`) — two defaults, and a legacy shadow
 
-Visual tunables live in `chimol_display.json`, loaded by `config.py:load_display_config`
+Visual tunables live in `chimol_display.json`, loaded by `core/settings/config.py:load_display_config`
 into the module-global `_DISPLAY_CONFIG`. **There are two copies of every default and
 they drift:** the shipped package `chimol_display.json` *and* a hardcoded `default = {…}`
 dict inside `load_display_config`. The dict is not just a fallback for a missing file —

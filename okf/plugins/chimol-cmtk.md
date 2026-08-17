@@ -106,7 +106,7 @@ config switch. Every wiring point removed too:
   `chisurf/plugins/chimol/test/renders/gizmo_baseline/` (the rendered PNGs) —
   all deleted.
 
-Verified after removal: `chimol.cmtk` and `chimol.renderer.internal_gui`
+Verified after removal: `chimol.cmtk` and `chimol.chrome.gui`
 import clean, 3885 tests collect (down from 3946 — the ~59 gizmo tests plus a
 handful of others gone with them), a 267-test targeted sweep
 (`test_wheel_routing`, `test_internal_gui`, `test_viewport_chrome`,
@@ -476,9 +476,9 @@ in, and confirmed both by eye:
 Re-verified: `test_gizmo.py` (22/22), `gizmo_baseline.py`'s three PNGs
 re-rendered and looked at again.
 
-**2026-08-13 — relocated: `chimol.renderer.cmtk` → `chimol.cmtk`.** User:
+**2026-08-13 — relocated: `chimol.render.cmtk` → `chimol.cmtk`.** User:
 *"cmtk should be on another module level: chimol.cmtk instead of
-chimol.renderer.cmtk."* Package physically moved up one directory
+chimol.render.cmtk."* Package physically moved up one directory
 (`chisurf/plugins/chimol/chimol/renderer/cmtk/` →
 `chisurf/plugins/chimol/chimol/cmtk/`), a bigger mechanical job than the
 `ui/`→`cmtk/` merge earlier the same session because this one changes
@@ -675,7 +675,7 @@ palette, `implot.cpp:509`, as `DEEP_PALETTE`). 16 tests in
 `test/test_cmtk_plot.py`, all passing (`RecordingPainter`, no GUI toolkit).
 
 **The first production caller is `InternalGui._paint_nerd_graph`**
-(`renderer/internal_gui.py`), not a standalone demo — a demo would have
+(`chrome/gui.py`), not a standalone demo — a demo would have
 proven the plotting code works; wiring the real "nerd mode" readout proves it
 replaces something. The four non-stacked series (fps, frame time, cpu load,
 gpu-submitted instances) now draw as real `cmtk.begin_plot` line plots with

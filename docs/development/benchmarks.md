@@ -57,7 +57,7 @@ Python 3.12.13, NumPy 2.4.6, SciPy 1.18.0, numba 0.66.0. Measured 2026-07-28.
 array. Transcendental-heavy on purpose -- a kernel that only copies memory
 measures the bus rather than the processor.
 
-ChiSurf can and does run compute shaders (`chimol.renderer.compute`), and every
+ChiSurf can and does run compute shaders (`chimol.render.compute`), and every
 kernel there is guarded by a work-item floor (`MIN_WORK_ITEMS`) below which the
 CPU route is taken. This table exists to justify that floor rather than assert
 it, by separating the two numbers that get conflated:

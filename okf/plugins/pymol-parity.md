@@ -74,7 +74,7 @@ what it blocks:
 
 * **the format is one format, and chimol reads it (2026-08-13, user round):**
   chimol builds painted forms from ChiSurf `view.json` specs
-  (`cmtk/view_spec.py` + `renderer/form_window.py`, opened with `form`).
+  (`cmtk/view_spec.py` + `chrome/panels/form.py`, opened with `form`).
   It is an **adapter, not a second renderer**: a spec becomes `Setting` rows
   over the settings editor that already existed. The trap it walked into first
   is the one worth carrying -- the draft invented `{"type": "float", "min": 0}`
@@ -175,7 +175,7 @@ what it blocks:
   shape twice. The viewer's `_objects` was a bare `OrderedDict` mutated by six
   of its own methods and by two other modules reaching in, announcing nothing;
   `_measurements` was worse -- rebound **from the command layer** in ten
-  places. Now `renderer/object_registry.py` owns the list and counts its own
+  places. Now `core/objects.py` owns the list and counts its own
   changes, and the three hosts **consume** `objects_revision()` through one
   shared rule (`host.app.consume_object_changes`) instead of each remembering
   to refresh. Pull, not push, deliberately: it is the same shape
@@ -388,7 +388,7 @@ what it blocks:
   OMITTED_MENUS reason "no structure editing" had silently gone stale.
   **Open:** structural undo beyond PyMOL's coordinate scope (topology
   snapshots so `remove`/`bond`/`unbond` can be undone) — the ring in
-  `renderer/undo.py` is the seam, and its docstring explains why the
+  `core/undo.py` is the seam, and its docstring explains why the
   current scope is deliberate; extend, don't replace;
 * **scene model export (2026-08-12):** `save x.glb/.stl/.wrl` writes the
   drawn scene as a 3-D model (`io/mesh_export.py`, wholly new); glb is the
@@ -400,7 +400,7 @@ what it blocks:
 * **the chrome is windows (2026-08-12):** Object List and Mouse are
   `GuiWindow`s (content painters untouched; the windows position
   `_panel`/`_block` and dispatch their sub-hits so z-order wins), snapping
-  with corner anchors in `renderer/window_state.py`, persistence to
+  with corner anchors in `chrome/window_state.py`, persistence to
   `chimol_windows.json` **opt-in from the shipped app only** (a bare panel
   in a test must never touch real preferences — enforced by a test).
   Docked-column mode survives behind `gui.docked = True`. Traps worth
@@ -413,7 +413,7 @@ what it blocks:
 * **map tools and a Tools menu (2026-08-12):** Hide Dust
   (`geometry/dust.py`, the reference's `size` metric = largest bbox extent;
   a display setting on the map, applied pre-refinement, preview-exempt) and
-  the Gaussian filter (`volume.py::gaussian_filtered`, FFT, **new map
+  the Gaussian filter (`core/volume.py::gaussian_filtered`, FFT, **new map
   object** — never rewrite samples the contour memo caches). The Tools menu
   (Map / Measure / Panels) is a declared extra (`EXTRA_MENUS`) so the
   PyMOL-order test tolerates it; board ticket T-20260811-12 (menu-test
@@ -540,7 +540,7 @@ that area is touched:
 
 * `DISABLED_ENTRIES` in `test/test_menu_coverage.py` — 21 menu leaves. The test
   fails both ways, so one that gains a command has to be struck;
-* `_UNSUPPORTED_FLAGS` in `cmd/sele_parser.py` — the selector's equivalent.
+* `_UNSUPPORTED_FLAGS` in `core/selection/parser.py` — the selector's equivalent.
   What is left there is genuine: `delocalized`, `flag`, `text_type`, the
   sculpting flags, the picking mask, and the `center`/`origin` pseudo-atoms.
 
@@ -709,7 +709,7 @@ which is the closest available proxy for real-world use. Re-derive it with:
   `/* … */` comments first**, or ~20 records with trailing comments are silently
   missed and the total reads 770 instead of 790; `REC__` is a retired slot;
 * count each name's occurrences under `modules/pymol/` and `modules/pmg_tk/`;
-* subtract `chimol.settings.setting_names()`.
+* subtract `chimol.core.settings.registry.setting_names()`.
 
 The appearance-bearing names at the top of that ranking, which is where to
 start: `transparency`, `surface_color`, `surface_type`, `two_sided_lighting`,
@@ -851,7 +851,7 @@ search here:
 ```c
 /*
  * CHISURF-REVIEWED: 2026-08-06
- * CHISURF-TAKEN: cSetting_stick_color -> renderer/view.py::_representation_color
+ * CHISURF-TAKEN: cSetting_stick_color -> core/viewer.py::_representation_color
  * CHISURF-SKIPPED: cSetting_valence -- chimol has no bond orders
  * CHISURF-RECORD: okf/plugins/pymol-parity.md
  * Header added by ChiSurf; the code below is untouched.
@@ -926,7 +926,7 @@ survey; nothing here is transcribed yet:
 | --- | --- | --- | --- |
 | `builder.py` | 1579 | molecular builder: fragments, valence editing | absent, and out of scope for now |
 | `pymol_qt_gui.py` | 1267 | the main window, menu bar, the command line's history | ChiMOL's is closer to this than to the Tk one |
-| `volume.py` | 877 | the volume-ramp editor: drag colour/alpha stops over a histogram | absent — ChiMOL contours by level only |
+| `core/volume.py` | 877 | the volume-ramp editor: drag colour/alpha stops over a histogram | absent — ChiMOL contours by level only |
 | `file_dialogs.py` | 855 | format-aware open/save | partly |
 | `shortcut_menu_gui.py` | 415 | **editable keyboard shortcuts**, presented as a menu | absent |
 | `properties_dialog.py` | 415 | per-atom property inspector | absent |
@@ -1220,7 +1220,7 @@ it is honest only while the reason still holds, and **nothing re-checks them**.
 Sweeping the 26 disabled leaves on 2026-08-07 found three that had had working
 commands for some time: `origin` ("chimol rotates about the scene centre"),
 `generate ▸ symmetry mates` ("chimol cannot generate symmetry mates", while
-`symexp` sat in `cmd/symmetry.py` under 53 tests) and `S/H ▸ cell` ("chimol does
+`symexp` sat in `plugins/symmetry/commands.py` under 53 tests) and `S/H ▸ cell` ("chimol does
 not read crystal cells"). To a user those read exactly like missing features.
 
 The `cell` one was worse than stale: the command existed and **did not work**.
@@ -1263,7 +1263,7 @@ and nothing pairs them up again.** The command, the keyword or the analysis
 arrives; the menu entry or the parser branch keeps its refusal, and the refusal
 is what the user sees. Worth re-reading every "chimol cannot" string whenever
 that area is touched — `DISABLED_ENTRIES` now pins the menu half, and
-`_UNSUPPORTED_FLAGS` in `cmd/sele_parser.py` is the same list for the selector.
+`_UNSUPPORTED_FLAGS` in `core/selection/parser.py` is the same list for the selector.
 
 **The clash check is PyMOL's, and it is not a command there.** It is the bump
 check inside the mutagenesis wizard: sculpting's van der Waals term, one
@@ -1471,7 +1471,7 @@ either format) and is resolved in PyMOL's favour, which the tests document.
 
 ## The selection language
 
-The vocabulary now lives in one table, `cmd/sele_keywords.py`, transcribed from
+The vocabulary now lives in one table, `core/selection/keywords.py`, transcribed from
 `Keyword[]` in `layer3/Selector.cpp`, and both the parser and the evaluator read
 it. That structure is the point, not the coverage: the parser previously kept its
 own tuple of property names which had **drifted from the evaluator**, so `resn`
@@ -1945,7 +1945,7 @@ Five tests in `test_camera_framing.py` were red, every one by a factor of
 **exactly 30**, and the round number pointed at the wrong thing: chimol scales
 coordinates by `_scale_factor` (default 10), which is close enough to feel
 related. It is not. `scene_width()` subtracts the internal panel's 220-pixel
-column and clamps what is left to **1**, so a `MolView` that has never been laid
+column and clamps what is left to **1**, so a `Viewer` that has never been laid
 out (100×30) reported an aspect of 1/30 — and PyMOL's portrait framing
 correction, told the window was thirty times taller than wide, put the camera
 thirty times too far away.
@@ -2607,7 +2607,7 @@ speedup that large is rarely a property of the geometry, it is usually the
 complexity class.
 
 The tree is a binned-SAH BVH in
-[`renderer/bvh.py`](/chisurf/plugins/chimol/chimol/renderer/bvh.py); spheres and
+[`render/bvh.py`](/chisurf/plugins/chimol/chimol/renderer/bvh.py); spheres and
 triangles share one index space so a mixed scene is one tree and one descent.
 The guardrails are in `test/test_bvh.py`, and the one that matters is the last:
 every correctness test there passes just as well against an exhaustive search,
@@ -2691,7 +2691,7 @@ Real constraints, verified:
   a full offscreen suite and were obvious in the first windowed render.
 * `ray` driven through `MolViewPluginWindow` hands the trace to a worker and
   reports `ray: cancelled` in a script with no event loop of its own. Driving a
-  bare `MolView` traces synchronously and works.
+  bare `Viewer` traces synchronously and works.
 * `ObjectsDock.widget` is a **property**. Calling it (`widget()`) raises
   `TypeError: 'QWidget' object is not callable`.
 

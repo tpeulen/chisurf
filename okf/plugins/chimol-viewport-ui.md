@@ -39,14 +39,14 @@ Two follow-on defects, each only visible once the one before it was fixed:
 - **The eye repeated itself.** It reads its next action from `row.enabled`, and
   the `sele` row was built with a constant `True` — so the second click hid the
   same atoms again. The row now reads `MolView.selection_is_visible()`, in both
-  row builders (`host/app.py` and the Qt window).
+  row builders (`hosts/base.py` and the Qt window).
 - **The panel did not re-read.** It is rebuilt from `objects_revision`, not per
   frame, and hiding rows did not bump it — so the row kept its old state
   whatever the viewer knew. `set_rows_hidden` now `touch()`es the registry,
   which is correct in its own right: it *is* a visibility change.
 
 **2026-08-13 — Help → Demo Mode is gone; Help → dbg opens a window that stays
-open.** Five tabs (`renderer/dbg_window.py`): *Frame* (nerd mode and what the
+open.** Five tabs (`plugins/dbg/window.py`): *Frame* (nerd mode and what the
 last frame cost), *Panels* (every window, with *Open all*), *Demos*, *Widgets*
 (the ported controls hosted **live**, typable, with their real state) and
 *Shaders* (every `.wgsl`, opened into the hosted code editor). Three things to
@@ -189,7 +189,7 @@ opened the context menu and took the pointer grab, so the same row's `MovZ`
 never ran at all — the row promised two things and delivered one.
 
 The fix is one idea: **the press records the action, and the move dispatches on
-it** (`_gesture_action` / `_apply_drag` in `renderer/canvas_base.py`), with the
+it** (`_gesture_action` / `_apply_drag` in `viewport/canvas.py`), with the
 menu deferred to release so a click can be told from a drag. Object motions go
 through `apply_transform_to_object`, and pixels become scene units from the
 camera's own geometry (`_scene_units_per_pixel`) so an object keeps up with the
@@ -282,19 +282,19 @@ possible to run chimol without qt. qt should be just an option, the default
 the embedding window"*.
 
 The architecture already allows this and most of the work is deletion, not
-design: `host/widget.py` makes `MolView` a plain object when there is no
-toolkit, `host/events.py` is a toolkit-free event vocabulary, and the browser
-*already* runs the real `MolView` with the real `cmd` layer and no Qt at all.
+design: `hosts/toolkit.py` makes `Viewer` a plain object when there is no
+toolkit, `cmtk/events.py` is a toolkit-free event vocabulary, and the browser
+*already* runs the real `Viewer` with the real `cmd` layer and no Qt at all.
 What is missing is a desktop host that is not a `QWidget`.
 
 **The audit, so it is not re-derived.** `test_engine_is_portable.py`'s `HOSTS`
 is the tracker — a shrinking list of modules allowed to import Qt at module
 scope. It stood at 14 and is **stale by two**: `app/hierarchy_panel.py` no
-longer exists and `app/volume_panel.py` no longer imports Qt, so
+longer exists and `plugins/density/model.py` no longer imports Qt, so
 `test_the_host_list_is_not_padded` is red on the tree until they are struck.
 
-Of the rest, only two are the embedding window — `app/molview_main_window.py`
-and `renderer/wgpu_view.py`. Everything else is removable, and in three
+Of the rest, only two are the embedding window — `hosts/qt/window.py`
+and `hosts/qt/wgpu_view.py`. Everything else is removable, and in three
 different ways:
 
 1. **Four vestigial widgets, kept alive as state holders.** `controls_panel`,
@@ -309,7 +309,7 @@ different ways:
    `VolumeViewModel`, a pure-Python model, and dropped out of `HOSTS` on its
    own. Do the same four times. This is the bulk of the job and it is
    mechanical.
-2. **Redundant copies of in-viewport panels.** `app/settings_table.py` is the
+2. **Redundant copies of in-viewport panels.** `hosts/qt/settings_table.py` is the
    Qt settings table the derived settings window replaced; it is still reachable
    from a `QAction`. `renderer/gui_overlay.py` (355 lines) is the legacy
    `QPainter` chrome rasteriser that `QuadPainter` superseded, still called from
@@ -317,7 +317,7 @@ different ways:
 3. **Dialogs — and "no dialog left" is not yet true.** Commit `edefb7d26` says
    it, and the *config* dialog is indeed gone, but `demos.ScriptEditor` is a
    live `QDialog` and there are four `QFileDialog` / `QInputDialog` call sites
-   (`app/menu_bar.py`, `app/demos.py`, `app/objects_panel.py`,
+   (`hosts/qt/menu_bar.py`, `hosts/qt/demos.py`, `app/objects_panel.py`,
    `io/structure.py`). A native file picker is defensible; a script editor is
    the kind of panel the chrome now draws.
 
@@ -352,7 +352,7 @@ What is left, in the order it is worth doing:
 
 1. **Nothing consumes the new controls yet.** They are tested and photographed
    but no panel is built from them. The two obvious first customers are named
-   below (`density_window`, `settings_editor`), and the ported `menus.py`
+   below (`density_window`, `settings_editor`), and the ported `chrome/menus.py`
    could replace ~250 lines of inline menu code in `internal_gui.py` — see
    *Re-pointing the hosts* below for what each costs.
 2. **`widgets.Table` and `widgets.Tabs` are now the lesser of two.**
@@ -414,7 +414,7 @@ covered by the grab at minimum, and the glyph problem above.
   moving (~10 lines). Its label/control split is a **weighted** two-column
   split, which `columns(n)` deliberately does not do; that needs a
   `SetColumnWidth` port first.
-* **`internal_gui.py` → `menus.py`** would delete roughly 250 lines, but four
+* **`internal_gui.py` → `chrome/menus.py`** would delete roughly 250 lines, but four
   gaps must close first: `Menu` needs scrolling/paging (the panel already has
   it, ~60 lines), `MenuItem` has nowhere to put `note`/`prompt`/`colour`, there
   is no `entry_at(x, y)` for the wheel handler, and the wizard's dynamic
@@ -466,7 +466,7 @@ reported:
    first: time one contour rebuild at the map's native step, then at step 2 and
    step 4 — ChimeraX picks the step from the voxel count and re-contours the
    *displayed region* only. The trap is that the drag already defers its rebuild
-   to `release()` (`renderer/density_window.py`), so a naive "the drag is smooth
+   to `release()` (`plugins/density/window.py`), so a naive "the drag is smooth
    now" reading says the problem is fixed when the single rebuild is still the
    cost.
 3. **Loading the NPC regressed** and takes far longer than it did. Not the same
@@ -552,7 +552,7 @@ after it is moving existing panels into one.
    layout the moment the window is, so `hide()` is not enough — `setParent(None)`
    is; and the Qt menu bar drew a **second copy of the viewport's menus directly
    above them**, which no assertion could see and the first grab showed at once.
-5. ~~**Menus in the viewport**~~ — **DONE 2026-08-11**; `app/menu_bar.py`'s
+5. ~~**Menus in the viewport**~~ — **DONE 2026-08-11**; `hosts/qt/menu_bar.py`'s
    `MENU_BAR` table now feeds `InternalGui.layout_menubar`, and the Qt bar it
    also feeds is no longer installed.
 6. ~~**Settings in the viewport**~~, and ~~**the last Qt dialog**~~ —
@@ -560,7 +560,7 @@ after it is moving existing panels into one.
    alias for `settings_panel`. Menus taller than the viewport are **paged**
    (`menu_pages` / `page_menu` / `_menu_page_button`), not only scrolled, and the Qt settings
    table is now the redundant copy rather than the only editor.
-   `renderer/settings_window.py` + `Display → Settings` / `settings_panel`.
+   `chrome/panels/settings.py` + `Display → Settings` / `settings_panel`.
 
    The part worth not re-deriving is *why the rows are derived*. A panel with a
    hand-written row per setting shows the settings somebody remembered — and

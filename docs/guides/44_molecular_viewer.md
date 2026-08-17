@@ -1916,8 +1916,8 @@ to `Cmd`:
 
 ```python
 from qtpy import QtWidgets
-from chimol.cmd.command import Cmd
-from chimol.renderer.view import MolView
+from chimol.commands.command import Cmd
+from chimol.core.viewer import MolView
 
 app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 view = MolView()
