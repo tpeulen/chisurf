@@ -17,7 +17,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.core.viewer import MolView  # noqa: E402
+from chimol.core.viewer import Viewer  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +35,7 @@ def _blob(centre, n=40, spread=5.0):
 def _load(view, points, name=None):
     """Load *points* as a real object, not a placeholder.
 
-    `set_coordinates` on a bare `MolView` leaves its entry marked
+    `set_coordinates` on a bare `Viewer` leaves its entry marked
     `placeholder`, and `create_object` prunes placeholders -- so building the
     second object would silently delete the first and the test would measure a
     single-object scene while claiming to measure two.
@@ -49,7 +49,7 @@ def _load(view, points, name=None):
 
 
 def test_the_first_object_still_defines_the_origin(qapp):
-    view = MolView()
+    view = Viewer()
     points = _blob((100.0, 0.0, 0.0))
     _load(view, points)
 
@@ -62,7 +62,7 @@ def test_the_first_object_still_defines_the_origin(qapp):
 
 def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
     """Both were landing on the origin; the second must land 40 Å away."""
-    view = MolView()
+    view = Viewer()
     first = _blob((0.0, 0.0, 0.0))
     first_id = _load(view, first)
 
@@ -89,7 +89,7 @@ def test_the_second_objects_radius_is_measured_about_the_shared_centre(qapp):
     object's own extent -- far too small to reach it -- and the camera clips it
     away.
     """
-    view = MolView()
+    view = Viewer()
     _load(view, _blob((0.0, 0.0, 0.0), spread=2.0))
     _load(view, _blob((200.0, 0.0, 0.0), spread=2.0), name="far")
 

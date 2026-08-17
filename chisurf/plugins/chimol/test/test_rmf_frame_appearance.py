@@ -28,7 +28,7 @@ RMF = pytest.importorskip("RMF")
 
 from chimol.io.rmf import load_rmf_full
 from chimol.io.structure import load_structure_payload
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 N_BEADS = 6
@@ -94,7 +94,7 @@ def qapp():
 
 def _view(path, qapp):
     _reader, payload = load_structure_payload(str(path))
-    view = MolView()
+    view = Viewer()
     view.add_payload(payload, name="colony", source_path=str(path))
     return view
 

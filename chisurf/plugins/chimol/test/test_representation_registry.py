@@ -62,11 +62,11 @@ class _WindowStub:
 
 def _viewer_and_cmd(qapp):
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
     cmd = Cmd(None, plugins=False)

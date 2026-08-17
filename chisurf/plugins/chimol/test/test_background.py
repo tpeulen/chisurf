@@ -5,7 +5,7 @@ Three layers had to line up for this to fail silently, which is why it survived:
 * the command layer's colour parser returns a **numpy array**;
 * the renderer tested ``isinstance(color, (tuple, list))``, which an ndarray is
   not, so it fell through to ``QColor(ndarray)`` — and that raises;
-* ``MolView.set_background_color`` wrapped the call in ``except Exception: pass``.
+* ``Viewer.set_background_color`` wrapped the call in ``except Exception: pass``.
 
 So the exception was swallowed, no message was emitted, and ``bg_color white``
 reported success while changing nothing. The tests below assert the *pixel*,
@@ -124,7 +124,7 @@ def test_an_unusable_colour_is_reported(session):
 
 
 def test_a_failure_to_apply_returns_false_rather_than_passing(session):
-    """`MolView.set_background_color` used to swallow every exception.
+    """`Viewer.set_background_color` used to swallow every exception.
 
     It now reports, which is what makes the command able to say it failed.
     """

@@ -28,14 +28,14 @@ from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolutio
 from chimol.io.atoms import bead_mask
 from chimol.io.structure import load_structure_payload
 from chimol.core.atoms_util import _is_bead_model
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 
 
 @pytest.fixture
 def _qt_app():
-    """Ensure a QApplication exists for MolView construction."""
+    """Ensure a QApplication exists for Viewer construction."""
     from qtpy import QtWidgets
 
     app = QtWidgets.QApplication.instance()
@@ -68,7 +68,7 @@ def single(tmp_path_factory):
 def _load(path, qt_app=None):
     """Load a file the way the window does and return the viewer."""
     _structure, payload = load_structure_payload(Path(path))
-    view = MolView()
+    view = Viewer()
     view.add_payload(payload, name="model", source_path=str(path))
     return view, payload
 
@@ -289,7 +289,7 @@ def test_stated_bonds_survive_a_bead_model(_qt_app, multires):
     stated = np.array([[0, 1], [1, 2]], dtype=int)
     payload.bonds = stated
 
-    view = MolView()
+    view = Viewer()
     view.add_payload(payload, name="bonded")
 
     assert view._bond_pairs is not None

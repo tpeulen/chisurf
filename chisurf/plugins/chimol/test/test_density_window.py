@@ -627,9 +627,9 @@ def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
 def _shell(qapp):
     """Build a viewer plus command shell, mirroring test_volume's fixture."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     messages: list[str] = []
     errors: list[str] = []
     cmd = Cmd()

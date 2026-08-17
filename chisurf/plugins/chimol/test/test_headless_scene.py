@@ -40,11 +40,11 @@ SCRIPTS = [
 
 def _build_scene(renderer_factory, script, qapp):
     """Run ``script`` through a viewer using ``renderer_factory`` and return its Scene."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     from chimol.io.structure import load_structure_payload
 
-    viewer = MolView(renderer_factory=renderer_factory)
+    viewer = Viewer(renderer_factory=renderer_factory)
     # The one route from a file into the viewer, and the Qt-free one: the parser
     # falls back to the built-in PDB reader when the core Structure (and IMP
     # behind it) is unavailable, which is exactly the web build's situation.
@@ -110,7 +110,7 @@ def test_headless_scene_matches_qt_scene(qapp, script):
     """
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt import wgpu_view
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     if not wgpu_view.is_available():
         pytest.skip("no WebGPU adapter")
@@ -151,7 +151,7 @@ def test_view_state_survives_a_round_trip():
     """
     import numpy as np
 
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     sink = SceneSink()
     sink.fit_to_radius(25.0)
@@ -169,7 +169,7 @@ def test_view_state_survives_a_round_trip():
 
 def test_scene_sink_builds_a_scene_without_a_widget(qapp):
     """The point of the exercise: geometry with no window involved."""
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     scene, viewer = _build_scene(SceneSink, ["hide everything", "show cartoon"], qapp)
     assert viewer.renderer is not None, (
@@ -202,10 +202,10 @@ def test_apply_payload_makes_the_viewer_non_empty(qapp):
 
     from chimol.commands.command import Cmd
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
-    from chimol.core.viewer import MolView
+    from chimol.viewport.headless import SceneSink
+    from chimol.core.viewer import Viewer
 
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
     assert not viewer.is_empty(), "a loaded viewer reports itself empty"

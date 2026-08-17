@@ -1,7 +1,7 @@
 """Headless verification of the DNA/RNA (nucleic) cartoon geometry.
 
 This test exercises ``_generate_nucleic_cartoon_arrays`` directly (the mesh
-builder used by ``MolView`` for DNA/RNA) without a live OpenGL context or a Qt
+builder used by ``Viewer`` for DNA/RNA) without a live OpenGL context or a Qt
 widget, so it runs anywhere numpy + matplotlib are available.
 
 It:
@@ -12,7 +12,7 @@ It:
   own, since a by-path module has no package to be relative to. The test had
   been red ever since. The dodge is also no longer needed: the engine imports
   without a toolkit;
-* builds the same inputs ``MolView`` passes (full atom array, scaled/centered
+* builds the same inputs ``Viewer`` passes (full atom array, scaled/centered
   coordinates, per-residue trace ids, per-residue colors) from the FRET docking
   example ``fps_hiv_rt/dna.pdb`` (DA/DC/DG/DT + modified 2DA, mixed ' / * sugar
   naming);
@@ -62,7 +62,7 @@ def _load_cartoon_module():
 
 
 def _build_inputs(scale: float = 10.0):
-    """Return (atoms, coords_all, res_ids, chain_ids, colors) like MolView."""
+    """Return (atoms, coords_all, res_ids, chain_ids, colors) like Viewer."""
     from chisurf.core.structure import Structure
 
     struct = Structure(str(_DNA_PDB))

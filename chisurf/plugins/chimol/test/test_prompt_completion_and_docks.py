@@ -164,7 +164,7 @@ def test_nothing_but_the_viewport_is_drawn_on_the_window(window):
         for child in window.findChildren(QtWidgets.QWidget)
         if child.isVisible() and child.parentWidget() is window
     ]
-    assert drawn == ["MolView"], drawn
+    assert drawn == ["Viewer"], drawn
     # Cut off the window, not deleted: the call sites that read them still work.
     assert window.command_panel is not None
     assert window.volume_panel is not None

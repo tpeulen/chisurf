@@ -229,7 +229,7 @@ def test_the_browser_host_passes_the_character_the_page_produced():
             seen.append(text)
             return True
 
-    viewer = object.__new__(web_demo.Viewer)
+    viewer = object.__new__(web_demo.Page)
     viewer.sink = _Sink()
     viewer.key(name="y", text="z")
     assert seen == ["z"], f"the browser host typed {seen!r}"

@@ -20,7 +20,7 @@ import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.io.atoms import make_bead_rows
 from chimol.render import backdrop
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -38,7 +38,7 @@ def blob(_qt_app):
     """Return a viewer showing a metaball over a compact cloud of beads."""
     rng = np.random.default_rng(0)
     xyz = rng.normal(scale=7.0, size=(300, 3))
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 3.0)
     )
@@ -145,11 +145,11 @@ def test_every_advertised_backdrop_renders(name):
 def gl_widget(_qt_app):
     """Return the GL widget a viewer owns; it is never realised here.
 
-    Taken from a `MolView` rather than constructed directly, because the widget
+    Taken from a `Viewer` rather than constructed directly, because the widget
     takes the viewer as its controller. No GL context is needed: setting a
     background only resolves the source and marks it dirty.
     """
-    return MolView().renderer
+    return Viewer().renderer
 
 
 def test_a_named_backdrop_is_accepted_and_reported(gl_widget):

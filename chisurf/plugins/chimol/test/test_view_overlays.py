@@ -1,4 +1,4 @@
-"""Tests for Chimol MolView point-cloud overlay public API."""
+"""Tests for Chimol Viewer point-cloud overlay public API."""
 
 from types import MethodType
 
@@ -9,7 +9,7 @@ from qtpy import QtWidgets
 from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def qt_app():
 
 
 def test_add_point_overlay_updates_dict(qt_app):
-    widget = MolView()
+    widget = Viewer()
     # Mock update_view to avoid OpenGL calls in headless pytest sessions
     called = []
     widget.update_view = lambda *args, **kwargs: called.append(True)
@@ -37,7 +37,7 @@ def test_add_point_overlay_updates_dict(qt_app):
 
 
 def test_remove_point_overlay(qt_app):
-    widget = MolView()
+    widget = Viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
@@ -53,7 +53,7 @@ def test_remove_point_overlay(qt_app):
 
 
 def test_clear_point_overlays(qt_app):
-    widget = MolView()
+    widget = Viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
@@ -66,7 +66,7 @@ def test_clear_point_overlays(qt_app):
 
 
 def test_add_sphere_returns_key_string(qt_app):
-    widget = MolView()
+    widget = Viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     center = np.array([1.0, 2.0, 3.0])
@@ -119,15 +119,15 @@ def test_add_surface_overlay_builds_mesh_scene_object():
     widget._base_color_single = np.array([1.0, 1.0, 1.0, 1.0])
     widget.update_view = lambda *args, **kwargs: None
     widget._world_to_scene_scale = MethodType(
-        MolView._world_to_scene_scale,
+        Viewer._world_to_scene_scale,
         widget,
     )
     widget._transform_world_coords_to_scene = MethodType(
-        MolView._transform_world_coords_to_scene,
+        Viewer._transform_world_coords_to_scene,
         widget,
     )
     widget._build_surface_overlay_scene = MethodType(
-        MolView._build_surface_overlay_scene,
+        Viewer._build_surface_overlay_scene,
         widget,
     )
 
@@ -142,7 +142,7 @@ def test_add_surface_overlay_builds_mesh_scene_object():
         ],
         dtype=float,
     )
-    MolView.add_surface_overlay(
+    Viewer.add_surface_overlay(
         widget,
         "av",
         coords,
@@ -153,7 +153,7 @@ def test_add_surface_overlay_builds_mesh_scene_object():
     )
 
     assert widget._point_overlays["av"]["overlay_kind"] == "surface"
-    scene_objects = MolView._update_custom_overlays(widget, {})
+    scene_objects = Viewer._update_custom_overlays(widget, {})
     assert scene_objects
     surface = scene_objects[0]
     assert surface.geometry.kind == "mesh"
@@ -170,16 +170,16 @@ def test_surface_overlay_transforms_angstrom_coords_to_scene_units():
     widget._scale_factor = 10.0
     widget.update_view = lambda *args, **kwargs: None
     widget._world_to_scene_scale = MethodType(
-        MolView._world_to_scene_scale,
+        Viewer._world_to_scene_scale,
         widget,
     )
     widget._transform_world_coords_to_scene = MethodType(
-        MolView._transform_world_coords_to_scene,
+        Viewer._transform_world_coords_to_scene,
         widget,
     )
 
     coords = np.array([[2.0, 4.0, 6.0], [1.5, 2.5, 3.5]], dtype=float)
-    MolView.add_surface_overlay(
+    Viewer.add_surface_overlay(
         widget,
         "av",
         coords,

@@ -74,7 +74,7 @@ def test_translate_is_in_angstrom_not_scene_units(qapp):
     Takes ``qapp`` rather than making its own application. It used to open with
     ``QApplication.instance() or QApplication([])`` as a bare statement, which
     keeps no reference to the application it may have just constructed -- so it
-    was collected again immediately, and the ``MolView()`` below aborted the
+    was collected again immediately, and the ``Viewer()`` below aborted the
     interpreter with ``Fatal Python error: Aborted`` rather than failing. The
     test passed anyway whenever some earlier file in the same session had left
     a live application behind, which is why it survived: it is the only test in
@@ -89,13 +89,13 @@ def test_translate_is_in_angstrom_not_scene_units(qapp):
     from chimol.commands.command import Cmd
     from chimol.io.export import unscale_coordinates
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
     )
-    view = MolView()
+    view = Viewer()
     view.add_structure(
         _read_full_model(cs_struct.Structure, pdb), name="148l",
         source_path=str(pdb),

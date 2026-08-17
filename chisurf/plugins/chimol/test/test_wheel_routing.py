@@ -24,13 +24,13 @@ Why this runs in a subprocess
 The routing lives in the toolkit-free :mod:`chimol.viewport.canvas`, and
 exercising it needs the toolkit-free viewer -- which is selected by
 ``CHIMOL_TOOLKIT=none`` **before** ``renderer.view`` is imported, because
-``class MolView(WidgetBase)`` binds its base at class-definition time.
+``class Viewer(WidgetBase)`` binds its base at class-definition time.
 
 That is process-wide, and setting it here first cost four failures in
 ``test_headless_scene.py``: every later test in the session then had a viewer
 that was no longer a ``QWidget``. Setting it *back* is not available either --
 the base is already bound. And simply not setting it does not work: with Qt
-present ``MolView`` is a ``QWidget``, and building one over an offscreen
+present ``Viewer`` is a ``QWidget``, and building one over an offscreen
 ``rendercanvas`` surface aborts the interpreter.
 
 So the whole probe runs in a child process, which is the same device

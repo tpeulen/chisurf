@@ -40,10 +40,10 @@ def scenes(qapp):
     """One assembled Scene per representation, built without a display."""
     from chimol.commands.command import Cmd
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
-    from chimol.core.viewer import MolView
+    from chimol.viewport.headless import SceneSink
+    from chimol.core.viewer import Viewer
 
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
 

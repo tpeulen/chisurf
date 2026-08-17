@@ -1,6 +1,6 @@
 """The camera stays where you put it.
 
-`MolView.update_view` used to refit the camera on **every** rebuild, and a
+`Viewer.update_view` used to refit the camera on **every** rebuild, and a
 rebuild is what colouring, a representation change, a label, a bond edit and
 every `set` all trigger. Measured on 148L before the fix: ``zoom resi 20-26``
 put the camera at 357, and **12 of 12** ordinary commands put it straight back

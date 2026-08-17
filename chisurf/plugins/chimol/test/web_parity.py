@@ -98,7 +98,7 @@ def desktop_report(size: tuple[int, int] = SIZE) -> tuple[dict[str, Any], Any]:
     from chimol.testing import parity
 
     if HAS_QT:
-        # `MolView` is a real ``QWidget`` on any machine where Qt *imports*, and
+        # `Viewer` is a real ``QWidget`` on any machine where Qt *imports*, and
         # a QWidget needs an application object before it can be constructed.
         # The browser takes `host.widget`'s stand-ins instead, which is the one
         # difference this line papers over -- and it papers over nothing that is

@@ -357,11 +357,11 @@ def test_dialog_changes_reach_the_picture_not_just_the_model():
 def test_browser_host_gets_the_same_dialog():
     """The page wires the same two hooks -- no system panel exists there."""
     from chimol.chrome.panels.file_dialog import open_file_dialog
-    from chimol.hosts.web.page import Viewer  # noqa: F401 - import proves Qt-free
+    from chimol.hosts.web.page import Page  # noqa: F401 - import proves Qt-free
 
     import inspect
 
-    source = inspect.getsource(Viewer)
+    source = inspect.getsource(Page)
     assert "open_file_dialog" in source, (
         "the browser host no longer wires the in-viewport file dialog"
     )

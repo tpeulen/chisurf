@@ -8,7 +8,7 @@ This document outlines the design and architectural goals of the FRET modeling p
    - **Core Logic**: Reusable, testable, and GUI-independent classes and functions in pure Python (e.g., `av.py`, `docking.py`, `screening.py`, `evaluate.py`, `pair_selection.py`).
    - **Command Line Interface (CLI)**: Implemented using `click` in `cli/main.py` and delegated via `__main__.py`.
    - **Web Interface Compatibility (API)**: Implemented using `fastapi` and `pydantic` in `api/router.py`.
-   - **Graphical User Interface (GUI)**: Implemented in `gui/wizard.py` embedding `LabelStructure` and `MolView`/`AVViewer3D`.
+   - **Graphical User Interface (GUI)**: Implemented in `gui/wizard.py` embedding `LabelStructure` and `Viewer`/`AVViewer3D`.
 
 2. **Full Compatibility**:
    - Strictly compatible with the legacy C# FPS parameter/label format and OLGA trajectory parameters.

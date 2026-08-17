@@ -77,14 +77,14 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
     primitive -- 0.3 s against 114 s for 148L. The impostor path has to carry
     the same record, or switching representation silently makes ``ray`` slow.
     """
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     centres = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     colours = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
     radii = np.array([1.2, 1.8])
 
-    obj = MolView._build_balls_impostors(
-        MolView.__new__(MolView), centres, colours, radii
+    obj = Viewer._build_balls_impostors(
+        Viewer.__new__(Viewer), centres, colours, radii
     )
     assert obj.geometry.kind == "points"
     assert obj.geometry.meta["world_radius"] is True
@@ -94,10 +94,10 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
 
 
 def test_the_impostor_floor_is_a_setting_and_defaults_to_every_sphere():
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    assert MolView._spheres_as_impostors(1) is True
-    assert MolView._spheres_as_impostors(100_000) is True
+    assert Viewer._spheres_as_impostors(1) is True
+    assert Viewer._spheres_as_impostors(100_000) is True
 
 
 # ── the picture ──────────────────────────────────────────────────────────

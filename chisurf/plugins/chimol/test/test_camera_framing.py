@@ -35,9 +35,9 @@ def qapp():
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    v = MolView()
+    v = Viewer()
     v.resize(800, 600)
     # The *renderer* is given a real landscape viewport, not left at whatever
     # size Qt gives an unshown widget. Without this the fixture measures the
@@ -157,7 +157,7 @@ def test_camera_distance_matches_pymol(view, complete, pymol_distance):
 def _scene_scale(view) -> float:
     """Scene units per Angstrom, recovered from the stored coordinates.
 
-    MolView works in scaled scene units; the framing rule is scale-free, so the
+    Viewer works in scaled scene units; the framing rule is scale-free, so the
     comparison with PyMOL has to divide it back out.
     """
     xyz = np.array(
@@ -296,7 +296,7 @@ def test_the_radius_now_matches_pymol_exactly():
 def test_a_widget_that_was_never_laid_out_frames_square(view):
     """An aspect measured from a 1-pixel column is not a measurement.
 
-    A never-shown ``MolView`` is 100x30 with a 220-pixel panel column, so the
+    A never-shown ``Viewer`` is 100x30 with a 220-pixel panel column, so the
     scene width comes out negative and is clamped to **1**. Read as a real
     viewport that says the window is thirty times taller than it is wide, and
     PyMOL's portrait correction then puts the camera thirty times too far away

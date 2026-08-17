@@ -58,7 +58,7 @@ class TestFactorySelection:
         having no widget -- the viewer already handles that, because
         ``SceneSink`` is what makes headless scene assembly work.
         """
-        from chimol.render.headless import SceneSink
+        from chimol.viewport.headless import SceneSink
 
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
         assert wgpu_view.default_renderer() is SceneSink
@@ -74,7 +74,7 @@ class TestFactorySelection:
 
 
 class TestRendererContract:
-    """What ``MolView`` requires of a renderer."""
+    """What ``Viewer`` requires of a renderer."""
 
     def test_it_is_a_widget_and_returns_itself(self, renderer):
         from qtpy import QtWidgets

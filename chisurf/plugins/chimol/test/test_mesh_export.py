@@ -34,9 +34,9 @@ def qapp():
 @pytest.fixture
 def shell(qapp):
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     z, y, x = np.mgrid[-10:10, -10:10, -10:10]
     grid = VolumeGrid(
         values=np.exp(-(x * x + y * y + z * z) / 30.0).astype(np.float32),

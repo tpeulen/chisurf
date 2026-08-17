@@ -17,7 +17,7 @@ import chisurf.core.structure
 import chisurf.gui.widgets
 from chisurf import logging
 from chisurf.gui.glyphs import Glyphs
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 from ..core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
 from ..core.mrc import save_av_mrc
@@ -242,11 +242,11 @@ class PositionPanel(QtWidgets.QWidget):
         self,
         parent: QtWidgets.QWidget | None = None,
         client: Any | None = None,
-        mol_view_3d: MolView | None = None,
+        mol_view_3d: Viewer | None = None,
     ) -> None:
         super().__init__(parent)
         self._client = client or self._make_default_client()
-        self.mol_view_3d = mol_view_3d or MolView()
+        self.mol_view_3d = mol_view_3d or Viewer()
         self._pdb_path: str | None = None
         self._positions: dict[str, dict[str, Any]] = {}
         self._av_cache: dict[

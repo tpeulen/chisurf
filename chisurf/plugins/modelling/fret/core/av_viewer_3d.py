@@ -8,18 +8,18 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf.core.structure
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 class AVViewer3D(QtWidgets.QWidget):
     """A 3D widget for visualizing structures, accessible volumes, and FRET restraints."""
 
     def __init__(self, parent: Optional[QtWidgets.QWidget] = None) -> None:
-        """Initialize the viewer embedding MolView."""
+        """Initialize the viewer embedding Viewer."""
         super().__init__(parent)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.mol_view = MolView(self)
+        self.mol_view = Viewer(self)
         layout.addWidget(self.mol_view)
 
     def show_structure(self, pdb_path: str) -> None:

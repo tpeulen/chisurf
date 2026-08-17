@@ -1177,7 +1177,7 @@ def test_the_wheel_bindings_come_from_the_table_too():
 
 
 # Selection cost is not tested here for the same reason the mouse routing is
-# not: it needs a real `MolView`, and constructing a QOpenGLWidget inside pytest
+# not: it needs a real `Viewer`, and constructing a QOpenGLWidget inside pytest
 # aborts the interpreter in this environment, taking every other test with it.
 #
 # Measured with a standalone probe instead, on 148L:

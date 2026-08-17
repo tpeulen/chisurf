@@ -20,7 +20,7 @@ import pytest
 
 from chimol.io.atoms import make_bead_rows
 from chimol.core.hierarchy import HierarchyNode
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -40,7 +40,7 @@ def _clustered_beads(n_core: int = 400, n_far: int = 40, seed: int = 0):
 
 def _viewer(xyz, *, hierarchy=None, radii=None):
     """Return a viewer holding ``xyz`` as beads."""
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz,
         atoms=make_bead_rows(xyz, chain_ids=["A"] * len(xyz)),

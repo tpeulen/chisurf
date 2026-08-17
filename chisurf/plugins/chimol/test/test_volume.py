@@ -383,9 +383,9 @@ def qapp():
 def shell(qapp):
     """A blob map, in a viewer, reachable from the command line."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
     values = np.exp(
         -(((xx - 12) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 40.0)

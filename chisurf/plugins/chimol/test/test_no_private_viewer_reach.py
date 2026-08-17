@@ -66,9 +66,9 @@ def qapp():
 
 
 def test_the_public_doors_exist(qapp):
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         for name in ("objects", "update_view", "gui", "renderer", "playback", "measurements",
                      "activate_object", "create_object", "end_scrub"):

@@ -24,7 +24,7 @@ import pytest
 
 from chimol.io.atoms import make_bead_rows
 from chimol.core.atoms_util import _bead_mask, _is_bead_model
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 # --------------------------------------------------------------------------- #
@@ -46,9 +46,9 @@ def _bead_atoms(n: int = 64, seed: int = 0):
 
 @pytest.fixture
 def bead_view(qapp_chimol):
-    """Return a MolView holding a 64-bead model with per-bead radii."""
+    """Return a Viewer holding a 64-bead model with per-bead radii."""
     atoms, xyz, radii = _bead_atoms()
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz,
         trace_coords=xyz,
@@ -172,7 +172,7 @@ def test_per_bead_colours_need_no_residue_lookup(bead_view):
 def test_a_protein_does_not_take_the_bead_path(qapp_chimol):
     atoms, xyz, radii = _bead_atoms(n=16)
     atoms["res_name"] = "ALA"
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(xyz, trace_coords=xyz, res_ids=atoms["res_id"],
                          res_names=atoms["res_name"], chain_ids=atoms["chain"],
                          atoms=atoms)
@@ -208,7 +208,7 @@ def _hybrid(n_atomic: int = 8, n_beads: int = 40):
 @pytest.fixture
 def hybrid_view(qapp_chimol):
     atoms, xyz, radii, trace, res_ids, res_names = _hybrid()
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz,
         trace_coords=trace,

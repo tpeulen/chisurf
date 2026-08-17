@@ -24,7 +24,7 @@ PDB = TOPDIR / "test" / "data" / "atomic_coordinates" / "pdb_files" / "hGBP1_clo
 
 
 def _segment_count(res_ids: np.ndarray, chain_ids: np.ndarray) -> int:
-    """Count trace segments the way ``MolView._update_trace`` does."""
+    """Count trace segments the way ``Viewer._update_trace`` does."""
     n = len(res_ids)
     segments = 0
     start = 0
@@ -206,14 +206,14 @@ def test_hetero_records_survive_the_parser(parsed):
 
 def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
     """Without this the cartoon has nothing to shape and draws a loop tube."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     structure, backbone = load_structure_payload(
         _FALLBACK_PDB, structure_factory=None
     )
     assert structure is None
 
-    view = MolView()
+    view = Viewer()
     view.add_coordinates(
         backbone.coords,
         name="148l",

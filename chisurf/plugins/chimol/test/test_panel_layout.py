@@ -112,7 +112,7 @@ def test_the_info_overlay_is_off_until_it_is_asked_for(window):
     """It covers a corner of the viewport with what is mostly already on screen.
 
     The object panel names the structure and the sequence strip shows its
-    residues, so the overlay earns its space only when asked for. `MolView`
+    residues, so the overlay earns its space only when asked for. `Viewer`
     already started it hidden; the toolbar button was checked at construction and
     switched it back on at startup, which is why the default was the opposite of
     the one the viewer declared.

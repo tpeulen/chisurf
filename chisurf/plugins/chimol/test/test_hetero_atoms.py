@@ -104,9 +104,9 @@ def test_a_factory_that_raises_is_not_swallowed():
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def loaded_view(qapp, structure_factory):
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     view.add_structure(
         _read_full_model(structure_factory, _PDB_148L),
         name="148l",

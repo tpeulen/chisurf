@@ -85,10 +85,10 @@ def build(scene_name: str, entry: dict):
     """Replay one baseline scene headlessly and return ``(viewer, errors)``."""
     from chimol.commands.command import Cmd
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
-    from chimol.core.viewer import MolView
+    from chimol.viewport.headless import SceneSink
+    from chimol.core.viewer import Viewer
 
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_DATA / entry["structure"])
     viewer.apply_payload(payload)
 

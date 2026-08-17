@@ -131,11 +131,11 @@ class ChiMolSectionWidget(QtWidgets.QWidget):
         if self._viewer is not None:
             return self._viewer or None
         try:
-            from chimol.core.viewer import MolView
+            from chimol.core.viewer import Viewer
             try:
-                self._viewer = MolView(self._host, scale_factor=self._scale_factor)
-            except TypeError:  # older MolView without the kwarg
-                self._viewer = MolView(self._host)
+                self._viewer = Viewer(self._host, scale_factor=self._scale_factor)
+            except TypeError:  # older Viewer without the kwarg
+                self._viewer = Viewer(self._host)
             self._host.layout().addWidget(self._viewer)
         except Exception:
             placeholder = QtWidgets.QLabel(

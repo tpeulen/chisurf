@@ -42,9 +42,9 @@ def session(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     view.add_structure(
         _read_full_model(cs_struct.Structure, _PDB_148L),
         name="ref",
@@ -103,7 +103,7 @@ def _jiggle(view, object_id, sigma: float, seed: int) -> None:
 
     Parameters
     ----------
-    view : MolView
+    view : Viewer
         Viewer holding the object.
     object_id : str
         Object to displace.
@@ -184,7 +184,7 @@ def _sync_error(view, object_id=None) -> float:
 
     Parameters
     ----------
-    view : MolView
+    view : Viewer
         Viewer holding the object.
     object_id : str, optional
         Object to check; the active one by default.

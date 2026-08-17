@@ -4,7 +4,7 @@ Why a subprocess and no Qt
 --------------------------
 The alpha-slider drag was "verified" through the Qt window while the user
 hit it in the browser, and the two are not the same host: Qt translates
-events in ``wgpu_view``, the page in ``boot.js`` → ``web.demo.Viewer`` →
+events in ``wgpu_view``, the page in ``boot.js`` → ``web.page.Page`` →
 ``button_from_dom`` → ``canvas_base.on_pointer_*``. The shared part -- the
 part that must be right -- is ``on_pointer_press/move/release`` and
 everything behind them, and *that* is what this file drives, in a process

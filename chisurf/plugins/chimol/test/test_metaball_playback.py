@@ -20,7 +20,7 @@ import pytest
 
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.io.atoms import make_bead_rows
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +35,7 @@ def blob(_qt_app):
     """Return a viewer showing metaballs over a few hundred beads."""
     rng = np.random.default_rng(0)
     xyz = rng.normal(scale=9.0, size=(400, 3))
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz,
         atoms=make_bead_rows(xyz, chain_ids=["A"] * len(xyz)),
@@ -93,7 +93,7 @@ def test_the_draft_grid_is_coarser_only_while_drafting(blob):
     blob._draft_quality = False
     assert blob._metaball_config(base).get("max_dim") == base.get("max_dim")
     blob._draft_quality = True
-    assert blob._metaball_config(base)["max_dim"] == MolView._DRAFT_METABALL["max_dim"]
+    assert blob._metaball_config(base)["max_dim"] == Viewer._DRAFT_METABALL["max_dim"]
 
 
 def test_the_draft_still_produces_a_usable_surface(blob):
@@ -132,7 +132,7 @@ def test_frames_arriving_quickly_are_a_scrub(blob):
 
 def test_an_unhurried_frame_returns_to_full_quality(blob):
     """After a pause the next frame is baked properly, timer or no timer."""
-    blob._last_frame_change = time.perf_counter() - (MolView._SCRUB_INTERVAL_S + 0.05)
+    blob._last_frame_change = time.perf_counter() - (Viewer._SCRUB_INTERVAL_S + 0.05)
     blob._note_frame_change()
     assert blob._draft_quality is False
 

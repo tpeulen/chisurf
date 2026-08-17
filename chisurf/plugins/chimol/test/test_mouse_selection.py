@@ -251,7 +251,7 @@ def test_a_stored_sele_wins_over_the_viewer_highlight(cmd):
 def viewport(qapp):
     """A laid-out viewer with a structure in it, and its GL widget."""
     from chimol.io.structure import load_structure_payload
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -260,7 +260,7 @@ def viewport(qapp):
     if not src.is_file():
         pytest.skip(f"missing fixture {src}")
     _reader, payload = load_structure_payload(str(src))
-    view = MolView()
+    view = Viewer()
     view.resize(900, 700)
     view.show()
     for _ in range(5):

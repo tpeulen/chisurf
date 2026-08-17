@@ -27,7 +27,7 @@ import pytest
 
 from chimol.core.settings.config import get_package_display_config_path
 from chimol.io.atoms import make_bead_rows
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +57,7 @@ def blob(_qt_app):
     ]
     xyz = np.vstack([left, right, bridge])
 
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 1.7)
     )
@@ -230,7 +230,7 @@ def _load(name: str, view_name: str):
         pytest.skip(f"{name} is not in the tree")
 
     _structure, payload = load_structure_payload(candidate)
-    view = MolView()
+    view = Viewer()
     view.add_payload(payload, name=view_name)
     view.set_metaballs_visible(True)
     view._draft_quality = False

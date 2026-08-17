@@ -243,9 +243,9 @@ def qapp():
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    v = MolView()
+    v = Viewer()
     v.resize(400, 300)
     v.add_structure(
         _read_full_model(cs_struct.Structure, _PDB_148L),

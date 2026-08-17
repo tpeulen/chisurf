@@ -2,12 +2,12 @@
 
 Why a subprocess
 ----------------
-``MolView`` binds its base class **once, at import time**, from
+``Viewer`` binds its base class **once, at import time**, from
 ``CHIMOL_TOOLKIT``: a ``QWidget`` where Qt is chosen, a plain object where it is
 not. So a test that wants the toolkit-free host cannot simply set that variable
 -- pytest imports every test module into one process at collection, so the
 setting reaches modules that expect Qt and they fail with things like
-*"'MolView' object has no attribute 'deleteLater'"* while passing perfectly on
+*"'Viewer' object has no attribute 'deleteLater'"* while passing perfectly on
 their own.
 
 Two other approaches were tried first and are worth recording so they are not
@@ -15,7 +15,7 @@ tried again:
 
 * setting the variable only when ``renderer.view`` is not yet imported -- which
   is *always* true at collection time, so it changed nothing;
-* creating a ``QApplication`` and letting ``MolView`` be a ``QWidget`` -- which
+* creating a ``QApplication`` and letting ``Viewer`` be a ``QWidget`` -- which
   **aborts the interpreter**, because a Qt-bound viewer with an offscreen
   rendercanvas is not a combination that works.
 

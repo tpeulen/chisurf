@@ -261,9 +261,9 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
     from qtpy import QtCore, QtGui
 
     from chimol.render.scene import Geometry, Scene, SceneObject
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     view.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
     view.resize(160, 160)
     view.show()

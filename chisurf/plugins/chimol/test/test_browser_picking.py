@@ -5,7 +5,7 @@ Why this file exists twice over
 The page could rotate the molecule and never select anything: ``Viewer.press``
 sent the pointer either to the panel or to the trackball, there was no third
 case, so every click was consumed as a zero-length drag and
-``MolView.handle_mouse_click`` was never called from the browser at all.
+``Viewer.handle_mouse_click`` was never called from the browser at all.
 
 Then it picked, and picked in the **wrong place** -- by up to 150 CSS pixels,
 worsening toward the right edge. The page drew into ``(0, 0, scene_w*dpr,
@@ -34,7 +34,7 @@ _PDB = (
 #: Run in a subprocess with ``CHIMOL_TOOLKIT=none``, which is the browser's
 #: configuration and cannot be reached in-process.
 #:
-#: ``MolView``'s base class is chosen by :mod:`chimol.hosts.toolkit` at
+#: ``Viewer``'s base class is chosen by :mod:`chimol.hosts.toolkit` at
 #: class-definition time, so by the time any test runs, ``view.py`` is imported
 #: and the choice is made. An earlier version of this file asked for a
 #: ``QApplication`` instead -- which made the tests pass while exercising the
@@ -45,8 +45,8 @@ _SCRIPT = r"""
 import os, sys
 import numpy as np
 
-from chimol_pkg.render.headless import SceneSink
-from chimol_pkg.core.viewer import MolView
+from chimol_pkg.viewport.headless import SceneSink
+from chimol_pkg.core.viewer import Viewer
 from chimol_pkg.render.wgpu_backend import WgpuMeshRenderer
 from chimol_pkg.commands import Cmd
 from chimol_pkg.hosts.base import ViewerHost
@@ -61,7 +61,7 @@ assert not HAS_QT, "the toolkit was not stripped; this is not the page's configu
 CSS = (1280, 860)
 DPR = 2.0
 
-view = MolView(renderer_factory=SceneSink)
+view = Viewer(renderer_factory=SceneSink)
 sink = view.renderer
 assert sink.widget() is None, "this backend is supposed to be windowless"
 assert view._pick_surface() is not None, "a renderer that projects can pick"
@@ -252,9 +252,9 @@ def test_the_browser_delivers_the_same_gestures_as_the_desktop():
     ``QPainter``.
     """
     from chimol.hosts.native.canvas import CanvasView
-    from chimol.hosts.web.page import Viewer
+    from chimol.hosts.web.page import Page
 
-    assert Viewer.supported_features == CanvasView.supported_features
+    assert Page.supported_features == CanvasView.supported_features
 
 
 def test_the_browser_takes_its_scene_rectangle_from_the_renderer():
@@ -265,10 +265,10 @@ def test_the_browser_takes_its_scene_rectangle_from_the_renderer():
     *delegation* rather than as an equal number: two implementations that agree
     today are two implementations.
     """
-    from chimol.hosts.web.page import Viewer
+    from chimol.hosts.web.page import Page
 
     for name in ("scene_width", "scene_height"):
-        source = Viewer.__dict__[name].__code__.co_names
+        source = Page.__dict__[name].__code__.co_names
         assert "sink" in source and name in source, (
             f"Viewer.{name} does not ask the renderer for it"
         )

@@ -13,7 +13,7 @@ import chisurf.gui.widgets as gui_widgets
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor import SimpleCodeEditor
 
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 from ..core.model import FpsJsonModel
 from .distance_panel import DistancePanel
 from .flexfit_panel import FlexFitPanel
@@ -44,7 +44,7 @@ class FpsJsonEditor(QtWidgets.QWidget):
         self._client = client or self._make_default_client()
         self._model = FpsJsonModel()
 
-        self.mol_view_3d = MolView()
+        self.mol_view_3d = Viewer()
         self.position_panel = PositionPanel(client=self._client, mol_view_3d=self.mol_view_3d)
         self.distance_panel = DistancePanel(
             position_panel=self.position_panel,

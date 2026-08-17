@@ -2,7 +2,7 @@
 
 When the core ``Structure`` reader is unavailable, ChiMOL loads a file through
 :func:`_parse_pdb_backbone` and feeds the coordinates to
-:meth:`MolView.set_coordinates`. These tests pin the two representations that
+:meth:`Viewer.set_coordinates`. These tests pin the two representations that
 regressed when the fallback started carrying a separate CA trace:
 
 * **all atoms** must render (not a sparse ~50-point CA sampling), and
@@ -18,7 +18,7 @@ import pytest
 from qtpy import QtWidgets
 
 from chimol.io.structure import _parse_pdb_backbone
-from chimol.core.viewer import _DISPLAY_CONFIG, MolView
+from chimol.core.viewer import _DISPLAY_CONFIG, Viewer
 
 _PDB = (
     Path(__file__).resolve().parents[4]
@@ -32,14 +32,14 @@ _PDB = (
 
 @pytest.fixture
 def _qt_app():
-    """Ensure a QApplication exists for MolView construction."""
+    """Ensure a QApplication exists for Viewer construction."""
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
     return app
 
 
-def _load_fallback(view: MolView) -> int:
+def _load_fallback(view: Viewer) -> int:
     """Load the fixture through the fallback path; return the atom count."""
     backbone = _parse_pdb_backbone(str(_PDB))
     view.add_coordinates(
@@ -55,7 +55,7 @@ def _load_fallback(view: MolView) -> int:
 
 def test_fallback_renders_every_atom(_qt_app) -> None:
     """The atoms representation must draw all atoms, not a CA subsample."""
-    view = MolView()
+    view = Viewer()
     n_atoms = _load_fallback(view)
     view.set_atoms_visible(True)
 
@@ -76,7 +76,7 @@ def test_fallback_renders_every_atom(_qt_app) -> None:
 
 def test_fallback_computes_bonds_and_renders_sticks(_qt_app) -> None:
     """Bonds are computed from raw coordinates so sticks can render."""
-    view = MolView()
+    view = Viewer()
     _load_fallback(view)
 
     assert view._bond_pairs is not None
@@ -95,7 +95,7 @@ def test_fallback_dots_render_every_atom(_qt_app) -> None:
     ``_all_atom_res_ids`` as ``None``; the per-residue colour path used to build
     ``np.asarray(None)`` and iterate a 0-d array.
     """
-    view = MolView()
+    view = Viewer()
     n_atoms = _load_fallback(view)
     view.set_dots_visible(True)
 
@@ -112,7 +112,7 @@ def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
     crash aborted the whole build, so metaballs (and everything else) silently
     disappeared even though their own code was correct.
     """
-    view = MolView()
+    view = Viewer()
     _load_fallback(view)
     view.set_dots_visible(True)
     view.set_metaballs_visible(True)
@@ -128,7 +128,7 @@ def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
     a scaled default; without it the sigma is ~``_scale_factor``x too small and
     marching cubes yields a handful of disconnected specks instead of a surface.
     """
-    view = MolView()
+    view = Viewer()
     _load_fallback(view)
     view.set_metaballs_visible(True)
 

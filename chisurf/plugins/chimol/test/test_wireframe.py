@@ -124,13 +124,13 @@ def view(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
     )
-    v = MolView()
+    v = Viewer()
     v.add_structure(
         _read_full_model(cs_struct.Structure, pdb), name="148l",
         source_path=str(pdb),

@@ -215,9 +215,9 @@ def qapp():
 
 def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
     """objects.changed and command.executed reach a subscriber; unload cancels it."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    viewer = MolView()
+    viewer = Viewer()
     heard: list[tuple[str, object]] = []
 
     class _Ears:

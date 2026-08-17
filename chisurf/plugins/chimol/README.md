@@ -1,6 +1,6 @@
 # Chimol — a highly opinionated 3D viewer for ChiSurf
 
-Chimol is ChiSurf's molecular viewer (class name `MolView`). It is
+Chimol is ChiSurf's molecular viewer (class name `Viewer`). It is
 deliberately opinionated, and it borrows from three places on purpose:
 **ChimeraX** for how a viewer should handle volumes, surfaces and large
 assemblies; **PyMOL** for the command language, the selection algebra and the
@@ -94,7 +94,7 @@ python -m chisurf.plugins.chimol
   - `chimol/geometry/cartoon.py`: cartoon geometry generation.
   - `chimol/config.py`: display configuration loading and defaults.
 - For standalone development, ensure `QT_API` is set (e.g., `PySide6` or `PyQt5`).
-- Keep user-visible strings using the Chimol name; class names remain `MolView`
+- Keep user-visible strings using the Chimol name; class names remain `Viewer`
   for API compatibility.
 
 ## Credits — what chimol was built by reading

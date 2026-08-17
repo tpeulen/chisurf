@@ -5,7 +5,7 @@ of the PDB file, because that is the one thing an assertion can catch that
 looking at the panel cannot: the wizard drew a perfectly convincing dashed line
 labelled with the wrong number for as long as `distance` reported scene units.
 
-The other half is *where* the measurement is stored. `MolView._update_measurements`
+The other half is *where* the measurement is stored. `Viewer._update_measurements`
 transforms the positions it is given into scene space, so a measurement built
 from the scene array is scaled and centred twice and lands nowhere near the
 atoms. Both are pinned here.

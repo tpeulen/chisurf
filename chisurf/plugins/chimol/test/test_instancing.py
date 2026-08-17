@@ -125,12 +125,12 @@ def test_an_object_with_an_instance_set_builds_instanced_meshes(qapp):
 
     import chimol
     from chimol.core.instances import InstanceSet
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     _s, payload = load_structure_payload(pdb)
     viewer.apply_payload(payload)
     viewer.update_view()
@@ -156,12 +156,12 @@ def test_the_instances_command(qapp):
 
     import chimol
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
     from chimol.hosts.base import ViewerHost
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
-    viewer = MolView(renderer_factory=SceneSink)
+    viewer = Viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None, plugins=False)
     host.cmd = cmd
@@ -180,3 +180,31 @@ def test_the_instances_command(qapp):
     assert all(o.geometry.instances is None for o in viewer._scene.objects)
     cmd.do("instances nosuch, grid 2x2x2")
     assert errors and "no object" in errors[-1]
+
+
+@pytest.mark.slow
+def test_impostors_are_drawn_once_per_copy_and_match_the_expansion():
+    """Points (and cylinders, lines) have no storage-buffer pipeline: one draw per copy, same picture."""
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
+
+    renderer = WgpuMeshRenderer(96, 96)
+    pos = np.array([[0, 0, 0]], dtype=np.float32)
+    col = np.array([[1, 0.2, 0.2, 1]], dtype=np.float32)
+    ball = Geometry(kind="points", positions=pos, colors=col, radii=np.array([2.5], dtype=np.float32),
+                    meta={"world_radius": True})
+    ball.instances = InstanceBlock(transforms=_translations([(-6, 0, 0), (0, 0, 0), (6, 0, 0)]))
+    inst = Scene(objects=[SceneObject(id="i", geometry=ball, material=Material())], center=np.zeros(3), radius=10.0)
+    img_inst = _render(inst, renderer)
+    lit = img_inst.sum(axis=2) > 60
+    assert lit.sum() > 3 * 30, f"three balls expected, {lit.sum()} px lit"
+    # three separate blobs across the middle row
+    row = lit[lit.shape[0] // 2]
+    runs = int(np.count_nonzero(np.diff(row.astype(int)) == 1))
+    assert runs == 3, f"expected 3 blobs across the middle, found {runs}"
+
+    flat = expand_instances(ball)
+    flat_scene = Scene(objects=[SceneObject(id="f", geometry=flat, material=Material())], center=np.zeros(3), radius=10.0)
+    img_flat = _render(flat_scene, renderer)
+    assert np.abs(img_inst.astype(int) - img_flat.astype(int)).max() <= 2
+    # the stats saw one draw per copy
+    assert renderer.stats is not None

@@ -24,7 +24,7 @@ and not its twist.
 The tests are written against numbers rather than pixels, because a hairball and
 a ribbon differ in ways no threshold can state while ``570 != 5235`` is exact.
 
-They run in a **child process**: the toolkit-free host needs ``MolView`` bound
+They run in a **child process**: the toolkit-free host needs ``Viewer`` bound
 without Qt, and that is decided once per process at import. See
 :mod:`.toolkit_free` for the two approaches that failed before this one.
 """

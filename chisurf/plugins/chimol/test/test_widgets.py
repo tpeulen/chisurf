@@ -5,13 +5,13 @@ from qtpy import QtWidgets
 def test_molview(qtbot):
     pytest.importorskip("OpenGL")
     try:
-        # MolView lives in the inner package; the plugin package re-exports
+        # Viewer lives in the inner package; the plugin package re-exports
         # only the window. Importing it from the wrong one made this test skip
         # itself on every run rather than fail.
-        from chimol import MolView
+        from chimol import Viewer
     except ImportError:
-        pytest.skip("MolView import failed (missing dependencies)")
-    widget = MolView()
+        pytest.skip("Viewer import failed (missing dependencies)")
+    widget = Viewer()
     qtbot.addWidget(widget)
     assert isinstance(widget, QtWidgets.QWidget)
 

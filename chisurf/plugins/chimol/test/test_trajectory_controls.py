@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
 
 @pytest.fixture(scope="module")
@@ -39,7 +39,7 @@ def jittery(_qt_app):
     base = rng.normal(scale=5.0, size=(1, n_atoms, 3))
     frames = base + drift + rng.normal(scale=1.2, size=(n_frames, n_atoms, 3))
 
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         frames[0],
         atoms=make_bead_rows(frames[0]),

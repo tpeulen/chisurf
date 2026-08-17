@@ -1,7 +1,7 @@
 """What a viewport click selects -- PyMOL's ``mouse_selection_mode``.
 
 The block's "Selecting" row showed the word ``Residues`` and nothing read it:
-``MolView.selection_mode`` and ``InternalGui.selecting`` were both constants,
+``Viewer.selection_mode`` and ``InternalGui.selecting`` were both constants,
 so residues was the only level there was. These pin the four levels chimol can
 honour, and the cross-chain trap that adding the finest one exposed.
 

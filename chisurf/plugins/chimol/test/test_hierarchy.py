@@ -184,7 +184,7 @@ def _three_level_tree():
 # honouring `set_rows_hidden`, whoever calls it.
 def test_hidden_rows_are_not_drawn(qapp_hier):
     """The point of the check box: fewer particles in the picture."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     n = 40
     rng = np.random.default_rng(1)
@@ -202,7 +202,7 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
     atoms["res_id"] = np.arange(1, n + 1)
     atoms["xyz"] = xyz
 
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz, trace_coords=xyz, res_ids=atoms["res_id"],
         res_names=atoms["res_name"], chain_ids=atoms["chain"], atoms=atoms,
@@ -219,7 +219,7 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
 
 
 def test_hiding_everything_draws_nothing(qapp_hier):
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     n = 12
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
@@ -236,7 +236,7 @@ def test_hiding_everything_draws_nothing(qapp_hier):
     atoms["res_id"] = np.arange(1, n + 1)
     atoms["xyz"] = xyz
 
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         xyz, trace_coords=xyz, res_ids=atoms["res_id"],
         res_names=atoms["res_name"], chain_ids=atoms["chain"], atoms=atoms,
@@ -262,10 +262,10 @@ def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
 
 def test_the_viewer_keeps_the_hierarchy_it_is_given(qapp_hier):
     """One field, whichever reader filled it."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     tree = _three_level_tree()
-    view = MolView()
+    view = Viewer()
     view.set_coordinates(
         np.zeros((3, 3), dtype=float) + np.arange(3)[:, None],
         hierarchy=tree,

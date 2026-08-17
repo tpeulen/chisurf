@@ -220,10 +220,10 @@ def test_draft_only_coarsens_and_never_invents_a_setting():
     setting it was meant to lower would stay at full quality with no sign of it.
     """
     from chimol.core.settings.config import _DISPLAY_CONFIG
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     real = _DISPLAY_CONFIG.get("cartoon", {})
-    for key, value in MolView._DRAFT_CARTOON.items():
+    for key, value in Viewer._DRAFT_CARTOON.items():
         assert key in real, f"draft sets {key!r}, which the cartoon config has no such key for"
         if isinstance(value, bool):
             continue
@@ -236,10 +236,10 @@ def test_the_ribbons_facing_is_never_drafted():
     Dropping these would make the ribbon flip face while scrubbing and snap back
     on settle, which reads as a glitch rather than as a redraw.
     """
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     for setting in ("refine_normals", "flat_sheets", "refine_tips", "smooth_loops"):
-        assert setting not in MolView._DRAFT_CARTOON
+        assert setting not in Viewer._DRAFT_CARTOON
 
 
 # --------------------------------------------------------------------------- #
@@ -260,9 +260,9 @@ def test_one_frame_change_on_its_own_is_never_drafted(qapp):
     the playback path -- would silently produce a coarse picture and say nothing.
     Nothing here can downgrade an isolated frame.
     """
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         view._note_frame_change()
         assert view._draft_quality is False
@@ -271,9 +271,9 @@ def test_one_frame_change_on_its_own_is_never_drafted(qapp):
 
 
 def test_frames_arriving_back_to_back_are_drafted(qapp):
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         view._note_frame_change()      # first: nothing to compare against
         view._note_frame_change()      # hard on its heels -> a scrub
@@ -286,9 +286,9 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
     """The settle timer is a bonus; the rate test alone must recover."""
     import time as _time
 
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         clock = [1000.0]
         monkeypatch.setattr(_time, "perf_counter", lambda: clock[0])
@@ -330,9 +330,9 @@ def test_interpolation_lands_between_the_two_frames(qapp):
     the obvious thing to build a fixture from -- is subtracted straight back out
     of them and every frame compares equal.
     """
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         frames = np.zeros((3, 4, 3), dtype=float)
         frames[1, :, 0] = 10.0          # frame 1 is 10 A along x
@@ -362,9 +362,9 @@ def test_interpolation_lands_between_the_two_frames(qapp):
 
 def test_the_whole_frame_setter_does_not_keep_its_own_position(qapp):
     """One position, or a spinbox and a picture will disagree about the frame."""
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         frames = np.zeros((5, 4, 3), dtype=float)
         for i in range(5):
@@ -388,9 +388,9 @@ def test_playback_reschedules_itself_instead_of_repeating(qapp):
     the difference is that the next frame is asked for only once the last one is
     drawn, so the guarantee to keep is `setSingleShot`.
     """
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
-    view = MolView()
+    view = Viewer()
     try:
         view.playback.play(33)
         timer = view.playback.timer
@@ -446,14 +446,14 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
     )
 
-    view = MolView()
+    view = Viewer()
     try:
         object_id = view.add_structure(
             _read_full_model(cs_struct.Structure, pdb),
@@ -514,14 +514,14 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
     )
 
-    view = MolView()
+    view = Viewer()
     try:
         object_id = view.add_structure(
             _read_full_model(cs_struct.Structure, pdb),

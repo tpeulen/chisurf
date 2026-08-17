@@ -5,7 +5,7 @@ import pytest
 from qtpy import QtWidgets
 
 from chimol.core.object_state import _MolViewObjectState
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 from chimol.testing.mock_viewer import MockViewer
 
 
@@ -119,7 +119,7 @@ def test_select_state_frame_replaces_same_shape_coordinate_frame() -> None:
     state.coords = frame0.copy()
     state.all_atom_coords = frame0.copy()
 
-    MolView._select_state_frame(None, state, 1)
+    Viewer._select_state_frame(None, state, 1)
 
     assert state.active_frame == 1
     np.testing.assert_array_equal(state.coords, frame1)
@@ -137,7 +137,7 @@ def test_select_state_frame_updates_ca_trace_for_same_shape_all_atom_frame() -> 
     state.residue_ids = np.array([1, 2])
     state._ca_indices = np.array([1, 4])
 
-    MolView._select_state_frame(None, state, 1)
+    Viewer._select_state_frame(None, state, 1)
 
     assert state.active_frame == 1
     np.testing.assert_array_equal(state.coords, frame1[[1, 4]])
@@ -146,7 +146,7 @@ def test_select_state_frame_updates_ca_trace_for_same_shape_all_atom_frame() -> 
 
 @pytest.fixture
 def _qt_app():
-    """Ensure a QApplication exists for MolView construction."""
+    """Ensure a QApplication exists for Viewer construction."""
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication([])
@@ -167,7 +167,7 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     from chimol.io.atoms import make_bead_rows
     from chimol.io.structure import StructurePayload
 
-    widget = MolView()
+    widget = Viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     raw_frames = np.array(

@@ -64,10 +64,10 @@ def qapp():
 
 def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(qapp, tmp_path):
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import MolView
+    from chimol.core.viewer import Viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.structure import load_structure_payload
-    from chimol.render.headless import SceneSink
+    from chimol.viewport.headless import SceneSink
 
     cmd = Cmd(None, plugins=False)
     loaded = load_plugins(cmd, [_XyzPlugin()])
@@ -79,7 +79,7 @@ def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(qapp, tmp_path
         assert payload is not None and payload.coords.shape == (3, 3)
 
         # through the whole load path: host, viewer, command
-        viewer = MolView(renderer_factory=SceneSink)
+        viewer = Viewer(renderer_factory=SceneSink)
         host = ViewerHost(viewer)
         host.cmd = cmd
         cmd.set_window(host)
