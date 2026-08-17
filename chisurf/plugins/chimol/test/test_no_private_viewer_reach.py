@@ -20,13 +20,11 @@ import chimol
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
 SCOPES = ("commands", "plugins")
 
-#: What still reaches a private, and why it may (for now).
-ALLOWED = {
-    # object-state readers the ViewerAPI will name (plan §3.2)
-    "_get_active_state", "_select_state_frame", "_scale_factor", "_selected_residues",
-    "_selected_atoms", "_atoms", "_all_atom_coords", "_raw_center", "_residue_ids",
-    "_scene", "_window", "_info_visible", "_request_chrome_redraw",
-}
+#: What still reaches a private, and why it may. Empty: every reach has a public door
+#: (viewer.active_state(), scale_factor, selected_residues, selected_atoms, info_visible,
+#: request_chrome_redraw(), select_state_frame(), wizard, pick_hook ...). A new entry
+#: here needs a reason in the commit.
+ALLOWED: set[str] = set()
 
 _ATTR = re.compile(r"\b(?:viewer|self\.viewer|self\._viewer|ctx\.viewer)\.(_[a-zA-Z]\w*)")
 _GETATTR = re.compile(r"getattr\((?:viewer|self\.viewer|self\._viewer|ctx\.viewer), \"(_[a-zA-Z]\w*)\"")
@@ -53,6 +51,7 @@ def test_the_allowlist_only_shrinks():
     found = _reaches()
     stale = sorted(n for n in ALLOWED if n not in found)
     assert not stale, f"delete from ALLOWED (no longer reached): {stale}"
+    assert not found, f"commands/plugins reach viewer privates: {sorted(found)}"
 
 
 @pytest.fixture
