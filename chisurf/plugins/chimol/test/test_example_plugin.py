@@ -105,3 +105,61 @@ def test_the_example_plugin_is_found_through_an_entry_point(stars_module, monkey
     monkeypatch.setattr(md, "entry_points", fake)
     found = discover_entry_points()
     assert any(p is stars_module.plugin for _ref, p in found)
+
+
+def test_a_folder_dropped_into_the_user_plugin_dir_loads_without_installing(tmp_path, monkeypatch):
+    """No pip, no entry point: copy the folder in, start chimol (or `plugins reload`)."""
+    import shutil
+
+    from chimol.commands.command import Cmd
+    from chimol.plugins import discover_dropins, plugin_dirs
+
+    dropin = tmp_path / "plugins"
+    dropin.mkdir()
+    shutil.copytree(_EXAMPLE / "chimol_stars", dropin / "stars_dropin")
+    (dropin / "stars_dropin" / "manifest.json").write_text('{"name": "stars", "description": "dropped in"}')
+    # a single-file plugin with a bare register(api) counts too
+    (dropin / "hello.py").write_text(
+        "from chimol.commands.registry import command, CommandGroup\n"
+        "class G(CommandGroup):\n"
+        "    @command('hello_dropin')\n"
+        "    def hello_dropin(self):\n"
+        "        self._emit_message('hi')\n"
+        "def register(api):\n"
+        "    api.add_group(G)\n"
+    )
+    # and a disabled one is left alone
+    (dropin / "off").mkdir()
+    (dropin / "off" / "__init__.py").write_text("plugin = None\nraise RuntimeError('must not import')\n")
+    (dropin / "off" / "manifest.json").write_text('{"disabled": true}')
+
+    monkeypatch.setenv("CHIMOL_PLUGIN_DIRS", str(dropin))
+    assert plugin_dirs()[0] == dropin
+    found = {getattr(p, "name", "?") for _path, p in discover_dropins()}
+    assert {"stars", "hello"} <= found and "off" not in found
+
+    cmd = Cmd(None)                        # the default load: built-ins + drop-ins
+    try:
+        assert "stars" in cmd.plugins and "hello" in cmd.plugins
+        assert cmd.plugins.loaded["stars"].source == "drop-in"
+        assert cmd._registry.resolve("hello_dropin") is not None
+        assert cmd._registry.resolve("star_count") is not None
+        # edit the drop-in and reload without a restart
+        (dropin / "hello.py").write_text(
+            "from chimol.commands.registry import command, CommandGroup\n"
+            "class G(CommandGroup):\n"
+            "    @command('hello_again')\n"
+            "    def hello_again(self):\n"
+            "        self._emit_message('hi')\n"
+            "def register(api):\n"
+            "    api.add_group(G)\n"
+        )
+        said: list[str] = []
+        cmd.set_message_callback(said.append)
+        cmd.do("plugins reload")
+        assert cmd._registry.resolve("hello_again") is not None
+        assert cmd._registry.resolve("hello_dropin") is None
+        cmd.do("plugins")
+        assert any("drop-in" in line for line in said)
+    finally:
+        cmd.plugins.unload_all()
