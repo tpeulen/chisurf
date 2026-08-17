@@ -174,3 +174,68 @@ def test_the_browser_zip_ships_the_builtin_plugins_and_no_qt(tmp_path):
     assert not [n for n in names if n.startswith("chimol/hosts/qt/")]
     assert not [n for n in names if n.startswith("chimol/hosts/native/")]
     assert "chimol/plugins/api.py" in names
+
+
+class _KeysAndSettingsPlugin:
+    name = "ks"
+
+    def register(self, api):
+        assert api.add_setting("stars_size", path="stars.size", kind="float", default=0.3, doc="star radius")
+        assert api.add_keybinding("stars_toggle", "j", "toggle_rep stars", label="Toggle the stars")
+
+
+def test_a_plugin_adds_a_setting_and_a_keybinding():
+    from chimol.chrome import keybindings
+    from chimol.core.settings import registry as settings
+
+    cmd = _cmd(plugins=False)
+    loaded = load_plugins(cmd, [_KeysAndSettingsPlugin()])
+    try:
+        assert settings.get_setting("stars_size") == 0.3
+        cmd.do("set stars_size, 0.5")
+        assert settings.get_setting("stars_size") == 0.5
+        cmd.do("unset stars_size")
+        assert settings.get_setting("stars_size") == 0.3
+        assert keybindings.action_for_key("j") == "stars_toggle"
+        assert keybindings.command_for("stars_toggle") == "toggle_rep stars"
+        assert any(b.action == "stars_toggle" for b in keybindings.bindings())
+    finally:
+        loaded.unload("ks")
+    assert keybindings.action_for_key("j") is None
+    with pytest.raises(settings.UnknownSettingError):
+        settings.resolve("stars_size")
+
+
+@pytest.fixture
+def qapp():
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
+    """objects.changed and command.executed reach a subscriber; unload cancels it."""
+    from chimol.core.viewer import MolView
+
+    viewer = MolView()
+    heard: list[tuple[str, object]] = []
+
+    class _Ears:
+        name = "ears"
+
+        def register(self, api):
+            api.on("objects.changed", lambda c: heard.append(("objects", c.kind)))
+            api.on("command.executed", lambda line: heard.append(("cmd", line)))
+
+    try:
+        cmd = Cmd(MockWindow(viewer), plugins=False)
+        loaded = load_plugins(cmd, [_Ears()])
+        assert viewer.bus.count("objects.changed") == 1
+        viewer.objects.touch("touch", "", "probe")
+        cmd.do("bg_color white")
+        assert ("objects", "touch") in heard
+        assert ("cmd", "bg_color white") in heard
+        loaded.unload("ears")
+        assert viewer.bus.count("objects.changed") == 0
+    finally:
+        viewer.deleteLater()
