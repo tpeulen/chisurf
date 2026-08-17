@@ -360,3 +360,42 @@ def test_the_chrome_routes_a_window_right_press(session):
     panel._ctx_oid = None
     gui._press_window(hit, row1.x + 60, row1.y + 2, False, False)
     assert panel._ctx_oid is None
+
+
+def test_the_smooth_slider_snaps_and_a_click_sets_it(session):
+    """Whole passes only; a click on the track sets the value at once; a repaint
+    while the thumb is held does not snap it back (the bug that made the slider
+    'work only on release, sometimes')."""
+    from chimol.cmtk.testing import RecordingPainter
+
+    win, shared, errors, qapp, tmp = session
+    viewer = win.viewer
+    shared.do("density_panel on")
+    panel = viewer.gui.panels.get("density")
+    assert panel is not None
+    gui = viewer.gui
+    window = gui.window("density")
+    body = gui.window_body(window)
+    panel.draw(RecordingPainter(), body)
+    box = panel._smooth_box
+    assert box is not None, "no smooth slider row"
+    oid = panel.model._object_id
+    assert oid, 'the panel drives no map'
+
+    # a click three quarters along the track -> a whole number of passes, applied on the press
+    x = box.x + box.w * 0.75
+    assert panel.press(x, box.y + box.h / 2, body)
+    value = panel._smooth_slider.value
+    assert value == int(value) and 6 <= value <= 8, value
+    assert viewer.get_volume_smoothing(oid) == int(value)
+    # a repaint while held keeps the slider's value
+    panel.draw(RecordingPainter(), body)
+    assert panel._smooth_slider.value == value
+    # a drag moves it in whole steps, and the release settles it
+    panel.drag(box.x + box.w * 0.25, box.y + box.h / 2, body)
+    dragged = panel._smooth_slider.value
+    assert dragged == int(dragged) and dragged < value
+    panel.release()
+    assert viewer.get_volume_smoothing(oid) == int(dragged)
+    panel.draw(RecordingPainter(), body)
+    assert panel._smooth_slider.value == dragged
