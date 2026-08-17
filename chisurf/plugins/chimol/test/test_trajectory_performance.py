@@ -388,16 +388,14 @@ def test_playback_reschedules_itself_instead_of_repeating(qapp):
     the difference is that the next frame is asked for only once the last one is
     drawn, so the guarantee to keep is `setSingleShot`.
     """
-    from qtpy import QtCore
-
     from chimol.core.viewer import MolView
 
     view = MolView()
     try:
-        timer = QtCore.QTimer(view)
-        view._animation_timer = timer
-        timer.setSingleShot(True)
+        view.playback.play(33)
+        timer = view.playback.timer
         assert timer.isSingleShot(), "playback must not repeat on a fixed interval"
+        view.playback.pause()
     finally:
         view.deleteLater()
 
@@ -491,14 +489,14 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
 
     The report: "when i disable an object and reenable it that is kind of
     slow, why there should be no recompute needed." It was not just slow for
-    the toggled object -- `_update_view` rebuilt *every visible entry* on
+    the toggled object -- `update_view` rebuilt *every visible entry* on
     every call, with no way to tell "a boolean flipped" from "the geometry
     moved". Measured on 148L with a surface, sticks and a cartoon shown, one
     disable/enable cycle cost 37.6 ms; none of it was needed, because nothing
     about the object's coordinates, colours or representations had changed --
     only whether it was drawn.
 
-    `_update_view` now takes a `visibility_only` flag, set only by
+    `update_view` now takes a `visibility_only` flag, set only by
     `set_object_visible`. Every other mutation -- colouring, editing, `set`,
     every representation change -- still asks for the unconditional rebuild,
     which bumps `_scene_build_generation` and rebuilds every visible entry for
@@ -534,7 +532,7 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
         # representations a rebuild would otherwise redo.
         view._surface_visible = True
         view._show_sticks = True
-        view._update_view()  # one general rebuild, so there is a cache to reuse
+        view.update_view()  # one general rebuild, so there is a cache to reuse
 
         builds = []
         original = view._build_scene_for_current_object
@@ -565,7 +563,7 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
         # field, then ask for the *general* (non-visibility-only) rebuild --
         # which always rebuilds for real and bumps `_scene_build_generation`.
         view._color_mode = "chain"
-        view._update_view()
+        view.update_view()
         view._build_scene_for_current_object = counted
         view.set_object_visible(object_id, True)
         assert builds, (

@@ -62,7 +62,7 @@ def session():
 
 
 def _rows(win):
-    return win.viewer._renderer._internal_gui.rows
+    return win.viewer.gui.rows
 
 
 def _scene_ids(win, name):
@@ -91,7 +91,7 @@ def test_the_row_shows_the_value(session):
 
 def test_clicking_the_row_switches_the_measurement_off_and_on(session):
     win, _run, _said = session
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     gui.layout(900, 640)
     index = [i for i, row in enumerate(gui.rows) if row.name == "d1"][0]
     rect = gui._row_rects[index]
@@ -103,7 +103,7 @@ def test_clicking_the_row_switches_the_measurement_off_and_on(session):
     assert _scene_ids(win, "d2"), "switching d1 off took d2 with it"
 
     # Off, not gone.
-    assert "d1" in win.viewer._measurements
+    assert "d1" in win.viewer.measurements
     win._run_object_menu_command("measurement d1, on")
     assert _scene_ids(win, "d1")
 
@@ -131,4 +131,4 @@ def test_delete_removes_it_from_the_list(session):
     run("measurement temporary, delete")
     win.sync_internal_gui()
     assert "temporary" not in [row.name for row in _rows(win)]
-    assert "temporary" not in win.viewer._measurements
+    assert "temporary" not in win.viewer.measurements

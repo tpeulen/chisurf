@@ -81,7 +81,7 @@ def measured():
 
         def state(app):
             r, v = app.renderer, app.viewer
-            entry = v._objects.get(next(iter(v._objects), None))
+            entry = v.objects.get(next(iter(v.objects), None))
             coords = None
             if entry is not None and getattr(entry.state, "coords", None) is not None:
                 coords = np.asarray(entry.state.coords, dtype=float).mean(axis=0)

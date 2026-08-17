@@ -61,7 +61,7 @@ def viewport(qapp):
     for _ in range(20):
         qapp.processEvents()
 
-    widget = window.viewer._renderer.widget()
+    widget = window.viewer.renderer.widget()
     if widget.height() < 200 or widget.scene_width() < 200:
         pytest.skip(
             f"viewport is {widget.scene_width()}x{widget.height()}; never laid out"

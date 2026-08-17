@@ -63,7 +63,7 @@ def session(qapp):
 
 
 def _state(viewer):
-    return viewer._renderer.lighting_state()
+    return viewer.renderer.lighting_state()
 
 
 # --------------------------------------------------------------------------- #
@@ -171,7 +171,7 @@ def test_an_unknown_preset_lists_the_real_ones(session):
 def test_the_state_round_trips_through_the_setter(session):
     """The command layer needs no translation table because the names match."""
     viewer, _shared, _do, _messages, _errors = session
-    viewer._renderer.set_lighting(
+    viewer.renderer.set_lighting(
         key_light_intensity=0.25, ambient_light_intensity=0.75
     )
     state = _state(viewer)
@@ -270,7 +270,7 @@ def _framebuffer_frame(qapp, *, ambient, key, fill=0.0, tilt=0.0):
     try:
         for _ in range(8):
             qapp.processEvents()
-        renderer = view._renderer
+        renderer = view.renderer
 
         th = np.radians(tilt)
         c, s = float(np.cos(th)), float(np.sin(th))
@@ -359,7 +359,7 @@ def test_set_lighting_rejects_an_unknown_name(session):
     """
     viewer, _shared, _do, _messages, _errors = session
     with pytest.raises(ValueError, match="unknown parameter 'nosuchparam'"):
-        viewer._renderer.set_lighting(nosuchparam=1)
+        viewer.renderer.set_lighting(nosuchparam=1)
 
 
 # --------------------------------------------------------------------------- #
@@ -399,7 +399,7 @@ def _window_with_molecule(qapp):
     window.resize(1100, 780)
     for _ in range(20):
         qapp.processEvents()
-    widget = window.viewer._renderer.widget()
+    widget = window.viewer.renderer.widget()
     assert widget.scene_width() >= 200, (
         f"the 3-D viewport is {widget.scene_width()} px wide; the window was "
         "never laid out, so nothing below would be measuring the renderer"
@@ -409,7 +409,7 @@ def _window_with_molecule(qapp):
 
 def _frame(window, qapp) -> np.ndarray:
     """Repaint and read the framebuffer back as ``(H, W, 3)`` uint8."""
-    widget = window.viewer._renderer.widget()
+    widget = window.viewer.renderer.widget()
     for _ in range(8):
         qapp.processEvents()
     widget.makeCurrent()
@@ -449,7 +449,7 @@ def test_an_effect_pass_leaves_the_rest_of_the_frame_alone(qapp):
 
         before = _frame(window, qapp)
         cmd.do("lighting silhouette=on")
-        assert window.viewer._renderer._post.silhouette is True
+        assert window.viewer.renderer._post.silhouette is True
         after = _frame(window, qapp)
 
         assert after.shape == before.shape
@@ -482,7 +482,7 @@ def test_the_sequence_strip_survives_an_effect_pass(qapp):
         cmd.set_error_callback(lambda _m: None)
         cmd.do("as cartoon")
 
-        widget = window.viewer._renderer.widget()
+        widget = window.viewer.renderer.widget()
         strip_logical = widget._internal_gui.sequence_height()
         if strip_logical <= 0:
             pytest.skip("this window shows no sequence strip")
@@ -585,7 +585,7 @@ def test_turning_the_depth_cue_off_reaches_the_viewport(qapp):
         cmd = Cmd(window)
         cmd.set_message_callback(lambda _m: None)
         cmd.set_error_callback(lambda _m: None)
-        renderer = window.viewer._renderer
+        renderer = window.viewer.renderer
 
         cmd.do("set depth_cue, on")
         _end_on, scale_on = renderer._fog_planes()

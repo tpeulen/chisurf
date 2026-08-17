@@ -89,12 +89,12 @@ def window():
 
 def test_the_prompt_has_a_completer(window):
     """It is the dispatcher the console used, so both complete identically."""
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     assert gui.command_line.completions is not None
 
 
 def test_tab_completes_through_the_whole_path(window):
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     gui.command_line.visible = True
     gui.focus_command(True)
     gui.command_line.set_text("distanc")
@@ -107,8 +107,8 @@ def test_the_widget_claims_tab_while_something_is_being_typed(window):
     """Qt gives Tab to focus navigation first; the widget has to take it back."""
     from qtpy import QtCore, QtGui
 
-    gui = window.viewer._renderer._internal_gui
-    renderer = window.viewer._renderer
+    gui = window.viewer.gui
+    renderer = window.viewer.renderer
     gui.command_line.visible = True
     gui.focus_command(True)
     gui.command_line.set_text("zoo")
@@ -173,11 +173,11 @@ def test_nothing_but_the_viewport_is_drawn_on_the_window(window):
 def test_the_object_list_is_still_there_in_the_viewport(window):
     """Removing the dock must not remove the thing it duplicated."""
     window.sync_internal_gui()
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     names = [row.name for row in gui.rows]
     assert "all" in names and "sele" in names
 
 
 def test_the_prompt_is_still_there(window):
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     assert gui.command_line.visible

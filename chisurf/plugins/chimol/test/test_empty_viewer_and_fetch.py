@@ -64,8 +64,8 @@ def test_a_placeholder_does_not_count_as_content(session):
     """It exists so pre-load settings survive; it is not a molecule."""
     win, shared, _errors, _messages = session
     shared.do("delete all")
-    assert win.viewer._objects, "the placeholder is the thing under test"
-    assert all(e.placeholder for e in win.viewer._objects.values())
+    assert win.viewer.objects, "the placeholder is the thing under test"
+    assert all(e.placeholder for e in win.viewer.objects.values())
     assert win.viewer.is_empty() is True
 
 

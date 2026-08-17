@@ -168,7 +168,7 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     from chimol.io.structure import StructurePayload
 
     widget = MolView()
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
 
     raw_frames = np.array(
         [
@@ -189,7 +189,7 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     )
     object_id = widget.add_payload(payload, name="rmf_test")
 
-    entry = widget._objects[object_id]
+    entry = widget.objects[object_id]
     state = entry.state
 
     # frames_raw must stay in input units (Angstrom)

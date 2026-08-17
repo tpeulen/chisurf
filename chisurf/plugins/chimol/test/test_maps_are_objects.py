@@ -64,7 +64,7 @@ def measured():
 
         app.cmd.do("density_panel on")
         app.renderer.draw_frame()
-        panel = viewer._renderer._internal_gui.panels["density"]
+        panel = viewer.gui.panels["density"]
         emit("panel_newest", panel.model.summary()[:24])
 
         errors.clear()

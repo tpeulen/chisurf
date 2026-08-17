@@ -73,7 +73,7 @@ def _names(view) -> list[str]:
 def _object(view, name: str):
     for obj in view.list_objects():
         if str(obj["name"]) == name:
-            return view._objects[obj["id"]]
+            return view.objects[obj["id"]]
     raise AssertionError(f"no object named {name!r}")
 
 

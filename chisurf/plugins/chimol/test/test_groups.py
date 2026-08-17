@@ -88,7 +88,7 @@ def _rows(win):
     The ``all`` header and the ``sele`` pseudo-object are filtered out: they
     are chrome, not objects, and the dock did not list them.
     """
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     return [
         ("group" if row.is_group else "object", row.name)
         for row in gui.rows
@@ -359,7 +359,7 @@ def test_the_members_are_indented_and_the_header_is_not(session):
     """
     win, do, _ = session
     do("group ligands, lig")
-    rows = {row.name: row for row in win.viewer._renderer._internal_gui.rows}
+    rows = {row.name: row for row in win.viewer.gui.rows}
     assert "ligands" in rows and "lig" in rows
     assert rows["lig"].indent > rows["ligands"].indent, (
         "a group member has to look like one"
@@ -370,7 +370,7 @@ def test_the_group_header_carries_the_same_five_menus(session):
     """A group is a command target, so it needs the menus that act on one."""
     win, do, _ = session
     do("group ligands, lig nag")
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     index = next(
         (i for i, r in enumerate(gui.rows) if r.is_group and r.name == "ligands"),
         None,

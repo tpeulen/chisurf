@@ -164,7 +164,7 @@ def test_the_grid_spacing_follows_the_scene(session):
     """A fixed spacing gives four lines on a peptide and four hundred on a
     ribosome; the second is a grey sheet that buries the molecule."""
     win, _do, _errors = session
-    renderer = win.viewer._renderer
+    renderer = win.viewer.renderer
 
     small = renderer._build_grid_draw_data(10.0)
     large = renderer._build_grid_draw_data(2000.0)
@@ -175,7 +175,7 @@ def test_the_grid_spacing_follows_the_scene(session):
 
 def test_the_grid_line_count_is_bounded(session):
     win, _do, _errors = session
-    renderer = win.viewer._renderer
+    renderer = win.viewer.renderer
     for radius in (1.0, 50.0, 200.0, 5000.0):
         draw = renderer._build_grid_draw_data(radius)
         assert draw is not None
@@ -190,7 +190,7 @@ def test_the_grid_is_translucent(session):
     """It is a reference, not a subject: at full strength it competes with the
     molecule for attention."""
     win, _do, _errors = session
-    draw = win.viewer._renderer._build_grid_draw_data(100.0)
+    draw = win.viewer.renderer._build_grid_draw_data(100.0)
     assert draw is not None
     assert float(draw.colors[0][3]) < 1.0
 
@@ -198,7 +198,7 @@ def test_the_grid_is_translucent(session):
 def test_showing_the_plane_adds_geometry(session):
     """`_grid_visible` alone proves nothing -- the draw list has to grow."""
     win, _do, _errors = session
-    renderer = win.viewer._renderer
+    renderer = win.viewer.renderer
     before = len(renderer._draw_data)
     renderer.set_grid_visible(True)
     assert renderer._grid_visible is True

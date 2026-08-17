@@ -222,7 +222,7 @@ def test_the_form_command_opens_a_window():
         app.renderer.draw_frame()
         emit("painted", "yes")
 
-        panel = list(app.viewer._form_controls.values())[0]
+        panel = next(v for k, v in app.viewer.gui.panels.items() if k.startswith("form:"))
         emit("rows", len(panel.model.settings))
         emit("missing", "; ".join(panel.missing) or "none")
     ''')

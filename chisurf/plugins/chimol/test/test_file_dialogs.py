@@ -114,7 +114,7 @@ _DRIVE = '''
     app.renderer.on_pointer_press(cx, cy, LEFT_BUTTON, 0, double=True)
     app.renderer.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     sources = [str(getattr(e, "source_path", "") or "")
-               for e in app.viewer._objects.values()]
+               for e in app.viewer.objects.values()]
     emit("loaded", str(any(s.endswith("148l.pdb") for s in sources)))
     emit("closed_after_choose", str(not win.visible))
 

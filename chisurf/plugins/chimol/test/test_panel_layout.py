@@ -141,7 +141,7 @@ def test_the_info_panel_is_chrome_not_a_stacked_widget(window):
         "the info panel is a stacked Qt widget again"
     )
     container = win.viewer._container
-    renderer = win.viewer._renderer.widget()
+    renderer = win.viewer.renderer.widget()
     stacked = [
         child for child in container.children()
         if isinstance(child, QtWidgets.QWidget) and child is not renderer
@@ -163,11 +163,11 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
 
     from chimol.hosts.qt.overlay import refresh_gui_state
 
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     # The two calls the renderer makes to build its chrome: the panel's text is
     # pulled from the viewer at paint time, like the sequence colours.
     refresh_gui_state(gui, win.viewer)
-    gui.layout(win.viewer._renderer.width(), win.viewer._renderer.height())
+    gui.layout(win.viewer.renderer.width(), win.viewer.renderer.height())
     rect = gui._info_rect
     assert rect.w > 0 and rect.h > 0, "the panel was not laid out"
     assert rect.x <= gui.MARGIN + 1, f"expected the left edge, got x={rect.x}"

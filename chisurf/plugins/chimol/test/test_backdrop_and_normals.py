@@ -149,7 +149,7 @@ def gl_widget(_qt_app):
     takes the viewer as its controller. No GL context is needed: setting a
     background only resolves the source and marks it dirty.
     """
-    return MolView()._renderer
+    return MolView().renderer
 
 
 def test_a_named_backdrop_is_accepted_and_reported(gl_widget):

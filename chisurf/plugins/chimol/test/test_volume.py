@@ -451,7 +451,7 @@ def test_a_map_adopts_the_frame_of_what_is_already_loaded(shell):
         grid.values, origin=(500.0, 0.0, 0.0), step=(1.0, 1.0, 1.0)
     )
     object_id = view.add_volume(offset)
-    with view._activate_object(object_id):
+    with view.activate_object(object_id):
         assert np.allclose(np.asarray(view._raw_center, dtype=float), existing)
     # ...and the geometry lands far from the origin, as its origin says.
     verts = [
@@ -602,19 +602,19 @@ def test_a_level_change_does_not_rebuild_the_rest_of_the_scene(shell):
     assert before, "the map did not reach the scene"
 
     calls = {"n": 0}
-    original = view._update_view
+    original = view.update_view
 
     def counting(*args, **kwargs):
         calls["n"] += 1
         return original(*args, **kwargs)
 
-    view._update_view = counting
+    view.update_view = counting
     try:
         ok = view.set_volume_levels(
             [{"level": 0.5, "color": (1.0, 0.0, 0.0, 1.0), "style": "surface"}]
         )
     finally:
-        view._update_view = original
+        view.update_view = original
 
     assert ok
     assert calls["n"] == 0, "a level change fell back to a full scene rebuild"

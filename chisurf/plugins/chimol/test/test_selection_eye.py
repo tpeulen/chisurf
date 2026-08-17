@@ -49,7 +49,7 @@ def measured():
         app.renderer.draw_frame()
 
         def hidden():
-            entry = app.viewer._objects[app.viewer.get_active_object_id()]
+            entry = app.viewer.objects[app.viewer.get_active_object_id()]
             mask = getattr(entry.state, "hidden_mask", None)
             return 0 if mask is None else int(np.asarray(mask).sum())
 

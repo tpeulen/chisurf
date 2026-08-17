@@ -432,16 +432,16 @@ def test_a_finder_that_finds_nothing_clears_its_measurement(cmd):
     """
     command, window = cmd
     command.do("distance probe, all, all, mode=10")
-    assert "probe" in window.viewer._measurements
+    assert "probe" in window.viewer.measurements
     command.do("distance probe, all, all, mode=9")
-    assert "probe" not in window.viewer._measurements
+    assert "probe" not in window.viewer.measurements
 
 
 def test_the_salt_bridges_reach_the_viewport(cmd):
     """A measurement with two points per bridge, drawn as dashes."""
     command, window = cmd
     command.do("distance sb, all, all, mode=10")
-    entry = window.viewer._measurements["sb"]
+    entry = window.viewer.measurements["sb"]
     assert entry["kind"] == "dashes"
     positions = np.asarray(entry["positions"])
     assert positions.ndim == 2 and positions.shape[1] == 3
@@ -477,7 +477,7 @@ def test_one_chain_is_reported_rather_than_drawn(cmd):
     command.do("interchain_distances solo, chain E, 4.0")
     assert command._errors == [], command._errors
     assert any("one chain" in m for m in command._messages), command._messages
-    assert "solo" not in window.viewer._measurements
+    assert "solo" not in window.viewer.measurements
 
 
 def test_the_origin_menu_entry_runs(cmd):

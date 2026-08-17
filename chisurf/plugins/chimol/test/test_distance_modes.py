@@ -59,7 +59,7 @@ def session(qapp):
 
 def _segments(win, name: str) -> int:
     """How many dashed segments a measurement holds."""
-    entry = win.viewer._measurements.get(name)
+    entry = win.viewer.measurements.get(name)
     if entry is None:
         return 0
     return int(entry["positions"].shape[0]) // 2
@@ -108,9 +108,9 @@ def test_a_trailing_number_is_the_cutoff_pymol_puts_there(session):
 def test_label_zero_draws_dashes_without_numbers(session):
     win, do, _messages, _errors = session
     do("distance hb, all, all, mode=2, label=0")
-    assert win.viewer._measurements["hb"]["labels"] == []
+    assert win.viewer.measurements["hb"]["labels"] == []
     do("distance hb, all, all, mode=2")
-    assert win.viewer._measurements["hb"]["labels"]
+    assert win.viewer.measurements["hb"]["labels"]
 
 
 # --------------------------------------------------------------------------- #
@@ -125,7 +125,7 @@ def test_finding_nothing_clears_the_previous_answer(session):
     do("distance conts, all, not all, mode=2")
     assert errors == []
     assert _segments(win, "conts") == 0
-    assert "conts" not in win.viewer._measurements
+    assert "conts" not in win.viewer.measurements
 
 
 def test_two_atoms_still_measure_as_one_distance(session):
@@ -133,5 +133,5 @@ def test_two_atoms_still_measure_as_one_distance(session):
     win, do, messages, errors = session
     do("distance d1, resi 10 and name CA, resi 20 and name CA")
     assert errors == []
-    assert win.viewer._measurements["d1"]["kind"] == "distance"
+    assert win.viewer.measurements["d1"]["kind"] == "distance"
     assert "d1" in messages[-1] or "res" in messages[-1]

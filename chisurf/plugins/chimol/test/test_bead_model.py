@@ -123,7 +123,7 @@ def test_a_bead_model_has_no_bonds(bead_view):
 
 
 def test_the_masks_survive_the_scene_build(bead_view):
-    """`_update_view` runs inside `set_coordinates`; the defaults must not win."""
+    """`update_view` runs inside `set_coordinates`; the defaults must not win."""
     view, radii = bead_view
     objects = view._build_scene_for_current_object()
     ids = {o.id.split(":")[-1] for o in objects}

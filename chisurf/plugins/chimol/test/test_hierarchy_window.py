@@ -73,7 +73,7 @@ def panel():
         state = _State()
 
     class _Viewer:
-        _objects = {"o1": _Entry()}
+        objects = {"o1": _Entry()}
 
         def get_active_object_id(self):
             return "o1"
@@ -174,7 +174,7 @@ def test_a_press_on_the_label_changes_nothing(panel):
 
 def test_it_says_so_when_there_is_no_tree():
     class _Viewer:
-        _objects = {}
+        objects = {}
 
         def get_active_object_id(self):
             return None
@@ -416,7 +416,7 @@ def test_a_plain_structure_gets_a_chain_tree():
         name = "1abc"
 
     class _Viewer:
-        _objects = {"o1": _Entry()}
+        objects = {"o1": _Entry()}
 
         def get_active_object_id(self):
             return "o1"

@@ -61,7 +61,7 @@ def session(qapp):
 def _cb_119(viewer) -> int:
     """Index of 148L's residue-119 CB -- the usual labelling position."""
     oid = viewer.get_active_object_id()
-    atoms = viewer._objects[oid].state.atoms
+    atoms = viewer.objects[oid].state.atoms
     hits = np.where(
         (atoms["res_id"] == 119) & (atoms["atom_name"] == "CB")
     )[0]
@@ -127,9 +127,9 @@ def test_delete_last_removes_the_av_object(session):
     viewer._wizard_pick(_cb_119(viewer))
     shared.do("wizard apply")
     doomed = state.created[-1]
-    assert doomed in viewer._objects
+    assert doomed in viewer.objects
     shared.do("wizard delete, last")
-    assert doomed not in viewer._objects
+    assert doomed not in viewer.objects
     assert not state.created
     shared.do("wizard done")
 

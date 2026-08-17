@@ -79,16 +79,16 @@ def test_the_panel_lists_and_switches_between_densities(session):
     # are unique).
     shared.do("add_dye resi 8 and name CB, Cy3")
     third = [
-        oid for oid, entry in viewer._objects.items()
+        oid for oid, entry in viewer.objects.items()
         if getattr(entry, "name", "") == "E8_CB"
     ][0]
     model.select_object(third)
     assert model._grid() is not None
     assert model._object_id == third
     # Deleting the dye takes its mean bead with it -- one delete, both rows.
-    mp_of_third = viewer._objects[third].state.av_mean_object_id
+    mp_of_third = viewer.objects[third].state.av_mean_object_id
     viewer.remove_object(third)
-    assert third not in viewer._objects and mp_of_third not in viewer._objects
+    assert third not in viewer.objects and mp_of_third not in viewer.objects
     assert model._grid() is not None
     assert model._object_id != third
 
@@ -97,7 +97,7 @@ def test_the_smoothing_slider_pins_and_relaxes(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     oid = [
-        o for o, e in viewer._objects.items()
+        o for o, e in viewer.objects.items()
         if getattr(e.state, "av", None) is not None
     ][0]
     assert viewer.get_volume_smoothing(oid) == -1, "preset decides by default"
@@ -115,7 +115,7 @@ def test_the_alpha_edit_recolors_without_recontouring(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     oid = [
-        o for o, e in viewer._objects.items()
+        o for o, e in viewer.objects.items()
         if getattr(e.state, "av", None) is not None
     ][0]
     mesh = next(
@@ -143,7 +143,7 @@ def test_the_wizard_measures_fps_distance_types(session):
     viewer = win.viewer
     mp = {
         getattr(e, "name", ""): oid
-        for oid, e in viewer._objects.items()
+        for oid, e in viewer.objects.items()
         if getattr(e, "name", "").startswith("av_") and getattr(e, "name", "").endswith("_mp")
     }
     assert len(mp) == 2, f"expected two mean-position objects, got {sorted(mp)}"
@@ -158,7 +158,7 @@ def test_the_wizard_measures_fps_distance_types(session):
         shared.do(f"wizard pick, {a}:0")
         shared.do(f"wizard pick, {b}:0")
         name = state.created[-1]
-        results[distance_type] = viewer._measurements[name]["label"]
+        results[distance_type] = viewer.measurements[name]["label"]
     shared.do("wizard done")
 
     # The physics is ordered: the FRET-averaged <R_DA>_E is pulled below the
@@ -202,11 +202,11 @@ def test_fps_load_draws_the_documents_distances(session):
     shared.do(f"load {PDB}")
     shared.do("fps_load " + str(tmp / "rt_d.json"))
     assert errors == [], errors[:2]
-    assert "brick" in viewer._measurements, list(viewer._measurements)
-    positions = np.asarray(viewer._measurements["brick"]["positions"])
+    assert "brick" in viewer.measurements, list(viewer.measurements)
+    positions = np.asarray(viewer.measurements["brick"]["positions"])
     assert positions.shape == (2, 3), "the line connects the two mean positions"
-    assert "brick" in str(viewer._measurements["brick"]["label"])
-    assert "50" not in viewer._measurements["brick"]["label"] or True
+    assert "brick" in str(viewer.measurements["brick"]["label"])
+    assert "50" not in viewer.measurements["brick"]["label"] or True
 
 
 def test_stacked_rows_carry_their_own_eye_and_alpha(session):
@@ -221,7 +221,7 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
-    panel = viewer._renderer._internal_gui.panels.get("density")
+    panel = viewer.gui.panels.get("density")
     assert panel is not None, "the density panel is not open"
 
     class _Recorder:
@@ -235,7 +235,7 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
         def text_width(self, s): return len(str(s)) * self.CHAR_W
         def line_height(self): return 16.0
 
-    gui = viewer._renderer._internal_gui
+    gui = viewer.gui
     window = gui.window("density")
     body = gui.window_body(window)
     panel.draw(_Recorder(), body)
@@ -252,12 +252,12 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
 
     # The eye toggles only its own row's object.
     eye2 = next(b for b, o in panel._row_eyes if o == oid2)
-    was = viewer._objects[oid2].visible
+    was = viewer.objects[oid2].visible
     panel.press(eye2.x + 2, eye2.y + 2, rect)
-    assert viewer._objects[oid2].visible == (not was)
-    assert viewer._objects[oid1].visible, "the other row's eye moved"
+    assert viewer.objects[oid2].visible == (not was)
+    assert viewer.objects[oid1].visible, "the other row's eye moved"
     panel.press(eye2.x + 2, eye2.y + 2, rect)
-    assert viewer._objects[oid2].visible == was
+    assert viewer.objects[oid2].visible == was
 
     # The alpha slider fades only its own row's contours.
     box2, slider2 = panel._row_alpha[oid2]
@@ -298,8 +298,8 @@ def test_a_rows_context_menu_sets_that_densitys_display(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
-    panel = viewer._renderer._internal_gui.panels["density"]
-    gui = viewer._renderer._internal_gui
+    panel = viewer.gui.panels["density"]
+    gui = viewer.gui
     _draw_rows(panel, gui)
     oid1 = panel._row_boxes[0][1]
     oid2 = panel._row_boxes[1][1]
@@ -346,8 +346,8 @@ def test_the_chrome_routes_a_window_right_press(session):
     the `on_context` hook, not just the panel method."""
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
-    gui = viewer._renderer._internal_gui
-    panel = viewer._renderer._internal_gui.panels["density"]
+    gui = viewer.gui
+    panel = viewer.gui.panels["density"]
     _draw_rows(panel, gui)
     from chimol.chrome.gui import _WINDOW_BODY
 

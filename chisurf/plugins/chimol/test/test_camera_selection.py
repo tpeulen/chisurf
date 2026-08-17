@@ -197,7 +197,7 @@ def test_zoom_on_a_ligand_centres_on_it(session):
     assert errors == []
     scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
     raw_centre = np.asarray(
-        viewer._objects[viewer.get_active_object_id()].state.raw_center, dtype=float
+        viewer.objects[viewer.get_active_object_id()].state.raw_center, dtype=float
     )
     pivot = _view(viewer)[12:15] / scale + raw_centre
     ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[
@@ -213,7 +213,7 @@ def test_center_on_a_ligand_moves_the_pivot(session):
     assert errors == []
     scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
     raw_centre = np.asarray(
-        viewer._objects[viewer.get_active_object_id()].state.raw_center, dtype=float
+        viewer.objects[viewer.get_active_object_id()].state.raw_center, dtype=float
     )
     pivot = _view(viewer)[12:15] / scale + raw_centre
     ligand = np.asarray(viewer._atoms["xyz"], dtype=float)[

@@ -68,7 +68,7 @@ def session(qapp):
 # The sequence strip: one row per chain, PyMOL's slash syntax
 # --------------------------------------------------------------------------- #
 def _rows(win):
-    return win.viewer._renderer._internal_gui.sequences
+    return win.viewer.gui.sequences
 
 
 def test_one_row_per_object_with_the_chains_inside_it(session):
@@ -100,7 +100,7 @@ def test_every_residue_is_reachable_exactly_once(session):
 def test_a_click_on_a_marker_selects_nothing(session):
     """Otherwise a chain label selects whatever shares its column index."""
     _run, win = session
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     row = _rows(win)[0]
     marker = next(i for i, index in enumerate(row.residue_indices) if index < 0)
 
@@ -110,7 +110,7 @@ def test_a_click_on_a_marker_selects_nothing(session):
 
 def test_a_click_on_a_residue_column_selects_that_residue(session):
     _run, win = session
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     row = _rows(win)[0]
     columns = [i for i, index in enumerate(row.residue_indices) if index >= 0][:3]
 
@@ -138,7 +138,7 @@ def test_an_object_without_chains_has_no_markers():
 # --------------------------------------------------------------------------- #
 def test_the_label_size_setting_is_read(session):
     run, win = session
-    renderer = win.viewer._renderer
+    renderer = win.viewer.renderer
     before = renderer._label_size()
     assert before > 10.0, "the hard-coded 10 is back"
     try:
@@ -208,7 +208,7 @@ def test_a_measurement_pick_is_marked_and_then_released(session):
 
     run("wizard measurement")
     try:
-        state = viewer._objects[viewer.get_active_object_id()].state
+        state = viewer.objects[viewer.get_active_object_id()].state
         names = np.array([str(n).strip() for n in state.atoms["atom_name"]])
         ca = [int(i) for i in np.where(names == "CA")[0][:2]]
 
@@ -238,7 +238,7 @@ def test_a_measurement_with_no_dashes_draws_no_label(session):
     run, win = session
     viewer = win.viewer
     point = np.zeros((2, 3), dtype=float)
-    viewer._measurements = {
+    viewer.measurements = {
         "degenerate": {
             "kind": "distance", "positions": point,
             "label": "0.00", "color": [1.0, 1.0, 0.0, 1.0],
@@ -248,7 +248,7 @@ def test_a_measurement_with_no_dashes_draws_no_label(session):
         objects = viewer._update_measurements()
         assert not [o for o in objects if o.id.startswith("meas_text_")]
     finally:
-        viewer._measurements = {}
+        viewer.measurements = {}
 
 
 # --------------------------------------------------------------------------- #
@@ -323,7 +323,7 @@ def test_the_panel_pulls_its_text_and_palette_from_the_viewer(session):
 
     _run, win = session
     viewer = win.viewer
-    gui = viewer._renderer._internal_gui
+    gui = viewer.gui
 
     win.button_info.setChecked(True)
     viewer.set_system_info_text("System: coordinates")

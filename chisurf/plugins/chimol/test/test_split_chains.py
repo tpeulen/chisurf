@@ -139,7 +139,7 @@ def test_the_checkbox_matches_the_stored_visibility(session):
     # The panel's own rows. `enabled` is the eye -- what the user sees switched
     # on -- and it has to agree with the stored visibility for every object.
     rows = [
-        r for r in win.viewer._renderer._internal_gui.rows
+        r for r in win.viewer.gui.rows
         if not r.is_header and not r.is_selection and not r.is_measurement
         and not r.is_group
     ]

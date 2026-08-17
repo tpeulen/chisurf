@@ -512,7 +512,7 @@ def _panel(window):
 
 def _residue_name(window, resi: int) -> str:
     entry = next(
-        e for e in window.viewer._objects.values() if e.name == "148l"
+        e for e in window.viewer.objects.values() if e.name == "148l"
     )
     rows = np.nonzero(np.asarray(entry.state.atoms["res_id"], dtype=int) == resi)[0]
     return str(entry.state.atoms["res_name"][rows[0]]).strip()
@@ -520,7 +520,7 @@ def _residue_name(window, resi: int) -> str:
 
 def _preview(window):
     """The `mutation` object PyMOL's wizard creates, or ``None``."""
-    for entry in window.viewer._objects.values():
+    for entry in window.viewer.objects.values():
         if entry.name == "mutation":
             return entry
     return None
@@ -678,12 +678,12 @@ def test_the_bump_check_can_be_turned_off(wizard_cmd):
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
     assert any(
-        key.startswith("_bump_check") for key in window.viewer._measurements
+        key.startswith("_bump_check") for key in window.viewer.measurements
     ), "the bump check drew nothing"
 
     cmd.do("wizard bump, toggle")
 
     assert not any(
-        key.startswith("_bump_check") for key in window.viewer._measurements
+        key.startswith("_bump_check") for key in window.viewer.measurements
     )
     assert any("off" in label for _k, label in _panel(window))

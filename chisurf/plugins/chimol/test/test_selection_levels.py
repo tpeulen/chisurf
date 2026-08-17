@@ -65,7 +65,7 @@ def session(qapp):
 
 
 def _atom_table(viewer):
-    state = viewer._objects[viewer.get_active_object_id()].state
+    state = viewer.objects[viewer.get_active_object_id()].state
     atoms = state.atoms
     return (
         atoms,

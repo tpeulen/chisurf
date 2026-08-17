@@ -90,13 +90,13 @@ def _count(cmd, expression):
 
 
 def _stick_count(window) -> int:
-    entry = window.viewer._objects.get(str(window.viewer.get_active_object_id()))
+    entry = window.viewer.objects.get(str(window.viewer.get_active_object_id()))
     mask = np.asarray(entry.state.sticks_mask, dtype=bool)
     return int(np.count_nonzero(mask))
 
 
 def _atom_count_for_residue_indices(viewer, indices) -> int:
-    entry = viewer._objects.get(str(viewer.get_active_object_id()))
+    entry = viewer.objects.get(str(viewer.get_active_object_id()))
     state = entry.state
     res_ids = np.asarray(state.residue_ids)
     all_res = np.asarray(state.all_atom_res_ids)

@@ -170,7 +170,7 @@ def test_each_demo_starts_from_a_clean_viewer(window):
 
 def _menubar_of(win):
     """The viewport menu bar's ``(title, entries)`` pairs."""
-    renderer = getattr(win.viewer, "_renderer", None) or win.viewer
+    renderer = win.viewer.renderer or win.viewer
     gui = getattr(renderer, "_internal_gui", None)
     return list(getattr(gui, "menubar", []) or [])
 
@@ -271,7 +271,7 @@ def trajectory(window):
 
 
 def _frames(viewer):
-    state = viewer._objects[viewer.get_active_object_id()].state
+    state = viewer.objects[viewer.get_active_object_id()].state
     return np.asarray(state.frames_raw, dtype=float)
 
 
@@ -295,7 +295,7 @@ def test_the_trajectory_topology_is_read(trajectory):
     would be identical and just as quiet.
     """
     win, _shared, _errors, _qapp = trajectory
-    state = win.viewer._objects[win.viewer.get_active_object_id()].state
+    state = win.viewer.objects[win.viewer.get_active_object_id()].state
     assert state.atoms is not None, "the topology was dropped at load"
     assert len(state.atoms) == np.asarray(state.frames_raw).shape[1]
     names = {str(n).strip() for n in state.atoms["atom_name"][:40]}

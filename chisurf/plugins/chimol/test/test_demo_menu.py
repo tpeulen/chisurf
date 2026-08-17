@@ -50,7 +50,7 @@ def test_the_viewport_bar_lists_demo_exactly_once(qapp_window):
     catch, one level up.
     """
     win = qapp_window
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     titles = [title for title, _entries in gui.menubar]
     assert titles.count("Demo") == 1
     assert not win.menuBar().isVisible()
@@ -87,7 +87,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
     shared.set_error_callback(said.append)
 
     qapp_window._run_object_menu_command("demo")
-    gui = qapp_window.viewer._renderer._internal_gui
+    gui = qapp_window.viewer.gui
     assert gui._info_title == "Demos"
     assert [name for name, _doc in gui._info_items] == [
         key for key, _t, _n in DEMOS
@@ -109,7 +109,7 @@ def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):
 
 
 def test_the_demo_menu_is_reachable_in_the_viewport(qapp_window):
-    gui = qapp_window.viewer._renderer._internal_gui
+    gui = qapp_window.viewer.gui
     titles = [title for _rect, title, _entries in gui._menubar_rects]
     assert "Demo" in titles
 

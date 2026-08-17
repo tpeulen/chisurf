@@ -77,7 +77,7 @@ def displaced(qapp):
 
 
 def _xyz(view, ids, name) -> np.ndarray:
-    return np.asarray(view._objects[ids[name]].state.atoms["xyz"], dtype=float)
+    return np.asarray(view.objects[ids[name]].state.atoms["xyz"], dtype=float)
 
 
 def _rmsd(view, ids) -> float:

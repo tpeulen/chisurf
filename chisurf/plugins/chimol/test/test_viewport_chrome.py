@@ -193,7 +193,7 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     for _ in range(10):
         qapp.processEvents()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     gui.on_prompt_command = window._prefill_command_line
     gui._emit(
         "group {text}, {sele}", "lig",
@@ -223,7 +223,7 @@ def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window, qapp):
     for _ in range(10):
         qapp.processEvents()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     assert gui.on_file_prompt is not None, (
         "the app did not wire the file-dialog hook"
     )
@@ -251,7 +251,7 @@ def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(
     for _ in range(10):
         qapp.processEvents()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     gui.on_file_prompt = None
     gui.on_prompt_command = window._prefill_command_line
     gui._emit(
@@ -273,7 +273,7 @@ def test_an_ordinary_menu_entry_still_runs(window, qapp):
     for _ in range(10):
         qapp.processEvents()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     ran: list[str] = []
     gui.set_run_command(ran.append)
     gui._emit("zoom {sele}", "148l")

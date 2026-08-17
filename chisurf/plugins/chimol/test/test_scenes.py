@@ -69,7 +69,7 @@ def session(qapp):
 
 
 def _state(view):
-    return view._objects[view.get_active_object_id()].state
+    return view.objects[view.get_active_object_id()].state
 
 
 def _spheres(view) -> int:

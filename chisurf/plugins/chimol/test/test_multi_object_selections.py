@@ -76,7 +76,7 @@ def _ids(viewer) -> dict[str, str]:
 
 
 def _state(viewer, name):
-    return viewer._objects[_ids(viewer)[name]].state
+    return viewer.objects[_ids(viewer)[name]].state
 
 
 # --------------------------------------------------------------------------- #
@@ -169,7 +169,7 @@ def test_a_colour_reaches_the_geometry_of_a_created_object(session):
     assert errors == []
 
     object_id = _ids(viewer)["lig"]
-    with viewer._activate_object(object_id):
+    with viewer.activate_object(object_id):
         objects = viewer._build_scene_for_current_object(object_prefix=object_id)
     drawn = [
         np.asarray(o.geometry.colors)[:, :3]

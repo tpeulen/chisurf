@@ -73,7 +73,7 @@ def measured():
         # Each name reaches its own object.
         run("activate", "activate 148l_3")
         emit("active_name", str(
-            getattr(viewer._objects.get(viewer.get_active_object_id()), "name", "")
+            getattr(viewer.objects.get(viewer.get_active_object_id()), "name", "")
         ))
         run("delete", "delete twin")
         emit("after_delete", names())

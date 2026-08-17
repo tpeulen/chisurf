@@ -88,7 +88,7 @@ def test_chimol_editing_pseudoatom(editing_context):
     cmd.do("pseudoatom ps1, pos=[20.0 20.0 20.0]") # Append
     
     ps_entry = None
-    for e in viewer._objects.values():
+    for e in viewer.objects.values():
          if e.name == "ps1":
               ps_entry = e
               break

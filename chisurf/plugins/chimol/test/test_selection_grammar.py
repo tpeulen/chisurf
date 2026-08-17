@@ -42,7 +42,7 @@ class TestSelectionGrammar(unittest.TestCase):
         
         entry = MagicMock()
         entry.state = state
-        self.viewer._objects = {"obj1": entry}
+        self.viewer.objects = {"obj1": entry}
         self.evaluator = Evaluator(self.viewer, "obj1")
 
     def test_basic_tokens(self):

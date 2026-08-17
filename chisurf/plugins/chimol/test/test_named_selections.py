@@ -81,7 +81,7 @@ def _count(cmd, expression):
 
 
 def _stick_count(window) -> int:
-    entry = window.viewer._objects.get(str(window.viewer.get_active_object_id()))
+    entry = window.viewer.objects.get(str(window.viewer.get_active_object_id()))
     mask = np.asarray(entry.state.sticks_mask, dtype=bool)
     return int(np.count_nonzero(mask))
 
@@ -116,7 +116,7 @@ def test_a_named_selection_hides_from_a_subset(cmd):
 
 
 def _ball_count(window) -> int:
-    entry = window.viewer._objects.get(str(window.viewer.get_active_object_id()))
+    entry = window.viewer.objects.get(str(window.viewer.get_active_object_id()))
     mask = np.asarray(entry.state.ball_mask, dtype=bool)
     return int(np.count_nonzero(mask))
 
@@ -128,7 +128,7 @@ def test_a_scoped_show_touches_only_the_named_representation(cmd):
     _run(cmd, "as cartoon")
     _run(cmd, "show sticks, mysel")
     assert _stick_count(cmd.window) == _count(cmd, "chain E and resi 1-40")
-    state = cmd.window.viewer._objects.get(
+    state = cmd.window.viewer.objects.get(
         str(cmd.window.viewer.get_active_object_id())).state
     for field in ("dots_mask", "surface_mask", "lines_mask", "nonbonded_mask",
                   "label_mask", "metaball_mask"):
@@ -165,7 +165,7 @@ def test_as_scoped_to_a_selection_switches_only_the_selection(cmd):
     _run(cmd, "show cartoon")
     _run(cmd, "select mysel, chain E and resi 1-40")
     _run(cmd, "as spheres, mysel")
-    state = cmd.window.viewer._objects.get(
+    state = cmd.window.viewer.objects.get(
         str(cmd.window.viewer.get_active_object_id())).state
     assert state.show_atoms
     assert not state.show_sticks

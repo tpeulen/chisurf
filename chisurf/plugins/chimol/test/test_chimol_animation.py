@@ -27,8 +27,8 @@ def test_chimol_animation_play_stop():
     viewer.mset(1, 50)
     
     cmd.do("mplay")
-    assert viewer._animation_running
+    assert viewer.playback.running
     
     cmd.do("mstop")
-    assert not viewer._animation_running
+    assert not viewer.playback.running
     assert viewer.get_current_frame() == 0

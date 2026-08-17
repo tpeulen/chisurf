@@ -64,7 +64,7 @@ def cmd(window):
 
 
 def _state(window):
-    return next(iter(window.viewer._objects.values())).state
+    return next(iter(window.viewer.objects.values())).state
 
 
 def _masked_residue_names(window) -> np.ndarray:

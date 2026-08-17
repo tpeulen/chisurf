@@ -72,11 +72,11 @@ def _euler(verts: np.ndarray, faces: np.ndarray) -> int:
 
 def _av_entry(viewer):
     av_ids = [
-        oid for oid, entry in viewer._objects.items()
+        oid for oid, entry in viewer.objects.items()
         if getattr(entry.state, "av", None) is not None
     ]
     assert av_ids, "no AV object in the viewer"
-    return av_ids[0], viewer._objects[av_ids[0]]
+    return av_ids[0], viewer.objects[av_ids[0]]
 
 
 
@@ -153,7 +153,7 @@ def test_the_contour_is_closed_and_centered_on_the_cloud(session):
 
     # Centered on its own cloud: the axis-swapped grid landed 11.5 A off.
     av = entry.state.av
-    with viewer._activate_object(oid):
+    with viewer.activate_object(oid):
         mean_scene = viewer._transform_world_coords_to_scene(
             np.asarray(av.mean_position, dtype=float)
         )
@@ -167,7 +167,7 @@ def test_the_contour_is_closed_and_centered_on_the_cloud(session):
         r[3:6] for r in records
         if r[0] == "E" and r[1] == 119 and r[2] == "CB"
     ][0])
-    with viewer._activate_object(oid):
+    with viewer.activate_object(oid):
         cb_scene = viewer._transform_world_coords_to_scene(cb_world)
     nearest = float(np.linalg.norm(verts - cb_scene, axis=1).min()) / 10.0
     assert nearest < 10.0, f"shell stops {nearest:.1f} A from the attachment atom"
@@ -185,14 +185,14 @@ def test_the_mean_position_is_its_own_sphere_object(session):
     viewer = win.viewer
     oid, entry = _av_entry(viewer)
     mp_id = entry.state.av_mean_object_id
-    assert mp_id and mp_id in viewer._objects, "no mean-position object"
-    mp_entry = viewer._objects[mp_id]
+    assert mp_id and mp_id in viewer.objects, "no mean-position object"
+    mp_entry = viewer.objects[mp_id]
     assert mp_entry.name == "av_E119_CB_mp"
     # The bead sits on the density-weighted mean, in the scene's frame --
     # the same frame the structure is drawn in (a single-point object
     # centres on itself unless it adopts the structure's).
     av = entry.state.av
-    with viewer._activate_object(mp_id):
+    with viewer.activate_object(mp_id):
         mean_scene = viewer._transform_world_coords_to_scene(
             np.asarray(av.mean_position, dtype=float)
         )
@@ -241,10 +241,10 @@ def test_the_numpy_backend_also_becomes_a_density(session, monkeypatch):
     assert errors == [], errors[:2]
     viewer = win.viewer
     oid = [
-        o for o, e in viewer._objects.items()
+        o for o, e in viewer.objects.items()
         if getattr(e.state, "av", None) is not None
     ][-1]
-    state = viewer._objects[oid].state
+    state = viewer.objects[oid].state
     assert state.volume is not None
     assert min(state.volume.shape) >= 2
     meshes = [

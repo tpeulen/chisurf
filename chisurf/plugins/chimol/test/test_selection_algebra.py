@@ -72,7 +72,7 @@ def select(viewer):
 
 @pytest.fixture
 def atoms(viewer):
-    return viewer._objects[viewer.get_active_object_id()].state.atoms
+    return viewer.objects[viewer.get_active_object_id()].state.atoms
 
 
 def _count(mask) -> int:

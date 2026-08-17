@@ -230,7 +230,7 @@ def test_spectrum_refreshes_the_sequence_strip(lysozyme):
         # strip paints. Flattened, so the comparison is the same one as before
         # -- "did the colouring change" -- over the same numbers.
         win.sync_internal_gui()
-        gui = win.viewer._renderer._internal_gui
+        gui = win.viewer.gui
         # Scaled to 0-255. `SequenceRow.colors` is float 0-1 where the dock's
         # `QColor.getRgb()` was an int triple, and the green test below is
         # written in the latter -- left in those units so the threshold still

@@ -77,7 +77,7 @@ def _render_x(view) -> float:
 
 
 def _xyz(view, object_id) -> np.ndarray:
-    return np.asarray(view._objects[object_id].state.atoms["xyz"], dtype=float)
+    return np.asarray(view.objects[object_id].state.atoms["xyz"], dtype=float)
 
 
 def _ids(view) -> dict:
@@ -86,7 +86,7 @@ def _ids(view) -> dict:
 
 def _ca_mask(view, object_id) -> np.ndarray:
     """Boolean mask of the atoms the renderer keeps a trace coordinate for."""
-    atoms = view._objects[object_id].state.atoms
+    atoms = view.objects[object_id].state.atoms
     return np.char.strip(atoms["atom_name"].astype(str)) == "CA"
 
 
@@ -112,7 +112,7 @@ def _jiggle(view, object_id, sigma: float, seed: int) -> None:
     seed : int
         Seed for the noise, so the expected RMSD is reproducible.
     """
-    state = view._objects[object_id].state
+    state = view.objects[object_id].state
     scale = float(view._scale_factor)
     noise = np.random.default_rng(seed).normal(0.0, sigma, size=state.atoms.shape + (3,))
 
@@ -194,7 +194,7 @@ def _sync_error(view, object_id=None) -> float:
     float
         The maximum absolute deviation, in scene units.
     """
-    state = view._objects[object_id].state if object_id else view._get_active_state()
+    state = view.objects[object_id].state if object_id else view._get_active_state()
     xyz = np.asarray(state.atoms["xyz"], dtype=float)
     centre = np.asarray(state.raw_center, dtype=float).reshape(3)
     expected = (xyz - centre) * float(view._scale_factor)
@@ -229,8 +229,8 @@ def test_two_objects_are_the_same_distance_apart_in_both_arrays(session):
 
     scale = float(view._scale_factor)
     in_atoms = np.linalg.norm(_xyz(view, ids["mob"]) - _xyz(view, ids["ref"]), axis=1).mean()
-    scene_mob = np.asarray(view._objects[ids["mob"]].state.all_atom_coords, dtype=float)
-    scene_ref = np.asarray(view._objects[ids["ref"]].state.all_atom_coords, dtype=float)
+    scene_mob = np.asarray(view.objects[ids["mob"]].state.all_atom_coords, dtype=float)
+    scene_ref = np.asarray(view.objects[ids["ref"]].state.all_atom_coords, dtype=float)
     as_drawn = np.linalg.norm(scene_mob - scene_ref, axis=1).mean() / scale
 
     assert in_atoms == pytest.approx(as_drawn, abs=1e-3)

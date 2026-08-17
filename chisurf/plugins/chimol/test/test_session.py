@@ -374,7 +374,7 @@ def test_an_unserialisable_field_is_reported_not_dropped_silently(session, tmp_p
     class _Opaque:
         pass
 
-    entry = next(iter(win.viewer._objects.values()))
+    entry = next(iter(win.viewer.objects.values()))
     entry.state.rmf_hierarchy = _Opaque()
 
     messages.clear()

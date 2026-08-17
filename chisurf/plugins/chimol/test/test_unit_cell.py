@@ -163,7 +163,7 @@ def test_symmetry_mates_are_drawn_where_they_actually_are(window):
     viewer = win.viewer
     scale = float(viewer._scale_factor)
     angstrom, drawn = [], []
-    for entry in viewer._objects.values():
+    for entry in viewer.objects.values():
         state = entry.state
         if state.atoms is None or state.all_atom_coords is None:
             continue

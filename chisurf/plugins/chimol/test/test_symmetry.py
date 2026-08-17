@@ -618,7 +618,7 @@ def test_cell_reads_the_file_like_symexp_does(crystal_cmd):
     assert command._errors == [], command._errors
     assert any("drawn for" in m for m in command._messages), command._messages
 
-    entry = next(iter(window.viewer._objects.values()))
+    entry = next(iter(window.viewer.objects.values()))
     assert entry.state.show_cell is True
     # ...and the resolution is written back, because the renderer reads it too.
     assert (entry.state.symmetry or {}).get("cell") is not None
@@ -628,5 +628,5 @@ def test_cell_off_hides_it_again(crystal_cmd):
     command, window = crystal_cmd
     command.do("cell all, on")
     command.do("cell all, off")
-    entry = next(iter(window.viewer._objects.values()))
+    entry = next(iter(window.viewer.objects.values()))
     assert entry.state.show_cell is False

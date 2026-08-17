@@ -66,7 +66,7 @@ def _stick_bonds(win):
     """The bonds the stick representation would draw, after every filter."""
     viewer = win.viewer
     object_id = viewer.get_active_object_id()
-    with viewer._activate_object(object_id):
+    with viewer.activate_object(object_id):
         bonds = np.asarray(viewer._bond_pairs, dtype=int)
         mask = np.asarray(viewer._sticks_mask, dtype=bool)
         scoped = bonds[mask[bonds[:, 0]] & mask[bonds[:, 1]]]

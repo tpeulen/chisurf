@@ -49,7 +49,7 @@ def session():
 def _laid_out(win):
     from chimol.hosts.qt.overlay import refresh_gui_state
 
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     refresh_gui_state(gui, win.viewer)
     gui.layout(900, 640)
     return gui
@@ -146,7 +146,7 @@ def test_help_setting_goes_to_the_panel_too(session):
     cmd.set_window(window)
     text = cmd.help_setting()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     # The panel's text is *pulled* by the chrome sync, which runs on a paint --
     # `layout()` alone leaves `info_text` empty and the panel looks broken.
     qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
@@ -162,7 +162,7 @@ def test_the_panel_draws_a_scroll_bar_when_it_overflows(session):
     from chimol.hosts.qt import overlay as qt_overlay
 
     window, _app = session
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
 
     window.viewer.set_system_info_text("one line only")
     window.viewer.set_system_info_visible(True)

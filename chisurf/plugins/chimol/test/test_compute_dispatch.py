@@ -150,9 +150,9 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
     shared.do("density_panel on")
 
     viewer = win.viewer
-    panel = viewer._renderer._internal_gui.panels.get("density")
+    panel = viewer.gui.panels.get("density")
     assert panel is not None, "the density panel did not open"
-    gui = viewer._renderer._internal_gui
+    gui = viewer.gui
     rect = gui.window_body(gui.window("density"))
 
     class _Quiet:

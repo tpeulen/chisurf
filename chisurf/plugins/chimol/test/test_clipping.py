@@ -29,22 +29,22 @@ def viewer(_qt_app):
     from chimol.core.viewer import MolView
 
     view = MolView()
-    view._renderer.fit_to_radius(30.0)
+    view.renderer.fit_to_radius(30.0)
     return view
 
 
 def test_framing_defines_what_unclipped_means(viewer):
-    assert viewer._renderer.clipping_is_default() is True
+    assert viewer.renderer.clipping_is_default() is True
 
 
 def test_moving_the_near_plane_is_not_the_default(viewer):
     viewer.clip("near", 8.0)
-    assert viewer._renderer.clipping_is_default() is False
+    assert viewer.renderer.clipping_is_default() is False
 
 
 def test_clip_reset_restores_the_planes(viewer):
     """The way back for someone who does not know what they pressed."""
-    renderer = viewer._renderer
+    renderer = viewer.renderer
     before = renderer._near_clip
 
     viewer.clip("near", 8.0)
@@ -59,7 +59,7 @@ def test_the_spellings_that_mean_stop_clipping(viewer, spelling):
     """Someone who wants it gone will type one of these, not compute a distance."""
     viewer.clip("near", 6.0)
     viewer.clip(spelling, 0.0)
-    assert viewer._renderer.clipping_is_default() is True
+    assert viewer.renderer.clipping_is_default() is True
 
 
 def test_framing_the_scene_undoes_a_stray_slice(viewer):
@@ -68,7 +68,7 @@ def test_framing_the_scene_undoes_a_stray_slice(viewer):
     This matters more than the command: someone whose view has gone strange
     reaches for zoom long before they suspect the clipping planes.
     """
-    renderer = viewer._renderer
+    renderer = viewer.renderer
     viewer.clip("near", 8.0)
     assert renderer.clipping_is_default() is False
 
@@ -86,7 +86,7 @@ def test_the_wheel_says_what_it_did(viewer):
 
     messages: list[str] = []
     viewer.statusMessage.connect(messages.append)
-    renderer = viewer._renderer
+    renderer = viewer.renderer
 
     event = QtGui.QWheelEvent(
         QtCore.QPointF(10, 10),
@@ -109,7 +109,7 @@ def test_the_message_reports_when_clipping_is_off_again(viewer):
 
     messages: list[str] = []
     viewer.statusMessage.connect(messages.append)
-    renderer = viewer._renderer
+    renderer = viewer.renderer
 
     for direction in (120, -120):
         renderer.wheelEvent(

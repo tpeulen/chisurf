@@ -1184,7 +1184,7 @@ def test_the_wheel_bindings_come_from_the_table_too():
 #
 #     set_selected_residues        88.01 ms  ->  0.11 ms
 #     _update_selection_highlight   0.01 ms
-#     _update_view (full rebuild)  85.73 ms
+#     update_view (full rebuild)  85.73 ms
 #
 # The first used to *be* the third: selecting rebuilt every representation. A
 # drag over the sequence fires one per mouse move, so the highlight lagged the

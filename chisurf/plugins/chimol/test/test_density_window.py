@@ -55,7 +55,7 @@ def loaded(qapp):
 
     model = win.volume_panel.model
     panel = DensityWindow(model)
-    gui = win.viewer._renderer._internal_gui
+    gui = win.viewer.gui
     window = gui.add_window(panel.window())
     gui.layout(900, 640)
     panel.draw(_Recorder(), gui.window_body(window))
@@ -168,7 +168,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
 
     rebuilds = {"n": 0}
     writes: list[tuple[bool, bool]] = []
-    original_update = viewer._update_view
+    original_update = viewer.update_view
     original_set = viewer.set_volume_levels
 
     def counting_update(*args, **kwargs):
@@ -181,7 +181,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
             levels, object_id=object_id, rebuild=rebuild, preview=preview
         )
 
-    viewer._update_view = counting_update
+    viewer.update_view = counting_update
     viewer.set_volume_levels = recording_set
     try:
         from chimol.core import compute_dispatch
@@ -202,7 +202,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
         compute_dispatch.poll()
         after = list(writes)
     finally:
-        viewer._update_view = original_update
+        viewer.update_view = original_update
         viewer.set_volume_levels = original_set
 
     assert rebuilds["n"] == 0, (
@@ -671,7 +671,7 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     cmd.do("volume_gaussian blob, 1.5")
     assert not errors, errors
     names = [
-        getattr(entry, "name", oid) for oid, entry in view._objects.items()
+        getattr(entry, "name", oid) for oid, entry in view.objects.items()
     ]
     assert any("gaussian" in str(n) for n in names), names
 
@@ -777,7 +777,7 @@ def test_the_alpha_slider_drag_works_through_the_host_pointer_layer(loaded):
     """
     win, gui, window, panel, model, _oid = loaded
     viewer = win.viewer
-    renderer = viewer._renderer
+    renderer = viewer.renderer
     _redraw(panel, gui, window)
     oid = model._object_id
     box, slider = panel._row_alpha[oid]

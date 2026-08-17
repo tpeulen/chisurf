@@ -63,7 +63,7 @@ def session(qapp):
 
 
 def _background(viewer):
-    return tuple(float(c) for c in viewer._renderer._background)
+    return tuple(float(c) for c in viewer.renderer._background)
 
 
 def test_a_named_colour_reaches_the_renderer(session):
@@ -129,9 +129,9 @@ def test_a_failure_to_apply_returns_false_rather_than_passing(session):
     It now reports, which is what makes the command able to say it failed.
     """
     viewer, _do, _messages, _errors = session
-    saved = viewer._renderer
+    saved = viewer.renderer
     try:
-        viewer._renderer = None
+        viewer.renderer = None
         assert viewer.set_background_color((1.0, 1.0, 1.0, 1.0)) is False
     finally:
-        viewer._renderer = saved
+        viewer.renderer = saved

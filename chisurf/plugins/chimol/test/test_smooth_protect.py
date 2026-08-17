@@ -373,7 +373,7 @@ def test_smooth_through_the_command_reduces_roughness(session):
     viewer.set_frames(trajectory)
 
     def stored():
-        state = viewer._objects[viewer.get_active_object_id()].state
+        state = viewer.objects[viewer.get_active_object_id()].state
         return np.asarray(state.frames_raw, dtype=float)
 
     before = _roughness(stored())

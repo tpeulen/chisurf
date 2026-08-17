@@ -64,14 +64,14 @@ def session(qapp):
     errors: list[str] = []
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
-    if view._renderer is None or not hasattr(view._renderer, "_build_matrices"):
+    if view.renderer is None or not hasattr(view.renderer, "_build_matrices"):
         pytest.skip("no matrix-capable renderer in this environment")
     return cmd, view, messages, errors
 
 
 def _mvp(view) -> np.ndarray:
     """Return the current model-view-projection matrix as plain numbers."""
-    matrix, _ = view._renderer._build_matrices()
+    matrix, _ = view.renderer._build_matrices()
     return np.array(matrix.data(), dtype=float).reshape(4, 4)
 
 

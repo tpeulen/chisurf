@@ -117,7 +117,7 @@ def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
     view.set_dots_visible(True)
     view.set_metaballs_visible(True)
     # Must not raise.
-    view._update_view()
+    view.update_view()
 
 
 def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:

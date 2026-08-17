@@ -65,7 +65,7 @@ def background_for(viewer) -> tuple[float, float, float]:
     Reads what the renderer was told rather than assuming black, so a scene that
     sets ``bg_color grey20`` is compared against a grey frame.
     """
-    raw = getattr(getattr(viewer, "_renderer", None), "_background", None)
+    raw = getattr(viewer.renderer, "_background", None)
     if isinstance(raw, str):
         return _NAMED_BACKGROUNDS.get(raw.strip().lower(), (0.0, 0.0, 0.0))
     # Any sequence, not just tuple/list: `bg_color` stores a numpy array, which
@@ -131,7 +131,7 @@ def compare(scene_name: str):
         rect["y"] : rect["y"] + rect["height"], rect["x"] : rect["x"] + rect["width"]
     ]
     wgsl = WgpuMeshRenderer(rect["width"], rect["height"]).render(
-        packed, viewer._renderer.get_view_state(), background=background
+        packed, viewer.renderer.get_view_state(), background=background
     )
 
     h = min(gl.shape[0], wgsl.shape[0])

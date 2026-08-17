@@ -277,11 +277,11 @@ def test_occlusion_varies_the_cartoon_colours(view):
     previous = cfg.get("enabled", True)
     try:
         cfg["enabled"] = False
-        view._update_view()
+        view.update_view()
         flat = _cartoon_colors(view)
 
         cfg["enabled"] = True
-        view._update_view()
+        view.update_view()
         shaded = _cartoon_colors(view)
     finally:
         cfg["enabled"] = previous
@@ -307,10 +307,10 @@ def test_disabling_occlusion_is_honoured(view):
     previous = cfg.get("darkness", 0.7)
     try:
         cfg["darkness"] = 0.0
-        view._update_view()
+        view.update_view()
         untouched = _cartoon_colors(view)
         cfg["darkness"] = previous
-        view._update_view()
+        view.update_view()
         shaded = _cartoon_colors(view)
     finally:
         cfg["darkness"] = previous
@@ -445,10 +445,10 @@ def test_shadowing_reaches_the_mesh_colours(view):
     previous = cfg.get("shadows", True)
     try:
         cfg["shadows"] = False
-        view._update_view()
+        view.update_view()
         unshadowed = _cartoon_colors(view)
         cfg["shadows"] = True
-        view._update_view()
+        view.update_view()
         shadowed = _cartoon_colors(view)
     finally:
         cfg["shadows"] = previous

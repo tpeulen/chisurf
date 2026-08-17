@@ -156,7 +156,7 @@ def test_info_panel_toggles_and_can_be_set(window):
 
 
 def test_the_window_hands_the_toolbar_to_the_chrome(window):
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     assert [label for label, _c, _n in gui.toolbar] == [
         label for label, _c, _n in TOOLBAR
     ]

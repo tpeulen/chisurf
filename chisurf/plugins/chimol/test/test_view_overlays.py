@@ -23,9 +23,9 @@ def qt_app():
 
 def test_add_point_overlay_updates_dict(qt_app):
     widget = MolView()
-    # Mock _update_view to avoid OpenGL calls in headless pytest sessions
+    # Mock update_view to avoid OpenGL calls in headless pytest sessions
     called = []
-    widget._update_view = lambda *args, **kwargs: called.append(True)
+    widget.update_view = lambda *args, **kwargs: called.append(True)
 
     coords = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
     widget.add_point_overlay("test_key", coords, color=(1.0, 0.0, 0.0, 1.0))
@@ -38,7 +38,7 @@ def test_add_point_overlay_updates_dict(qt_app):
 
 def test_remove_point_overlay(qt_app):
     widget = MolView()
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
     widget.add_point_overlay("key_to_remove", coords)
@@ -54,7 +54,7 @@ def test_remove_point_overlay(qt_app):
 
 def test_clear_point_overlays(qt_app):
     widget = MolView()
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
     widget.add_point_overlay("k1", coords)
@@ -67,7 +67,7 @@ def test_clear_point_overlays(qt_app):
 
 def test_add_sphere_returns_key_string(qt_app):
     widget = MolView()
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
 
     center = np.array([1.0, 2.0, 3.0])
     key = widget.add_sphere(center, radius=2.5, color=(0.0, 1.0, 0.0, 1.0), label="My Sphere")
@@ -117,7 +117,7 @@ def test_add_surface_overlay_builds_mesh_scene_object():
     widget._point_overlays = {}
     widget._radius = 10.0
     widget._base_color_single = np.array([1.0, 1.0, 1.0, 1.0])
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
     widget._world_to_scene_scale = MethodType(
         MolView._world_to_scene_scale,
         widget,
@@ -168,7 +168,7 @@ def test_surface_overlay_transforms_angstrom_coords_to_scene_units():
     widget._point_overlays = {}
     widget._raw_center = np.array([1.0, 2.0, 3.0], dtype=float)
     widget._scale_factor = 10.0
-    widget._update_view = lambda *args, **kwargs: None
+    widget.update_view = lambda *args, **kwargs: None
     widget._world_to_scene_scale = MethodType(
         MolView._world_to_scene_scale,
         widget,

@@ -36,14 +36,14 @@ def _load(view, points, name=None):
     """Load *points* as a real object, not a placeholder.
 
     `set_coordinates` on a bare `MolView` leaves its entry marked
-    `placeholder`, and `_create_object` prunes placeholders -- so building the
+    `placeholder`, and `create_object` prunes placeholders -- so building the
     second object would silently delete the first and the test would measure a
     single-object scene while claiming to measure two.
     """
     if name is not None:
-        view._create_object(name=name)
+        view.create_object(name=name)
     view.set_coordinates(points)
-    entry = view._objects[view.get_active_object_id()]
+    entry = view.objects[view.get_active_object_id()]
     entry.placeholder = False
     return view.get_active_object_id()
 
@@ -70,7 +70,7 @@ def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
     second_id = _load(view, second, name="second")
     assert second_id != first_id
 
-    states = {oid: view._objects[oid].state for oid in (first_id, second_id)}
+    states = {oid: view.objects[oid].state for oid in (first_id, second_id)}
     centres = [np.asarray(state.raw_center) for state in states.values()]
     assert np.allclose(centres[0], centres[1]), "the two objects disagree on the origin"
 
@@ -83,7 +83,7 @@ def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
 
 
 def test_the_second_objects_radius_is_measured_about_the_shared_centre(qapp):
-    """`_update_view` frames the camera from the largest object radius.
+    """`update_view` frames the camera from the largest object radius.
 
     Measured about a centre the object no longer uses, that radius is the
     object's own extent -- far too small to reach it -- and the camera clips it

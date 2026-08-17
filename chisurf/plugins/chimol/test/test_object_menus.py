@@ -324,7 +324,7 @@ def test_a_menu_entry_reaches_the_viewer(window):
     import numpy as np
 
     window.sync_internal_gui()
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     row = next(r for r in gui.rows if r.name == "1abc")
 
     entry = next(
@@ -344,7 +344,7 @@ def test_every_molecule_has_its_own_buttons(window):
     selected, which is the one thing a PyMOL user would never expect.
     """
     window.sync_internal_gui()
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     gui.layout(1000, 700)
     assert gui.rows, "no object rows"
     # One dict of menu hit-rects per row, including the `all` header, which
@@ -363,7 +363,7 @@ def test_a_rows_menu_targets_that_row(window, monkeypatch):
     window._load_structure_from_path(pathlib.Path(other), name="2xyz")
     window.sync_internal_gui()
 
-    gui = window.viewer._renderer._internal_gui
+    gui = window.viewer.gui
     molecules = [
         r for r in gui.rows
         if not r.is_header and not r.is_selection and not r.is_measurement

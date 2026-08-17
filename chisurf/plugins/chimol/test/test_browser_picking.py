@@ -62,7 +62,7 @@ CSS = (1280, 860)
 DPR = 2.0
 
 view = MolView(renderer_factory=SceneSink)
-sink = view._renderer
+sink = view.renderer
 assert sink.widget() is None, "this backend is supposed to be windowless"
 assert view._pick_surface() is not None, "a renderer that projects can pick"
 

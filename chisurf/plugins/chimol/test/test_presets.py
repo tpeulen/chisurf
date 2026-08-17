@@ -123,7 +123,7 @@ def session(qapp):
 
 
 def _state(win):
-    return win.viewer._objects[win.viewer.get_active_object_id()].state
+    return win.viewer.objects[win.viewer.get_active_object_id()].state
 
 
 @pytest.mark.parametrize("name", sorted(PresetMixin.PRESETS))
@@ -160,7 +160,7 @@ def test_technical_draws_real_polar_contacts(session):
     win, do, _messages, errors = session
     do("preset technical")
     assert errors == []
-    contacts = win.viewer._measurements.get("polar_conts")
+    contacts = win.viewer.measurements.get("polar_conts")
     assert contacts is not None, "the preset drew no contact object"
     assert contacts["kind"] == "dashes"
     assert contacts["positions"].shape[0] >= 2

@@ -85,17 +85,17 @@ _DRIVE = '''
     opened = []
     app.cmd.window.on_open_fps_editor = opened.append
 
-    before = len(app.viewer._objects)
+    before = len(app.viewer.objects)
     app.cmd.do(f"load {{p}}")
 
     av_count = sum(
-        1 for e in app.viewer._objects.values()
+        1 for e in app.viewer.objects.values()
         if getattr(getattr(e, "state", None), "av", None) is not None
     )
-    emit("objects_added", str(len(app.viewer._objects) - before))
+    emit("objects_added", str(len(app.viewer.objects) - before))
     emit("av_objects", str(av_count))
     emit("has_structure", str(any(
-        getattr(e, "source_path", None) for e in app.viewer._objects.values()
+        getattr(e, "source_path", None) for e in app.viewer.objects.values()
     )))
     emit("measurements", str(len(app.viewer.measurements)))
     emit("hook_calls", str(len(opened)))
@@ -138,7 +138,7 @@ _PLAIN_DRIVE = '''
 
     emit("hook_calls", str(len(opened)))
     emit("av_objects", str(sum(
-        1 for e in app.viewer._objects.values()
+        1 for e in app.viewer.objects.values()
         if getattr(getattr(e, "state", None), "av", None) is not None
     )))
 '''
@@ -182,7 +182,7 @@ _PORTABLE_DRIVE = '''
     # The @script, by absolute path, from this (alien) working directory.
     app.cmd.do(f"@{{tmp}}/run.pml")
     n_av = 0
-    for e in app.viewer._objects.values():
+    for e in app.viewer.objects.values():
         if getattr(getattr(e, "state", None), "av", None) is not None:
             n_av += 1
     emit("script_av", n_av)
@@ -197,7 +197,7 @@ _PORTABLE_DRIVE = '''
     app2.cmd.set_error_callback(errors.append)
     app2.cmd.do(f"load {{tmp}}/net.fps.json")
     m_av = 0
-    for e in app2.viewer._objects.values():
+    for e in app2.viewer.objects.values():
         if getattr(getattr(e, "state", None), "av", None) is not None:
             m_av += 1
     emit("doc_alone_av", m_av)

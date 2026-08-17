@@ -69,7 +69,7 @@ def session(qapp):
 
 def _ca_atoms(viewer):
     """``(indices, xyz)`` of the first few CA atoms of the active object."""
-    state = viewer._objects[viewer.get_active_object_id()].state
+    state = viewer.objects[viewer.get_active_object_id()].state
     atoms = state.atoms
     names = np.array([str(n).strip() for n in atoms["atom_name"]])
     ca = np.where(names == "CA")[0]
@@ -114,7 +114,7 @@ def test_the_measurement_is_stored_in_world_coordinates(session):
         (i, j, *_rest), xyz = _ca_atoms(viewer)
         viewer._wizard_pick(i)
         viewer._wizard_pick(j)
-        stored = np.asarray(list(viewer._measurements.values())[-1]["positions"])
+        stored = np.asarray(list(viewer.measurements.values())[-1]["positions"])
         assert stored == pytest.approx(np.array([xyz[i], xyz[j]]), abs=1e-6)
     finally:
         run("wizard delete, all")
@@ -130,9 +130,9 @@ def test_angle_and_dihedral_need_three_and_four_picks(session):
         run("wizard mode, angle")
         viewer._wizard_pick(i)
         viewer._wizard_pick(j)
-        assert not viewer._measurements, "an angle was made from two atoms"
+        assert not viewer.measurements, "an angle was made from two atoms"
         viewer._wizard_pick(k)
-        assert viewer._measurements, "three atoms did not make an angle"
+        assert viewer.measurements, "three atoms did not make an angle"
         u, v = xyz[i] - xyz[j], xyz[k] - xyz[j]
         truth = np.degrees(np.arccos(
             np.dot(u, v) / np.linalg.norm(u) / np.linalg.norm(v)
@@ -145,9 +145,9 @@ def test_angle_and_dihedral_need_three_and_four_picks(session):
         run("wizard mode, dihedral")
         for index in (i, j, k):
             viewer._wizard_pick(index)
-        assert not viewer._measurements, "a dihedral was made from three atoms"
+        assert not viewer.measurements, "a dihedral was made from three atoms"
         viewer._wizard_pick(l)
-        assert viewer._measurements, "four atoms did not make a dihedral"
+        assert viewer.measurements, "four atoms did not make a dihedral"
     finally:
         run("wizard delete, all")
         run("wizard done")
@@ -166,7 +166,7 @@ def test_switching_mode_drops_a_half_finished_group(session):
         assert len(viewer._wizard.picks) == 3
         run("wizard mode, distance")
         assert viewer._wizard.picks == []
-        assert not viewer._measurements
+        assert not viewer.measurements
     finally:
         run("wizard delete, all")
         run("wizard done")
@@ -179,7 +179,7 @@ def test_a_repeated_pick_does_not_measure_an_atom_against_itself(session):
         (i, *_rest), _xyz = _ca_atoms(viewer)
         viewer._wizard_pick(i)
         viewer._wizard_pick(i)
-        assert not viewer._measurements, "an atom was measured against itself"
+        assert not viewer.measurements, "an atom was measured against itself"
         assert len(viewer._wizard.picks) == 1
     finally:
         run("wizard done")
@@ -197,7 +197,7 @@ def test_unpick_takes_back_a_mis_click(session):
         # And the taken-back atom can be picked again straight away.
         viewer._wizard_pick(i)
         viewer._wizard_pick(j)
-        assert viewer._measurements
+        assert viewer.measurements
     finally:
         run("wizard delete, all")
         run("wizard done")
@@ -212,11 +212,11 @@ def test_delete_last_and_all(session):
         viewer._wizard_pick(j)
         viewer._wizard_pick(k)
         viewer._wizard_pick(l)
-        assert len(viewer._measurements) == 2
+        assert len(viewer.measurements) == 2
         run("wizard delete, last")
-        assert len(viewer._measurements) == 1
+        assert len(viewer.measurements) == 1
         run("wizard delete, all")
-        assert not viewer._measurements
+        assert not viewer.measurements
     finally:
         run("wizard done")
 
@@ -242,6 +242,6 @@ def test_every_panel_row_is_a_real_control(session):
 
 def _last_measurement_message(viewer) -> str:
     """The label of the newest measurement, as the report spells it."""
-    name = list(viewer._measurements)[-1]
-    data = viewer._measurements[name]
+    name = list(viewer.measurements)[-1]
+    data = viewer.measurements[name]
     return f"{name} = {data['label']} x"

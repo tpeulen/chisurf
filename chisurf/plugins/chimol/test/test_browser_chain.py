@@ -68,7 +68,7 @@ _DRIVE = '''
     viewer = app.viewer
     renderer = app.renderer
     gui = renderer._internal_gui
-    panel = viewer._renderer._internal_gui.panels.get("density")
+    panel = viewer.gui.panels.get("density")
     emit("panel", "yes" if panel is not None else "no")
     if panel is None:
         raise SystemExit(1)
@@ -121,9 +121,9 @@ _DRIVE = '''
 
     # --- the per-row eye -------------------------------------------------
     eye = next(b for b, o in panel._row_eyes if o == oid2)
-    was = viewer._objects[oid2].visible
+    was = viewer.objects[oid2].visible
     renderer.on_pointer_press(eye.x + 2, eye.y + 2, LEFT_BUTTON, 0, double=False)
-    emit("eye", str(viewer._objects[oid2].visible != was))
+    emit("eye", str(viewer.objects[oid2].visible != was))
 
     emit("errors", "; ".join(errors[:2]) or "none")
 '''

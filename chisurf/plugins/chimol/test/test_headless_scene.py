@@ -172,11 +172,11 @@ def test_scene_sink_builds_a_scene_without_a_widget(qapp):
     from chimol.render.headless import SceneSink
 
     scene, viewer = _build_scene(SceneSink, ["hide everything", "show cartoon"], qapp)
-    assert viewer._renderer is not None, (
-        "a windowless renderer was discarded as 'no renderer', so _update_view "
+    assert viewer.renderer is not None, (
+        "a windowless renderer was discarded as 'no renderer', so update_view "
         "returned before assembling anything"
     )
-    assert viewer._renderer.widget() is None, "SceneSink must not produce a widget"
+    assert viewer.renderer.widget() is None, "SceneSink must not produce a widget"
     assert scene is not None and scene.objects, "no geometry was assembled"
     triangles = sum(
         int(np.asarray(o.geometry.indices).size // 3)

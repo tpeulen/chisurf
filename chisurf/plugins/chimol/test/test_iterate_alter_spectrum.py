@@ -70,7 +70,7 @@ def session(qapp):
 
 
 def _state(view):
-    return view._objects[view.get_active_object_id()].state
+    return view.objects[view.get_active_object_id()].state
 
 
 def _chain(view) -> np.ndarray:
@@ -357,7 +357,7 @@ def test_pseudoatom_creates_a_usable_object(session):
     cmd.do("pseudoatom pt, pos=[1,2,3]")
     assert errors == []
     entry = next(
-        view._objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
+        view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
     )
     assert np.allclose(entry.state.atoms["xyz"][0], [1.0, 2.0, 3.0])
 
@@ -367,7 +367,7 @@ def test_a_pseudoatom_matches_the_reader_dtype(session):
     cmd, view, _, _ = session
     cmd.do("pseudoatom pt, pos=[1,2,3]")
     entry = next(
-        view._objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
+        view.objects[o["id"]] for o in view.list_objects() if o["name"] == "pt"
     )
     assert {"chain", "res_id", "res_name", "atom_name", "bfactor", "xyz"} <= set(
         entry.state.atoms.dtype.names
@@ -399,8 +399,8 @@ def test_copy_makes_an_independent_object(session):
     assert errors == []
     ids = {o["name"]: o["id"] for o in view.list_objects()}
     assert "dup" in ids
-    source = view._objects[ids["148l"]].state.atoms
-    duplicate = view._objects[ids["dup"]].state.atoms
+    source = view.objects[ids["148l"]].state.atoms
+    duplicate = view.objects[ids["dup"]].state.atoms
     assert np.allclose(source["xyz"], duplicate["xyz"])
     assert not np.shares_memory(source["xyz"], duplicate["xyz"])
 
@@ -410,9 +410,9 @@ def test_editing_a_copy_leaves_the_original_alone(session):
     cmd, view, _, _ = session
     cmd.do("copy dup, 148l")
     ids = {o["name"]: o["id"] for o in view.list_objects()}
-    before = np.asarray(view._objects[ids["148l"]].state.atoms["xyz"]).copy()
+    before = np.asarray(view.objects[ids["148l"]].state.atoms["xyz"]).copy()
     cmd.do("alter_state 1, dup, x = x + 100")
-    assert np.allclose(view._objects[ids["148l"]].state.atoms["xyz"], before)
+    assert np.allclose(view.objects[ids["148l"]].state.atoms["xyz"], before)
 
 
 def test_copy_reports_a_failure_rather_than_half_doing_it(session):

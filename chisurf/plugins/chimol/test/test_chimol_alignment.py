@@ -57,8 +57,8 @@ def test_chimol_alignment():
     cmd.do("align mobile, target, cycles=5, cutoff=1.0")
     
     # Coordinate check
-    m_coords = viewer._objects["obj_mobile"].state.all_atom_coords
-    t_coords = viewer._objects["obj_target"].state.all_atom_coords
+    m_coords = viewer.objects["obj_mobile"].state.all_atom_coords
+    t_coords = viewer.objects["obj_target"].state.all_atom_coords
     
     dist = np.linalg.norm(m_coords - t_coords, axis=1)
     assert np.all(dist < 1e-3)
@@ -100,7 +100,7 @@ def test_chimol_super():
     
     cmd.do("super mobile, target")
     
-    m_coords = viewer._objects["obj_mobile"].state.all_atom_coords
-    t_coords = viewer._objects["obj_target"].state.all_atom_coords
+    m_coords = viewer.objects["obj_mobile"].state.all_atom_coords
+    t_coords = viewer.objects["obj_target"].state.all_atom_coords
     dist = np.linalg.norm(m_coords - t_coords, axis=1)
     assert np.all(dist < 1e-3)

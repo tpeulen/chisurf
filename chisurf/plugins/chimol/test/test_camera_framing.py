@@ -46,7 +46,7 @@ def view(qapp):
     # "no window") while the WebGPU one reports 640x480 (portrait once the panel
     # takes its column, so PyMOL's portrait correction fires). Same code, two
     # different answers, neither of them about framing.
-    v._renderer.resize(1000, 600)
+    v.renderer.resize(1000, 600)
     v.add_structure(
         _read_full_model(cs_struct.Structure, _PDB_148L),
         name="148l",
@@ -304,7 +304,7 @@ def test_a_widget_that_was_never_laid_out_frames_square(view):
     this guard existed. The correction has nothing to correct until there is a
     window.
     """
-    renderer = view._renderer
+    renderer = view.renderer
     # Constructed, not hoped for. This used to rely on the OpenGL widget
     # happening to report 100x30 before layout -- which the WebGPU widget does
     # not, so the test silently stopped covering the guard rather than failing.
@@ -325,7 +325,7 @@ def test_a_widget_that_was_never_laid_out_frames_square(view):
 
 def test_a_real_portrait_viewport_still_corrects(view):
     """The guard must not disable the correction it is protecting."""
-    renderer = view._renderer
+    renderer = view.renderer
     renderer.resize(400, 900)
     if renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE:
         pytest.skip("the panel column leaves no scene at this size")
@@ -340,7 +340,7 @@ def test_a_portrait_resize_re_derives_the_distance(view):
     spills off the sides. Applied once at whatever shape the window had when the
     structure was framed, it is wrong for every shape after that.
     """
-    renderer = view._renderer
+    renderer = view.renderer
     renderer.resize(900, 600)
     view.zoom()
     landscape = _distance(view)
@@ -360,7 +360,7 @@ def test_a_portrait_resize_re_derives_the_distance(view):
 
 def test_a_resize_that_keeps_the_shape_costs_nothing(view):
     """Same aspect, same distance -- and no work done to find that out."""
-    renderer = view._renderer
+    renderer = view.renderer
     renderer.resize(900, 600)
     view.zoom()
     before = _distance(view)
@@ -376,7 +376,7 @@ def test_a_resize_preserves_a_hand_zoomed_view(view):
     to wherever the last `zoom` left it, which is the same class of bug the
     framing work exists to fix.
     """
-    renderer = view._renderer
+    renderer = view.renderer
     renderer.resize(900, 600)
     view.zoom()
     renderer._distance *= 0.25          # what a few scroll clicks do

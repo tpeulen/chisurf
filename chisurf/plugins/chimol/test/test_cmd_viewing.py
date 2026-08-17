@@ -16,11 +16,11 @@ def _cmd_with_object():
     viewer = MockViewer()
     window = MockWindow(viewer)
     cmd = Cmd(window)
-    oid = viewer._create_object(name="m").object_id
+    oid = viewer.create_object(name="m").object_id
     atoms = np.zeros(3, dtype=[("xyz", float, 3)])
     atoms["xyz"] = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-    viewer._objects[oid].state.atoms = atoms
-    viewer._objects[oid].state.all_atom_coords = atoms["xyz"].copy()
+    viewer.objects[oid].state.atoms = atoms
+    viewer.objects[oid].state.all_atom_coords = atoms["xyz"].copy()
     viewer.set_active_object(oid)
     return cmd, viewer, oid
 
@@ -35,7 +35,7 @@ def test_rotate_applies_pymol_rotation():
     """``rotate x, 90`` rotates points +90 deg about X: (0,1,0) -> (0,0,1)."""
     cmd, viewer, oid = _cmd_with_object()
     cmd.do("rotate x, 90")
-    coords = viewer._objects[oid].state.all_atom_coords
+    coords = viewer.objects[oid].state.all_atom_coords
     assert np.allclose(coords[0], [1.0, 0.0, 0.0], atol=1e-6)   # on axis
     assert np.allclose(coords[1], [0.0, 0.0, 1.0], atol=1e-6)   # y -> z
     assert np.allclose(coords[2], [0.0, -1.0, 0.0], atol=1e-6)  # z -> -y
@@ -44,7 +44,7 @@ def test_rotate_applies_pymol_rotation():
 def test_translate_shifts_coordinates():
     cmd, viewer, oid = _cmd_with_object()
     cmd.do("translate [5, -2, 0]")
-    coords = viewer._objects[oid].state.all_atom_coords
+    coords = viewer.objects[oid].state.all_atom_coords
     assert np.allclose(coords[0], [6.0, -2.0, 0.0], atol=1e-6)
     assert np.allclose(coords[1], [5.0, -1.0, 0.0], atol=1e-6)
 

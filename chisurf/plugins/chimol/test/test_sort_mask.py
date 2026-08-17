@@ -245,7 +245,7 @@ def session(qapp):
 
 
 def _state(viewer):
-    return viewer._objects[viewer.get_active_object_id()].state
+    return viewer.objects[viewer.get_active_object_id()].state
 
 
 def _bond_names(state):
