@@ -69,7 +69,8 @@ def _cb_119(viewer) -> int:
     return int(hits[0])
 
 
-def test_the_panel_walks_pick_dye_attach(session):
+def test_the_panel_walks_pick_mutate_dye_attach(session):
+    """As simple as introducing a mutation: pick a residue, (CYS by default), a dye, Attach."""
     win, shared, errors, qapp = session
     shared.do("wizard labelling")
     viewer = win.viewer
@@ -80,13 +81,16 @@ def test_the_panel_walks_pick_dye_attach(session):
     labels = [row.label for row in state.panel()]
     assert labels[0] == "Labelling"
     assert "Dye: ..." in labels
-    assert state.prompt() == ["Labelling: pick an attachment atom"]
+    assert state.prompt() == ["Labelling: pick a residue"]
+    assert state.target == "CYS", "the default mutation is to a cysteine"
 
-    # The click: routed through the same hook the viewport installs.
+    # The click: routed through the same hook the viewport installs; it names a residue.
     consumed = viewer.pick_hook(_cb_119(viewer))
     assert consumed
-    assert state.atom[:4] == (viewer.get_active_object_id(), "E", 119, "CB")
-    assert any("at E119/CB" in row.label for row in state.panel())
+    assert state.residue[:3] == (viewer.get_active_object_id(), "E", 119)
+    labels = [row.label for row in state.panel()]
+    assert any(label.startswith("Residue") and "119" in label for label in labels)
+    assert "Mutate to: CYS" in labels and "Attach at: auto" in labels
 
     shared.do("wizard dye, Cy5")
     assert state.dye == "Cy5"
@@ -95,12 +99,41 @@ def test_the_panel_walks_pick_dye_attach(session):
     shared.do("wizard apply")
     assert errors == [], errors[:2]
     assert state.created, "Attach made no AV object"
+    # the residue is a cysteine now, and the dye hangs off its SG
+    oid = viewer.get_active_object_id()
+    atoms = viewer.objects[oid].state.atoms
+    rows = atoms["res_id"] == 119
+    assert set(np.char.strip(atoms["res_name"][rows].astype(str))) == {"CYS"}
+    assert "SG" in set(np.char.strip(atoms["atom_name"][rows].astype(str)))
+    av_entry = viewer.objects[state.created[-1]]
+    assert "SG" in str(getattr(av_entry, "name", "")), av_entry.name
     # Attach kept the wizard and the dye, dropped the pick.
-    assert state.atom == ()
+    assert state.residue == ()
     assert state.dye == "Cy5"
-    assert state.prompt() == ["Labelling: pick an attachment atom"]
+    assert state.prompt() == ["Labelling: pick a residue"]
     shared.do("wizard done")
     assert viewer.wizard is None
+
+
+def test_keep_attaches_to_the_residue_as_it_is(session):
+    """`Mutate to: keep` labels the residue's own CB (auto: SG, else CB, else CA)."""
+    win, shared, errors, qapp = session
+    shared.do("wizard labelling")
+    viewer = win.viewer
+    state = viewer.wizard
+    shared.do("wizard target, keep")
+    assert state.target == ""
+    shared.do("wizard atom, CB")
+    assert state.attach_atom == "CB"
+    shared.do("wizard dye, Cy5")
+    viewer.pick_hook(_cb_119(viewer))
+    resn_before = str(viewer.objects[viewer.get_active_object_id()].state.atoms["res_name"][_cb_119(viewer)]).strip()
+    shared.do("wizard apply")
+    assert errors == [], errors[:2]
+    atoms = viewer.objects[viewer.get_active_object_id()].state.atoms
+    assert str(atoms["res_name"][_cb_119(viewer)]).strip() == resn_before
+    assert "CB" in str(viewer.objects[state.created[-1]].name)
+    shared.do("wizard done")
 
 
 def test_the_second_site_is_one_click_and_attach(session):
