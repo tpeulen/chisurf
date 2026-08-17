@@ -45,9 +45,9 @@ def qapp():
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(900, 650)
     win.show()
     for _ in range(10):
@@ -320,7 +320,7 @@ def test_get_bonds_prints_one_line_not_two(session):
     for a real structure is a wall of triples after a line that already said it.
     """
     viewer, shared, _do, _errors = session
-    from chimol.commands import cmd as shared_cmd
+    shared_cmd = shared
 
     messages: list[str] = []
     shared_cmd.set_message_callback(messages.append)

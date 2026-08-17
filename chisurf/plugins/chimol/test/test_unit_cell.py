@@ -40,12 +40,12 @@ def qapp():
 @pytest.fixture
 def window(qapp):
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
     from chimol.core.settings.registry import set_setting
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(800, 600)
     win.show()
     for _ in range(5):

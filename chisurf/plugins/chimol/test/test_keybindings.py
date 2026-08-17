@@ -162,8 +162,9 @@ def test_the_settings_panel_offers_every_binding_as_an_editable_field():
 def test_the_keys_command_is_registered():
     """Help -> Keyboard bindings issues this; a menu row pointing at a command
     that does not exist looks fine and does nothing."""
-    from chimol.commands import cmd
+    from chimol.commands import Cmd
 
+    cmd = Cmd()
     names = set(cmd.command_names())
     assert "keys" in names
     assert "keybindings" in names

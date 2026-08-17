@@ -36,11 +36,11 @@ def qapp():
 def session(qapp):
     """A window with 148L loaded, the runner, and the viewer."""
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(700, 520)
     win.show()
     for _ in range(4):

@@ -65,9 +65,9 @@ def viewer():
         pytest.skip(str(exc))
 
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(1280, 860)
     win.show()
     for _ in range(12):

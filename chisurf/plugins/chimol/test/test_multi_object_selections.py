@@ -42,9 +42,9 @@ def session(qapp):
     """A window with three derived objects, two of them grouped."""
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(900, 600)
     win._load_structure_from_path(_PDB)
     for _ in range(20):
@@ -84,7 +84,7 @@ def _state(viewer, name):
 # --------------------------------------------------------------------------- #
 def test_a_group_counts_all_of_its_members(session):
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     lig = shared.count_atoms("lig")
     nag = shared.count_atoms("nag")
@@ -96,7 +96,7 @@ def test_a_group_counts_all_of_its_members(session):
 def test_a_group_narrows_like_any_other_word(session):
     """``ligands and elem C`` must be the group's carbons, not the group."""
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     whole = shared.count_atoms("ligands")
     carbons = shared.count_atoms("ligands and elem C")
@@ -218,7 +218,7 @@ def test_zoom_on_a_group_frames_all_of_it(session):
 # --------------------------------------------------------------------------- #
 def test_a_plain_expression_counts_every_object(session):
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     total = shared.count_atoms("all")
     per_object = sum(
@@ -231,7 +231,7 @@ def test_a_plain_expression_counts_every_object(session):
 
 def test_a_selection_spanning_objects_stores_all_of_them(session):
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     do("select ligs, ligands")
     entry = shared._named_selections["ligs"]
@@ -257,7 +257,7 @@ def test_an_unknown_name_is_reported_not_answered_as_zero(session):
 def test_a_question_mark_allows_an_undefined_name(session):
     """PyMOL's `?sele` spelling: undefined is allowed here."""
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     assert shared.count_atoms("?nosuchthing") == 0
     assert errors == []
@@ -266,7 +266,7 @@ def test_a_question_mark_allows_an_undefined_name(session):
 def test_a_real_name_still_answers_after_the_error_path(session):
     """The unknown-name check must not fire for a name only *some* object has."""
     win, do, _msgs, errors = session
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     assert shared.count_atoms("lig") > 0
     assert errors == []

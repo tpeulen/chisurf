@@ -41,9 +41,9 @@ def session(qapp):
     """A window with three derived objects to group in various ways."""
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(1000, 700)
     win.show()
     for _ in range(10):

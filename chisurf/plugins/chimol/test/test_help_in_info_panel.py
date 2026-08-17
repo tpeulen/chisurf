@@ -26,12 +26,12 @@ def session():
     from qtpy import QtWidgets
 
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(900, 640)
     win.show()
     for _ in range(5):
@@ -68,9 +68,8 @@ def test_help_opens_the_info_panel_and_fills_it(session):
 
 def test_help_still_returns_its_text(session):
     """A script and the console read the return value; the panel is extra."""
-    from chimol.commands import cmd as shared
-
     win, _app = session
+    shared = win.cmd
     text = shared.help("distance")
     assert "distance" in text
     assert win.viewer._info_text == text
@@ -140,11 +139,10 @@ def test_unknown_command_help_says_so_in_the_panel(session):
 # --------------------------------------------------------------------------- #
 def test_help_setting_goes_to_the_panel_too(session):
     """92 names do not fit the prompt's one-line feedback strip."""
-    from chimol.commands import cmd
-
     from chimol.hosts.qt import overlay as qt_overlay
 
     window, _app = session
+    cmd = window.cmd
     cmd.set_window(window)
     text = cmd.help_setting()
 

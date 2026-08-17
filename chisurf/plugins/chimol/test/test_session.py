@@ -49,9 +49,9 @@ def _new_window(qapp):
     that set them earlier would silently stop hearing anything.
     """
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(1000, 700)
     win.show()
     for _ in range(10):

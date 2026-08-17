@@ -42,9 +42,9 @@ def qapp():
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win._load_structure_from_path(_PDB / "148l.pdb")
     for _ in range(20):
         qapp.processEvents()

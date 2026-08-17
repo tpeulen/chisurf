@@ -39,9 +39,9 @@ def qapp_empty():
 def session(qapp_empty):
     """A plugin window with the shared command object attached to it."""
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(600, 400)
     errors: list[str] = []
     messages: list[str] = []

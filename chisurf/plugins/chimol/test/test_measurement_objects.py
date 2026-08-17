@@ -27,12 +27,12 @@ def session():
     from qtpy import QtWidgets
 
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(900, 640)
     win.show()
     for _ in range(5):

@@ -39,12 +39,12 @@ def qapp():
 @pytest.fixture(scope="module")
 def session(qapp):
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     path = PDB if PDB.is_file() else FALLBACK
     if not path.is_file():
         pytest.skip(f"missing fixture {PDB}")
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(700, 520)
     win.show()
     for _ in range(4):

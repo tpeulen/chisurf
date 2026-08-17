@@ -45,9 +45,9 @@ def qapp():
 
 def _window(qapp, path):
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(1200, 800)
     win.show()
     for _ in range(10):

@@ -41,9 +41,9 @@ def qapp():
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(800, 600)
     win.show()
     for _ in range(12):

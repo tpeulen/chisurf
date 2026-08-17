@@ -76,8 +76,9 @@ def test_every_row_issues_a_command_the_viewer_actually_has():
     reading the window -- only by checking what it would issue against what
     the command layer answers to.
     """
-    from chimol.commands import cmd
+    from chimol.commands import Cmd
 
+    cmd = Cmd()
     known = set(cmd.command_names())
     panel = dw.DbgWindow(lambda _c: None)
     for tab in dw.TABS:

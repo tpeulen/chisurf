@@ -68,7 +68,6 @@ def hyphenated(request):
     from qtpy import QtWidgets
 
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -79,6 +78,7 @@ def hyphenated(request):
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.show()
     for _ in range(4):
         app.processEvents()

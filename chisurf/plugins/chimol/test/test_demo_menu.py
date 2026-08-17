@@ -79,7 +79,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
     ten of them; listing there scrolled the whole catalogue away. Each entry
     also carries its `demo <key>` command, so a click on a name runs it.
     """
-    from chimol.commands import cmd as shared
+    shared = qapp_window.cmd
 
     said: list[str] = []
     shared.set_window(qapp_window)
@@ -97,7 +97,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
 
 
 def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):
-    from chimol.commands import cmd as shared
+    shared = qapp_window.cmd
 
     errors: list[str] = []
     shared.set_window(qapp_window)

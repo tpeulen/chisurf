@@ -99,7 +99,6 @@ def window():
     from qtpy import QtWidgets
 
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -110,6 +109,7 @@ def window():
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(*SIZE)
     win.show()
     for _ in range(5):
@@ -134,7 +134,7 @@ def test_toggle_rep_flips_rather_than_only_showing(window):
 
 
 def test_toggle_rep_refuses_an_unknown_representation(window):
-    from chimol.commands import cmd as shared
+    shared = window.cmd
 
     errors: list[str] = []
     shared.set_error_callback(errors.append)

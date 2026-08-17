@@ -130,7 +130,7 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
     dispatcher at the level the mouse ended on.
     """
     win = driven_window
-    from chimol.commands import cmd as shared
+    shared = win.cmd
 
     errors: list[str] = []
     shared.set_window(win)

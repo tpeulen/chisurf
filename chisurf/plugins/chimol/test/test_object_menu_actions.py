@@ -106,9 +106,9 @@ def _open(qapp, path, *, second_object=False):
     """Open a real plugin window on ``path``, with error capture wired in."""
     pytest.importorskip("chisurf.core.structure")
     from chimol.hosts.qt.window import MolViewPluginWindow
-    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
+    shared = win.cmd
     win.resize(700, 500)
     win.show()
     for _ in range(5):
