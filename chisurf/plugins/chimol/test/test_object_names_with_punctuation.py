@@ -19,7 +19,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from chimol.core.selection.parser import tokenize  # noqa: E402
-from chimol.chrome.object_menus import quote_selection_name  # noqa: E402
+from chimol.ui.menus.objects import quote_selection_name  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #

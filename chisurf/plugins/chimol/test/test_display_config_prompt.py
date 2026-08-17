@@ -308,7 +308,7 @@ def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt
 # to keep working is only this: the preference can be read, and it can be put
 # back after being turned off.
 def test_the_panel_shows_the_current_preference(settings, shipped):
-    from chimol.chrome.panels import settings as settings_window
+    from chimol.ui.panels import settings as settings_window
 
     mine = json.loads(json.dumps(shipped))
     mine[cfg_mod.UPDATE_PROMPT_KEY] = False
@@ -319,7 +319,7 @@ def test_the_panel_shows_the_current_preference(settings, shipped):
 
 
 def test_an_absent_preference_reads_as_asking(settings, shipped):
-    from chimol.chrome.panels import settings as settings_window
+    from chimol.ui.panels import settings as settings_window
 
     _write(settings, shipped)
     assert settings_window.build_model().get(settings_window.PROMPT_KEY) is True
@@ -327,7 +327,7 @@ def test_an_absent_preference_reads_as_asking(settings, shipped):
 
 def test_the_panel_can_turn_it_back_on(settings, shipped):
     """A preference with no way back on is a preference that only turns off."""
-    from chimol.chrome.panels import settings as settings_window
+    from chimol.ui.panels import settings as settings_window
 
     mine = json.loads(json.dumps(shipped))
     mine[cfg_mod.UPDATE_PROMPT_KEY] = False

@@ -193,7 +193,7 @@ def test_every_region_of_the_panel_draws_something(state):
     """
     from PIL import Image
 
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     p, atlas = _painter()
     width, height = chrome_baseline.SIZE

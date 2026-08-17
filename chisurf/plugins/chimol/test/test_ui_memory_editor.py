@@ -13,8 +13,8 @@ import struct
 import pytest
 
 from chimol.cmtk.keys import KEY_DOWN, KEY_RIGHT
-from chimol.core import memory_probe
-from chimol.cmtk import memory_editor as me
+from chimol.core.services import memory_probe
+from chimol.cmtk.widgets import memory_editor as me
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 numpy = pytest.importorskip("numpy")

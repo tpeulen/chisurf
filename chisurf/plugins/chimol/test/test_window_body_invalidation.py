@@ -38,7 +38,7 @@ _DRIVE = """
     app.cmd.set_error_callback(lambda _e: None)
     app.cmd.do("load 148l.pdb")
     from chimol.cmtk.events import LEFT_BUTTON
-    from chimol.chrome.gui import GuiWindow
+    from chimol.ui.gui import GuiWindow
 
     r = app.renderer
     gui = r._internal_gui

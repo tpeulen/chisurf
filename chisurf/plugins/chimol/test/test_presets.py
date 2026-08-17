@@ -27,7 +27,7 @@ from chimol.core.colors import (
     _build_chain_color_array,
     get_pymol_color,
 )
-from chimol.commands.presets import PresetMixin
+from chimol.commands.builtin.presets import PresetMixin
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -234,7 +234,7 @@ def test_the_menu_offers_pymols_presets_and_runs_the_real_ones():
     PyMOL's menu lists thirteen presets plus a *submenu* for the ligand-site
     variants, which is where ``ligand_cartoon`` lives.
     """
-    from chimol.chrome.object_menus import ACTION_MENU
+    from chimol.ui.menus.objects import ACTION_MENU
 
     entry = next(e for e in ACTION_MENU if e.label == "preset")
     commands = _menu_commands(entry)
@@ -248,7 +248,7 @@ def test_the_menu_offers_pymols_presets_and_runs_the_real_ones():
 
 def test_every_disabled_ligand_site_variant_says_why():
     """A greyed row with no tooltip is indistinguishable from a bug."""
-    from chimol.chrome.object_menus import ACTION_MENU
+    from chimol.ui.menus.objects import ACTION_MENU
 
     entry = next(e for e in ACTION_MENU if e.label == "preset")
     sites = next(c for c in entry.children if c.label == "ligand sites")

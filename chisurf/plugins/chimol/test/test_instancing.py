@@ -124,7 +124,7 @@ def test_an_object_with_an_instance_set_builds_instanced_meshes(qapp):
     import pathlib
 
     import chimol
-    from chimol.core.instances import InstanceSet
+    from chimol.core.model.instances import InstanceSet
     from chimol.core.viewer import Viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink

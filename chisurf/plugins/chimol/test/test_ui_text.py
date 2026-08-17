@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from chimol.cmtk import style
-from chimol.cmtk import text as uitext
+from chimol.cmtk.widgets import text as uitext
 
 
 class RecordingPainter:

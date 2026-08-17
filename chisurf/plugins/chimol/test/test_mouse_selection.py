@@ -105,7 +105,7 @@ def _atom_count_for_residue_indices(viewer, indices) -> int:
 
 
 def test_click_action_resolves_the_single_cell():
-    from chimol.chrome.mouse_modes import click_action_of
+    from chimol.ui.input.mouse_modes import click_action_of
     from qtpy import QtCore
 
     no = QtCore.Qt.NoModifier
@@ -690,7 +690,7 @@ def test_every_cell_the_block_shows_starts_the_gesture_it_names(viewport):
     """
     from qtpy import QtCore
 
-    from chimol.chrome.mouse_modes import action_of
+    from chimol.ui.input.mouse_modes import action_of
 
     view, widget, qapp = viewport
     mode = widget._internal_gui.mouse_mode

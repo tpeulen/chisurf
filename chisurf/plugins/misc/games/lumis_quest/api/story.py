@@ -74,7 +74,7 @@ SEAL_GOAL: int = int(_DATA.get("goals", {}).get("seals", 3))
 
 #: What Vesper says when you reach her, and what Iris says back -- one reply
 #: per doctrine, because the reply *is* the doctrine's whole argument.
-LANTERNWRIGHT: tuple[str, ...] = tuple(_DATA.get("lanternwright", ()))
+ANTAGONIST_LINES: tuple[str, ...] = tuple(_DATA.get("lanternwright", ()))
 REPLIES: dict[str, str] = _DATA.get("replies", {})
 
 #: The closing cards, one set per doctrine, shown when the work is done.
@@ -149,7 +149,7 @@ class Story:
         self.seen: set[str] = set()
         #: The hound is found in the world, not issued at the door. A journey
         #: earns its company.
-        self.has_lumi = False
+        self.has_companion = False
         #: Warden seals held, which is also the licence tier (see :mod:`.tiers`).
         self.seals: set[str] = set()
         #: How many labels have been taken off marked animals.

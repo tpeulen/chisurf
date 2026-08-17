@@ -67,9 +67,9 @@ def test_a_fighter_starts_at_full_health(pair):
     """And knows how far through its photon budget it is."""
     fighter = battle.Fighter(_beast(pair[0]))
     assert fighter.hp == pair[0].max_hp and fighter.alive
-    assert fighter.bleached == 0.0
+    assert fighter.depleted == 0.0
     fighter.hp //= 2
-    assert 0.4 < fighter.bleached < 0.6
+    assert 0.4 < fighter.depleted < 0.6
 
 
 def test_attacking_costs_the_attacker_photons(pair):
@@ -96,7 +96,7 @@ def test_a_brighter_dye_bleaches_faster():
         me = battle.Fighter(_beast(creature))
         fight = battle.Battle([me], battle.Fighter(_beast(target), hp=999), rng=random.Random(2))
         fight.attack()
-        spent.append(me.bleached)
+        spent.append(me.depleted)
     assert spent[0] > spent[1], spent
     assert bright.max_hp < dim.max_hp, "and it has less to spend in the first place"
 
@@ -311,13 +311,13 @@ def test_a_failed_catch_costs_the_turn(pair):
     assert me.hp < before
 
 
-def test_warden_fight_distinctiveness_rules(pair):
+def test_boss_fight_distinctiveness_rules(pair):
     """Warden boss fights enforce distinct mechanical rules per lesson."""
     donor, acceptor = pair
     me = battle.Fighter(_beast(donor), hp=100)
 
     # 1. Tolm (Ember): Continuous attacks trigger counter recoil.
-    ember_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="ember", rng=random.Random(42))
+    ember_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), boss_key="ember", rng=random.Random(42))
     ember_fight.attack()
     assert ember_fight.player_attack_streak == 1
     hp_after_1 = me.hp
@@ -326,14 +326,124 @@ def test_warden_fight_distinctiveness_rules(pair):
     assert me.hp < hp_after_1
 
     # 2. Ysolde (Prism): Non-matching spectral emission deals 0 damage.
-    prism_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="prism", rng=random.Random(42))
+    prism_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), boss_key="prism", rng=random.Random(42))
     opp_hp_before = prism_fight.opponent.hp
     prism_fight.attack()
     # Unmatched spectral emission fails to deal damage to Ysolde's Mantis
     assert prism_fight.opponent.hp == opp_hp_before or "transfers" not in prism_fight.log[-1].text
 
     # 3. Kestrel (Shutter): Invisible without tuned optical filter.
-    shutter_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), warden_key="shutter", rng=random.Random(42))
+    shutter_fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=500), boss_key="shutter", rng=random.Random(42))
     shutter_fight.attack()
     player_turns = [t for t in shutter_fight.log if me.name in t.text]
     assert player_turns and player_turns[0].damage == 0
+
+
+def test_warden_surge_activates_below_half_hp(pair):
+    """A Warden below 50% HP gains a signature move on every third round."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=9999)
+
+    # Ember warden starting at low HP -- the surge should trigger.
+    fight = battle.Battle(
+        [me],
+        battle.Fighter(_beast(acceptor), hp=10),
+        boss_key="ember",
+        rng=random.Random(42),
+    )
+    # Round 3 is the first surge round (rounds starts at 0, checked at %3==0
+    # after rounds>0). Play enough rounds to reach it.
+    for _ in range(6):
+        if fight.finished:
+            break
+        fight.attack()
+    surge_log = [t for t in fight.log if "FLARE" in t.text or "SPLIT" in t.text
+                 or "VEIL" in t.text or "TIDE" in t.text or "ECLIPSE" in t.text]
+    assert len(surge_log) > 0, "a surged Warden must use its signature move"
+
+
+def test_warden_does_not_surge_above_half_hp(pair):
+    """Above 50% HP a Warden behaves like a normal opponent."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=9999)
+
+    fight = battle.Battle(
+        [me],
+        battle.Fighter(_beast(acceptor), hp=99999),
+        boss_key="ember",
+        rng=random.Random(42),
+    )
+    for _ in range(6):
+        fight.attack()
+    surge_log = [t for t in fight.log if "FLARE" in t.text or "SPLIT" in t.text
+                 or "VEIL" in t.text or "TIDE" in t.text or "ECLIPSE" in t.text]
+    assert len(surge_log) == 0
+
+
+def test_prism_surge_stuns_the_active_fighter(pair):
+    """Ysolde's SPLIT shelves the active fighter for a turn."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=9999)
+    fight = battle.Battle(
+        [me],
+        battle.Fighter(_beast(acceptor), hp=5),
+        boss_key="prism",
+        rng=random.Random(42),
+    )
+    for _ in range(6):
+        if fight.finished:
+            break
+        fight.attack()
+    split_log = [t for t in fight.log if "SPLIT" in t.text]
+    if split_log:
+        assert me.stunned or any("shelved" in t.text for t in fight.log)
+
+
+def test_fighters_gain_xp_and_level_up(pair):
+    """Winning a fight awards XP, and enough XP levels up a creature."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=9999)
+    starting_level = me.level
+    fight = battle.Battle([me], battle.Fighter(_beast(acceptor), hp=1),
+                          rng=random.Random(0))
+    fight.attack()
+    assert fight.won
+    assert me.xp > 0
+    # A tier-0 opponent gives (0+1)*3 = 9 XP, enough to reach level 2 (8 XP).
+    assert me.level > starting_level
+
+
+def test_level_scales_stats(pair):
+    """A higher-level fighter has more HP and attack than the base beast."""
+    donor, acceptor = pair
+    low = battle.Fighter(_beast(donor), level=1)
+    high = battle.Fighter(_beast(donor), level=5)
+    assert high.max_hp > low.max_hp
+    assert high.attack_power > low.attack_power
+
+
+def test_level_up_heals_to_full(pair):
+    """Gaining a level restores HP to the new maximum."""
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=1)
+    me.gain_xp(100)
+    assert me.hp == me.max_hp
+
+
+def test_creature_level_survives_save_and_load(pair, tmp_path):
+    """Level and XP are part of the run, persisted across a save round trip."""
+    from chisurf.plugins.misc.games.lumis_quest.api import save as save_api
+
+    donor, acceptor = pair
+    me = battle.Fighter(_beast(donor), hp=42, level=4, xp=15)
+    state = save_api.RunState(
+        team=[(me.beast.species.key,
+               donor.probe_id, me.hp, me.beast.infusion,
+               me.level, me.xp)],
+    )
+    path = tmp_path / "run.json"
+    state.save(path)
+    back = save_api.RunState.load(path)
+    entry = back.team[0]
+    assert entry[4] == 4
+    assert entry[5] == 15

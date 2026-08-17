@@ -64,7 +64,7 @@ class RunState:
     tutorial : list of str
         Teaching steps already completed, so the banners appear once per
         player rather than once per session.
-    has_lumi : bool
+    has_companion : bool
         Whether the hound has been found and befriended. Defaults True so a
         save from before the waking act keeps its companion.
     story_seen : list of str
@@ -86,12 +86,10 @@ class RunState:
     salvaged : list of str
         Dark-manifold ruin cells already picked clean, as ``"col,row"``
         strings -- a ruin yields its reagent once per run, ever.
-    iris_hp : int
-        Her own life in real-time combat. ``-1`` (a save from before this
-        existed, or a fresh run) means full, not zero.
-    photons : int
-        Her own casting energy. ``-1`` means the starting half-charge, not
-        zero -- see ``iris_hp``.
+    player_vitality : int
+        Player's life in real-time combat. ``-1`` means full.
+    energy : int
+        Player's ability energy. ``-1`` means the starting half-charge.
     settings : dict
         The player's settings, by the keys declared in
         :mod:`..api.settings`. Empty means "whatever the defaults are", which
@@ -100,9 +98,11 @@ class RunState:
 
     position: tuple[float, float] = (0.0, 0.0)
     dark: bool = False
-    # (species_key, probe_id, hp, infusion) -- infusion is a TRAITS key or
-    # None, from a bench reagent fixed in on top of whatever label is worn.
-    team: list[tuple[str, int, int, str | None]] = dataclasses.field(default_factory=list)
+    # (species_key, probe_id, hp, infusion, level, xp) -- infusion is a TRAITS
+    # key or None, from a bench reagent fixed in on top of whatever label is
+    # worn. Level and xp are additive (entries 4, 5): an old 4-tuple save still
+    # parses, defaulting to level 1 and 0 xp.
+    team: list[tuple] = dataclasses.field(default_factory=list)
     bodies: list[str] = dataclasses.field(default_factory=list)
     labels: list[int] = dataclasses.field(default_factory=list)
     seals: list[str] = dataclasses.field(default_factory=list)
@@ -113,7 +113,7 @@ class RunState:
     cleared: list[str] = dataclasses.field(default_factory=list)
     order: str | None = None
     tutorial: list[str] = dataclasses.field(default_factory=list)
-    has_lumi: bool = True
+    has_companion: bool = True
     story_seen: list[str] = dataclasses.field(default_factory=list)
     pledge_baseline: int | None = None
     lab: list = dataclasses.field(default_factory=list)
@@ -121,8 +121,11 @@ class RunState:
     crafted: list[str] = dataclasses.field(default_factory=list)
     explored: list[str] = dataclasses.field(default_factory=list)
     salvaged: list[str] = dataclasses.field(default_factory=list)
-    iris_hp: int = -1
-    photons: int = -1
+    player_vitality: int = -1
+    energy: int = -1
+    vitality_fragments: int = 0
+    vitality_boosts: int = 0
+    opened_containers: list[str] = dataclasses.field(default_factory=list)
     settings: dict = dataclasses.field(default_factory=dict)
 
     def as_dict(self) -> dict:
@@ -148,7 +151,7 @@ class RunState:
             "cleared": list(self.cleared),
             "order": self.order,
             "tutorial": list(self.tutorial),
-            "has_lumi": bool(self.has_lumi),
+            "has_companion": bool(self.has_companion),
             "story_seen": list(self.story_seen),
             "pledge_baseline": self.pledge_baseline,
             "lab": [list(row) for row in self.lab],
@@ -156,8 +159,11 @@ class RunState:
             "crafted": list(self.crafted),
             "explored": list(self.explored),
             "salvaged": list(self.salvaged),
-            "iris_hp": int(self.iris_hp),
-            "photons": int(self.photons),
+            "player_vitality": int(self.player_vitality),
+            "energy": int(self.energy),
+            "vitality_fragments": int(self.vitality_fragments),
+            "vitality_boosts": int(self.vitality_boosts),
+            "opened_containers": list(self.opened_containers),
             "settings": dict(self.settings),
         }
 
@@ -210,9 +216,12 @@ class RunState:
             return cls(
                 position=tuple(raw.get("position", (0.0, 0.0)))[:2],
                 dark=bool(raw.get("dark", False)),
-                team=[(str(entry[0]), int(entry[1]), int(entry[2]),
-                       str(entry[3]) if len(entry) >= 4 and entry[3] is not None else None)
-                      for entry in raw.get("team", []) if len(entry) >= 3],
+                team=[(
+                    str(entry[0]), int(entry[1]), int(entry[2]),
+                    str(entry[3]) if len(entry) >= 4 and entry[3] is not None else None,
+                    int(entry[4]) if len(entry) >= 5 else 1,
+                    int(entry[5]) if len(entry) >= 6 else 0,
+                ) for entry in raw.get("team", []) if len(entry) >= 3],
                 bodies=[str(value) for value in raw.get("bodies", [])],
                 labels=[int(value) for value in raw.get("labels", [])],
                 seals=[str(value) for value in raw.get("seals", [])],
@@ -223,7 +232,7 @@ class RunState:
                 cleared=[str(value) for value in raw.get("cleared", [])],
                 order=raw.get("order"),
                 tutorial=[str(value) for value in raw.get("tutorial", [])],
-                has_lumi=bool(raw.get("has_lumi", True)),
+                has_companion=bool(raw.get("has_companion", True)),
                 story_seen=[str(value) for value in raw.get("story_seen", [])],
                 pledge_baseline=raw.get("pledge_baseline"),
                 lab=[list(row) for row in raw.get("lab", [])],
@@ -232,11 +241,11 @@ class RunState:
                 crafted=[str(value) for value in raw.get("crafted", [])],
                 explored=[str(value) for value in raw.get("explored", [])],
                 salvaged=[str(value) for value in raw.get("salvaged", [])],
-                iris_hp=int(raw.get("iris_hp", -1)),
-                photons=int(raw.get("photons", -1)),
-                # Unknown keys are dropped on the way in by GameSettings, so a
-                # setting that has been renamed or removed cannot stop a run
-                # from loading.
+                player_vitality=int(raw.get("player_vitality", raw.get("iris_hp", -1))),
+                energy=int(raw.get("energy", raw.get("energy", -1))),
+                vitality_fragments=int(raw.get("vitality_fragments", 0)),
+                vitality_boosts=int(raw.get("vitality_boosts", 0)),
+                opened_containers=[str(v) for v in raw.get("opened_containers", [])],
                 settings=dict(raw.get("settings", {})),
             )
         except (TypeError, ValueError):

@@ -148,7 +148,7 @@ def test_the_allowlist_has_no_stale_entries():
 #: degrade rather than fail; that is what :func:`test_soft_dependencies_are_guarded`
 #: checks.
 SOFT = {
-    # `commands/exporting.py` used to be here: it asked for ChiSurf's progress
+    # `commands/builtin/exporting.py` used to be here: it asked for ChiSurf's progress
     # dialog (and a QThread) when the window was a Qt widget. Severed on
     # 2026-08-17 -- `ray` uses the in-viewport progress overlay on every
     # host, and the module imports neither ChiSurf nor Qt.

@@ -145,7 +145,7 @@ def test_the_loader_class_is_named_once():
     so nothing fails, and the next reader takes it for the real class name --
     which is how the broken call site was written in the first place.
     """
-    from chimol.commands import loader
+    from chimol.commands.builtin import loader
 
     for name in loader.__all__:
         assert hasattr(loader, name), f"loader.__all__ names {name!r}, which does not exist"

@@ -6,7 +6,7 @@ import pytest
 from chimol.render.pack import pack_scene
 from chimol.render.scene import Geometry, Scene, SceneObject
 from chimol.render.surface_quality import apply_surface_quality
-from chimol.core.view_state import pack_view_state
+from chimol.core.camera.view_state import pack_view_state
 from chimol.render.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)

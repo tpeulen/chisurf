@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.core.hierarchy import HierarchyNode
+from chimol.core.model.hierarchy import HierarchyNode
 from chimol.core.viewer import Viewer
 
 

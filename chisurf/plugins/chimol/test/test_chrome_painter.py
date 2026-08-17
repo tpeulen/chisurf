@@ -83,7 +83,7 @@ def test_the_panel_imports_without_a_gui_toolkit():
         else:
             raise SystemExit("the Qt blocker is a no-op")
 
-        import chimol.chrome.gui  # noqa: F401
+        import chimol.ui.gui  # noqa: F401
         import chimol.cmtk.painter  # noqa: F401
         print("ok")
         """
@@ -165,7 +165,7 @@ def test_the_disabled_colour_button_greys_the_way_qcolor_did():
     fully-saturated rainbow stop greys to the same 145. Pinned because the
     equivalence is the whole reason the hex strings could become tuples.
     """
-    from chimol.chrome.gui import COLOR_BUTTON_STOPS, _grey_of
+    from chimol.ui.gui import COLOR_BUTTON_STOPS, _grey_of
 
     assert all(_grey_of(stop) == (145, 145, 145) for stop in COLOR_BUTTON_STOPS)
     assert _grey_of((0, 0, 0)) == (60, 60, 60)

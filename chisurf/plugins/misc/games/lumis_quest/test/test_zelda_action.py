@@ -52,19 +52,19 @@ def game(qapp, tmp_path):
 def test_overworld_weapon_attack(game):
     """Overworld weapon attack triggers cooldown, sparks, and cuts grass."""
     game.phase = "play"
-    start_photons = game.photons
+    start_energy = game.energy
     assert game._attack_cooldown == 0.0
 
     game._attack_overworld()
     assert game._attack_cooldown > 0.0
     assert len(game.sparks) > 0
-    assert game.photons >= start_photons
+    assert game.energy >= start_energy
 
 
 def test_overworld_beast_damage_and_knockback(game):
     """Weapon attacks deal overworld damage and knockback to beast NPCs."""
     game.phase = "play"
-    pos = (game.iris[0] + 10.0, game.iris[1])
+    pos = (game.player_pos[0] + 10.0, game.player_pos[1])
     beast = npcs_api.Npc(
         name="Wild Hare", kind="beast", x=pos[0], y=pos[1],
         home=pos, radius=20.0, line="..."
@@ -92,7 +92,7 @@ def test_a_marked_beast_is_caught_not_killed_in_real_time(game, monkeypatch):
     world for a flat reward and skipping capture entirely.
     """
     game.phase = "play"
-    pos = (game.iris[0] + 10.0, game.iris[1])
+    pos = (game.player_pos[0] + 10.0, game.player_pos[1])
     beast = npcs_api.Npc(
         name="Marked Hare", kind="beast", x=pos[0], y=pos[1],
         home=pos, radius=20.0, line="..."
@@ -120,13 +120,13 @@ def test_overworld_magic_spells(game):
     cost used to corrupt on every cast.
     """
     game.phase = "play"
-    game.photons = 100
+    game.energy = 100
     unbound_before = game.story.unbound
 
     # 1. Flame spell
     game.active_magic = "flame"
     game._cast_magic()
-    assert game.photons == 90
+    assert game.energy == 90
     assert game._magic_cooldown > 0.0
 
     # Reset cooldown
@@ -135,7 +135,7 @@ def test_overworld_magic_spells(game):
     # 2. Heal spell
     game.active_magic = "heal"
     game._cast_magic()
-    assert game.photons == 70
+    assert game.energy == 70
 
     # Reset cooldown
     game._magic_cooldown = 0.0
@@ -143,7 +143,7 @@ def test_overworld_magic_spells(game):
     # 3. Shield spell
     game.active_magic = "shield"
     game._cast_magic()
-    assert game.photons == 55
+    assert game.energy == 55
     assert game._shield_timer > 0.0
     assert game.story.unbound == unbound_before, "casting must never touch it"
 
@@ -163,29 +163,29 @@ def test_a_beast_touching_iris_costs_real_hp(game):
     """The "-10 HP" popup used to be pure flavour text -- it costs her now."""
     game.phase = "play"
     beast = npcs_api.Npc(
-        name="Wild Hare", kind="beast", x=game.iris[0], y=game.iris[1],
-        home=(game.iris[0], game.iris[1]), radius=20.0, line="...",
+        name="Wild Hare", kind="beast", x=game.player_pos[0], y=game.player_pos[1],
+        home=(game.player_pos[0], game.player_pos[1]), radius=20.0, line="...",
     )
     game.people.append(beast)
-    start_hp = game.iris_hp
+    start_hp = game.player_vitality
 
     game._update_overworld_enemies(1 / 60)
 
-    assert game.iris_hp == start_hp - 10
+    assert game.player_vitality == start_hp - 10
 
 
 def test_iris_faints_when_her_hp_runs_out(game):
     """Fainting is a trip back to the spawn point, not a game over screen."""
     game.phase = "play"
-    game.iris_hp = 1
-    game.iris = [999999.0, 999999.0]  # nowhere near the spawn point
+    game.player_vitality = 1
+    game.player_pos = [999999.0, 999999.0]  # nowhere near the spawn point
     beast = npcs_api.Npc(
-        name="Wild Hare", kind="beast", x=game.iris[0], y=game.iris[1],
-        home=(game.iris[0], game.iris[1]), radius=20.0, line="...",
+        name="Wild Hare", kind="beast", x=game.player_pos[0], y=game.player_pos[1],
+        home=(game.player_pos[0], game.player_pos[1]), radius=20.0, line="...",
     )
     game.people.append(beast)
 
     game._update_overworld_enemies(1 / 60)
 
-    assert game.iris_hp == game.iris_max_hp // 2
-    assert tuple(game.iris) == game.world.spawn()
+    assert game.player_vitality == game.player_max_vitality // 2
+    assert tuple(game.player_pos) == game.world.spawn()

@@ -54,7 +54,7 @@ def measured():
         f'        run({command!r})' for command in COLOUR_COMMANDS
     )
     return probe('''
-        from chimol.chrome.gui_state import refresh_gui_state
+        from chimol.ui.gui_state import refresh_gui_state
 
         app = open_app(size=(900, 600))
         app.cmd.do("fetch 148L")

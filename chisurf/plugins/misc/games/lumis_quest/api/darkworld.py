@@ -38,7 +38,7 @@ SHADOW: dict[int, int] = {
     T.BUILDING: T.RUIN,
     T.TAVERN: T.RUIN,
     T.SHOP: T.RUIN,
-    T.SMITHY: T.RUIN,
+    T.SERVICE_SMITHYY: T.RUIN,
     T.SHRINE: T.RUIN,
     T.HALL: T.RUIN,
     T.STALL: T.RUIN,

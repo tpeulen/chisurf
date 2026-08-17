@@ -17,7 +17,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from chimol.hosts.qt.window import MolViewPluginWindow  # noqa: E402
-from chimol.chrome.gui import InternalGui  # noqa: E402
+from chimol.ui.gui import InternalGui  # noqa: E402
 
 CHAINS, PER_CHAIN = 250, 300
 

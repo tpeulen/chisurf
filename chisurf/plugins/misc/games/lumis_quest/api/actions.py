@@ -119,17 +119,17 @@ def _grant_seal(context, args, runner) -> str:
     """Grant a Warden's seal, which is a licence tier."""
     key = args["warden"]
     context.grant_seal(key)
-    warden = tiers_api.BY_KEY.get(key)
-    if warden is None:
+    boss = tiers_api.BY_KEY.get(key)
+    if boss is None:
         return ""
-    return (f"{warden.seal} is yours. You may now unbind up to "
+    return (f"{boss.seal} is yours. You may now unbind up to "
             f"{tiers_api.TIER_NAMES[tiers_api.licence(context.seals)]}.")
 
 
 @action("companion")
 def _companion(context, args, runner) -> str:
     """The hound joins, which is its own beat."""
-    context.has_lumi = True
+    context.has_companion = True
     context.flags.add("the-hound")
     return ""
 
@@ -227,4 +227,11 @@ def _join(context, args, runner) -> str:
 def _read(context, args, runner) -> str:
     """Ask the host to open the page a building holds."""
     _request(runner, "read", **args)
+    return ""
+
+
+@action("minigame")
+def _minigame(context, args, runner) -> str:
+    """Ask the host to run a tavern mini-game."""
+    _request(runner, "minigame", **args)
     return ""

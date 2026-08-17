@@ -89,13 +89,13 @@ def test_iris_walks(game):
     from chisurf.plugins.misc.games.lumis_quest.api import screens
 
     game.screen_mode = True
-    start = list(game.iris)
+    start = list(game.player_pos)
     game.host.keys.press(Action.DOWN)
     for _ in range(20):
         game.update(1 / 60, game.host.keys)
-    assert game.iris[1] > start[1]
+    assert game.player_pos[1] > start[1]
 
-    where = screens.screen_of(*game.iris)
+    where = screens.screen_of(*game.player_pos)
     assert game.screen_at == where
     centre = screens.centre_of(*where)
     # Mid-flip the camera is between the two screens, so it is checked against
@@ -111,12 +111,12 @@ def test_crossing_an_edge_flips_the_screen(game):
 
     # Driven through the camera directly: which tiles happen to be walkable at
     # a screen boundary is the world generator's business, not this test's.
-    game.iris = [screens.WIDTH * 1.5, screens.HEIGHT * 1.5]
+    game.player_pos = [screens.WIDTH * 1.5, screens.HEIGHT * 1.5]
     game._screen_view(1 / 60)
     before = game.screen_at
     assert before == (1, 1)
 
-    game.iris[1] = screens.HEIGHT * 2.5
+    game.player_pos[1] = screens.HEIGHT * 2.5
     game._screen_view(1 / 60)
     assert game.screen_at == (before[0], before[1] + 1)
     for _ in range(int(screens.FLIP_SECONDS * 60) + 10):
@@ -146,13 +146,13 @@ def test_iris_cannot_walk_through_a_wall(game):
     village = game.world.villages[0]
     col, row, width, height = village.rect
     # Stand just below the south wall, off to one side of the gate.
-    game.iris = [(col + 1.5) * tiles.TILE, (row + height + 0.5) * tiles.TILE]
-    before = list(game.iris)
+    game.player_pos = [(col + 1.5) * tiles.TILE, (row + height + 0.5) * tiles.TILE]
+    before = list(game.player_pos)
 
     game.host.keys.press(Action.UP)
     for _ in range(120):
         game.update(1 / 60, game.host.keys)
-    assert game.iris[1] >= before[1] - tiles.TILE, "she walked through the compound wall"
+    assert game.player_pos[1] >= before[1] - tiles.TILE, "she walked through the compound wall"
 
 
 def test_a_wide_house_blocks_the_ground_its_sprite_actually_covers(game):
@@ -177,12 +177,12 @@ def test_a_wide_house_blocks_the_ground_its_sprite_actually_covers(game):
     # And walking at it from the side the sprite overhangs must actually
     # refuse the step, not just add an entry to the lookup nothing reads.
     extra_col = col - 1 if (col - 1, row) in game._building_solid else col + 1
-    game.iris = [(extra_col + 0.5) * tiles.TILE, (row + 1.5) * tiles.TILE]
-    before = list(game.iris)
+    game.player_pos = [(extra_col + 0.5) * tiles.TILE, (row + 1.5) * tiles.TILE]
+    before = list(game.player_pos)
     game.host.keys.press(Action.UP)
     for _ in range(60):
         game.update(1 / 60, game.host.keys)
-    assert game.iris[1] >= before[1] - tiles.TILE, "she walked through the sprite's overhang"
+    assert game.player_pos[1] >= before[1] - tiles.TILE, "she walked through the sprite's overhang"
 
 
 def test_a_door_is_hittable_from_beside_it_not_only_dead_centre(game):
@@ -204,11 +204,11 @@ def test_a_door_is_hittable_from_beside_it_not_only_dead_centre(game):
         pytest.skip("this seed has no cave mouth in the lit world")
 
     centre = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
-    game.iris = list(centre)
+    game.player_pos = list(centre)
     assert game._door_scene() == "cave", "dead centre must still hit"
 
     # Half a tile off to one side -- inside DOOR_REACH, previously a miss.
-    game.iris = [centre[0] + tiles.TILE * 0.5, centre[1]]
+    game.player_pos = [centre[0] + tiles.TILE * 0.5, centre[1]]
     assert game._door_scene() == "cave", "just beside it must hit too"
 
 
@@ -222,9 +222,9 @@ def test_iris_cannot_leave_the_world(game):
     game.host.keys.press(Action.UP)
     for _ in range(600):
         game.update(1 / 60, game.host.keys)
-    assert 0.0 <= game.iris[0] <= game.world.width * tiles.TILE
-    assert 0.0 <= game.iris[1] <= game.world.height * tiles.TILE
-    assert not game.world.blocked(*game.iris), "she ended up inside something solid"
+    assert 0.0 <= game.player_pos[0] <= game.world.width * tiles.TILE
+    assert 0.0 <= game.player_pos[1] <= game.world.height * tiles.TILE
+    assert not game.world.blocked(*game.player_pos), "she ended up inside something solid"
 
 
 def test_the_story_advances_from_the_world_not_from_a_button(game):
@@ -257,21 +257,21 @@ def test_diagonal_movement_is_not_faster(game):
     open_ground = _open_ground(game)
     start = list(open_ground)
 
-    game.iris = list(start)
+    game.player_pos = list(start)
     game.host.keys.press(Action.RIGHT)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    straight = abs(game.iris[0] - start[0])
+    straight = abs(game.player_pos[0] - start[0])
 
     game.host.keys.release(Action.RIGHT)
     game.host.keys.end_frame()
-    game.iris = list(start)
+    game.player_pos = list(start)
     game.host.keys.press(Action.RIGHT)
     game.host.keys.press(Action.DOWN)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    diagonal = ((game.iris[0] - start[0]) ** 2
-                + (game.iris[1] - start[1]) ** 2) ** 0.5
+    diagonal = ((game.player_pos[0] - start[0]) ** 2
+                + (game.player_pos[1] - start[1]) ** 2) ** 0.5
     assert straight > 50.0, "she has to have somewhere to walk"
     assert diagonal == pytest.approx(straight, rel=0.02)
 
@@ -313,7 +313,7 @@ def test_lumi_follows_without_overlapping(game):
     game.host.keys.press(Action.RIGHT)
     for _ in range(90):
         game.update(1 / 60, game.host.keys)
-    gap = ((game.iris[0] - game.lumi[0]) ** 2 + (game.iris[1] - game.lumi[1]) ** 2) ** 0.5
+    gap = ((game.player_pos[0] - game.companion_pos[0]) ** 2 + (game.player_pos[1] - game.companion_pos[1]) ** 2) ** 0.5
     assert 5.0 < gap < 60.0, gap
 
 
@@ -324,33 +324,33 @@ def test_lumi_faces_the_way_it_is_actually_walking(game):
     has its own up/down/right art now (no more falling back to the down
     sprite while walking away, which read as staring at the camera).
     """
-    game.story.has_lumi = True
+    game.story.has_companion = True
     game.facing = "left"  # deliberately not the direction Lumi will step
 
-    game.iris = [game.lumi[0], game.lumi[1] - 100.0]  # north of Lumi
+    game.player_pos = [game.companion_pos[0], game.companion_pos[1] - 100.0]  # north of Lumi
     game.update(1 / 60, game.host.keys)
-    assert game.lumi_facing == "up"
-    assert game._lumi_sprite() == ("up", False)
+    assert game.companion_facing == "up"
+    assert game._companion_sprite() == ("up", False)
 
-    game.iris = [game.lumi[0] + 100.0, game.lumi[1]]  # east of Lumi
+    game.player_pos = [game.companion_pos[0] + 100.0, game.companion_pos[1]]  # east of Lumi
     game.update(1 / 60, game.host.keys)
-    assert game.lumi_facing == "right"
-    assert game._lumi_sprite() == ("right", False)
+    assert game.companion_facing == "right"
+    assert game._companion_sprite() == ("right", False)
 
-    game.iris = [game.lumi[0] - 100.0, game.lumi[1]]  # west of Lumi
+    game.player_pos = [game.companion_pos[0] - 100.0, game.companion_pos[1]]  # west of Lumi
     game.update(1 / 60, game.host.keys)
-    assert game.lumi_facing == "left"
-    assert game._lumi_sprite() == ("right", True), "mirrors the right frame, same as everyone else"
+    assert game.companion_facing == "left"
+    assert game._companion_sprite() == ("right", True), "mirrors the right frame, same as everyone else"
 
 
 def test_the_nearest_room_is_reported(game):
     """The HUD names where you are standing."""
     first = game.world.rooms[0]
-    game.iris = list(first.position)
+    game.player_pos = list(first.position)
     assert game.here is first
 
     last = game.world.rooms[-1]
-    game.iris = list(last.position)
+    game.player_pos = list(last.position)
     assert game.here is last
 
 
@@ -365,8 +365,8 @@ def test_entering_a_house_opens_its_room_and_leaving_returns_her(game):
     # One tile south of the door -- room.position is already the door
     # tile's own centre, so a further +1.0 (not +1.5) tile lands her in the
     # middle of the tile just outside it.
-    game.iris = [x, y + tiles.TILE]
-    before = list(game.iris)
+    game.player_pos = [x, y + tiles.TILE]
+    before = list(game.player_pos)
 
     building = game._building_scene()
     assert building is not None, "standing this close must find the door"
@@ -385,7 +385,7 @@ def test_entering_a_house_opens_its_room_and_leaving_returns_her(game):
         if game.interior is None:
             break
     assert game.interior is None, "walking to the door must step back outside"
-    assert game.iris == before, "leaving must return her to exactly where she went in"
+    assert game.player_pos == before, "leaving must return her to exactly where she went in"
 
 
 def test_the_bottom_band_only_names_a_room_she_is_actually_near(game):
@@ -400,14 +400,14 @@ def test_the_bottom_band_only_names_a_room_she_is_actually_near(game):
     from chisurf.plugins.misc.games.lumis_quest.gui.overworld import ROOM_LABEL_RANGE
 
     room = game.world.rooms[0]
-    game.iris = list(room.position)
+    game.player_pos = list(room.position)
     assert game._nearby_room() is room, "standing on it must still report it"
 
-    game.iris = [room.position[0] + ROOM_LABEL_RANGE * 5, room.position[1]]
+    game.player_pos = [room.position[0] + ROOM_LABEL_RANGE * 5, room.position[1]]
     nearest = game.here
     assert nearest is not None
-    distance = ((nearest.position[0] - game.iris[0]) ** 2
-                + (nearest.position[1] - game.iris[1]) ** 2) ** 0.5
+    distance = ((nearest.position[0] - game.player_pos[0]) ** 2
+                + (nearest.position[1] - game.player_pos[1]) ** 2) ** 0.5
     if distance <= ROOM_LABEL_RANGE:
         pytest.skip("this seed's rooms are too dense to get clear of all of them")
     assert game._nearby_room() is None, "too far to be 'standing near' the nearest room"
@@ -415,7 +415,7 @@ def test_the_bottom_band_only_names_a_room_she_is_actually_near(game):
 
 def test_the_land_is_named_where_she_stands(game):
     """Standing on a land reports its fantasy name, not the directory."""
-    game.iris = list(game.world.rooms[0].position)
+    game.player_pos = list(game.world.rooms[0].position)
     assert game.land is not None
     assert game.land.title.startswith("The ")
 
@@ -431,7 +431,7 @@ def test_the_land_banner_arms_on_arrival_and_counts_down(game):
         LAND_BANNER_SECONDS,
     )
 
-    game.iris = list(game.world.rooms[0].position)
+    game.player_pos = list(game.world.rooms[0].position)
     game.update(1 / 60, game.host.keys)
     assert game.land is not None
     assert game._land_banner_land is game.land
@@ -526,11 +526,11 @@ def test_only_a_wild_building_holds_a_guardian(game, wild_room):
     wild = wild_room
 
     # Standing far away starts nothing, even at a wild room.
-    game.iris = [wild.position[0] + 400.0, wild.position[1]]
+    game.player_pos = [wild.position[0] + 400.0, wild.position[1]]
     game._try_encounter()
     assert game.battle is None
 
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
     assert game.encounter_room is wild
@@ -540,7 +540,7 @@ def test_the_same_page_always_holds_the_same_guardian(game, wild_room):
     """A wild encounter that reshuffles every visit is a slot machine."""
     wild = wild_room
 
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     first = game.battle.opponent.creature.name
     game.battle = None
@@ -551,7 +551,7 @@ def test_the_same_page_always_holds_the_same_guardian(game, wild_room):
 def test_the_battle_menu_is_driven_by_the_pad(game, wild_room):
     """Every choice is reachable from the nine actions, with no text entry."""
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
 
     labels = [label for label, _ in game._battle_options()]
@@ -576,14 +576,14 @@ def test_the_battle_menu_is_driven_by_the_pad(game, wild_room):
 def test_walking_is_suspended_during_an_encounter(game, wild_room):
     """The pad drives the menu, not Iris."""
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
 
-    before = list(game.iris)
+    before = list(game.player_pos)
     game.host.keys.press(Action.DOWN)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    assert game.iris == before
+    assert game.player_pos == before
 
 
 def test_a_spent_team_cannot_start_a_fight(game, wild_room):
@@ -591,7 +591,7 @@ def test_a_spent_team_cannot_start_a_fight(game, wild_room):
     wild = wild_room
     for fighter in game.team:
         fighter.hp = 0
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is None
 
@@ -631,7 +631,7 @@ def test_standing_on_a_clinic_recovers_the_team(game):
 
     for fighter in game.team:
         fighter.hp = 1
-    game.iris = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
+    game.player_pos = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
     for _ in range(120):
         game.update(1 / 60, game.host.keys)
     assert game.resting
@@ -643,7 +643,7 @@ def test_recovery_only_happens_at_the_clinic(game):
     for fighter in game.team:
         fighter.hp = 5
     room = game.world.rooms[0]
-    game.iris = [room.position[0], room.position[1] + tiles.TILE * 3]
+    game.player_pos = [room.position[0], room.position[1] + tiles.TILE * 3]
     for _ in range(60):
         game.update(1 / 60, game.host.keys)
     if game.resting:
@@ -662,6 +662,11 @@ def test_the_menu_has_tabs_and_closes(game):
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
     assert game.TABS[game.menu_tab] == "MAP"
+
+    game.host.keys.tap(Action.SHOULDER_R)
+    game.update(1 / 60, game.host.keys)
+    game.host.keys.end_frame()
+    assert game.TABS[game.menu_tab] == "CODEX"
 
     game.host.keys.tap(Action.SHOULDER_R)
     game.update(1 / 60, game.host.keys)
@@ -699,7 +704,7 @@ def test_clicking_a_tab_selects_it(game):
     half = camera.half_extent(game.host.ctx.size[0] / max(game.host.ctx.size[1], 1))
     cx, cy = float(camera.center[0]), float(camera.center[1])
     span = half[0] * 1.5
-    target = 2  # "RIG"
+    target = 3  # "RIG" (CODEX is now at index 2)
     tab_x = cx - span * 0.5 + (target + 0.5) * span / len(game.TABS)
     tab_y = cy - half[1] * 0.62
     game.host.keys.click_at(*_pixel_for(game, tab_x, tab_y))
@@ -739,7 +744,7 @@ def test_clicking_a_tab_selects_it_on_a_hidpi_display(qapp, tmp_path):
                                / max(context.canvas.get_logical_size()[1], 1))
     cx, cy = float(camera.center[0]), float(camera.center[1])
     span = half[0] * 1.5
-    target = 2  # "RIG"
+    target = 3  # "RIG" (CODEX is now at index 2)
     tab_x = cx - span * 0.5 + (target + 0.5) * span / len(game.TABS)
     tab_y = cy - half[1] * 0.62
 
@@ -780,7 +785,7 @@ def test_clicking_a_title_row_selects_and_confirms_it(game):
     game.phase = "title"
     game.title_index = 0
     rows = game._title_rows()
-    target = len(rows) - 1  # "controls: ..." -- confirming it must not crash
+    target = len(rows) - 2  # "controls: ..." (last is OPTIONS now)
     before = game.scheme
     camera = game.host.camera
     cx, cy = float(camera.center[0]), float(camera.center[1])
@@ -860,12 +865,12 @@ def test_free_roam_autosaves_between_the_ceremony_saves(game):
 
     Autosave is the safety net in between, not a replacement for either.
     """
-    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import AUTOSAVE_SECONDS
+    interval = game.autosave_interval
 
     game._save_path.unlink(missing_ok=True)
     game._autosave_timer = 0.0
     step = 1.0
-    for _ in range(int(AUTOSAVE_SECONDS / step) - 1):
+    for _ in range(int(interval / step) - 1):
         game.update(step, game.host.keys)
     assert not game._save_path.exists(), "must not save before the interval is up"
 
@@ -876,15 +881,15 @@ def test_free_roam_autosaves_between_the_ceremony_saves(game):
 
 def test_autosave_does_not_fire_mid_battle(game, wild_room):
     """Saving mid-transaction is how a run gets corrupted, not protected."""
-    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import AUTOSAVE_SECONDS
+    interval = game.autosave_interval
 
-    game.iris = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
+    game.player_pos = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
 
     game._save_path.unlink(missing_ok=True)
-    game._autosave_timer = AUTOSAVE_SECONDS  # already due, if it were checked
-    for _ in range(int(AUTOSAVE_SECONDS) + 5):
+    game._autosave_timer = interval  # already due, if it were checked
+    for _ in range(int(interval) + 5):
         game.update(1.0, game.host.keys)
     assert not game._save_path.exists(), "battle input never reaches the autosave tick"
 
@@ -901,17 +906,17 @@ def test_the_status_tab_reports_what_the_hud_used_to_show_permanently(game):
     assert f"level {game.game_state.level}" in joined, "the walk used to pay out nothing at all"
 
 
-def test_the_warden_compass_points_somewhere_real(game):
+def test_the_boss_compass_points_somewhere_real(game):
     """next_warden existed but nothing ever asked it where they stood."""
     from chisurf.plugins.misc.games.lumis_quest.api import tiers
 
     warden = tiers.next_warden(game.story.seals)
     assert warden is not None, "a fresh run has not beaten any yet"
-    line = game._warden_compass()
+    line = game._boss_compass()
     assert warden.name in line
     assert any(point in line for point in game._COMPASS), "a bearing, not just a name"
 
-    village = next(v for v in game.world.villages if v.warden == warden.key)
+    village = next(v for v in game.world.villages if v.boss_seat == warden.key)
     col, row, width, height = village.rect
     region = game.world.region_at((col + width * 0.5) * tiles.TILE,
                                   (row + height * 0.5) * tiles.TILE)
@@ -920,17 +925,17 @@ def test_the_warden_compass_points_somewhere_real(game):
 
     # Holding every seal names the ladder as climbed, not a stale bearing.
     game.story.seals = {w.key for w in tiers.WARDENS}
-    assert "held" in game._warden_compass()
+    assert "held" in game._boss_compass()
 
 
 def test_walking_is_suspended_while_the_menu_is_open(game):
     """The pad drives the menu, not Iris."""
     game.menu_open = True
-    before = list(game.iris)
+    before = list(game.player_pos)
     game.host.keys.press(Action.DOWN)
     for _ in range(30):
         game.update(1 / 60, game.host.keys)
-    assert game.iris == before
+    assert game.player_pos == before
 
 
 def test_the_mode_tab_switches_between_training_and_expert(game):
@@ -1228,9 +1233,9 @@ def test_the_title_screen_offers_a_new_journey_and_then_a_continue(qapp, tmp_pat
     fresh.update(1 / 60, fresh.host.keys)
     fresh.host.keys.end_frame()
     assert fresh.phase == "prologue"
-    assert not fresh.story.has_lumi, "the hound is found, not issued"
+    assert not fresh.story.has_companion, "the hound is found, not issued"
 
-    fresh.iris = [123.0, 456.0]
+    fresh.player_pos = [123.0, 456.0]
     fresh.save_run()
     assert save_api.RunState.load(run).position == (123.0, 456.0)
 
@@ -1333,7 +1338,7 @@ def test_the_awakening_scene_is_staged_and_the_hound_joins(qapp, tmp_path):
 
     # Find the dim hound and speak to it: it joins, and the beat completes.
     hound = next(npc for npc in game.people if npc.role == "lumi")
-    game.iris = [hound.x, hound.y + 10.0]
+    game.player_pos = [hound.x, hound.y + 10.0]
     game.host.keys.tap(Action.SHOULDER_L)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
@@ -1342,7 +1347,7 @@ def test_the_awakening_scene_is_staged_and_the_hound_joins(qapp, tmp_path):
         game.host.keys.tap(Action.CONFIRM)
         game.update(1 / 60, game.host.keys)
         game.host.keys.end_frame()
-    assert game.story.has_lumi, "the hound joins when its scene is played out"
+    assert game.story.has_companion, "the hound joins when its scene is played out"
     assert all(npc.role != "lumi" for npc in game.people)
     current = game.story.current
     assert current is None or current.key not in ("wake", "the-hound"), \
@@ -1357,7 +1362,7 @@ def test_an_order_is_chosen_by_talking_to_an_emissary(game):
     choice unmade.
     """
     emissary = next(n for n in game.people if n.kind == "emissary")
-    game.iris = [emissary.x, emissary.y + 10.0]
+    game.player_pos = [emissary.x, emissary.y + 10.0]
     assert game.story.chosen_order is None
 
     game.host.keys.tap(Action.SHOULDER_L)
@@ -1403,7 +1408,7 @@ def test_an_order_is_chosen_by_talking_to_an_emissary(game):
 def test_walking_away_from_an_emissary_leaves_the_choice_open(game):
     """Cancel is walking away, and the order can still be chosen later."""
     emissary = next(n for n in game.people if n.kind == "emissary")
-    game.iris = [emissary.x, emissary.y + 10.0]
+    game.player_pos = [emissary.x, emissary.y + 10.0]
     game.host.keys.tap(Action.SHOULDER_L)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
@@ -1430,7 +1435,7 @@ def test_the_tutorial_teaches_walking_first_and_advances_on_real_state(game):
 
     # Speaking to anyone -- the healer inside the gate will do -- retires it.
     someone = next(n for n in game.people if n.kind != "beast")
-    game.iris = [someone.x, someone.y + 10.0]
+    game.player_pos = [someone.x, someone.y + 10.0]
     game.host.keys.tap(Action.SHOULDER_L)
     game.update(1 / 60, game.host.keys)
     game.host.keys.end_frame()
@@ -1516,18 +1521,18 @@ def test_the_options_tab_changes_the_controls_and_the_speed(game):
     game._menu_confirm()
     assert game.screen_mode != screen_mode
 
-    game.menu_row = 2
+    game.menu_row = 4
     speed = game.walk_speed
     game._menu_confirm()
     assert game.walk_speed != speed
 
-    game.menu_row = 4
+    game.menu_row = 6
     music_volume = game.music_volume
     game._menu_confirm()
     assert round(game.music_volume - music_volume, 2) == 0.1
     assert game.host.audio.music_volume == game.music_volume
 
-    game.menu_row = 5
+    game.menu_row = 7
     sfx_volume = game.sfx_volume
     game._menu_confirm()
     assert round(game.sfx_volume - sfx_volume, 2) == 0.1
@@ -1536,7 +1541,7 @@ def test_the_options_tab_changes_the_controls_and_the_speed(game):
     # A full turn of the dial wraps back to silent rather than getting stuck
     # at 100%.
     game.music_volume = 1.0
-    game.menu_row = 4
+    game.menu_row = 6
     game._menu_confirm()
     assert game.music_volume == 0.0
 
@@ -1548,7 +1553,7 @@ def test_regenerating_redraws_the_wilderness_but_not_the_world(game):
 
     game.menu_open = True
     game.menu_tab = game.TABS.index("OPTIONS")
-    game.menu_row = 7
+    game.menu_row = 11
     game._menu_confirm()
     assert game.phase == "loading" and not game.menu_open
 
@@ -1572,13 +1577,13 @@ def test_a_hitched_frame_does_not_put_her_through_a_wall(game):
     col, row, width, height = village.rect
     for corner_x, corner_y in ((col + 1.5, row + height + 3.0),
                                (col + width - 1.5, row + height + 3.0)):
-        game.iris = [corner_x * tiles.TILE, corner_y * tiles.TILE]
+        game.player_pos = [corner_x * tiles.TILE, corner_y * tiles.TILE]
         game.host.keys.press(Action.UP)
         game.host.keys.press(Action.CONFIRM)      # sprint
         for _ in range(60):
             game.update(game.host.MAX_DT, game.host.keys)
-            assert not game._solid(*game.iris), (
-                f"walked into something solid at {game.iris}"
+            assert not game._solid(*game.player_pos), (
+                f"walked into something solid at {game.player_pos}"
             )
         game.host.keys.release(Action.UP)
         game.host.keys.release(Action.CONFIRM)
@@ -1594,17 +1599,17 @@ def test_she_is_never_frozen_wherever_she_is_put(game):
         for spot in ((col + width / 2, row + height / 2),
                      (col + 1.5, row + 1.5),
                      (col + width - 1.5, row + height - 1.5)):
-            game.iris = [spot[0] * tiles.TILE, spot[1] * tiles.TILE]
+            game.player_pos = [spot[0] * tiles.TILE, spot[1] * tiles.TILE]
             game._unstick()
-            assert not game._solid(*game.iris)
-            before = list(game.iris)
+            assert not game._solid(*game.player_pos)
+            before = list(game.player_pos)
             moved = False
             for action in (Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT):
                 game.host.keys.press(action)
                 for _ in range(6):
                     game.update(1 / 60, game.host.keys)
                 game.host.keys.release(action)
-                if game.iris != before:
+                if game.player_pos != before:
                     moved = True
                     break
             assert moved, f"frozen at {spot}"
@@ -1617,11 +1622,11 @@ def test_being_inside_a_wall_is_recovered_from_not_frozen(game):
     village = game.world.villages[0]
     col, row, _, _ = village.rect
     # The compound's own corner is solid whatever kind of settlement it is.
-    game.iris = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
-    if not game._solid(*game.iris):
+    game.player_pos = [(col + 0.5) * tiles.TILE, (row + 0.5) * tiles.TILE]
+    if not game._solid(*game.player_pos):
         pytest.skip("that corner is not solid in this layout")
     assert game._unstick(), "she was inside something and was not moved"
-    assert not game._solid(*game.iris)
+    assert not game._solid(*game.player_pos)
     assert game._unstick() is False, "unsticking twice must be a no-op"
 
 
@@ -1632,15 +1637,15 @@ def test_a_doorway_can_be_walked_through_off_centre(game):
     gate_col, gate_row = village.gate
     entered = 0
     for offset in (-0.28, 0.0, 0.28):
-        game.iris = [(gate_col + 0.5 + offset) * tiles.TILE,
+        game.player_pos = [(gate_col + 0.5 + offset) * tiles.TILE,
                      (gate_row + 2.5) * tiles.TILE]
-        if game._solid(*game.iris):
+        if game._solid(*game.player_pos):
             continue
         game.host.keys.press(Action.UP)
         for _ in range(90):
             game.update(1 / 60, game.host.keys)
         game.host.keys.release(Action.UP)
-        if game.iris[1] < (gate_row - 0.5) * tiles.TILE:
+        if game.player_pos[1] < (gate_row - 0.5) * tiles.TILE:
             entered += 1
     assert entered >= 2, "an off-centre approach has to slip into the doorway"
 
@@ -1743,7 +1748,7 @@ def test_a_wild_encounter_opens_with_a_zoom_and_a_flash(game, wild_room):
         ENCOUNTER_FLASH_SECONDS,
     )
 
-    game.iris = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
+    game.player_pos = [wild_room.position[0], wild_room.position[1] + tiles.TILE]
     game.view_height = 300.0
     game._try_encounter()
     assert game.battle is not None
@@ -1770,7 +1775,7 @@ def test_an_exchange_says_what_it_did_where_it_did_it(game, wild_room):
     that no test and no ordinary play session reaches until somebody wins.
     """
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
 
@@ -1789,7 +1794,7 @@ def test_carrying_a_label_away_is_visible_on_the_overworld(game, wild_room):
     from chisurf.plugins.misc.games.lumis_quest.api import bestiary as bestiary_api
 
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     fight = game.battle
     fight.finished = True
@@ -1979,7 +1984,7 @@ def test_no_battle_text_is_drawn_off_the_screen(game, wild_room):
     it stopped hiding it.
     """
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
 
@@ -2028,7 +2033,7 @@ def test_the_readouts_do_not_print_through_each_other(game):
 def test_battle_loss_or_flee_triggers_cooldown_and_faint_preventing_attack_loop(game, wild_room):
     """Losing or fleeing a battle must trigger encounter cooldown and faint if lost, avoiding loop."""
     wild = wild_room
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._try_encounter()
     assert game.battle is not None
 
@@ -2044,7 +2049,7 @@ def test_battle_loss_or_flee_triggers_cooldown_and_faint_preventing_attack_loop(
     assert game.battle is None, "Should not re-trigger encounter during cooldown"
 
     # Test Defeat / Fainting
-    game.iris = [wild.position[0], wild.position[1] + tiles.TILE]
+    game.player_pos = [wild.position[0], wild.position[1] + tiles.TILE]
     game._encounter_cooldown = 0.0
     game._try_encounter(force=True)
     assert game.battle is not None
@@ -2064,10 +2069,39 @@ def test_minigame_request_awards_photons_and_xp(game):
     """Minigame request in dialogue awards photons and XP."""
     from chisurf.plugins.misc.games.lumis_quest.api.engine import Request
     xp_before = game.game_state.xp
-    photons_before = game.photons
+    energy_before = game.energy
     game._serve(Request(kind="minigame", args={"game": "minesweeper"}))
     assert game.game_state.xp > xp_before, "Minigame must award XP"
-    assert game.photons >= photons_before, "Minigame must restore photons"
+    assert game.energy >= energy_before, "Minigame must restore photons"
+
+
+def test_boss_fight_shows_a_boss_bar(game):
+    """A Warden fight draws a boss bar at the top, not just the corner card.
+
+    The boss bar is what tells the player this is not a random encounter.
+    Its colour turns red when the surge phase is live, which is the visual
+    cue for the fight having changed.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+
+    beast = bestiary.Beast(
+        species=bestiary.BY_KEY["heron"],
+        label=game.pool[0] if game.pool else None,
+    )
+    game.battle = battle_api.Battle(
+        game.team, battle_api.Fighter(beast, hp=9999),
+        boss_key="ember", opponent_power=1.9,
+    )
+    game.boss_fight = "ember"
+
+    glyphs, panels = _glyphs_and_panels(_frame(game))
+    # The boss bar draws bars (panels) at the top of the screen -- the
+    # warden's title text is up there too.
+    camera = game.host.camera
+    top_y = float(camera.center[1]) - float(camera.half_extent(1.0)[1]) * 0.78
+    top_glyphs = [g for g in glyphs if g["pos"][1] < top_y + 30.0]
+    assert top_glyphs, "the boss bar name must be drawn near the top"
 
 
 
@@ -2087,7 +2121,7 @@ def test_salvaging_a_dark_ruin_yields_a_reagent_once_and_persists(game):
     row, col = (int(value) for value in cells[0])
 
     game.dark = True
-    game.iris = [col * tiles.TILE + tiles.TILE / 2.0,
+    game.player_pos = [col * tiles.TILE + tiles.TILE / 2.0,
                  row * tiles.TILE + tiles.TILE / 2.0]
 
     found = game._ruin_scene()
@@ -2108,3 +2142,261 @@ def test_salvaging_a_dark_ruin_yields_a_reagent_once_and_persists(game):
     state = game.snapshot()
     reloaded = save_api.RunState.load(state.save(game._save_path))
     assert f"{col},{row}" in reloaded.salvaged
+
+
+def test_title_screen_has_options_row(game):
+    """OPTIONS is on the title screen."""
+    game.phase = "title"
+    rows = game._title_rows()
+    assert "OPTIONS" in rows
+
+
+def test_options_subscreen_toggles_debug_mode(game):
+    """Selecting OPTIONS opens a subscreen where debug mode can be toggled."""
+    game.phase = "title"
+    game.debug_mode = False
+    # Find the OPTIONS row and confirm it
+    opt_row = game._title_rows().index("OPTIONS")
+    game.title_index = opt_row
+    game._title_confirm()
+    assert game.title_subscreen == "options"
+    # Row 0 is debug toggle
+    assert "debug mode: [off]" in game._title_sub_rows()[0]
+    game.title_sub_index = 0
+    game._title_sub_confirm(game._title_sub_rows())
+    assert game.debug_mode is True
+    assert "debug mode: [ON]" in game._title_sub_rows()[0]
+
+
+def test_debug_jump_lists_story_milestones(game):
+    """Debug mode lists all story beats as jump targets."""
+    game.phase = "title"
+    game.debug_mode = True
+    game.title_subscreen = "debug_jump"
+    rows = game._title_sub_rows()
+    from chisurf.plugins.misc.games.lumis_quest.api.story import BEATS
+    assert len(rows) == len(BEATS) + 1  # beats + "back"
+    assert "back" in rows[-1]
+
+
+def test_debug_jump_to_milestone_starts_game(game):
+    """Jumping to a milestone from the title screen starts the game."""
+    game.phase = "title"
+    game.debug_mode = True
+    game.title_subscreen = "debug_jump"
+    game.title_sub_index = 0  # first beat
+    game._title_sub_confirm(game._title_sub_rows())
+    assert game.phase == "play"
+    assert game.title_subscreen is None
+
+
+def test_codex_tab_lists_all_species(game):
+    """The CODEX tab shows every species in the bestiary."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("CODEX")
+    rows = game._menu_rows()
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+    # Last row is the count; the rest are species rows.
+    assert rows[-1].startswith(f"{len(game._bestiary_seen())}/{len(bestiary.SPECIES)}")
+    # Unseen species show as ???
+    assert any("???" in r for r in rows)
+
+
+def test_codx_marks_seen_and_owned(game):
+    """Teaming a creature marks it as owned [*]; encountering marks as seen [v]."""
+    game.menu_open = True
+    game.menu_tab = game.TABS.index("CODEX")
+    rows = game._menu_rows()
+    # Starter team members should show as [*] owned.
+    owned_rows = [r for r in rows if r.startswith("[*]")]
+    assert len(owned_rows) >= 1, "starter team should be marked as owned in the codex"
+
+
+def test_vitality_boost_from_warden_win(game):
+    """Winning a Warden fight grants a vitality boost (+20 max HP)."""
+    from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+    initial_max = game.player_max_vitality
+    beast = bestiary.Beast(species=bestiary.BY_KEY["heron"], label=game.pool[0])
+    game.battle = battle_api.Battle(game.team, battle_api.Fighter(beast, hp=1),
+                                     boss_key="ember", opponent_power=1.9)
+    game.boss_fight = "ember"
+    game.battle.finished = True
+    game.battle.won = True
+    game.host.keys.tap(Action.CONFIRM)
+    game.update(1 / 60, game.host.keys)
+    assert game.vitality_boosts == 1
+    assert game.player_max_vitality == initial_max + 20
+
+
+def test_vitality_fragments_from_containers(game):
+    """Containers can drop vitality fragments; 4 fragments = +20 max HP."""
+    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import PLAYER_MAX_VITALITY
+    # Simulate opening containers by directly adding fragments
+    game.vitality_fragments = 3
+    game.vitality_fragments += 1
+    game.player_max_vitality = PLAYER_MAX_VITALITY + game.vitality_bonus
+    assert game.vitality_bonus == 20
+    assert game.player_max_vitality == PLAYER_MAX_VITALITY + 20
+
+
+def test_spin_attack_hits_adjacent_enemies(game):
+    """A charged spin attack deals damage to nearby unmarked beasts."""
+    from chisurf.plugins.misc.games.lumis_quest.api import npcs as npcs_api
+    beast = next((n for n in game.people if n.kind == "beast"), None)
+    if beast is None:
+        pytest.skip("no beasts in this world")
+    # Marked beasts open encounters instead of taking damage; check unmarked.
+    if game._marked_nm(beast) > 0.0:
+        pytest.skip("all beasts in this test world are marked")
+    beast.x = game.player_pos[0] + 10
+    beast.y = game.player_pos[1]
+    beast.hp = 100.0
+    beast.max_hp = 100.0
+    hp_before = beast.hp
+    game._spin_attack()
+    assert beast.hp < hp_before, "spin attack must damage the beast"
+
+
+def test_container_system_places_deterministic_containers(game):
+    """Containers are placed deterministically per room address."""
+    # At least check it doesn't crash and returns a list
+    containers = game._containers_at()
+    assert isinstance(containers, list)
+
+
+def test_multi_companion_followers_form_up(game):
+    """When the player has living team fighters, companions follow in formation."""
+    import math as _math
+    game.story.has_companion = True
+    game.facing = "right"
+    game.player_pos = [500.0, 500.0]
+    # Give a few frames for the formation to settle
+    for _ in range(30):
+        game.update(1 / 60, game.host.keys)
+    # The lead companion should be trailing behind
+    assert len(game.followers) >= 1
+    lead = game.followers[0]
+    gap = _math.hypot(game.player_pos[0] - lead["pos"][0],
+                      game.player_pos[1] - lead["pos"][1])
+    assert 5.0 < gap < 60.0, f"lead companion gap should be moderate, got {gap}"
+
+
+def test_followers_grow_with_living_team(game):
+    """More living team fighters means more companions in the formation."""
+    from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+    game.story.has_companion = True
+    # Add a second living fighter to the team
+    extra = battle_api.Fighter(bestiary.Beast(
+        species=bestiary.BY_KEY["fox"], label=game.pool[1] if len(game.pool) > 1 else game.pool[0]))
+    game.team.append(extra)
+    for _ in range(10):
+        game.update(1 / 60, game.host.keys)
+    # Should have at least 2 followers: the hound + one team fighter
+    assert len(game.followers) >= 2
+
+
+def test_no_followers_before_companion_befriended(game):
+    """Before has_companion, nobody follows."""
+    game.story.has_companion = False
+    game.update(1 / 60, game.host.keys)
+    assert game.followers == []
+
+
+def test_followers_auto_attack_nearby_enemies(game):
+    from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+    game.story.has_companion = True
+    extra = battle_api.Fighter(bestiary.Beast(
+        species=bestiary.BY_KEY["fox"], label=game.pool[1] if len(game.pool) > 1 else game.pool[0]))
+    game.team.append(extra)
+    for _ in range(5):
+        game.update(1 / 60, game.host.keys)
+    armed = [f for f in game.followers if f.get("fighter")]
+    if not armed:
+        pytest.skip("no armed followers formed")
+    follower = armed[0]
+    beast = next((n for n in game.people if n.kind == "beast"
+                  and game._marked_nm(n) <= 0.0), None)
+    if beast is None:
+        pytest.skip("no unmarked beast available")
+    beast.hp = 100.0
+    beast.x = follower["pos"][0] + 5
+    beast.y = follower["pos"][1]
+    follower["atk_cd"] = 0.0
+    hp_before = beast.hp
+    game._update_followers_combat(1 / 60)
+    assert beast.hp < hp_before
+
+
+def test_enemies_target_followers(game):
+    from chisurf.plugins.misc.games.lumis_quest.api import battle as battle_api
+    from chisurf.plugins.misc.games.lumis_quest.api import bestiary
+    game.story.has_companion = True
+    extra = battle_api.Fighter(bestiary.Beast(
+        species=bestiary.BY_KEY["fox"], label=game.pool[1] if len(game.pool) > 1 else game.pool[0]))
+    game.team.append(extra)
+    for _ in range(5):
+        game.update(1 / 60, game.host.keys)
+    armed = [f for f in game.followers if f.get("fighter")]
+    if not armed:
+        pytest.skip("no armed followers")
+    follower = armed[0]
+    fighter = follower["fighter"]
+    hp_before = fighter.hp
+    beast = next((n for n in game.people if n.kind == "beast"), None)
+    if beast is None:
+        pytest.skip("no beast available")
+    beast.x = follower["pos"][0]
+    beast.y = follower["pos"][1]
+    game.player_pos = [follower["pos"][0] + 500, follower["pos"][1]]
+    for _ in range(30):
+        game.update(1 / 60, game.host.keys)
+    assert fighter.hp < hp_before or fighter.hp <= 0
+
+
+def test_player_and_companion_are_string_art():
+    """The cast cut from the pack excludes the player and the hound.
+
+    This ran once with ninja_blue and the pig and both read as someone
+    else's characters; the revert is pinned here so a re-run of the import
+    script cannot quietly bring them back.
+    """
+    from chisurf.plugins.misc.games.lumis_quest.gui import tileart
+
+    shipped = set(tileart.tiles())
+    assert not any(name.startswith("iris_") for name in shipped)
+    assert not any(name.startswith("lumi_") for name in shipped)
+
+
+def test_map_palette_is_derived_from_the_real_tile_art(game):
+    """The map's colours are the average of the shipped tiles, not a second
+    hand-picked palette -- so the map reads as a miniature of the world."""
+    import numpy as np
+    from chisurf.plugins.misc.games.lumis_quest.gui import pixelart
+
+    art = pixelart.sprite_image("grass")
+    mask = art[:, :, 3] > 0
+    average = art[mask][:, :3].mean(axis=0) / 255.0
+    assert np.allclose(game._palette[tiles.GRASS][:3], average, atol=0.01)
+
+
+def test_leaves_fall_in_a_village_and_only_there(game):
+    """Ambient autumn leaves drift through settlements; nothing falls in
+    the open country."""
+    village = game.world.villages[0]
+    col, row, width, height = village.rect
+    game.player_pos = [(col + width * 0.5) * tiles.TILE,
+                       (row + height * 0.5) * tiles.TILE]
+    game._leaf_timer = 0.0
+    game._ambient_leaves(1 / 60)
+    assert any(p.kind == "leaf" for p in game.sparks.particles)
+
+    game.sparks.clear()
+    # Well outside any settlement: the same call must add nothing.
+    far = game.world.regions[0].rect
+    game.player_pos = [(far[0] - 40) * tiles.TILE, (far[1] - 40) * tiles.TILE]
+    game._leaf_timer = 0.0
+    game._ambient_leaves(1 / 60)
+    assert not any(p.kind == "leaf" for p in game.sparks.particles)

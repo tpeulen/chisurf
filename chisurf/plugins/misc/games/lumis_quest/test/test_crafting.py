@@ -62,4 +62,4 @@ def test_an_antifade_infusion_measurably_slows_bleaching():
     """The whole point: a crafted reagent is a real photophysical effect."""
     plain = bestiary.Beast(bestiary.BY_KEY["hare"], _label())
     protected = plain.infused("photostable")
-    assert protected.bleach_rate < plain.bleach_rate
+    assert protected.cost_rate < plain.cost_rate

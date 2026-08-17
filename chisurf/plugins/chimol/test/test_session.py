@@ -307,7 +307,7 @@ def test_a_zip_without_a_manifest_says_so(session, tmp_path):
 
 def test_a_newer_session_version_is_refused_with_the_number(session, tmp_path):
     win, shared, do, _messages, errors = session
-    from chimol.core.session import SESSION_VERSION
+    from chimol.core.services.session import SESSION_VERSION
 
     future = tmp_path / "future.cms"
     with zipfile.ZipFile(future, "w") as archive:

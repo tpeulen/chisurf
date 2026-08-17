@@ -206,7 +206,7 @@ class TestItDrawsTheSamePictureAsTheComparisonHarness:
     def test_a_frame_comes_back_with_the_scene_in_it(self, renderer):
         from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
         from chimol.render.scene import Geometry, Scene, SceneObject
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         # One big triangle, so "did anything draw" cannot be answered by noise.
         geom = Geometry(
@@ -330,8 +330,8 @@ class TestSilhouette:
 
     def test_off_by_default(self):
         from chimol.render.wgpu_backend import WgpuMeshRenderer
-        from chimol.core.view_state import unpack_view_state
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import unpack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         state = unpack_view_state(
             pack_view_state(np.eye(3), 50.0, (0, 0, 0), 1.0, 100.0, 20.0)
@@ -340,7 +340,7 @@ class TestSilhouette:
 
     def test_enabled_resolves_the_linearising_ratio(self):
         """`depth_jump` is a fraction of the scene, which needs near/far."""
-        from chimol.core.view_state import pack_view_state, unpack_view_state
+        from chimol.core.camera.view_state import pack_view_state, unpack_view_state
         from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         state = unpack_view_state(
@@ -359,7 +359,7 @@ class TestSilhouette:
         inverted occlusion switch survived here once.
         """
         from chimol.render.scene import Geometry, Scene, SceneObject
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         # Two offset quads, so there is an internal depth step to outline.
         quads, indices = [], []
@@ -419,7 +419,7 @@ class TestPickingProjection:
             renderer.look_at(np.zeros(3))
             renderer.set_view_state(
                 __import__(
-                    "chimol.core.view_state",
+                    "chimol.core.camera.view_state",
                     fromlist=["pack_view_state"],
                 ).pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)
             )
@@ -447,7 +447,7 @@ class TestPickingProjection:
         assert renderer.scene_origin_y() == renderer.height() - renderer.scene_height()
 
     def test_a_point_behind_the_camera_is_not_visible(self, renderer):
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         renderer.set_view_state(
             pack_view_state(np.eye(3), 60.0, (0.0, 0.0, 0.0), 1.0, 200.0, 20.0)

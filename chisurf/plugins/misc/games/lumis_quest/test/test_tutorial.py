@@ -31,7 +31,7 @@ class _Game:
 
     def __init__(self) -> None:
         self.world = _World()
-        self.iris = [0.0, 0.0]
+        self.player_pos = [0.0, 0.0]
         self.speaking = None
         self.resting = False
         self.menu_open = False
@@ -52,12 +52,12 @@ def test_walking_is_the_first_lesson_and_takes_real_distance():
     guide.observe(game)
     assert guide.current.key == "walk"
 
-    game.iris[0] += TILE  # one tile is a nudge
+    game.player_pos[0] += TILE  # one tile is a nudge
     guide.observe(game)
     assert guide.current.key == "walk"
 
     for _ in range(6):
-        game.iris[0] += TILE
+        game.player_pos[0] += TILE
         guide.observe(game)
     assert guide.current.key == "speak"
 
@@ -68,13 +68,13 @@ def _advance_to(guide: tutorial.Tutorial, game: _Game, key: str) -> None:
         step = guide.current.key
         if step == "walk":
             for _ in range(8):
-                game.iris[0] += TILE
+                game.player_pos[0] += TILE
                 guide.observe(game)
             continue
         if step == "speak":
             game.speaking = object()
         elif step == "enter":
-            game.iris = [5.5 * TILE, 5.5 * TILE]
+            game.player_pos = [5.5 * TILE, 5.5 * TILE]
         elif step == "rest":
             game.resting = True
         elif step == "menu":

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import drag
+from chimol.cmtk.widgets import drag
 
 
 class RecordingPainter:

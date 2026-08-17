@@ -122,7 +122,7 @@ class Tutorial:
         if step is None:
             return
 
-        here = (float(game.iris[0]), float(game.iris[1]))
+        here = (float(game.player_pos[0]), float(game.player_pos[1]))
         if self._last is not None:
             self._walked += math.hypot(here[0] - self._last[0], here[1] - self._last[1])
         self._last = here

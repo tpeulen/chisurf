@@ -265,7 +265,7 @@ def test_the_info_panel_is_laid_out_between_the_strip_and_the_prompt():
     Driven directly rather than through a window: this is a layout rule, and a
     window whose 3-D view happens to be short is testing something else.
     """
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True
@@ -292,7 +292,7 @@ def test_a_viewport_with_no_room_drops_the_panel_rather_than_overlapping():
     That is exactly how the widget this replaced behaved, and the reason it was
     reported: it kept its height and drew over whatever was under it.
     """
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True
@@ -305,7 +305,7 @@ def test_a_viewport_with_no_room_drops_the_panel_rather_than_overlapping():
 
 def test_a_long_path_is_wrapped_rather_than_run_off_the_panel():
     """The info text carries absolute paths, which have no spaces to break at."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True

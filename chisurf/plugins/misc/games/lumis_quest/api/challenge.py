@@ -217,8 +217,130 @@ def _is_mathy(sentence: str) -> bool:
     return symbols >= 3 or symbols / max(len(sentence), 1) > 0.03
 
 
+def _stem(word: str) -> str:
+    """A crude stem, enough to keep derivations apart.
+
+    Parameters
+    ----------
+    word : str
+        A lowercase term.
+
+    Returns
+    -------
+    str
+        The word with common inflection endings removed.
+    """
+    for ending in ("ations", "ation", "ings", "ing", "ies", "es", "s"):
+        if word.endswith(ending) and len(word) - len(ending) >= 4:
+            return word[: -len(ending)]
+    return word
+
+
+def _term_score(term: str, sentence: str, page_frequency: dict[str, int]) -> float:
+    """How worth asking about one term in one sentence is.
+
+    A good blank is a *concept* the page is about (it recurs), reads as a
+    normal word (6-13 letters, not a 20-character compound or an acronym-ish
+    fragment), and occurs exactly once in the sentence -- a second occurrence
+    either gives the answer away or makes the prompt ambiguous.
+
+    Parameters
+    ----------
+    term : str
+        The candidate blank.
+    sentence : str
+        The sentence it came from.
+    page_frequency : dict of str to int
+        How often each term occurs across the whole page.
+
+    Returns
+    -------
+    float
+        Higher is better.
+    """
+    score = 0.0
+    low = term.lower()
+    occurrences = len(re.findall(rf"\b{re.escape(low)}\b", sentence))
+    if occurrences != 1:
+        return -10.0
+    frequency = page_frequency.get(low, 1)
+    score += min(frequency, 5) * 1.0          # recurring concept
+    if 6 <= len(low) <= 13:
+        score += 2.0                          # reads as a word
+    elif len(low) > 16:
+        score -= 2.0                          # a compound nobody recalls
+    if " " not in low and low.isalpha():
+        score += 0.5
+    # Blanking the very first word of a sentence reads badly.
+    if sentence.lower().startswith(low):
+        score -= 1.5
+    return score
+
+
+def _distractor_score(distractor: str, target: str) -> float:
+    """How well one distractor would sit beside the target.
+
+    The classic failure of random distractors is length: a 4-letter word
+    among three 12-letter ones is either trivially right or trivially wrong
+    before the sentence is even read. Near-equal length, a different stem,
+    and no shared 4-character prefix keep the choice honest.
+
+    Parameters
+    ----------
+    distractor : str
+        Candidate wrong answer.
+    target : str
+        The blanked term.
+
+    Returns
+    -------
+    float
+        Higher is better; strongly negative rejects the pair.
+    """
+    if distractor == target or _stem(distractor) == _stem(target):
+        return -10.0
+    if distractor.startswith(target[:4]) or target.startswith(distractor[:4]):
+        return -6.0
+    gap = abs(len(distractor) - len(target))
+    score = max(0.0, 2.0 - gap * 0.5)
+    return score
+
+
+def _pick_distractors(target: str, vocabulary: list[str], rng: random.Random) -> list[str]:
+    """Choose three wrong answers that make the question fair.
+
+    Parameters
+    ----------
+    target : str
+        The blanked term.
+    vocabulary : list of str
+        Lowercase terms observed on the page.
+    rng : random.Random
+        Seeded generator, so the same page always builds the same options.
+
+    Returns
+    -------
+    list of str
+        Up to three distractors, best-scoring first.
+    """
+    pool = [word for word in vocabulary if word != target]
+    scored = [(word, _distractor_score(word, target)) for word in pool]
+    scored = [(word, s) for word, s in scored if s > 0.0]
+    scored.sort(key=lambda pair: (-pair[1], pair[0]))
+    # Keep some variety: take the best window, shuffle inside it.
+    window = scored[: max(6, len(scored) // 2)]
+    picks = [word for word, _ in window]
+    rng.shuffle(picks)
+    return picks[:3]
+
+
 def generate(text: str, content_hash: str, count: int = 1) -> list[Challenge]:
-    """Build challenges from a page, deterministically.
+    """Build challenges from a page, deterministically, curated.
+
+    Every plausible (sentence, term) pair on the page is scored -- how
+    recurring the concept is, whether the blank reads as a word, how fair the
+    distractors are -- and only the best-scoring questions survive. A page
+    that offers nothing worth asking asks nothing, rather than a bad question.
 
     Parameters
     ----------
@@ -242,51 +364,70 @@ def generate(text: str, content_hash: str, count: int = 1) -> list[Challenge]:
         return []
 
     rng = random.Random(content_hash)
-    vocabulary = sorted(
-        {
-            word.lower()
-            for sentence in sentences
-            for word in _TERM.findall(sentence)
-            if word.lower() not in STOPWORDS
-        }
-    )
+    page_frequency: dict[str, int] = {}
+    for sentence in sentences:
+        for word in _TERM.findall(sentence):
+            low = word.lower()
+            if low not in STOPWORDS:
+                page_frequency[low] = page_frequency.get(low, 0) + 1
+    vocabulary = sorted(page_frequency)
     if len(vocabulary) < 4:
         return []
 
-    challenges: list[Challenge] = []
-    for sentence in rng.sample(sentences, min(len(sentences), count * 4)):
-        terms = [
-            word for word in _TERM.findall(sentence) if word.lower() not in STOPWORDS
-        ]
-        if not terms:
-            continue
-        target = max(terms, key=len)
-        prompt = re.sub(rf"\b{re.escape(target)}\b", "_____", sentence, count=1)
-        if "_____" not in prompt:
-            continue
+    # Score every plausible candidate, then keep the best.
+    candidates: list[tuple[float, str, str]] = []  # (score, sentence, target)
+    for sentence in sentences:
+        terms = {
+            word.lower()
+            for word in _TERM.findall(sentence)
+            if word.lower() not in STOPWORDS
+        }
+        ranked = sorted(
+            (( _term_score(term, sentence, page_frequency), term) for term in terms),
+            key=lambda pair: (-pair[0], pair[1]),
+        )
+        for term_score_value, term in ranked[:3]:
+            if term_score_value < 0.0:
+                continue
+            candidates.append((term_score_value, sentence, term))
 
-        distractors = [
-            word for word in rng.sample(vocabulary, min(len(vocabulary), 12))
-            if word.lower() != target.lower()
-        ][:3]
+    candidates.sort(key=lambda entry: (-entry[0], entry[1], entry[2]))
+
+    challenges: list[Challenge] = []
+    seen_prompts: set[str] = set()
+    used_sentences: set[str] = set()
+    for score_value, sentence, target in candidates:
+        if len(challenges) >= count:
+            break
+        # One question per sentence: three blanks cut from the same sentence
+        # feel like the same question asked three times.
+        if sentence in used_sentences:
+            continue
+        prompt = re.sub(rf"\b{re.escape(target)}\b", "_____", sentence, count=1)
+        if "_____" not in prompt or prompt in seen_prompts:
+            continue
+        distractors = _pick_distractors(target, vocabulary, rng)
         if len(distractors) < 3:
             continue
-
-        options = [target.lower(), *distractors]
+        # Fairness gate: the answer must not stand out by length alone.
+        lengths = [len(target)] + [len(word) for word in distractors]
+        if min(lengths) * 2 < max(lengths):
+            continue
+        options = [target, *distractors]
         rng.shuffle(options)
         # Grounded by construction -- but verified anyway, because "the span is
         # in the page" is the property that matters and asserting it here is
         # what lets a model-backed provider be dropped in behind the same check.
         if not verify_span(sentence, text):
             continue
+        seen_prompts.add(prompt)
+        used_sentences.add(sentence)
         challenges.append(
             Challenge(
                 prompt=prompt,
                 options=tuple(options),
-                answer=options.index(target.lower()),
+                answer=options.index(target),
                 span=sentence,
             )
         )
-        if len(challenges) >= count:
-            break
     return challenges

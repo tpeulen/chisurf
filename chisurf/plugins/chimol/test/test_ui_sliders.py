@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from chimol.cmtk import sliders
+from chimol.cmtk.widgets import sliders
 
 
 class RecordingPainter:

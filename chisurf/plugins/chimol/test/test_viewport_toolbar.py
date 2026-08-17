@@ -16,7 +16,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from chimol.hosts.qt.menu_bar import TOOLBAR  # noqa: E402
-from chimol.chrome.gui import InternalGui, SequenceRow  # noqa: E402
+from chimol.ui.gui import InternalGui, SequenceRow  # noqa: E402
 
 SIZE = (900, 640)
 

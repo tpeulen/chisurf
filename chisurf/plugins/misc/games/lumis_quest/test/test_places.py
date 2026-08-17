@@ -41,7 +41,7 @@ def test_a_section_of_three_pages_is_not_the_same_place_as_one_of_twenty():
     assert places.kind_for(20) == "town"
     assert places.kind_for(places.HAMLET_MAX + 1) == "village"
     assert places.kind_for(places.VILLAGE_MAX + 1) == "town"
-    assert places.kind_for(1, warden=True) == "town", "somebody built the hall"
+    assert places.kind_for(1, boss_seat=True) == "town", "somebody built the hall"
 
 
 def test_a_settlement_has_a_middle_and_things_arranged_around_it():
@@ -49,7 +49,7 @@ def test_a_settlement_has_a_middle_and_things_arranged_around_it():
     plan = places.plan(14, "town")
     assert plan.plaza[2] > 0 and plan.plaza[3] > 0
     assert len(plan.room_cells) == 14
-    assert set(plan.premises) >= {T.TAVERN, T.SHOP, T.SMITHY, T.SHRINE}
+    assert set(plan.premises) >= {T.TAVERN, T.SHOP, T.SERVICE_SMITHYY, T.SHRINE}
     assert plan.gate[1] == plan.height - 1, "the gate is in the south wall"
     # Nothing is stacked on anything.
     taken = list(plan.room_cells) + list(plan.premises.values()) + plan.gardens
@@ -96,10 +96,10 @@ def test_every_settlement_is_named_as_a_place_and_known_for_a_section(world):
 
 def test_every_warden_has_a_seat_and_a_hall_to_stand_in(world):
     """A Warden with nowhere to be is a fight nobody can find."""
-    seated = {village.warden for village in world.villages if village.warden}
+    seated = {village.boss_seat for village in world.villages if village.boss_seat}
     assert seated == {warden.key for warden in tiers.WARDENS}
     for village in world.villages:
-        if village.warden:
+        if village.boss_seat:
             assert "hall" in village.premises
             assert world.tile_at(*village.premises["hall"]) == T.HALL
 

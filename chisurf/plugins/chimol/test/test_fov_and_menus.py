@@ -145,7 +145,7 @@ def test_the_bar_is_seven_menus():
 def test_the_presets_are_the_first_thing_under_display():
     """A preset is a display choice, so Display is where it is looked for."""
     from chimol.hosts.qt.menu_bar import DISPLAY_MENU
-    from chimol.commands.presets import load_reference_presets
+    from chimol.commands.builtin.presets import load_reference_presets
 
     first = DISPLAY_MENU[0]
     assert str(getattr(first, "label", "")) == "Preset"
@@ -183,7 +183,7 @@ def test_nothing_was_lost_in_the_fold():
 def test_the_tours_are_under_help_and_not_under_demo():
     """A tour is help, not a demonstration."""
     from chimol.hosts.qt.menu_bar import DEMO_MENU, HELP_MENU
-    from chimol.chrome.tours import available_tours
+    from chimol.ui.tours import available_tours
 
     def commands(entries):
         found = set()

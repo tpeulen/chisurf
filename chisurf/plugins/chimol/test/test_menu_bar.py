@@ -182,7 +182,7 @@ def test_a_special_entry_calls_its_handler(qapp):
     from qtpy import QtWidgets
 
     from chimol.hosts.qt.menu_bar import _populate
-    from chimol.chrome.object_menus import MenuEntry
+    from chimol.ui.menus.objects import MenuEntry
 
     calls: list[str] = []
     menu = QtWidgets.QMenu()

@@ -18,7 +18,7 @@ be pointed back at the first of two maps. Three reported symptoms, one missing
 signal.
 
 The fix is not another call site. It is
-:class:`~chimol.core.objects.ObjectRegistry`: the list counts its
+:class:`~chimol.core.model.objects.ObjectRegistry`: the list counts its
 own changes, and the views **consume** that count rather than being dispatched
 to. Pull, not push -- every view here already repaints on a clock, so comparing
 an integer costs nothing and cannot be forgotten the way a subscription can.
@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.core.objects import Change, ObjectRegistry
+from chimol.core.model.objects import Change, ObjectRegistry
 
 
 class _Entry:
@@ -75,8 +75,8 @@ def test_every_mutation_counts():
 def test_the_mapping_protocol_is_the_choke_point():
     """Two modules outside the viewer mutate the list directly.
 
-    ``commands/interactions.py`` drops a mutagenesis preview with ``pop`` and
-    ``core/session.py`` empties the list with ``clear``. Neither would call
+    ``commands/builtin/interactions.py`` drops a mutagenesis preview with ``pop`` and
+    ``core/services/session.py`` empties the list with ``clear``. Neither would call
     a named method it does not know about, so the mapping itself has to be what
     counts -- that is the whole reason this is a ``MutableMapping``.
     """

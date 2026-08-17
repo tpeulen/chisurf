@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import widgets
+from chimol.cmtk.widgets import basic as widgets
 
 
 class RecordingPainter:

@@ -231,7 +231,7 @@ class Village:
     premises : dict
         Named landmarks in world tiles: ``well``, ``tavern``, ``shop``,
         ``smithy``, ``shrine``, ``hall``.
-    warden : str
+    boss_seat : str
         Key into :data:`chisurf.plugins.misc.games.lumis_quest.api.tiers.BY_KEY`
         when a Warden holds their hall here, else empty.
     """
@@ -244,7 +244,7 @@ class Village:
     gate: tuple[int, int] = (0, 0)
     clinic: tuple[int, int] = (0, 0)
     premises: dict[str, tuple[int, int]] = dataclasses.field(default_factory=dict)
-    warden: str = ""
+    boss_seat: str = ""
 
     @property
     def position(self) -> tuple[float, float]:
@@ -758,7 +758,7 @@ def _read_groups(directory: pathlib.Path) -> list[tuple[str, list[tuple[toc.Node
     return groups
 
 
-def _warden_seats(regions: list[Region]) -> None:
+def _boss_seats(regions: list[Region]) -> None:
     """Give each Warden a hall, in a land whose character suits them.
 
     A Warden with no seat is a fight the player can never find, so the fallback
@@ -774,12 +774,12 @@ def _warden_seats(regions: list[Region]) -> None:
         return
     by_name = {region.name: region for region in regions}
     taken: set[int] = set()
-    for index, warden in enumerate(WARDENS):
-        region = next((by_name[name] for name in warden.lands if name in by_name), None)
+    for index, boss in enumerate(WARDENS):
+        region = next((by_name[name] for name in boss.lands if name in by_name), None)
         if region is None or not region.villages:
             region = regions[index % len(regions)]
         village = next(
-            (v for v in region.villages if id(v) not in taken and not v.warden),
+            (v for v in region.villages if id(v) not in taken and not v.boss_seat),
             None,
         )
         if village is None:
@@ -789,7 +789,7 @@ def _warden_seats(regions: list[Region]) -> None:
             if not free:
                 continue
             village = max(free, key=lambda v: len(v.rooms))
-        village.warden = warden.key
+        village.boss_seat = boss.key
         taken.add(id(village))
 
 
@@ -859,16 +859,16 @@ def build_world(docs_root: pathlib.Path | None = None, seed: str = "") -> World:
         pending.append(region)
         contents.append(groups)
 
-    _warden_seats(pending)
+    _boss_seats(pending)
 
     # Second pass: geometry, now that every settlement knows what it is.
     plans: dict[int, places.Plan] = {}
     for region in pending:
         laid = []
         for village in region.villages:
-            warden = bool(village.warden)
-            village.kind = places.kind_for(len(village.rooms), warden=warden)
-            laid.append(places.plan(len(village.rooms), village.kind, warden=warden))
+            has_boss = bool(village.boss_seat)
+            village.kind = places.kind_for(len(village.rooms), boss_seat=has_boss)
+            laid.append(places.plan(len(village.rooms), village.kind, boss_seat=has_boss))
         sizes = [(one.width, one.height) for one in laid]
         cursor_col = 0
         cursor_row = 0
@@ -982,7 +982,7 @@ def _paint(world: World, plans: dict[int, places.Plan]) -> None:
                 continue
             origin = (village.rect[0], village.rect[1])
             landmarks = places.paint(grid, origin, layout, _seed(village.place),
-                                     warden=bool(village.warden))
+                                     boss_seat=bool(village.boss_seat))
             placed = places.paint_rooms(grid, origin, layout.room_cells)
             for room, tile in zip(village.rooms, placed):
                 room.tile = tile

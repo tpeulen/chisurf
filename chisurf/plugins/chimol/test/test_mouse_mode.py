@@ -11,7 +11,7 @@ half had been recorded as never having worked (``docs/development/chimol_todo.md
 What is left here is a guard, because an inert switch is exactly the kind of
 thing that grows back: the tests below fail if the setting, the sign helpers or
 the viewer accessors reappear. The mouse-mode *matrix* -- PyMOL's own
-three-button viewing/editing table in ``chrome/mouse_modes.py`` -- is a different thing
+three-button viewing/editing table in ``ui/input/mouse_modes.py`` -- is a different thing
 with the same word in its name and is deliberately untouched.
 """
 
@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 
 from chimol.core.settings import config
-from chimol.chrome import mouse_modes
+from chimol.ui.input import mouse_modes
 
 
 def test_no_drag_style_setting():

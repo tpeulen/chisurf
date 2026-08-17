@@ -8,6 +8,11 @@ and unbinding success rates.
 from __future__ import annotations
 
 import dataclasses
+import json
+import pathlib
+
+_DATA_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "perks.json"
+_DATA = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -32,13 +37,9 @@ class Perk:
     text: str
 
 
-PERKS: tuple[Perk, ...] = (
-    Perk("swift_step", "Swift Step", 2, "+15% overworld walk speed."),
-    Perk("photon_thrift", "Photon Thrift", 3, "-25% photon cost for magic spells."),
-    Perk("lens_mastery", "Lens Mastery", 4, "+15% unbind success rate in battle."),
-    Perk("herbologist", "Herbologist", 5, "2x reagent drop rate from slashing grass."),
-    Perk("vital_shield", "Vital Shield", 6, "FRET Shield spawns +2 rotating barrier dots."),
-    Perk("sage_insight", "Sage Insight", 7, "Earn 1.5x XP from page sign-offs."),
+PERKS: tuple[Perk, ...] = tuple(
+    Perk(key=e["key"], name=e["name"], level_req=e["level_req"], text=e["text"])
+    for e in _DATA["perks"]
 )
 
 BY_KEY: dict[str, Perk] = {perk.key: perk for perk in PERKS}

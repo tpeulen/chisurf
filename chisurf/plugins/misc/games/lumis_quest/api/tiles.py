@@ -46,7 +46,7 @@ PLAZA = 16
 WELL = 17
 TAVERN = 18
 SHOP = 19
-SMITHY = 20
+SERVICE_SMITHYY = 20
 SHRINE = 21
 HALL = 22
 GARDEN = 23
@@ -89,7 +89,7 @@ RIFT = 34
 #: nor is a cave mouth, which is a door.
 BLOCKING = frozenset({
     VOID, WATER, TREE, ROCK, WALL, BUILDING, CLIFF, WELL, TAVERN, SHOP,
-    SMITHY, SHRINE, HALL, LANTERN, SIGN, FENCE, STALL, TAR, DEADTREE, RUIN,
+    SERVICE_SMITHYY, SHRINE, HALL, LANTERN, SIGN, FENCE, STALL, TAR, DEADTREE, RUIN,
     IWALL, COUNTER, TABLE, BED, SHELF, HEARTH, ALTAR, ANVIL, BARREL,
 })
 
@@ -100,7 +100,7 @@ DOORS = frozenset({GATE, CAVE, CLINIC, RIFT, EXIT})
 #: Buildings you can talk to from outside. Each has an interior scene in
 #: :mod:`.places` rather than an interior map -- a tavern the size of one room
 #: is worse than a tavern you enter by talking to its door.
-PREMISES = frozenset({TAVERN, SHOP, SMITHY, SHRINE, HALL})
+PREMISES = frozenset({TAVERN, SHOP, SERVICE_SMITHYY, SHRINE, HALL})
 
 #: Human-readable names, for debugging and test failure messages.
 NAMES = {
@@ -124,7 +124,7 @@ NAMES = {
     WELL: "well",
     TAVERN: "tavern",
     SHOP: "shop",
-    SMITHY: "smithy",
+    SERVICE_SMITHYY: "smithy",
     SHRINE: "shrine",
     HALL: "hall",
     GARDEN: "garden",
@@ -159,17 +159,20 @@ ENTERABLE: dict[int, str] = {
     BUILDING: "house",
     TAVERN: "tavern",
     SHOP: "shop",
-    SMITHY: "smithy",
+    SERVICE_SMITHYY: "smithy",
     SHRINE: "shrine",
     HALL: "hall",
 }
 
-#: World units per tile.
-TILE = 18.0
+#: World units per tile. **The pack's native size**: Ninja Adventure art is
+#: authored at 16 pixels to a tile, and 16 world units to a tile is what keeps
+#: that art on its own pixel grid instead of resampled to a non-integer
+#: ratio. Everything downstream expresses distance as a multiple of this.
+TILE = 16.0
 
 #: **Per-quarter-tile solidity.** A whole-tile block is too coarse for the
 #: things a town is full of: a lantern is a post, a fence is a rail, a counter
-#: is a plank. Blocking all 18 units for any of them is most of what "getting
+#: is a plank. Blocking a whole tile for any of them is most of what "getting
 #: stuck on objects" actually is.
 #:
 #: So a tile carries four bits, one per quadrant, indexed

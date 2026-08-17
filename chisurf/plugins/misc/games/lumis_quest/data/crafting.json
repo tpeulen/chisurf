@@ -1,0 +1,15 @@
+{
+    "materials": {
+        "trolox": {"name": "Trolox", "found": "a rare drop from a beast defeated in the field"},
+        "godcat": {"name": "Glucose Oxidase", "found": "a rarer drop from a beast defeated in the field"},
+        "roxs": {"name": "ROXS Mix", "found": "cut from marsh and garden tiles, like grass"},
+        "bsa": {"name": "BSA", "found": "cut from marsh and garden tiles, like grass"},
+        "pagfp": {"name": "PA-GFP", "found": "a rare drop from a beast defeated in the field"}
+    },
+    "recipes": {
+        "photostable": {"name": "Antifade Cocktail", "inputs": [["trolox", 2], ["godcat", 1]]},
+        "unblinking": {"name": "Triplet Quencher", "inputs": [["roxs", 2], ["trolox", 1]]},
+        "shielded": {"name": "Passivation Coat", "inputs": [["bsa", 3]]},
+        "turn_on": {"name": "Photoactivation Label", "inputs": [["pagfp", 2]]}
+    }
+}

@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.core.hierarchy import HierarchyNode
+from chimol.core.model.hierarchy import HierarchyNode
 
 
 # --------------------------------------------------------------------------- #

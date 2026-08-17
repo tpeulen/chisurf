@@ -14,7 +14,7 @@ and its default here; the menu renders whatever is declared, in order, with the
 control the type implies; and stepping a setting is the *model* moving a value
 inside its own declared range. Adding a setting is adding one entry.
 
-The declaration is Chimol's (:mod:`chimol.cmtk.settings_editor`), which
+The declaration is Chimol's (:mod:`chimol.cmtk.widgets.settings_editor`), which
 is also what draws the settings panel inside the 3-D view -- the game and the
 molecular viewer describe their settings the same way and are edited by the
 same controls. That is the whole reason Lumis Quest depends on Chimol.
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable, Optional
 
-from chimol.cmtk.settings_editor import (
+from chimol.cmtk.widgets.settings_editor import (
     ACTION,
     BOOL,
     CHOICE,
@@ -166,7 +166,7 @@ def row_text(setting: Setting, value: Any) -> str:
     if setting.kind == BOOL:
         return f"{setting.label}: {'[✓] enabled' if value else '[ ] disabled'}"
     if setting.kind == FLOAT:
-        from chimol.cmtk.widgets import _format
+        from chimol.cmtk.widgets.basic.basic import _format
 
         return f"{setting.label}: {_format(setting.fmt or '%.2f', float(value))}"
     return f"{setting.label}: {value}"

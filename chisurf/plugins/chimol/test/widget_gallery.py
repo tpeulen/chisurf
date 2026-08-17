@@ -94,7 +94,7 @@ def _rows(module_name: str) -> list[tuple]:
 
 def _widgets_rows() -> list[tuple[str, Callable]]:
     """The nineteen controls that predate the port."""
-    from chimol.cmtk import widgets as w
+    from chimol.cmtk.widgets import basic as w
 
     return [
         ("SliderFloat", lambda: w.SliderFloat("gain", 0.0, 1.0, 0.35)),
@@ -122,10 +122,10 @@ def _widgets_rows() -> list[tuple[str, Callable]]:
 def _buttons_rows() -> list[tuple]:
     """The Button/Main family.
 
-    The list dot is not here -- it belongs to :mod:`~chimol.cmtk.text`
+    The list dot is not here -- it belongs to :mod:`~chimol.cmtk.widgets.text`
     beside ``BulletText``, so that one dot has one implementation.
     """
-    from chimol.cmtk import buttons as b
+    from chimol.cmtk.widgets import buttons as b
 
     rows: list[tuple] = [
         ("SmallButton", lambda: b.SmallButton("SmallButton"), ROW_H, 110.0),
@@ -147,7 +147,7 @@ def _buttons_rows() -> list[tuple]:
 
 def _text_rows() -> list[tuple]:
     """The Text family."""
-    from chimol.cmtk import text as t
+    from chimol.cmtk.widgets import text as t
 
     return [
         ("Text", lambda: t.Text("plain caption")),
@@ -172,7 +172,7 @@ def _text_rows() -> list[tuple]:
 
 def _sliders_rows() -> list[tuple]:
     """The Slider family."""
-    from chimol.cmtk import sliders as s
+    from chimol.cmtk.widgets import sliders as s
 
     return [
         ("SliderScalar", lambda: s.SliderScalar("alpha", 0.0, 1.0, 0.4)),
@@ -191,7 +191,7 @@ def _sliders_rows() -> list[tuple]:
 
 def _drag_rows() -> list[tuple]:
     """The Drag family."""
-    from chimol.cmtk import drag as d
+    from chimol.cmtk.widgets import drag as d
 
     return [
         ("DragFloat", lambda: d.DragFloat("cutoff", 2.5, v_speed=0.1)),
@@ -205,7 +205,7 @@ def _drag_rows() -> list[tuple]:
 
 def _inputs_rows() -> list[tuple]:
     """The Input family."""
-    from chimol.cmtk import inputs as i
+    from chimol.cmtk.widgets import inputs as i
 
     return [
         ("InputFloat", lambda: i.InputFloat("sigma", 1.25, step=0.1, step_fast=1.0)),
@@ -227,7 +227,7 @@ def _combo_rows() -> list[tuple]:
     ``widgets.Combo`` cycles in place on click; this one opens a list. Both
     are photographed so the difference is visible rather than asserted.
     """
-    from chimol.cmtk import combo as c
+    from chimol.cmtk.widgets import combo as c
 
     options = ["cartoon", "sticks", "spheres", "surface", "ribbon", "dots"]
 
@@ -249,7 +249,7 @@ def _combo_rows() -> list[tuple]:
 
 def _selection_rows() -> list[tuple]:
     """Selectable, CollapsingHeader and the selection model."""
-    from chimol.cmtk import selection as s
+    from chimol.cmtk.widgets import selection as s
 
     return [
         ("Selectable", lambda: s.Selectable("chain A", False)),
@@ -267,7 +267,7 @@ def _selection_rows() -> list[tuple]:
 
 def _color_rows() -> list[tuple]:
     """The Colour family."""
-    from chimol.cmtk import color as c
+    from chimol.cmtk.widgets import color as c
 
     return [
         ("ColorButton", lambda: c.ColorButton((220, 110, 40, 255), "warm")),
@@ -281,7 +281,7 @@ def _color_rows() -> list[tuple]:
 
 def _menus_rows() -> list[tuple]:
     """Menus and popups."""
-    from chimol.cmtk import menus as m
+    from chimol.cmtk.widgets import menus as m
 
     def _file_menu() -> m.Menu:
         return m.Menu(
@@ -335,7 +335,7 @@ def _menus_rows() -> list[tuple]:
 
 def _tabs_rows() -> list[tuple]:
     """The TabBar family."""
-    from chimol.cmtk import tabs as t
+    from chimol.cmtk.widgets import tabs as t
 
     return [
         ("TabBar (measured)", lambda: t.TabBar(["Scene", "A much longer tab", "Fit"], index=1)),
@@ -368,7 +368,7 @@ def _tabs_rows() -> list[tuple]:
 
 def _tables_rows() -> list[tuple]:
     """The Tables subsystem."""
-    from chimol.cmtk import tables as tb
+    from chimol.cmtk.widgets import tables as tb
 
     rows = [
         ["A", 1310, "protein", 2.10],
@@ -416,7 +416,7 @@ def _dragdrop_rows() -> list[tuple]:
     photographing, which is also the honest picture: an idle source and a
     dragging one look different, and that difference is the widget.
     """
-    from chimol.cmtk import dragdrop as dd
+    from chimol.cmtk.widgets import dragdrop as dd
 
     class _Dragging:
         """A source mid-drag, drawing its preview under the cursor."""
@@ -469,7 +469,7 @@ def _layout_rows() -> list[tuple]:
     put controls where a reader expects them.
     """
     from chimol.cmtk import layout as lay
-    from chimol.cmtk import widgets as w
+    from chimol.cmtk.widgets import basic as w
 
     class _Demo:
         """Draws a small panel through :class:`Layout`."""
@@ -498,7 +498,7 @@ def _text_editor_rows() -> list[tuple]:
     glyphs rather than over them, and that the line-number gutter is wide
     enough for the number it has to hold.
     """
-    from chimol.cmtk import text_editor as te
+    from chimol.cmtk.widgets import text_editor as te
 
     script = (
         "# fetch and colour a structure\n"
@@ -540,7 +540,7 @@ def _memory_editor_rows() -> list[tuple]:
     """The hex view, plain and in HexII, over a buffer with structure in it."""
     import struct
 
-    from chimol.cmtk import memory_editor as me
+    from chimol.cmtk.widgets import memory_editor as me
 
     blob = bytearray(256)
     # Exactly 16 bytes: a longer literal would *grow* the bytearray past 256

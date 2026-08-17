@@ -28,7 +28,7 @@ from chimol.cmtk.keys import (
     KEY_TAB,
     KEY_UP,
 )
-from chimol.cmtk import text_editor as te
+from chimol.cmtk.widgets import text_editor as te
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 #: The reference checkout. Gitignored and re-clonable, so the tests that read

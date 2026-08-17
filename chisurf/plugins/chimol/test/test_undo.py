@@ -20,7 +20,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.core.undo import UNDO_SLOTS, UndoRing
+from chimol.core.services.undo import UNDO_SLOTS, UndoRing
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]

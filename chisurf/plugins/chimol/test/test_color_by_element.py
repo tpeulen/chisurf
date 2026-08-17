@@ -107,7 +107,7 @@ def test_cba_colours_the_carbons_too(session):
 
 def test_the_by_element_menu_is_pymols_forty_nine_entries():
     """One leaf was the bug: PyMOL offers a CNOS entry and 48 carbon/H colours."""
-    from chimol.chrome.object_menus import COLOR_MENU
+    from chimol.ui.menus.objects import COLOR_MENU
 
     by_element = COLOR_MENU[0]
     assert by_element.label == "by element"
@@ -126,7 +126,7 @@ def test_the_by_element_menu_is_pymols_forty_nine_entries():
 
 def test_no_menu_entry_still_reaches_the_object_wide_mode():
     """`color byelement` is a *mode*; a menu that issues it repaints the object."""
-    from chimol.chrome.object_menus import COLOR_MENU
+    from chimol.ui.menus.objects import COLOR_MENU
 
     def commands(entries):
         for entry in entries:

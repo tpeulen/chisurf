@@ -20,8 +20,8 @@ import zipfile
 import pytest
 
 import chimol
-from chimol.chrome import menus
-from chimol.chrome.panels import PANELS
+from chimol.ui.menus import bar as menus
+from chimol.ui.panels import PANELS
 from chimol.commands.command import Cmd, DEFAULT_GROUPS, compose
 from chimol.commands.registry import CommandGroup, command
 from chimol.plugins import BUILTIN, PluginAPI, load_plugins
@@ -185,7 +185,7 @@ class _KeysAndSettingsPlugin:
 
 
 def test_a_plugin_adds_a_setting_and_a_keybinding():
-    from chimol.chrome import keybindings
+    from chimol.ui.input import keybindings
     from chimol.core.settings import registry as settings
 
     cmd = _cmd(plugins=False)
@@ -242,9 +242,9 @@ def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
 
 
 def test_a_plugin_adds_a_wizard_and_a_menu_generator():
-    from chimol.chrome import menus
-    from chimol.chrome.object_menus import MenuEntry
-    from chimol.chrome.wizards import WIZARDS, Wizard
+    from chimol.ui.menus import bar as menus
+    from chimol.ui.menus.objects import MenuEntry
+    from chimol.ui.wizards.base import WIZARDS, Wizard
 
     class _Hello(Wizard):
         name = "hello"

@@ -44,7 +44,7 @@ def test_filter_sections_and_dialog_model():
     import tempfile
     from pathlib import Path
 
-    from chimol.chrome.panels.file_dialog import FileDialog, parse_filter
+    from chimol.ui.dialogs.file_dialog import FileDialog, parse_filter
 
     pairs = parse_filter("Structures (*.pdb *.cif);;All files (*.*)")
     assert pairs[0] == ("Structures", ["*.pdb", "*.cif"])
@@ -356,7 +356,7 @@ def test_dialog_changes_reach_the_picture_not_just_the_model():
 
 def test_browser_host_gets_the_same_dialog():
     """The page wires the same two hooks -- no system panel exists there."""
-    from chimol.chrome.panels.file_dialog import open_file_dialog
+    from chimol.ui.dialogs.file_dialog import open_file_dialog
     from chimol.hosts.web.page import Page  # noqa: F401 - import proves Qt-free
 
     import inspect

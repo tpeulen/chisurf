@@ -42,6 +42,12 @@
           {"do": "restore", "args": {"fraction": 0.5,
            "text": "Bread, and somewhere warm. Your team comes back halfway."}}
         ]},
+        {"text": "Play a game of Minesweeper.", "then": [
+          {"do": "minigame", "args": {"game": "minesweeper"}}
+        ]},
+        {"text": "Play a game of Number Quest.", "then": [
+          {"do": "minigame", "args": {"game": "number_quest"}}
+        ]},
         {"text": "Nothing today."}
       ]}
     ],

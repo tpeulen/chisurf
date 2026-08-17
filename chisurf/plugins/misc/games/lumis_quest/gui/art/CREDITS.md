@@ -88,3 +88,11 @@ repository that bundles this art). It is **not** CC0: its `name` table reads
 `© 1996-2018 Typodermic Fonts Inc`, it carries a trademark notice, and it
 grants no licence. It is not shipped here. The typeface in
 `chisurf/gui/chigame/pixelfont.py` is authored in this repository.
+
+## Character sprites (2026-08-14)
+
+The full cast is now cut from **Ninja Adventure** by Pixel-boy and AAA (CC0):
+the player from `ninja_blue`, the companion from `pig`, villagers/keepers from
+`samurai_green`, townsfolk/healers/emissaries from `samurai_blue`, and the
+Wardens from each sheet's attack row. Cut by
+`build_tools/dev_utils/import_tileart.py`; re-run after editing `CHAR_TILES`.

@@ -131,7 +131,7 @@ def test_the_charset_covers_what_the_chrome_draws():
     _alpha, meta = _load()
     source = (
         pathlib.Path(__import__("chimol").__file__).resolve().parent
-        / "chrome" / "gui.py"
+        / "ui" / "gui.py"
     ).read_text(encoding="utf-8")
 
     tree = ast.parse(source)
@@ -165,7 +165,7 @@ def test_the_charset_covers_what_the_chrome_draws():
 #: painter draws from, so this list is the set of files whose string literals
 #: can reach it.
 _CONTROL_MODULES = sorted(
-    p.name for p in _CMTK.glob("*.py") if p.name != "__init__.py"
+    str(p.relative_to(_CMTK)) for p in _CMTK.rglob("*.py") if p.name != "__init__.py"
 )
 
 
@@ -232,5 +232,5 @@ def test_every_control_module_draws_only_baked_glyphs(module):
 _NOT_DRAWN = {
     # `_PUNCT_CHARS`, the set a line may break *after* -- the reference's
     # word-wrap rule for CJK, which has no spaces to break on.
-    "text.py": "　、。",
+    "widgets/text.py": "　、。",
 }

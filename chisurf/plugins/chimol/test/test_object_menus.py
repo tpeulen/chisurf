@@ -19,7 +19,7 @@ import pathlib
 
 import pytest
 
-from chimol.chrome.object_menus import (
+from chimol.ui.menus.objects import (
     ACTION_MENU,
     COLOR_MENU,
     HIDE_MENU,

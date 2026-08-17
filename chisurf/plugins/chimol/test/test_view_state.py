@@ -20,7 +20,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.core.view_state import (
+from chimol.core.camera.view_state import (
     DEFAULT_FOV,
     distance_for_radius,
     framing_radius,

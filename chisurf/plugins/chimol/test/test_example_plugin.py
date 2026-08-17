@@ -34,10 +34,11 @@ def qapp():
 
 
 def test_the_example_plugin_does_everything_it_says(stars_module, qapp, tmp_path):
-    from chimol.chrome import keybindings, menus
-    from chimol.chrome.panels import PANELS
+    from chimol.ui.input import keybindings
+    from chimol.ui.menus import bar as menus
+    from chimol.ui.panels import PANELS
     from chimol.commands.command import Cmd
-    from chimol.core.representations import REPRESENTATIONS
+    from chimol.core.services.representations import REPRESENTATIONS
     from chimol.core.settings.registry import get_setting
     from chimol.core.viewer import Viewer
     from chimol.hosts.base import ViewerHost

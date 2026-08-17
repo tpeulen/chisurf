@@ -23,7 +23,7 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.core.atoms_util import _bead_mask, _is_bead_model
+from chimol.core.model.atoms_util import _bead_mask, _is_bead_model
 from chimol.core.viewer import Viewer
 
 

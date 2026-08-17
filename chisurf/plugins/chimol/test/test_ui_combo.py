@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import combo
+from chimol.cmtk.widgets import combo
 
 
 class RecordingPainter:
@@ -80,7 +80,7 @@ def _make(options=("alpha", "beta", "gamma"), **kwargs):
     options : sequence of str
         The choices.
     **kwargs
-        Passed to :class:`~chimol.cmtk.combo.ComboBox`.
+        Passed to :class:`~chimol.cmtk.widgets.combo.ComboBox`.
 
     Returns
     -------

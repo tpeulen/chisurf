@@ -1,7 +1,7 @@
 """ImGui-style menu controls for Lumis Quest, drawn onto a chigame scene.
 
 The controls themselves are Chimol's painter-level widgets
-(:mod:`chimol.cmtk.widgets`) -- state, hit tests
+(:mod:`chimol.cmtk.widgets.basic`) -- state, hit tests
 and drawing, all against six rectangle-and-text operations. Nothing here
 reimplements them.
 
@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from typing import Sequence, Tuple
 
-from chimol.cmtk import widgets as _widgets
+from chimol.cmtk.widgets import basic as _widgets
 from chimol.cmtk.painter import (
     ALIGN_HCENTER,
     ALIGN_RIGHT,

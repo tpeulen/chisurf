@@ -25,7 +25,7 @@ import pathlib
 
 import pytest
 
-from chimol.chrome import object_menus as om
+from chimol.ui.menus import objects as om
 from chimol.commands.command import Cmd
 
 _FRAGMENT = (
@@ -221,7 +221,7 @@ def test_showing_the_plane_adds_geometry(session):
 #: while, and `generate` claimed chimol could not build symmetry mates while
 #: `symexp` sat in plugins/symmetry/commands.py under 53 tests. To the user those read
 #: exactly like a missing feature -- and `A > hydrogens > add` was a fourth,
-#: found the same day: `h_add` has been in commands/editing.py the whole time.
+#: found the same day: `h_add` has been in commands/builtin/editing.py the whole time.
 DISABLED_ENTRIES = {
     # No structure editing.
     "A > clean",
@@ -255,7 +255,7 @@ DISABLED_ENTRIES = {
 
 def _disabled_leaves():
     """Every leaf entry with no command, as ``"A > preset > ..."`` paths."""
-    from chimol.chrome.object_menus import OBJECT_MENUS
+    from chimol.ui.menus.objects import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:
@@ -289,7 +289,7 @@ def test_the_disabled_entries_are_the_inventory():
 
 def test_every_disabled_entry_says_why():
     """A greyed-out row with no tooltip is indistinguishable from a bug."""
-    from chimol.chrome.object_menus import OBJECT_MENUS
+    from chimol.ui.menus.objects import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:

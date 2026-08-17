@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from chimol.cmtk import keys
-from chimol.cmtk import inputs
+from chimol.cmtk.widgets import inputs
 
 
 class RecordingPainter:

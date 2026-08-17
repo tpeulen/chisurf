@@ -18,7 +18,7 @@ import numpy as np
 import pytest
 
 from chimol.io.mrc import load_mrc_grid
-from chimol.core.volume import VolumeGrid
+from chimol.core.model.volume import VolumeGrid
 
 
 # --------------------------------------------------------------------------- #
@@ -560,7 +560,7 @@ def test_a_contour_is_cut_once_per_level_not_once_per_ask(blob, monkeypatch):
     the same level -- re-running marching cubes for each was most of why the
     map controls felt slow.
     """
-    from chimol.core import volume as volume_module
+    from chimol.core.model import volume as volume_module
 
     grid = VolumeGrid.from_array(blob)
     calls = {"n": 0}
@@ -693,7 +693,7 @@ def test_a_flat_map_offers_no_level_at_all():
 
 def test_the_negative_lobe_gets_a_distinguishable_colour():
     """Transcribed from `_negative_color`, including the too-dark rescue."""
-    from chimol.core.volume import _negative_lobe_color
+    from chimol.core.model.volume import _negative_lobe_color
 
     # White inverts to black, which would be invisible; it becomes red.
     assert _negative_lobe_color((1.0, 1.0, 1.0, 1.0)) == (1.0, 0.0, 0.0, 1.0)
@@ -822,7 +822,7 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_p
     for correct input -- which reads as the user's mistake rather than the
     command's. This pins both that a real id parses and that a bad one is named.
     """
-    from chimol.commands import loader as loader_mod
+    from chimol.commands.builtin import loader as loader_mod
     from chimol.commands.command import Cmd
 
     monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
@@ -853,7 +853,7 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_p
 def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
     # An empty download directory: `fetch` re-uses an entry it already has, so a
     # test about *which URL is requested* has to start from one it does not.
-    from chimol.commands import loader as loader_mod
+    from chimol.commands.builtin import loader as loader_mod
     from chimol.commands.command import Cmd
 
     monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)

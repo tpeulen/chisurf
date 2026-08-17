@@ -39,7 +39,7 @@ from toolkit_free import probe
 
 #: ``(mode, button, modifiers, action, expectation)``. The expectation names
 #: what must change, and the table is the one the panel draws -- if a binding
-#: moves in `chrome/mouse_modes.py`, this fails and one of the two is wrong.
+#: moves in `ui/input/mouse_modes.py`, this fails and one of the two is wrong.
 CELLS = [
     ("three_button_viewing", "l", "", "rota", "camera"),
     ("three_button_viewing", "l", "ctrl", "move", "camera"),

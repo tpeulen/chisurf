@@ -12,7 +12,7 @@ real editor -- colours, multiple cursors, undo, find -- for one line of JSON.
 Where the editor comes from
 ---------------------------
 It is not a ``QPlainTextEdit``. The widget is
-:class:`chimol.cmtk.text_editor.TextEditor`, the port of
+:class:`chimol.cmtk.widgets.text_editor.TextEditor`, the port of
 ImGuiColorTextEdit that chimol draws in its own viewport chrome, hosted in a
 ``QWidget`` by :class:`chimol.cmtk.qt_host.ControlHost`.
 
@@ -27,7 +27,7 @@ Options
 -------
 ``language`` : str, default ``"python"``
     One of the names in
-    :func:`chimol.cmtk.text_editor.shipped_languages`, case-insensitive
+    :func:`chimol.cmtk.widgets.text_editor.shipped_languages`, case-insensitive
     (``python``, ``c``, ``c++``, ``glsl``, ``lua``, ``json``, ``markdown``,
     ``sql``, ``chimol``), or ``"none"`` for no highlighting.
 ``height`` : int, default 240
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 def _make_editor(text: str, options: dict):
     """Build a configured :class:`TextEditor`, or raise ``ImportError``."""
-    from chimol.cmtk import text_editor as te
+    from chimol.cmtk.widgets import text_editor as te
 
     wanted = str(options.get("language", "python")).strip().lower()
     language = None

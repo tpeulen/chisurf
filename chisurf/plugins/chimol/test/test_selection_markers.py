@@ -24,7 +24,7 @@ import pytest
 from chimol.render import markers
 from chimol.render.pack import pack_scene
 from chimol.render.scene import Scene
-from chimol.core.view_state import pack_view_state
+from chimol.core.camera.view_state import pack_view_state
 
 
 # ── the geometry ─────────────────────────────────────────────────────────

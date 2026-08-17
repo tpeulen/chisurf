@@ -42,19 +42,18 @@ from . import tiles as T
 from .bestiary import BY_KEY as SPECIES_BY_KEY
 from .bestiary import SPECIES
 from .story import ORDER_LANDS, ORDERS
-from .tiers import BY_KEY as WARDEN_BY_KEY
+from .tiers import BY_KEY as BOSS_BY_KEY
 from .tiles import CLINIC, FLOOR, GARDEN, GRASS, PLAZA, ROAD, SAND, TILE, is_blocking
 
-#: What a villager might say. Chosen by page address, so a given villager always
-#: greets you the same way and the words become theirs.
-GREETINGS = (
-    "This page has been read end to end. It holds.",
-    "Somebody vouched for what is written here.",
-    "The lamps stay lit while the words stay true.",
-    "I keep this one. Ask me if a symbol puzzles you.",
-    "It was dark here once. Not any more.",
-    "Read it yourself if you like -- it will stand up.",
-)
+import json
+import pathlib
+
+#: NPC dialogue loaded from ``data/npc_lines.json``.
+_NPC_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "npc_lines.json"
+_NPC = json.loads(_NPC_FILE.read_text(encoding="utf-8"))
+
+#: What a villager might say, loaded from JSON.
+GREETINGS = tuple(_NPC["greetings"])
 
 def page_lines(room) -> tuple[str, ...]:
     """What a settled page's keeper says, from the page itself.
@@ -103,83 +102,33 @@ def page_lines(room) -> tuple[str, ...]:
 
 
 #: What a villager says about the state of their settlement.
-STRUGGLING = (
-    "Half our houses are dark. Nobody has been through them.",
-    "We could use a reader. Plenty here has never been checked.",
-    "The lamps go out one at a time when nobody comes.",
-)
+STRUGGLING = tuple(_NPC["struggling"])
 
-#: Unmarked animals, and what they do when you bother them. These are the ones
-#: nobody has done anything to, and the game is quietly about keeping it that
-#: way.
-ANIMALS = (
-    ("sheep", "It regards you, decides against it, and returns to the grass."),
-    ("goose", "It hisses. You have been warned by better and survived."),
-    ("hare", "Up on its back legs, ears working. Ordinary brown. Unmarked."),
-    ("heron", "Standing in the shallows, entirely uninterested in you."),
-    ("cat", "It watches your pocket, where the labels are."),
-    ("dog", "Tail once, then back to whatever it was smelling."),
-)
+#: Unmarked animals and their reactions, loaded from JSON.
+ANIMALS = tuple((a[0], a[1]) for a in _NPC["animals"])
 
-#: Townsfolk who are not keepers: a settlement the size of a town needs people
-#: in it who are not a review metric.
-TOWNSFOLK = (
-    ("the carter", "I haul between the towns. The dark stretches get longer every year."),
-    ("a child", "Have you seen the hound glow? Everyone says Lumi can smell light."),
-    ("the gatekeeper", "The gate stays open. It is readers we are short of, not doors."),
-    ("the gardener", "A tended page keeps its colour. Same as anything planted."),
-    ("the lamplighter", "I light what I can reach. The high shelves need someone like you."),
-    ("a drover", "Lost two beasts to the Marking this spring. Both came back gold."),
-    ("the ferryman", "There is water between every land. There is a bridge for a reason."),
-    ("an old woman", "I remember when a hare was brown. You will not, and that is the trouble."),
-)
+#: Townsfolk who are not keepers, loaded from JSON.
+TOWNSFOLK = tuple((t[0], t[1]) for t in _NPC["townsfolk"])
 
-#: What the healer at every recovery station says.
-HEALER_LINES = (
-    "This pad rekindles a spent team. Stand on it a while.",
-    "Bleached is not gone. Light comes back, if you give it somewhere quiet.",
-    "Fill your team before the wilds. Attrition is what kills probes, not beasts.",
-)
+#: Healer lines, loaded from JSON.
+SERVICE_LINES_HEALER = tuple(_NPC["healer_lines"])
 
-#: The premises keepers. Each is one screen of who they are and then a service.
-TAVERN_KEEPER = "the innkeeper"
-SHOP_KEEPER = "the supplier"
-SMITH = "the lens-grinder"
-PRIEST = "the shrine-keeper"
+#: The premises keepers, loaded from JSON.
+SERVICE_TAVERN = _NPC["keepers"]["tavern"]
+SERVICE_SHOP = _NPC["keepers"]["shop"]
+SERVICE_SMITHY = _NPC["keepers"]["smith"]
+SERVICE_SHRINE = _NPC["keepers"]["shrine"]
 
-TAVERN_LINES = (
-    "Sit down. Everyone who walks this road comes through here eventually.",
-    "I hear things. Buy nothing and I will still tell you -- the light is "
-    "going, and gossip is cheap.",
-)
-SHOP_LINES = (
-    "Glass, mostly. Filters somebody ground before the Fading and nobody has "
-    "matched since.",
-    "Take what suits your team's band. It is no use to me: I cannot see half "
-    "of it either.",
-)
-SMITH_LINES = (
-    "Bring me glass and I will put an edge on it. Narrower passes less and "
-    "sees better -- that is the whole trade.",
-    "A wide filter is a kindness to a beginner and a lie to everyone else.",
-)
-SHRINE_LINES = (
-    "The Wellspring is not a place. It is the fact that something was shining "
-    "before anybody thought to make it.",
-    "Rest here. Whatever you are carrying will come back up to full, and the "
-    "road will still be there.",
-)
+SERVICE_LINES_TAVERN = tuple(_NPC["keeper_lines"]["tavern"])
+SERVICE_LINES_SHOP = tuple(_NPC["keeper_lines"]["shop"])
+SERVICE_SMITHY_LINES = tuple(_NPC["keeper_lines"]["smith"])
+SERVICE_LINES_SHRINE = tuple(_NPC["keeper_lines"]["shrine"])
 
-#: The story cast: one emissary per order, in a land whose character suits their
-#: doctrine.
-EMISSARY_NAMES = {
-    "rigour": "Merel, Voice of Rigour",
-    "clarity": "Halden, Voice of Clarity",
-    "discovery": "Sable, Voice of Discovery",
-}
+#: The story cast, loaded from JSON.
+FACTION_REPS = dict(_NPC["emissary_names"])
 #: Each order's emissary stands in the first of the order's own lands -- the
 #: same lands its doctrine work is counted against.
-EMISSARY_LANDS = ORDER_LANDS
+FACTION_LANDS = ORDER_LANDS
 
 #: Kinds that stand where they are placed. A keeper keeps their page, a healer
 #: keeps their station, a Warden keeps their hall, and a story character you
@@ -388,14 +337,14 @@ def rumours(world, village) -> tuple[str, ...]:
         Two or three lines.
     """
     heard: list[str] = []
-    seats = [v for v in world.villages if v.warden and v is not village]
+    seats = [v for v in world.villages if v.boss and v is not village]
     if seats:
         seat = seats[_seed(village.place) % len(seats)]
-        warden = WARDEN_BY_KEY.get(seat.warden)
-        if warden is not None:
+        boss = BOSS_BY_KEY.get(seat.boss)
+        if boss is not None:
             heard.append(
-                f"{warden.name} holds the hall at {seat.place}. They say "
-                f"{warden.name.split()[0]} has never lost to anyone who "
+                f"{boss.name} holds the hall at {seat.place}. They say "
+                f"{boss.name.split()[0]} has never lost to anyone who "
                 f"attacked every turn."
             )
     caves = world.caves
@@ -499,7 +448,7 @@ def populate(world) -> list[Npc]:
                 people.append(
                     Npc(kind="healer", name="the recovery warden",
                         x=spot[0], y=spot[1], home=spot, radius=0.0,
-                        line=HEALER_LINES[0], lines=HEALER_LINES, role="healer",
+                        line=SERVICE_LINES_HEALER[0], lines=SERVICE_LINES_HEALER, role="healer",
                         _phase=(seed % 1000) / 1000.0 * math.tau)
                 )
 
@@ -567,10 +516,10 @@ def _premises_keepers(world, village) -> list[Npc]:
     """
     made: list[Npc] = []
     spec = {
-        "tavern": (TAVERN_KEEPER, TAVERN_LINES, "tavern"),
-        "shop": (SHOP_KEEPER, SHOP_LINES, "shop"),
-        "smithy": (SMITH, SMITH_LINES, "smithy"),
-        "shrine": (PRIEST, SHRINE_LINES, "shrine"),
+        "tavern": (SERVICE_TAVERN, SERVICE_LINES_TAVERN, "tavern"),
+        "shop": (SERVICE_SHOP, SERVICE_LINES_SHOP, "shop"),
+        "smithy": (SERVICE_SMITHY, SERVICE_SMITHY_LINES, "smithy"),
+        "shrine": (SERVICE_SHRINE, SERVICE_LINES_SHRINE, "shrine"),
     }
     for key, (name, lines, role) in spec.items():
         where = village.premises.get(key)
@@ -603,21 +552,21 @@ def _warden_cast(world) -> list[Npc]:
     """
     made: list[Npc] = []
     for village in world.villages:
-        warden = WARDEN_BY_KEY.get(village.warden)
-        if warden is None:
+        boss = BOSS_BY_KEY.get(village.boss_seat)
+        if boss is None:
             continue
         where = village.premises.get("hall") or village.premises.get("well")
         if where is None:
             continue
-        seed = _seed(f"warden:{warden.key}")
+        seed = _seed(f"boss:{boss.key}")
         spot = _open_spot(world, where[0], where[1] + 1, seed, span=4)
         if spot is None:
             continue
         made.append(
-            Npc(kind="warden", name=f"{warden.name}, {warden.title}",
+            Npc(kind="warden", name=f"{boss.name}, {boss.title}",
                 x=spot[0], y=spot[1], home=spot, radius=0.0,
-                line=warden.lines[0], lines=warden.lines,
-                role=f"warden:{warden.key}",
+                line=boss.lines[0], lines=boss.lines,
+                role=f"boss:{boss.key}",
                 _phase=(seed % 1000) / 1000.0 * math.tau)
         )
     return made
@@ -625,25 +574,10 @@ def _warden_cast(world) -> list[Npc]:
 
 #: What the keeper says over you when you come to. The last line hands the
 #: player their first goal, so the scene ends pointed somewhere.
-ELDER_LINES = (
-    "So. The probe is awake. I am Bram; I keep what is left of the lamps here.",
-    "You were sent from the Wellspring, the way light is sent -- suddenly, and "
-    "without being asked. The Fading has reached even this road.",
-    "A hound of light came through before you and would not leave. He is lying "
-    "out where the road bends, nearly spent. He has been waiting for someone "
-    "to follow.",
-    "Find him first. Then mind the grass -- there are hares out there burning "
-    "gold, and nothing about that is natural. Go.",
-)
+AWAKENER_LINES = tuple(_NPC["elder_lines"])
 
 #: What passes between Iris and the dim hound. No words on his side, of course.
-LUMI_LINES = (
-    "The hound is barely an ember. He lifts his head, and something in his "
-    "glow steadies as he looks at you.",
-    "He knows what you are. He gets to his feet, shakes the dark off his "
-    "coat, and his light comes back green and full.",
-    "Nobody ever marked his line. Whatever he carries, he carries by right.",
-)
+COMPANION_LINES = tuple(_NPC["lumi_lines"])
 
 
 def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
@@ -681,7 +615,7 @@ def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
         cast.append(
             Npc(kind="villager", name="Bram, the last keeper",
                 x=elder_spot[0], y=elder_spot[1], home=elder_spot, radius=0.0,
-                line=ELDER_LINES[0], lines=ELDER_LINES, role="elder")
+                line=AWAKENER_LINES[0], lines=AWAKENER_LINES, role="elder")
         )
 
     lumi_spot = _open_spot(world, gate_col + 3, gate_row + 9, _seed("dim-hound"),
@@ -690,7 +624,7 @@ def awakening_cast(world) -> tuple[tuple[float, float], list[Npc]]:
         cast.append(
             Npc(kind="lumi", name="a dim hound",
                 x=lumi_spot[0], y=lumi_spot[1], home=lumi_spot, radius=0.0,
-                line=LUMI_LINES[0], lines=LUMI_LINES, role="lumi")
+                line=COMPANION_LINES[0], lines=COMPANION_LINES, role="lumi")
         )
     return (spot, cast)
 
@@ -718,7 +652,7 @@ def _story_cast(world) -> list[Npc]:
     cast: list[Npc] = []
     for index, (key, order) in enumerate(ORDERS.items()):
         region = next(
-            (by_name[name] for name in EMISSARY_LANDS.get(key, ()) if name in by_name),
+            (by_name[name] for name in FACTION_LANDS.get(key, ()) if name in by_name),
             world.regions[index % len(world.regions)],
         )
         village = next(
@@ -733,13 +667,13 @@ def _story_cast(world) -> list[Npc]:
         if spot is None:
             continue
         lines = (
-            f"I am {EMISSARY_NAMES[key]}. I speak for {order['name']}.",
+            f"I am {FACTION_REPS[key]}. I speak for {order['name']}.",
             order["belief"],
             order["on_marking"],
             f"Our creed: {order['creed']}",
         )
         cast.append(
-            Npc(kind="emissary", name=EMISSARY_NAMES[key],
+            Npc(kind="emissary", name=FACTION_REPS[key],
                 x=spot[0], y=spot[1], home=spot, radius=0.0,
                 line=lines[0], lines=lines, role=f"emissary:{key}",
                 _phase=(seed % 1000) / 1000.0 * math.tau)
@@ -1093,7 +1027,7 @@ def indoor_population(interior) -> list[Npc]:
         ]
     elif kind == "hall":
         roles = [
-            ("warden_guard", "Hall Guard", "This is the Warden's hall. Speak with care."),
+            ("boss_guard", "Hall Guard", "This is the Warden's hall. Speak with care."),
         ]
     else:  # house
         roles = [

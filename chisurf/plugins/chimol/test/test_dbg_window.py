@@ -271,7 +271,7 @@ def test_nerd_lines_fit_the_fixed_width():
     past the box -- a silent clip is a defect a person only ever notices by
     accident.
     """
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     stats = FrameStats()
     stats.enabled = True
@@ -306,7 +306,7 @@ def test_nerd_lines_fit_the_fixed_width():
 # --------------------------------------------------------------------------
 def test_the_block_is_drawn_only_when_there_is_something_to_draw():
     """Off, or on with nothing published yet, must both draw nothing."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = False
@@ -323,7 +323,7 @@ def test_the_block_is_drawn_only_when_there_is_something_to_draw():
 
 def test_the_block_is_part_of_the_chrome_fingerprint():
     """Otherwise the numbers freeze at whatever they were when it opened."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True
@@ -336,7 +336,7 @@ def test_the_block_is_part_of_the_chrome_fingerprint():
 @pytest.mark.parametrize("lines", [("a",), ("a", "bb"), ("x" * 60, "y")])
 def test_the_block_sizes_itself_to_its_longest_line(lines):
     """A plate narrower than its text is worse than no plate."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True
@@ -450,7 +450,7 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     command line and the viewport could not be typed into at all.
     """
     from chimol.cmtk.keys import KEY_RETURN
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     class _Deaf:
         """A focusable object that consumes nothing."""
@@ -537,7 +537,7 @@ def test_the_breakdown_carries_the_parts_that_add_up_to_the_frame():
 
 def test_a_stacked_graph_is_scaled_by_the_sum_not_the_tallest_part():
     """Scaling by the tallest part draws every bar off the top of the plot."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -564,7 +564,7 @@ def test_the_reference_lines_are_drawn_over_the_line():
     lands in, in order) rather than compared index-for-index within a single
     per-kind list the way the old bar-chart version of this test could.
     """
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -585,7 +585,7 @@ def test_the_reference_lines_are_drawn_over_the_line():
 
 def test_a_graph_with_no_samples_still_draws_its_frame():
     """Before the first frame there is nothing to plot and something to say."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -596,7 +596,7 @@ def test_a_graph_with_no_samples_still_draws_its_frame():
 
 def test_the_block_grows_to_hold_its_graphs():
     """Drawn past the plate, the last graph is the one nobody sees."""
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True

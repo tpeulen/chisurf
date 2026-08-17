@@ -26,11 +26,12 @@ import numpy as np
 from chisurf.gui import chigame
 from chisurf.gui.chigame.input import Action
 
-from ...characters import IRIS, LUMI, draw as draw_character
+from ...characters import PLAYER, COMPANION, draw as draw_character
 from ..api import tiles as T
 from ..api import agents as agents_api
 from ..api import screens as screens_api
 from ..api import battle as battle_api
+from ..api.battle import BOSS_SURGE_HP, BOSS_SURGE_MOVES
 from ..api import bestiary as bestiary_api
 from ..api import crafting as crafting_api
 from ..api import context as context_api
@@ -54,27 +55,21 @@ from ..api import tutorial as tutorial_api
 from ..api import perks as perks_api
 from ..api.story import EPILOGUES, ORDERS, PROLOGUE, Story, cleared_in_lands
 from ..api.world import SCOUTED, SETTLED, WILD, WITHERED, World, build_world
-from . import imgui_controls, pixelart
+from . import imgui_controls, pixelart, sheetart
 
 #: Emission wavelengths that stand for the two lit room states.
 SCOUTED_NM = 488.0
 SETTLED_NM = 545.0
 
-#: Walking speed in world units per second, and the sprint multiplier.
+#: Walking speed in world units per second (the sprint multiplier and
+#: camera smoothness are settings now, not constants here).
 WALK_SPEED = 190.0
-SPRINT = 2.6
 
 #: Iris' own life in real-time combat, and how many photons her casting
 #: energy holds -- a real-time spell used to spend story.unbound (labels
 #: taken off, ever) as if it were a wallet. It is its own bar now.
-IRIS_MAX_HP = 100
-PHOTONS_MAX = 100
-
-#: How fast the camera catches up with Iris, per second.
-CAMERA_LAG = 7.0
-
-#: How closely Lumi follows, in world units.
-LUMI_TRAIL = 26.0
+PLAYER_MAX_VITALITY = 100
+ENERGY_MAX = 100
 
 #: Half-width of Iris' collision box. A gate is one tile (18 units) wide, so a
 #: 12-unit box leaves three units of clearance each side -- forgiving enough to
@@ -87,13 +82,10 @@ CORNER_SLIP = 3.0
 #: Jumping, on the model Zelda Classic uses for its top-down z axis (see
 #: ``junk/ZQuestClassic/src/zc/hero.cpp``): height and *fall velocity* are the
 #: state, gravity is added to the velocity each frame and the velocity is taken
-#: off the height, and landing is the moment height reaches zero.
-GRAVITY = 900.0
-JUMP_SPEED = 235.0
-
-#: Releasing the button while still rising cuts the jump short, which is what
-#: gives a jump a *height you choose* rather than one fixed arc. Their
-#: ``jump_loss``.
+#: off the height, and landing is the moment height reaches zero. The base
+#: values are settings (``gamelogic.jump_power``, ``gamelogic.gravity``); only
+#: the jump-cut and hop threshold are still constants -- they define the feel
+#: of the arc rather than a difficulty knob.
 JUMP_CUT = 620.0
 
 #: How high off the ground counts as clear of the things you can hop.
@@ -122,7 +114,7 @@ LAND_BANNER_FADE = 1.0
 #: How fast dialogue letters appear, Zelda-style, and how many of them share
 #: one blip -- one tick a character reads as a buzz at this rate, so the
 #: sound lags a step behind the text instead of matching it one for one.
-TYPE_CPS = 32.0
+#: The CPS rate itself is a setting (``options.text_speed``).
 TYPE_BLIP_EVERY = 2
 
 #: How close the bottom band's room title shows. `self.here` is the
@@ -138,12 +130,6 @@ ROOM_LABEL_RANGE = T.TILE * 2.0
 #: door is too small to hit" was: this widens the check to the ring of tiles
 #: around wherever she is standing, not just that one cell.
 DOOR_REACH = T.TILE * 0.9
-
-#: How often free-roam play autosaves itself, in seconds of played time
-#: (paused while loading, talking, fighting or in a menu -- see update()).
-#: The explicit saves (a new journey, a Warden's seal, a page's own request)
-#: are a ceremony; this is the plain safety net between them.
-AUTOSAVE_SECONDS = 60.0
 
 #: How much one wheel "tick" changes view_height, as a fraction per unit of
 #: InputMap.wheel_delta(). Qt reports roughly 120 per physical click of a
@@ -162,183 +148,43 @@ BATTLE_ZOOM_START = 0.55
 BATTLE_ZOOM_SETTLE = 7.0
 ENCOUNTER_FLASH_SECONDS = 0.4
 
-#: Tile kind -> sprite in the pixel-art atlas.
-TILE_SPRITES = {
-    T.WATER: "water",
-    T.GRASS: "grass",
-    T.TREE: "tree",
-    T.ROCK: "rock",
-    T.ROAD: "road",
-    T.FLOOR: "floor",
-    T.WALL: "wall",
-    T.GATE: "gate",
-    T.BRIDGE: "bridge",
-    T.CLINIC: "clinic",
-    T.BUILDING: "grass",   # the house is drawn over it, tinted by state
-    T.VOID: "water",
-    # The wider overworld.
-    T.SAND: "sand",
-    T.MARSH: "marsh",
-    T.CLIFF: "cliff",
-    T.CAVE: "cave",
-    T.PLAZA: "plaza",
-    T.GARDEN: "garden",
-    T.FLOWERS: "flowers",
-    T.DOCK: "dock",
-    # Premises sit on paving and are drawn over it, so the tile under each is
-    # the square it stands on rather than a second copy of the building.
-    T.WELL: "plaza",
-    T.TAVERN: "plaza",
-    T.SHOP: "plaza",
-    T.SMITHY: "plaza",
-    T.SHRINE: "plaza",
-    T.HALL: "plaza",
-    T.LANTERN: "floor",
-    T.SIGN: "floor",
-    T.STALL: "floor",
-    T.FENCE: "grass",
-    # The dark manifold.
-    T.ASH: "ash",
-    T.TAR: "tar",
-    T.DEADTREE: "deadtree",
-    T.RUIN: "ash",
-    T.RIFT: "rift",
+#: Tile kind -> sprite in the pixel-art atlas, loaded from graphics.json.
+import json as _json
+import pathlib as _pl
+_GFX_FILE = _pl.Path(__file__).resolve().parent.parent / "data" / "graphics.json"
+_GFX = _json.loads(_GFX_FILE.read_text(encoding="utf-8"))
+TILE_SPRITES = {int(k): v for k, v in _GFX["tile_sprites"].items()}
+
+#: Tile kind -> sprite for interiors, loaded from graphics.json.
+INDOOR_TILE_SPRITES = {int(k): v for k, v in _GFX["indoor_tile_sprites"].items()}
+
+#: Tiles whose sprite is a building drawn over the ground, loaded from graphics.json.
+STRUCTURE_SPRITES = {int(k): v for k, v in _GFX["structure_sprites"].items()}
+
+#: House tints by state, loaded from graphics.json.
+HOUSE_TINT = {k: tuple(v) for k, v in _GFX["house_tint"].items()}
+
+#: Weapons and magic, loaded from graphics.json.
+WEAPON_DATA = {
+    k: {**v, "color": tuple(v["color"])}
+    for k, v in _GFX["weapons"].items()
+}
+MAGIC_DATA = {
+    k: {**v, "color": tuple(v["color"])}
+    for k, v in _GFX["magic"].items()
 }
 
-#: Tile kind -> sprite, for a room's own grid (:mod:`.interiors`). Every one
-#: of these is already-shipped art (`gui/pixelart.py`'s ``INDOORS``) -- what
-#: was missing was a room to draw it in, not the art.
-INDOOR_TILE_SPRITES = {
-    T.BOARDS: "boards",
-    T.IWALL: "iwall",
-    T.COUNTER: "counter",
-    T.TABLE: "table",
-    T.BED: "bed",
-    T.SHELF: "shelf",
-    T.HEARTH: "hearth",
-    T.ALTAR: "altar",
-    T.RUG: "rug",
-    T.ANVIL: "anvil",
-    T.BARREL: "barrel",
-    T.EXIT: "exit",
-}
+#: Visual constants, loaded from graphics.json.
+DARK_WASH = tuple(_GFX["dark_wash"])
+FOG_COLOR = tuple(_GFX["fog_color"])
+BUILDING_HEIGHT = float(_GFX["building_height"])
+WALK_FPS = float(_GFX["walk_fps"])
+FACTION_NM = dict(_GFX["emissary_nm"])
+FACTION_TINT = {k: tuple(v) for k, v in _GFX["emissary_tint"].items()}
+TILE_COLORS = {int(k): tuple(v) for k, v in _GFX["tile_colors"].items()}
 
-#: Tiles whose sprite is a *building* drawn over the ground tile above, and the
-#: sprite that draws it. Kept apart from :data:`TILE_SPRITES` because the tile
-#: layer is one textured quad per cell and these need a second, taller one.
-STRUCTURE_SPRITES = {
-    T.WELL: "well",
-    T.TAVERN: "tavern",
-    T.SHOP: "shop",
-    T.SMITHY: "smithy",
-    T.SHRINE: "shrine",
-    T.HALL: "hall",
-    T.LANTERN: "lantern",
-    T.SIGN: "sign",
-    T.STALL: "stall",
-    T.FENCE: "fence",
-    T.RUIN: "ruin",
-}
-
-#: A house is one drawing, tinted by whether anyone has read the page. Dark for
-#: untouched, cool for scouted-but-unconfirmed, warm for settled — and a sick
-#: brown for withered, the plot that was tended and has rotted under its
-#: sign-off. Crop rot the gardener cannot see is crop rot nobody fixes.
-HOUSE_TINT = {
-    # Not so dark that the house stops reading as a house: most of a town is
-    # unread, and a town of murk is a town nobody wants to walk through. The
-    # difference from settled is warmth and the lit windows, not brightness.
-    WILD: (0.74, 0.76, 0.86, 1.0),
-    WITHERED: (0.80, 0.62, 0.42, 1.0),
-    SCOUTED: (0.78, 0.92, 1.00, 1.0),
-    SETTLED: (1.00, 0.97, 0.84, 1.0),
-}
-
-#: Zelda-style overworld weapons: stats, reach, cooldowns, and visual palette.
-WEAPON_DATA: dict[str, dict] = {
-    "sword": {"name": "Laser Sword", "damage": 25.0, "reach": 22.0, "cooldown": 0.22, "color": (0.4, 0.9, 1.0, 1.0), "sfx": "slash"},
-    "lance": {"name": "Photon Lance", "damage": 35.0, "reach": 36.0, "cooldown": 0.40, "color": (1.0, 0.85, 0.3, 1.0), "sfx": "thrust"},
-    "axe": {"name": "Beam Axe", "damage": 50.0, "reach": 24.0, "cooldown": 0.55, "color": (1.0, 0.4, 0.3, 1.0), "sfx": "cleave"},
-    "rapier": {"name": "Strobe Rapier", "damage": 15.0, "reach": 20.0, "cooldown": 0.12, "color": (0.9, 0.4, 1.0, 1.0), "sfx": "stab"},
-    "sai": {"name": "Quantum Sai", "damage": 20.0, "reach": 18.0, "cooldown": 0.16, "color": (0.4, 1.0, 0.6, 1.0), "sfx": "slash"},
-}
-
-#: Zelda-style overworld magic spells: photon costs, effects, cooldowns, and colors.
-MAGIC_DATA: dict[str, dict] = {
-    "flame": {"name": "Photon Flame", "cost": 10, "damage": 30.0, "range": 80.0, "cooldown": 0.35, "color": (1.0, 0.5, 0.2, 1.0)},
-    "heal": {"name": "Fluorescence Heal", "cost": 20, "heal": 35.0, "cooldown": 0.80, "color": (0.3, 1.0, 0.6, 1.0)},
-    "shield": {"name": "FRET Shield", "cost": 15, "duration": 5.0, "cooldown": 1.00, "color": (0.2, 0.85, 1.0, 1.0)},
-}
-
-#: What every tile is multiplied by underneath. Cool, and dimmer than the lit
-#: world without being so dark that the geography stops reading -- the point of
-#: the dark manifold is that you already know the way.
-DARK_WASH = (0.66, 0.68, 0.80, 1.0)
-
-#: What an unexplored land looks like on the map -- flat and near-black, so
-#: an explored one still reads as ground rather than as another shade of fog.
-FOG_COLOR = (0.03, 0.035, 0.05, 1.0)
-
-#: How many tiles tall anything built is drawn. A building the size of its own
-#: tile sits inside the ground; at one and a half it stands on it and overlaps
-#: the row behind, which is the whole reason a 16-bit town reads as a town.
-BUILDING_HEIGHT = 1.5
-
-#: Structures that are *ground furniture* rather than buildings, and so are
-#: drawn at their own tile size. A fence post standing a tile and a half tall
-#: is a fence you cannot see over.
+#: Structures that are ground furniture rather than buildings.
 FLAT_STRUCTURES = frozenset({T.FENCE, T.SIGN})
-
-#: Frames per second of the walk cycle.
-WALK_FPS = 6.0
-
-#: An emissary is tinted -- and haloed -- in the colour of their doctrine, so
-#: the three are tellable apart from across a field.
-EMISSARY_NM = {"rigour": 620.0, "clarity": 470.0, "discovery": 530.0}
-EMISSARY_TINT = {
-    "rigour": (1.00, 0.82, 0.66, 1.0),
-    "clarity": (0.72, 0.88, 1.00, 1.0),
-    "discovery": (0.74, 1.00, 0.80, 1.0),
-}
-
-#: Kept for the map view, where a sprite is smaller than a pixel.
-TILE_COLORS = {
-    T.WATER: (0.055, 0.085, 0.145, 1.0),
-    T.GRASS: (0.115, 0.180, 0.130, 1.0),
-    T.TREE: (0.070, 0.130, 0.090, 1.0),
-    T.ROCK: (0.190, 0.200, 0.215, 1.0),
-    T.ROAD: (0.230, 0.205, 0.160, 1.0),
-    T.FLOOR: (0.175, 0.170, 0.155, 1.0),
-    T.WALL: (0.300, 0.290, 0.270, 1.0),
-    T.GATE: (0.360, 0.300, 0.180, 1.0),
-    T.BRIDGE: (0.260, 0.215, 0.150, 1.0),
-    T.CLINIC: (0.30, 0.42, 0.38, 1.0),
-    T.BUILDING: (0.230, 0.225, 0.215, 1.0),
-    T.VOID: (0.020, 0.022, 0.028, 1.0),
-    T.SAND: (0.500, 0.455, 0.330, 1.0),
-    T.MARSH: (0.135, 0.165, 0.110, 1.0),
-    T.CLIFF: (0.290, 0.285, 0.275, 1.0),
-    T.CAVE: (0.040, 0.035, 0.045, 1.0),
-    T.PLAZA: (0.330, 0.325, 0.310, 1.0),
-    T.GARDEN: (0.200, 0.145, 0.095, 1.0),
-    T.FLOWERS: (0.150, 0.205, 0.140, 1.0),
-    T.DOCK: (0.260, 0.215, 0.150, 1.0),
-    T.WELL: (0.330, 0.325, 0.310, 1.0),
-    T.TAVERN: (0.420, 0.240, 0.200, 1.0),
-    T.SHOP: (0.400, 0.300, 0.200, 1.0),
-    T.SMITHY: (0.300, 0.260, 0.230, 1.0),
-    T.SHRINE: (0.560, 0.545, 0.510, 1.0),
-    T.HALL: (0.600, 0.520, 0.300, 1.0),
-    T.LANTERN: (0.480, 0.400, 0.220, 1.0),
-    T.SIGN: (0.260, 0.220, 0.170, 1.0),
-    T.STALL: (0.380, 0.240, 0.210, 1.0),
-    T.FENCE: (0.210, 0.180, 0.140, 1.0),
-    T.ASH: (0.240, 0.235, 0.245, 1.0),
-    T.TAR: (0.045, 0.040, 0.060, 1.0),
-    T.DEADTREE: (0.170, 0.160, 0.170, 1.0),
-    T.RUIN: (0.200, 0.195, 0.200, 1.0),
-    T.RIFT: (0.560, 0.360, 0.780, 1.0),
-}
 
 def _trait_name(key: str) -> str:
     """Display name of a body's own trait.
@@ -561,8 +407,16 @@ class OverworldGame(chigame.Game):
     view_height = _setting_property("options.view_height")
     music_volume = _setting_property("options.music_volume")
     sfx_volume = _setting_property("options.sfx_volume")
+    text_speed = _setting_property("options.text_speed")
+    autosave_interval = _setting_property("options.autosave_interval")
+    camera_lag = _setting_property("options.camera_lag")
+    companion_trail = _setting_property("options.companion_trail")
     soundtrack_theme = _setting_property("gamelogic.soundtrack")
     enemy_aggro_radius = _setting_property("gamelogic.enemy_aggro_radius")
+    sprint_multiplier = _setting_property("gamelogic.sprint_multiplier")
+    encounter_rate = _setting_property("gamelogic.encounter_rate")
+    jump_power = _setting_property("gamelogic.jump_power")
+    gravity = _setting_property("gamelogic.gravity")
     action_combat_enabled = _setting_property("gamelogic.action_combat")
     particle_fx_enabled = _setting_property("gamelogic.particles")
     crt_filter_enabled = _setting_property("gamelogic.crt_filter")
@@ -613,11 +467,13 @@ class OverworldGame(chigame.Game):
         self.story = Story(self.world)
         self.tutorial = tutorial_api.Tutorial()
         self.people = []
-        self.iris = [0.0, 0.0]
-        self.lumi = [0.0, 0.0]
-        #: Which way Lumi is drawn facing -- its own, from how it is actually
-        #: moving, not Iris's (see the chase in update()).
-        self.lumi_facing = "down"
+        self.player_pos = [0.0, 0.0]
+        self.companion_pos = [0.0, 0.0]
+        self.companion_facing = "down"
+        #: Multiple companions follow the player in formation. Each entry is
+        #: ``{"pos": [x, y], "facing": str}``. The lead companion (the story
+        #: hound) is always index 0; team fighters fill slots 1+.
+        self.followers: list[dict] = []
         self._clock = 0.0
         # Short-lived feedback: damage numbers, the burst when a label comes
         # off, the photons that fly into you afterwards. Two fields, because
@@ -652,10 +508,19 @@ class OverworldGame(chigame.Game):
         #: spent story.unbound (labels taken off, ever -- a permanent
         #: narrative counter scripts gate content on) as if it were a
         #: wallet, corrupting it on every spell. Both are their own bars now.
-        self.iris_max_hp = IRIS_MAX_HP
-        self.iris_hp = IRIS_MAX_HP
-        self.photons_max = PHOTONS_MAX
-        self.photons = PHOTONS_MAX // 2
+        self.player_max_vitality = PLAYER_MAX_VITALITY
+        self.player_vitality = PLAYER_MAX_VITALITY
+        self.energy_max = ENERGY_MAX
+        self.energy = ENERGY_MAX // 2
+        self.vitality_fragments = 0
+        self.vitality_boosts = 0
+        self.opened_containers: set[str] = set()
+        self._charge_timer = 0.0
+
+    @property
+    def vitality_bonus(self) -> int:
+        """Extra max vitality from upgrade containers and fragments."""
+        return self.vitality_boosts * 20 + (self.vitality_fragments // 4) * 20
 
     #: What each loading stage is called, in order.
     #: The first is deliberately empty work. Without it the heaviest stage runs
@@ -684,9 +549,9 @@ class OverworldGame(chigame.Game):
         elif self.load_step == 4:
             self._restore()
             start = self.world.spawn() if self._resume is None else self._resume
-            self.iris = [float(start[0]), float(start[1])]
-            self.lumi = [self.iris[0] - LUMI_TRAIL, self.iris[1]]
-            self.host.camera.center[:] = self.iris
+            self.player_pos = [float(start[0]), float(start[1])]
+            self.companion_pos = [self.player_pos[0] - self.companion_trail, self.player_pos[1]]
+            self.host.camera.center[:] = self.player_pos
             self.host.camera.height = self.view_height
             # Every run opens on the title: a game has a front door, and the
             # door is where Continue, a new journey and the controls live.
@@ -732,7 +597,7 @@ class OverworldGame(chigame.Game):
         walkable world on the next line gets the pre-arc state: companion at
         heel, waking already witnessed.
         """
-        self.story.has_lumi = True
+        self.story.has_companion = True
         self.story.witness("wake")
         self.story.witness("the-hound")
         self.phase = "play"
@@ -771,9 +636,9 @@ class OverworldGame(chigame.Game):
         self.people = [npc for npc in self.people if npc.role not in ("elder", "lumi")]
         spot, cast = npcs_api.awakening_cast(self.world)
         self.people.extend(cast)
-        self.iris = [float(spot[0]), float(spot[1])]
-        self.lumi = list(self.iris)
-        self.host.camera.center[:] = self.iris
+        self.player_pos = [float(spot[0]), float(spot[1])]
+        self.companion_pos = list(self.player_pos)
+        self.host.camera.center[:] = self.player_pos
 
         self.save_run()
         self.prologue_index = 0
@@ -805,19 +670,40 @@ class OverworldGame(chigame.Game):
         self._autosave_timer = 0.0
         self._battle_intro = 0.0
         self._encounter_cooldown = 0.0
+        self._leaf_timer = 0.0
         self.interior: interiors_api.Interior | None = None
         self.indoor_people: list[npcs_api.Npc] = []
         self._indoor_pos = [0.0, 0.0]
         self._interior_return: list[float] | None = None
 
         # Tile kind -> RGBA, as an array so a whole window maps in one index.
+        # The map view's colours are the **average of the real tile art**, not
+        # a hand-picked palette: the shipped tiles already agree with each
+        # other (they came from one pack), so a map built from their means
+        # reads as a miniature of the world rather than as a second, clashing
+        # colour scheme. A kind with no shipped art falls back to the
+        # declared colour in graphics.json.
         self._palette = np.zeros((max(TILE_COLORS) + 1, 4), dtype=np.float32)
         for kind, colour in TILE_COLORS.items():
             self._palette[kind] = colour
+        for kind, sprite in TILE_SPRITES.items():
+            if kind >= self._palette.shape[0]:
+                continue
+            art = pixelart.sprite_image(sprite)
+            mask = art[:, :, 3] > 0
+            if not mask.any():
+                continue
+            average = art[mask][:, :3].mean(axis=0) / 255.0
+            self._palette[kind, :3] = average
         self.scene_batch = host.batch
 
-        # The pixel-art atlas: authored as string art, packed and uploaded once.
-        image, self._uvs, self._sprite_tiles = pixelart.build_atlas()
+        # The pixel-art atlas: the shipped CC0 character sheets answer the
+        # game's own sprite names (:mod:`.sheetart`), and anything they do not
+        # carry stays the authored string art. Packed and uploaded once.
+        image, self._uvs, self._sprite_tiles = pixelart.build_atlas(resolver=sheetart)
+        # The engine's weather, sized a little larger than one screen so the
+        # rain does not pop in at the edges.
+        self.weather = chigame.Weather(view=(T.TILE * 24.0, T.TILE * 14.0))
         host.batch.set_sprites(pixelart.upload(host.ctx.device, image))
         self._tile_uv = np.zeros((max(TILE_SPRITES) + 1, 4), dtype=np.float32)
         for kind, sprite in TILE_SPRITES.items():
@@ -892,7 +778,7 @@ class OverworldGame(chigame.Game):
         self.dark = False
         self.battle: battle_api.Battle | None = None
         #: A Warden fight is the same fight with a name on it.
-        self.warden_fight = ""
+        self.boss_fight = ""
         self.menu_index = 0
         self.encounter_room = None
 
@@ -980,6 +866,9 @@ class OverworldGame(chigame.Game):
         # Title-screen state.
         self.title_index = 0
         self.title_confirm_new = False
+        self.title_subscreen: str | None = None
+        self.title_sub_index = 0
+        self.debug_mode = False
         self._has_save = False
         self._wake_pending = False
         self.epilogue_index = 0
@@ -1006,13 +895,19 @@ class OverworldGame(chigame.Game):
             return
         creatures = save_api.creatures_by_id(self.pool)
         team = []
-        for species_key, probe_id, hp, infusion in state.team:
+        for entry in state.team:
+            species_key = entry[0]
+            probe_id = entry[1]
+            hp = entry[2]
+            infusion = entry[3] if len(entry) >= 4 else None
+            level = entry[4] if len(entry) >= 5 else 1
+            xp = entry[5] if len(entry) >= 6 else 0
             species = bestiary_api.BY_KEY.get(species_key)
             if species is None:
                 continue
             beast = bestiary_api.Beast(species=species, label=creatures.get(probe_id),
                                        infusion=infusion)
-            team.append(battle_api.Fighter(beast, hp=hp))
+            team.append(battle_api.Fighter(beast, hp=hp, level=level, xp=xp))
         if not team:
             return
         self.team = team
@@ -1046,10 +941,14 @@ class OverworldGame(chigame.Game):
                 self.salvaged.add((int(col_text), int(row_text)))
             except ValueError:
                 continue
-        self.iris_hp = self.iris_max_hp if state.iris_hp < 0 else min(state.iris_hp, self.iris_max_hp)
-        self.photons = (self.photons_max // 2 if state.photons < 0
-                        else min(state.photons, self.photons_max))
-        self.story.has_lumi = state.has_lumi
+        self.player_vitality = self.player_max_vitality if state.player_vitality < 0 else min(state.player_vitality, self.player_max_vitality)
+        self.energy = (self.energy_max // 2 if state.energy < 0
+                        else min(state.energy, self.energy_max))
+        self.vitality_fragments = int(state.vitality_fragments)
+        self.vitality_boosts = int(state.vitality_boosts)
+        self.opened_containers = set(state.opened_containers)
+        self.player_max_vitality = PLAYER_MAX_VITALITY + self.vitality_bonus
+        self.story.has_companion = state.has_companion
         self.story.seen = set(state.story_seen)
         if not state.story_seen:
             # A save from before the waking act: this run has already begun,
@@ -1074,12 +973,12 @@ class OverworldGame(chigame.Game):
             The current run.
         """
         return save_api.RunState(
-            position=(float(self.iris[0]), float(self.iris[1])),
+            position=(float(self.player_pos[0]), float(self.player_pos[1])),
             dark=bool(self.dark),
             team=[
                 (f.beast.species.key,
                  f.creature.probe_id if f.creature is not None else -1,
-                 int(f.hp), f.beast.infusion)
+                 int(f.hp), f.beast.infusion, f.level, f.xp)
                 for f in self.team
             ],
             bodies=[species.key for species in self.bodies],
@@ -1092,7 +991,7 @@ class OverworldGame(chigame.Game):
             cleared=sorted(self.cleared),
             order=self.story.chosen_order,
             tutorial=sorted(self.tutorial.done),
-            has_lumi=self.story.has_lumi,
+            has_companion=self.story.has_companion,
             story_seen=sorted(self.story.seen),
             pledge_baseline=self.story.pledge_baseline,
             lab=self.lab.as_rows(),
@@ -1100,8 +999,11 @@ class OverworldGame(chigame.Game):
             crafted=list(self.workshop.crafted),
             explored=sorted(self.explored),
             salvaged=[f"{col},{row}" for col, row in sorted(self.salvaged)],
-            iris_hp=int(self.iris_hp),
-            photons=int(self.photons),
+            player_vitality=int(self.player_vitality),
+            energy=int(self.energy),
+            vitality_fragments=int(self.vitality_fragments),
+            vitality_boosts=int(self.vitality_boosts),
+            opened_containers=sorted(self.opened_containers),
             settings=self.settings.as_dict(),
         )
 
@@ -1130,7 +1032,7 @@ class OverworldGame(chigame.Game):
             return "town"
         world = getattr(self, "world", None)
         if world is not None and world.villages:
-            if world.village_at(self.iris[0], self.iris[1]) is not None:
+            if world.village_at(self.player_pos[0], self.player_pos[1]) is not None:
                 return "town"
         return "overworld"
 
@@ -1156,7 +1058,7 @@ class OverworldGame(chigame.Game):
         Room or None
             ``None`` for an empty world.
         """
-        return self.world.nearest_room(tuple(self.iris))
+        return self.world.nearest_room(tuple(self.player_pos))
 
     def _nearby_room(self):
         """The nearest room, but only if she is actually near it.
@@ -1178,8 +1080,8 @@ class OverworldGame(chigame.Game):
         room = self.here
         if room is None:
             return None
-        if math.hypot(room.position[0] - self.iris[0],
-                       room.position[1] - self.iris[1]) > ROOM_LABEL_RANGE:
+        if math.hypot(room.position[0] - self.player_pos[0],
+                       room.position[1] - self.player_pos[1]) > ROOM_LABEL_RANGE:
             return None
         return room
 
@@ -1192,7 +1094,7 @@ class OverworldGame(chigame.Game):
         Region or None
             ``None`` when out on the water between lands.
         """
-        return self.world.region_at(self.iris[0], self.iris[1])
+        return self.world.region_at(self.player_pos[0], self.player_pos[1])
 
     def update(self, dt: float, keys) -> None:
         """Advance one frame.
@@ -1205,11 +1107,15 @@ class OverworldGame(chigame.Game):
             Controller state.
         """
         self.frame_ms.append(float(dt) * 1000.0)
+        # Weather ages with the feedback, above the early returns, so rain
+        # already falling does not freeze mid-air behind a menu.
+        self._update_weather(dt)
         # Feedback ages regardless of what screen is up, so a number thrown
         # just before a fight ends still finishes rising. Empty fields cost
         # nothing, which is why this sits above every early return.
-        self.sparks.update(dt)
-        self.battle_sparks.update(dt)
+        if self.particle_fx_enabled:
+            self.sparks.update(dt)
+            self.battle_sparks.update(dt)
         if self.phase == "loading":
             self._load_next()
             return
@@ -1323,24 +1229,39 @@ class OverworldGame(chigame.Game):
         self._iris_hit_flash = max(0.0, getattr(self, "_iris_hit_flash", 0.0) - dt)
         self._encounter_cooldown = max(0.0, getattr(self, "_encounter_cooldown", 0.0) - dt)
         self._update_overworld_enemies(dt)
+        self._update_followers_combat(dt)
+        self._ambient_leaves(dt)
 
         if keys.just_pressed(Action.SHOULDER_L):
-            neighbour = npcs_api.nearest(self.people, *self.iris)
+            self._charge_timer = 0.0
+            neighbour = npcs_api.nearest(self.people, *self.player_pos)
             door = self._door_scene()
             building = self._building_scene()
             ruin = self._ruin_scene()
             if self._overhear():
                 pass
-            elif neighbour is not None and neighbour.kind != "beast":
-                self._talk_to(neighbour)
-            elif ruin is not None:
-                self._salvage_dark_ruin(*ruin)
-            elif building is not None:
-                self._enter_building(*building)
             elif door:
                 self._play_scene(door)
-            else:
+            elif ruin is not None:
+                self._salvage_dark_ruin(*ruin)
+            elif self._try_open_container():
+                pass
+            elif building is not None:
+                self._enter_building(*building)
+            elif neighbour is not None and neighbour.kind != "beast":
+                self._talk_to(neighbour)
+            elif self.action_combat_enabled:
                 self._attack_overworld()
+
+        # Charge while held: a held SHOULDER_L after the initial press charges
+        # a spin attack. Release to unleash it -- hits all adjacent enemies for
+        # double weapon damage.
+        if keys.is_held(Action.SHOULDER_L) and self.action_combat_enabled:
+            self._charge_timer = min(1.0, self._charge_timer + dt)
+        elif self._charge_timer > 0.0 and not keys.is_held(Action.SHOULDER_L):
+            if self._charge_timer >= 0.5:
+                self._spin_attack()
+            self._charge_timer = 0.0
 
         if keys.just_released(Action.SHOULDER_R):
             if not keys.is_held(Action.SHOULDER_R):
@@ -1351,18 +1272,19 @@ class OverworldGame(chigame.Game):
         # asking the player to learn a tenth.
         if keys.just_pressed(Action.CONFIRM) and not self.jumping and self.z <= 0.0:
             self.jumping = True
-            self.fall = -JUMP_SPEED
+            self.fall = -self.jump_power
             self._sound("jump", 520.0)
         if self.jumping and self.fall < 0.0 and not keys.is_held(Action.CONFIRM):
             # Let go early and she does not go as high.
             self.fall = min(0.0, self.fall + JUMP_CUT * dt)
+
         self._airborne(dt)
 
         dx, dy = keys.axis()
         self.walking = bool(dx or dy)
         if self.walking:
             length = math.hypot(dx, dy) or 1.0
-            speed = self.walk_speed * (SPRINT if keys.is_held(Action.CONFIRM) else 1.0)
+            speed = self.walk_speed * (self.sprint_multiplier if keys.is_held(Action.CONFIRM) else 1.0)
             if self.game_state.level >= 2:
                 speed *= 1.15
             self._walk(dx / length * speed * dt, dy / length * speed * dt)
@@ -1396,14 +1318,14 @@ class OverworldGame(chigame.Game):
 
         self._unstick()
         self._clock += dt
-        npcs_api.update(self.people, self.world, dt, self._clock, near=tuple(self.iris),
+        npcs_api.update(self.people, self.world, dt, self._clock, near=tuple(self.player_pos),
                         dark=self.dark)
         if not self.dark:
             # The town gets on with its day. What it gossips about is read off
             # the run, so nobody discusses a probe who takes labels off before
             # there is one.
             self.society.mood = agents_api.mood_from(self.story, self.story.unbound)
-            self.society.step(dt, near=tuple(self.iris))
+            self.society.step(dt, near=tuple(self.player_pos))
         self._rest(dt)
         self.story.observe(self.here)
 
@@ -1415,40 +1337,29 @@ class OverworldGame(chigame.Game):
         # roam -- battle, menu, dialogue and every curtain phase return
         # before this line, so autosave never fires mid-transaction.
         self._autosave_timer += dt
-        if self._autosave_timer >= AUTOSAVE_SECONDS:
+        if self._autosave_timer >= self.autosave_interval:
             self._autosave_timer = 0.0
             self.save_run()
 
         # A beast you walk into is a fight, so the wilds are dangerous in a way
-        # that standing beside a building is not.
+        # that standing beside a building is not. The encounter rate setting
+        # widens the contact radius: a higher rate means encounters trigger
+        # from farther away.
+        contact = T.TILE * 0.7 * self.encounter_rate
         if self.battle is None and self.pool and getattr(self, "_encounter_cooldown", 0.0) <= 0.0:
             for npc in self.people:
-                if npc.kind == "beast" and npc.distance_to(*self.iris) < T.TILE * 0.7:
+                if npc.kind == "beast" and npc.distance_to(*self.player_pos) < contact:
                     self._try_encounter(force=True)
                     break
 
-        # Lumi moves toward a point behind Iris rather than to Iris, so the two
-        # never collapse into one blob. Before the hound is befriended it is
-        # not at heel at all -- it lies out in the world, waiting to be found.
-        if self.story.has_lumi:
-            to_lumi = (self.iris[0] - self.lumi[0], self.iris[1] - self.lumi[1])
-            distance = math.hypot(*to_lumi)
-            if distance > LUMI_TRAIL:
-                move = min((distance - LUMI_TRAIL) * 6.0 * dt, distance)
-                step_x = to_lumi[0] / distance * move
-                step_y = to_lumi[1] / distance * move
-                self.lumi[0] += step_x
-                self.lumi[1] += step_y
-                # Its own facing, from the step it just took -- not Iris's,
-                # which is wherever *she* last turned and often points a
-                # different way than the catch-up hound is actually walking.
-                if abs(step_y) >= abs(step_x):
-                    self.lumi_facing = "down" if step_y > 0 else "up"
-                else:
-                    self.lumi_facing = "right" if step_x > 0 else "left"
+        # Companions follow the player in formation. The lead companion trails
+        # directly behind; each additional team fighter forms up in a staggered
+        # V behind them. Each companion has its own position and facing so they
+        # read as individuals rather than a conga line snapping to the same tile.
+        self._update_followers(dt)
 
         camera = self.host.camera
-        blend = min(CAMERA_LAG * dt, 1.0)
+        blend = min(self.camera_lag * dt, 1.0)
         if self.show_map:
             centre, height = self._map_view()
         elif self.screen_mode:
@@ -1460,7 +1371,7 @@ class OverworldGame(chigame.Game):
             camera.height += (height - camera.height) * blend
             return
         else:
-            centre, height = (tuple(self.iris), self.view_height)
+            centre, height = (tuple(self.player_pos), self.view_height)
         camera.center[0] += (centre[0] - camera.center[0]) * blend
         camera.center[1] += (centre[1] - camera.center[1]) * blend
         camera.height += (height - camera.height) * blend
@@ -1580,9 +1491,9 @@ class OverworldGame(chigame.Game):
         role = npc.role or npc.kind
         if role.startswith("warden:"):
             key = role.split(":", 1)[1]
-            warden = tiers_api.BY_KEY.get(key)
-            if warden is not None:
-                lines = {"lines": voiced or warden.lines, "after": (warden.after,)}
+            boss = tiers_api.BY_KEY.get(key)
+            if boss is not None:
+                lines = {"lines": voiced or boss.lines, "after": (boss.after,)}
             return ("warden", lines, key)
         if role.startswith("emissary:"):
             return ("emissary", lines, role.split(":", 1)[1])
@@ -1590,10 +1501,10 @@ class OverworldGame(chigame.Game):
             # Her four screens and Iris' answer both live in data/story.json;
             # the answer is the doctrine's whole argument in a sentence, so
             # which one it is depends on who you pledged to.
-            from ..api.story import LANTERNWRIGHT
+            from ..api.story import ANTAGONIST_LINES
 
             return ("lanternwright",
-                    {"lines": LANTERNWRIGHT, "reply": (self.story.reply,)}, "")
+                    {"lines": ANTAGONIST_LINES, "reply": (self.story.reply,)}, "")
         if npc.kind == "wraith":
             # The species is the subject, so the scene can hand it back to the
             # rekindle action without the renderer knowing what a wraith is.
@@ -1614,7 +1525,7 @@ class OverworldGame(chigame.Game):
         """
         self.speaking = npc
         self.menu_index = 0
-        self.ctx.village = self.world.village_at(*self.iris)
+        self.ctx.village = self.world.village_at(*self.player_pos)
         self.ctx.dark = self.dark
         self.ctx.cleared = sorted(self.cleared)
         self.ctx.tick += 1
@@ -1635,7 +1546,7 @@ class OverworldGame(chigame.Game):
         """
         if self.dark:
             return False
-        mind = self.society.conversation_near(*self.iris)
+        mind = self.society.conversation_near(*self.player_pos)
         if mind is None or mind.partner is None:
             return False
         self._overheard = mind
@@ -1724,11 +1635,11 @@ class OverworldGame(chigame.Game):
         for request in self.runner.take_requests():
             self._serve(request)
         if self.screen is None:
-            if npc is not None and npc.role == "lumi" and self.story.has_lumi:
+            if npc is not None and npc.role == "lumi" and self.story.has_companion:
                 # The hound is at heel now, so he is no longer lying in the
                 # grass waiting to be found.
                 self.people = [other for other in self.people if other is not npc]
-                self.lumi = [npc.x, npc.y]
+                self.companion_pos = [npc.x, npc.y]
             self.speaking = None
 
     def _reveal_advance(self, key: str, text: str, dt: float) -> None:
@@ -1750,7 +1661,7 @@ class OverworldGame(chigame.Game):
         shown = int(self._type_chars)
         if shown >= len(text):
             return
-        self._type_chars = min(len(text), self._type_chars + TYPE_CPS * dt)
+        self._type_chars = min(len(text), self._type_chars + self.text_speed * dt)
         if int(self._type_chars) // TYPE_BLIP_EVERY > shown // TYPE_BLIP_EVERY:
             self._sound("type", 900.0)
 
@@ -1828,7 +1739,7 @@ class OverworldGame(chigame.Game):
             self._sound("cross", 300.0)
             self._cross(request.args.get("to", "dark"))
         elif request.kind == "battle":
-            self._begin_warden_fight(request.args.get("warden", ""))
+            self._begin_boss_fight(request.args.get("warden", ""))
         elif request.kind == "join":
             if self._overheard is not None:
                 self.society.interrupt(self._overheard)
@@ -1839,17 +1750,20 @@ class OverworldGame(chigame.Game):
                 used_label = self.labels.pop(0)
                 if self.speaking is not None and self.speaking in self.people:
                     self.people.remove(self.speaking)
-                self.sparks.rise("Rekindled!", tuple(self.iris), color=(0.4, 0.95, 0.7, 1.0), height=9.0)
-                self.sparks.burst(tuple(self.iris), count=16, kind="sparkle", color=(0.4, 0.95, 0.7, 1.0))
+                self.sparks.rise("Rekindled!", tuple(self.player_pos), color=(0.4, 0.95, 0.7, 1.0), height=9.0)
+                self.sparks.burst(tuple(self.player_pos), count=16, kind="sparkle", color=(0.4, 0.95, 0.7, 1.0))
                 self._sound("heal", 750.0)
         elif request.kind == "minigame":
             game_kind = request.args.get("game", "minesweeper")
-            self.photons = min(self.photons_max, self.photons + 40)
+            self.energy = min(self.energy_max, self.energy + 40)
             reward = self.game_state.record_review(difficulty="easy")
             self._sound("confirm", frequency=680.0)
-            self.sparks.rise(f"Tavern Minigame Won! +{reward['xp']} XP", tuple(self.iris),
+            game_label = game_kind.replace("_", " ").title()
+            self.sparks.rise(f"{game_label}! +{reward['xp']} XP, +40 photons",
+                             tuple(self.player_pos),
                              color=(0.4, 0.95, 0.9, 1.0), height=10.0)
-            self.sparks.burst(tuple(self.iris), count=14, kind="sparkle", color=(0.4, 0.95, 0.9, 1.0))
+            self.sparks.burst(tuple(self.player_pos), count=14, kind="sparkle",
+                              color=(0.4, 0.95, 0.9, 1.0))
 
     def _cross(self, to: str) -> None:
         """Move between the lit world and the dark manifold.
@@ -1876,8 +1790,8 @@ class OverworldGame(chigame.Game):
         # A step clear of the mouth, so the crossing does not immediately offer
         # itself again from the other side -- and out of anything that is solid
         # on this side but was not on the other.
-        if not self._solid(self.iris[0], self.iris[1] + T.TILE):
-            self.iris[1] += T.TILE
+        if not self._solid(self.player_pos[0], self.player_pos[1] + T.TILE):
+            self.player_pos[1] += T.TILE
         self._unstick()
 
     def _door_scene(self) -> str:
@@ -1897,8 +1811,8 @@ class OverworldGame(chigame.Game):
         for offset_x in (-DOOR_REACH, 0.0, DOOR_REACH):
             for offset_y in (-DOOR_REACH, 0.0, DOOR_REACH):
                 tile = self.world.tile_at(
-                    int((self.iris[0] + offset_x) // T.TILE),
-                    int((self.iris[1] + offset_y) // T.TILE), self.dark)
+                    int((self.player_pos[0] + offset_x) // T.TILE),
+                    int((self.player_pos[1] + offset_y) // T.TILE), self.dark)
                 if tile == T.CAVE:
                     return "cave"
                 if tile == T.RIFT:
@@ -1922,12 +1836,70 @@ class OverworldGame(chigame.Game):
         """
         for offset_x in (-DOOR_REACH, 0.0, DOOR_REACH):
             for offset_y in (-DOOR_REACH, 0.0, DOOR_REACH):
-                col = int((self.iris[0] + offset_x) // T.TILE)
-                row = int((self.iris[1] + offset_y) // T.TILE)
+                col = int((self.player_pos[0] + offset_x) // T.TILE)
+                row = int((self.player_pos[1] + offset_y) // T.TILE)
                 tile = self.world.tile_at(col, row, self.dark)
                 if tile in T.ENTERABLE:
                     return tile, col, row
         return None
+
+    def _containers_at(self) -> list[tuple[int, int]]:
+        """Container positions near the current room, placed deterministically.
+
+        Containers are placed deterministically based on room address hash,
+        so the same room always has the same container in the same spot.
+        """
+        room = self.here
+        if room is None:
+            return []
+        key = f"container:{room.address}"
+        placed = zlib.crc32(key.encode()) % 4 == 0  # ~25% of rooms
+        if not placed:
+            return []
+        rx, ry = room.position
+        col = int(rx // T.TILE) + (zlib.crc32((key + "x").encode()) % 5) - 2
+        row = int(ry // T.TILE) + (zlib.crc32((key + "y").encode()) % 5) - 2
+        container_id = f"{col},{row}"
+        if container_id in self.opened_containers:
+            return []
+        return [(col, row)]
+
+    def _try_open_container(self) -> bool:
+        """Open a container near Iris, if one is close enough.
+
+        Returns
+        -------
+        bool
+            True when a container was opened.
+        """
+        for col, row in self._containers_at():
+            cx = (col + 0.5) * T.TILE
+            cy = (row + 0.5) * T.TILE
+            if math.hypot(cx - self.player_pos[0], cy - self.player_pos[1]) < T.TILE * 1.2:
+                self.opened_containers.add(f"{col},{row}")
+                roll = zlib.crc32(f"loot:{col},{row}".encode()) % 4
+                if roll == 0:
+                    self.vitality_fragments += 1
+                    if self.vitality_fragments % 4 == 0:
+                        self.player_max_vitality = PLAYER_MAX_VITALITY + self.vitality_bonus
+                        self.player_vitality = self.player_max_vitality
+                    self.sparks.rise("+Vitality Fragment!",
+                                     (cx, cy - 10),
+                                     color=(0.9, 0.3, 0.9, 1.0), height=10.0)
+                elif roll == 1:
+                    gain = 30
+                    self.energy = min(self.energy_max, self.energy + gain)
+                    self.sparks.rise(f"+{gain} Energy",
+                                     (cx, cy - 10),
+                                     color=(0.4, 0.95, 0.5, 1.0), height=10.0)
+                else:
+                    mat = random.choice(("trolox", "roxs", "bsa", "godcat"))
+                    self._gather(mat, (cx, cy - 10), chance=1.0)
+                self._sound("confirm", frequency=780.0)
+                self.sparks.burst((cx, cy), count=12, kind="sparkle",
+                                  color=(0.95, 0.88, 0.50, 1.0), speed=60.0)
+                return True
+        return False
 
     def _ruin_scene(self) -> tuple[int, int] | None:
         """A dark-manifold ruin near Iris she has not yet picked clean, if any.
@@ -1946,8 +1918,8 @@ class OverworldGame(chigame.Game):
             return None
         for offset_x in (-DOOR_REACH, 0.0, DOOR_REACH):
             for offset_y in (-DOOR_REACH, 0.0, DOOR_REACH):
-                col = int((self.iris[0] + offset_x) // T.TILE)
-                row = int((self.iris[1] + offset_y) // T.TILE)
+                col = int((self.player_pos[0] + offset_x) // T.TILE)
+                row = int((self.player_pos[1] + offset_y) // T.TILE)
                 if (self.world.tile_at(col, row, True) == T.RUIN
                         and (col, row) not in self.salvaged):
                     return col, row
@@ -2016,7 +1988,7 @@ class OverworldGame(chigame.Game):
         title = interiors_api.title_for(kind, village, room=room)
         self.interior = interiors_api.build(key, kind, title)
         self.indoor_people = npcs_api.indoor_population(self.interior)
-        self._interior_return = list(self.iris)
+        self._interior_return = list(self.player_pos)
         door_col, door_row = self.interior.door
         # A step inside the door, not on it -- landing exactly on the door
         # cell is how she would walk straight back out on the very first
@@ -2028,7 +2000,7 @@ class OverworldGame(chigame.Game):
     def _leave_interior(self) -> None:
         """Step back out to wherever the door was on the overworld."""
         if self._interior_return is not None:
-            self.iris = self._interior_return
+            self.player_pos = self._interior_return
         self.interior = None
         self.indoor_people = []
         self._interior_return = None
@@ -2127,7 +2099,7 @@ class OverworldGame(chigame.Game):
         if self.interior.tile_at(col, row) == T.EXIT:
             self._leave_interior()
 
-    def _warden_beast(self, warden):
+    def _boss_beast(self, boss):
         """What a Warden fields.
 
         Their body is written in ``data/wardens.json``; the label is picked off
@@ -2137,7 +2109,7 @@ class OverworldGame(chigame.Game):
 
         Parameters
         ----------
-        warden : chisurf.plugins.misc.games.lumis_quest.api.tiers.Warden
+        boss : chisurf.plugins.misc.games.lumis_quest.api.tiers.Warden
             Who is being faced.
 
         Returns
@@ -2147,22 +2119,22 @@ class OverworldGame(chigame.Game):
         """
         if not self.pool:
             return None
-        species = bestiary_api.BY_KEY.get(warden.body) or bestiary_api.SPECIES[0]
+        species = bestiary_api.BY_KEY.get(boss.body) or bestiary_api.SPECIES[0]
         ranked = sorted(self.pool, key=lambda label: label.attack)
         index = min(len(ranked) - 1,
-                    int(round((warden.tier / 5.0) * (len(ranked) - 1))))
+                    int(round((boss.tier / 5.0) * (len(ranked) - 1))))
         label = ranked[index]
-        if warden.key == "prism":
+        if boss.key == "prism":
             azure_labels = [l for l in self.pool if 460.0 <= l.emission_nm <= 510.0]
             if azure_labels:
                 label = azure_labels[0]
-        elif warden.key == "shutter":
+        elif boss.key == "shutter":
             umbral_labels = [l for l in self.pool if l.emission_nm >= 640.0]
             if umbral_labels:
                 label = umbral_labels[0]
         return bestiary_api.Beast(species=species, label=label)
 
-    def _begin_warden_fight(self, key: str) -> None:
+    def _begin_boss_fight(self, key: str) -> None:
         """Face a Warden for their seal.
 
         Parameters
@@ -2170,22 +2142,22 @@ class OverworldGame(chigame.Game):
         key : str
             The Warden's key.
         """
-        warden = tiers_api.BY_KEY.get(key)
-        beast = self._warden_beast(warden) if warden is not None else None
+        boss = tiers_api.BY_KEY.get(key)
+        beast = self._boss_beast(boss) if boss is not None else None
         if beast is None or not any(fighter.alive for fighter in self.team):
             return
         self.screen = None
         self.speaking = None
         self.encounter_room = None
         self.menu_index = 0
-        self.warden_fight = key
+        self.boss_fight = key
         self.battle = battle_api.Battle(
             self.team,
             battle_api.Fighter(beast),
             loadout=self.loadout,
             seals=self.story.seals,
             opponent_power=1.9,
-            warden_key=key,
+            boss_key=key,
         )
 
     def _title_rows(self) -> list[str]:
@@ -2195,7 +2167,8 @@ class OverworldGame(chigame.Game):
         -------
         list of str
             Continue appears only when there is a run to continue; starting
-            over on top of one asks before it erases.
+            over on top of one asks before it erases. OPTIONS opens the
+            settings panel (including the debug toggle).
         """
         rows = []
         if self._has_save:
@@ -2206,16 +2179,20 @@ class OverworldGame(chigame.Game):
             else "New Journey"
         )
         rows.append(f"controls: {self.scheme}")
+        rows.append("OPTIONS")
         return rows
 
     def _title_input(self, keys) -> None:
-        """Drive the title menu.
+        """Drive the title menu and its subscreens.
 
         Parameters
         ----------
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
+        if self.title_subscreen is not None:
+            self._title_sub_input(keys)
+            return
         rows = self._title_rows()
         click_row = self._title_click_row(keys, rows)
         if click_row is not None:
@@ -2232,6 +2209,82 @@ class OverworldGame(chigame.Game):
             self.title_confirm_new = False
         if keys.just_pressed(Action.CONFIRM):
             self._title_confirm()
+
+    def _title_sub_rows(self) -> list[str]:
+        """The rows on the current title subscreen."""
+        if self.title_subscreen == "options":
+            rows = [
+                f"debug mode: {'[ON]' if self.debug_mode else '[off]'}",
+            ]
+            if self.debug_mode:
+                rows.append("DEBUG: jump to milestone...")
+            rows.append("back")
+            return rows
+        if self.title_subscreen == "debug_jump":
+            from ..api.story import BEATS
+            rows = [f"  {b.headline}" for b in BEATS]
+            rows.append("back")
+            return rows
+        return []
+
+    def _title_sub_input(self, keys) -> None:
+        """Drive a title subscreen (options or debug jump)."""
+        rows = self._title_sub_rows()
+        if not rows:
+            self.title_subscreen = None
+            return
+        if keys.just_pressed(Action.CANCEL):
+            if self.title_subscreen == "debug_jump":
+                self.title_subscreen = "options"
+            else:
+                self.title_subscreen = None
+            self.title_sub_index = 0
+            return
+        if keys.just_pressed(Action.DOWN):
+            self.title_sub_index = (self.title_sub_index + 1) % len(rows)
+        if keys.just_pressed(Action.UP):
+            self.title_sub_index = (self.title_sub_index - 1) % len(rows)
+        if keys.just_pressed(Action.CONFIRM):
+            self._title_sub_confirm(rows)
+
+    def _title_sub_confirm(self, rows: list[str]) -> None:
+        """Act on the selected subscreen row."""
+        i = self.title_sub_index
+        if self.title_subscreen == "options":
+            if i == 0:
+                self.debug_mode = not self.debug_mode
+            elif i == 1 and self.debug_mode:
+                self.title_subscreen = "debug_jump"
+                self.title_sub_index = 0
+            else:
+                self.title_subscreen = None
+                self.title_sub_index = 0
+        elif self.title_subscreen == "debug_jump":
+            from ..api.story import BEATS
+            if i < len(BEATS):
+                self._debug_jump_to(BEATS[i])
+            else:
+                self.title_subscreen = "options"
+                self.title_sub_index = 0
+
+    def _debug_jump_to(self, beat) -> None:
+        """Jump the game to a story milestone for debug/testing.
+
+        Parameters
+        ----------
+        beat : chisurf.plugins.misc.games.lumis_quest.api.story.Beat
+            The milestone to jump to.
+        """
+        self.title_subscreen = None
+        self.title_sub_index = 0
+        if not getattr(self, "team", None) or self.phase == "title":
+            self._quick_start()
+        self.story.witness(beat.key)
+        if beat.key in ("the-crossing", "the-shelved", "the-lanternwright"):
+            self.dark = True
+        elif beat.key in ("wake", "the-hound"):
+            self.dark = False
+        self.phase = "play"
 
     def _title_click_row(self, keys, rows: list[str]) -> int | None:
         """Which title-menu row a click this frame landed on, if any.
@@ -2271,7 +2324,8 @@ class OverworldGame(chigame.Game):
 
     def _title_confirm(self) -> None:
         """Act on the selected title row."""
-        row = self.title_index - (1 if self._has_save else 0)
+        offset = 1 if self._has_save else 0
+        row = self.title_index - offset
         if row == -1:
             self._continue_run()
         elif row == 0:
@@ -2282,10 +2336,12 @@ class OverworldGame(chigame.Game):
             else:
                 self.title_confirm_new = False
                 self._begin_journey()
-        else:
+        elif row == 1:
             names = list(SCHEMES)
             self.scheme = names[(names.index(self.scheme) + 1) % len(names)]
             self.host.keys.bindings = dict(SCHEMES[self.scheme])
+        elif row == 2:
+            self.title_subscreen = "options"
 
     def _epilogue_cards(self) -> tuple[tuple[str, str], ...]:
         """The dawn, in the chosen order's voice.
@@ -2299,7 +2355,7 @@ class OverworldGame(chigame.Game):
         return cards or (("The Dawn", "Where you worked, the lamps hold."),)
 
     #: The tabs of the pause menu, in order.
-    TABS = ("STATUS", "MAP", "RIG", "PARTY", "LAB", "CRAFT", "PERKS", "MODE", "OPTIONS", "GAMELOGIC")
+    TABS = ("STATUS", "MAP", "CODEX", "RIG", "PARTY", "LAB", "CRAFT", "PERKS", "MODE", "OPTIONS", "GAMELOGIC")
 
     def _menu_input(self, keys) -> None:
         """Drive the pause menu.
@@ -2441,8 +2497,13 @@ class OverworldGame(chigame.Game):
         top = cy - half[1] * 0.44
         start = top + (92.0 if tab == "RIG" else 0.0) * scale
         rows = self._menu_rows()
-        base = max(0, self.menu_row - 6)
-        window = rows[base:base + 8]
+        visible_rows = 12
+        if len(rows) <= visible_rows:
+            base = 0
+        else:
+            base = max(0, min(self.menu_row - visible_rows // 2,
+                              len(rows) - visible_rows))
+        window = rows[base:base + visible_rows]
         for offset in range(len(window)):
             y = start + offset * 13.0 * scale
             if abs(wy - y) < 6.5 * scale and cx - half[0] * 0.7 <= wx <= cx + half[0] * 0.9:
@@ -2465,7 +2526,7 @@ class OverworldGame(chigame.Game):
     def _show_llm_status(self, _value=None) -> None:
         """Say which model is wired, over Iris' head."""
         info = providers_api.llm_status()
-        self.sparks.rise(f"LLM: {info['summary_short']}", tuple(self.iris),
+        self.sparks.rise(f"LLM: {info['summary_short']}", tuple(self.player_pos),
                          color=info["color"], height=9.0)
         self._sound("confirm" if info["wired"] else "cancel",
                     600.0 if info["wired"] else 240.0)
@@ -2492,21 +2553,21 @@ class OverworldGame(chigame.Game):
     def _quick_save(self, _value=None) -> None:
         """Write the run out now."""
         self.save_run()
-        self.sparks.rise("Run Saved!", tuple(self.iris),
+        self.sparks.rise("Run Saved!", tuple(self.player_pos),
                          color=(0.35, 0.90, 0.45, 1.0), height=9.0)
         self._sound("confirm", frequency=750.0)
 
     def _quick_load(self, _value=None) -> None:
         """Read the run back."""
         self._boot()
-        self.sparks.rise("Run Loaded!", tuple(self.iris),
+        self.sparks.rise("Run Loaded!", tuple(self.player_pos),
                          color=(0.40, 0.82, 0.95, 1.0), height=9.0)
         self._sound("confirm", frequency=650.0)
 
     def _test_sfx(self, _value=None) -> None:
         """One sound, at the volume the sliders are set to."""
         self._sound("confirm", frequency=880.0)
-        self.sparks.burst(tuple(self.iris), count=8, kind="sparkle",
+        self.sparks.burst(tuple(self.player_pos), count=8, kind="sparkle",
                           color=(0.96, 0.88, 0.50, 1.0))
 
     def _menu_rows(self) -> list[str]:
@@ -2531,7 +2592,7 @@ class OverworldGame(chigame.Game):
             rows = [
                 level_row,
                 f"perks: {len(perks_api.unlocked_perks(self.game_state.level))}/{len(perks_api.PERKS)} active",
-                self._warden_compass(),
+                self._boss_compass(),
                 f"settled {counts[SETTLED]}/{total}   scouted {counts[SCOUTED]}",
                 f"wild {counts[WILD]}" + (f"   withered {counts[WITHERED]}"
                                           if counts[WITHERED] else ""),
@@ -2546,16 +2607,13 @@ class OverworldGame(chigame.Game):
                 rows.append("recovering")
             return rows
         if tab == "MAP":
-            # Confirm on this tab closes the menu and swaps the camera to
-            # the whole-world view instead of listing rows here -- a blank
-            # panel while just browsing past it on the way to another tab
-            # read as the map being broken, so it says what pressing
-            # Confirm actually does instead of showing nothing.
             total = len(self.world.regions)
             return [
                 f"{len(self.explored)}/{total} lands explored",
                 "Confirm to view the map",
             ]
+        if tab == "CODEX":
+            return self._bestiary_rows()
         if tab == "RIG":
             # The overworld weapon and spell were only ever cycled through
             # dead code -- no button on the nine-action pad was free for a
@@ -2575,7 +2633,8 @@ class OverworldGame(chigame.Game):
             # a label is the whole interaction.
             rows = [
                 f"{'>' if index == self.party_slot else ' '} {f.name}"
-                f"  {f.hp}/{f.beast.max_hp} HP  spd:{f.beast.speed:.1f}  T{f.beast.tier}"
+                f"  {f.hp}/{f.max_hp} HP  spd:{f.beast.speed:.1f}  T{f.beast.tier}"
+                f"  Lv{f.level}"
                 for index, f in enumerate(self.team)
             ]
             rows.append("-- bodies (befriended animals) --")
@@ -2643,6 +2702,58 @@ class OverworldGame(chigame.Game):
             ]
         return []
 
+    def _bestiary_seen(self) -> set[str]:
+        """Species keys the player has encountered or befriended.
+
+        Returns
+        -------
+        set of str
+            Every species in the team, in bodies, or ever fought as a wild
+            encounter (tracked on the run).
+        """
+        seen = set()
+        for fighter in getattr(self, "team", []):
+            seen.add(fighter.beast.species.key)
+        for body in getattr(self, "bodies", []):
+            if hasattr(body, "key"):
+                seen.add(body.key)
+        seen.update(getattr(self, "_bestiary_encountered", set()))
+        return seen
+
+    def _bestiary_rows(self) -> list[str]:
+        """The bestiary: every species, marked seen or caught.
+
+        Returns
+        -------
+        list of str
+            One row per species, with a checkmark for seen, a star for owned,
+            and the lore line for flavour. Unknown species show as ???.
+        """
+        seen = self._bestiary_seen()
+        rows = []
+        for species in bestiary_api.SPECIES:
+            owned = any(
+                f.beast.species.key == species.key
+                for f in getattr(self, "team", [])
+            ) or any(
+                hasattr(b, "key") and b.key == species.key
+                for b in getattr(self, "bodies", [])
+            )
+            if owned:
+                mark = "[*]"
+            elif species.key in seen:
+                mark = "[v]"
+            else:
+                mark = "[ ]"
+            name = species.name if species.key in seen else "???"
+            lore = species.lore if species.key in seen else ""
+            line = f"{mark} {name}"
+            if lore:
+                line += f"  {lore[:40]}"
+            rows.append(line)
+        rows.append(f"{len(seen)}/{len(bestiary_api.SPECIES)} species discovered")
+        return rows
+
     def _menu_confirm(self) -> None:
         """Act on the selected row."""
         tab = self.TABS[self.menu_tab]
@@ -2661,7 +2772,7 @@ class OverworldGame(chigame.Game):
             elif self.menu_row == 3:
                 info = providers_api.llm_status()
                 msg = f"LLM: {info['summary_short']}"
-                self.sparks.rise(msg, tuple(self.iris), color=info["color"], height=9.0)
+                self.sparks.rise(msg, tuple(self.player_pos), color=info["color"], height=9.0)
                 self._sound("confirm" if info["wired"] else "cancel", 600.0 if info["wired"] else 240.0)
         elif tab == "RIG":
             if self.menu_row == 0:
@@ -2699,11 +2810,11 @@ class OverworldGame(chigame.Game):
             if 0 <= self.menu_row < len(perks_api.PERKS):
                 perk = perks_api.PERKS[self.menu_row]
                 if level >= perk.level_req:
-                    self.sparks.rise(f"Active Perk: {perk.name}", tuple(self.iris),
+                    self.sparks.rise(f"Active Perk: {perk.name}", tuple(self.player_pos),
                                      color=(0.4, 0.95, 0.8, 1.0), height=9.0)
                     self._sound("confirm", frequency=640.0)
                 else:
-                    self.sparks.rise(f"Locked until Level {perk.level_req}", tuple(self.iris),
+                    self.sparks.rise(f"Locked until Level {perk.level_req}", tuple(self.player_pos),
                                      color=(0.95, 0.45, 0.45, 1.0), height=9.0)
                     self._sound("cancel", frequency=240.0)
 
@@ -2716,7 +2827,7 @@ class OverworldGame(chigame.Game):
         recipe = crafting_api.RECIPES[keys[row]]
         if self.workshop.craft(keys[row]):
             self._sound("confirm", frequency=680.0)
-            self.sparks.rise(f"Crafted {recipe.name}", tuple(self.iris),
+            self.sparks.rise(f"Crafted {recipe.name}", tuple(self.player_pos),
                              color=(0.4, 0.9, 0.85, 1.0), height=8.0)
         else:
             self._sound("cancel", frequency=220.0)
@@ -2762,6 +2873,185 @@ class OverworldGame(chigame.Game):
             self.team[slot] = battle_api.Fighter(current.beast.infused(trait_key), hp=current.hp)
         self.ctx.team = self.team
 
+    def _update_followers(self, dt: float) -> None:
+        """Move each companion toward its formation slot behind the player.
+
+        The lead companion (the story hound) trails at ``companion_trail`` distance.
+        Additional team fighters form a staggered V: odd-indexed companions
+        offset left, even-indexed offset right, each progressively further back.
+
+        Before the hound is befriended nobody follows at all -- it lies out in
+        the world, waiting to be found.
+        """
+        if not self.story.has_companion:
+            self.followers = []
+            return
+
+        # The number of followers to draw: the hound (always, once befriended)
+        # plus each living team fighter beyond the first (the first is the
+        # *player's* active body and is drawn as the player sprite).
+        n_team = min(3, sum(1 for f in self.team if f.alive) - 1)
+        n_team = max(0, n_team)
+        target_count = 1 + n_team
+
+        # Grow or shrink the follower list.
+        while len(self.followers) < target_count:
+            if len(self.followers) == 0:
+                # The first follower inherits the legacy companion position.
+                self.followers.append({
+                    "pos": list(self.companion_pos),
+                    "facing": self.companion_facing,
+                    "atk_cd": 0.0,
+                    "fighter": None,
+                })
+            else:
+                # Team-fighter followers get a reference to their Fighter so
+                # they can deal damage and take hits in real-time combat.
+                team_index = len(self.followers)  # 1-based, since 0 is the hound
+                fighter = (self.team[team_index]
+                           if team_index < len(self.team) else None)
+                self.followers.append({
+                    "pos": [self.player_pos[0], self.player_pos[1] + self.companion_trail],
+                    "facing": "up",
+                    "atk_cd": 0.0,
+                    "fighter": fighter,
+                })
+        while len(self.followers) > target_count:
+            self.followers.pop()
+
+        for index, follower in enumerate(self.followers):
+            if index == 0:
+                # The lead companion chases a point directly behind the player
+                # at companion_trail distance -- the same simple follow the single
+                # companion always used.
+                dx = self.player_pos[0] - follower["pos"][0]
+                dy = self.player_pos[1] - follower["pos"][1]
+                dist = math.hypot(dx, dy)
+                if dist > self.companion_trail:
+                    move = min((dist - self.companion_trail) * 6.0 * dt, dist)
+                    step_x = dx / dist * move
+                    step_y = dy / dist * move
+                    follower["pos"][0] += step_x
+                    follower["pos"][1] += step_y
+                    if abs(step_y) >= abs(step_x):
+                        follower["facing"] = "down" if step_y > 0 else "up"
+                    else:
+                        follower["facing"] = "right" if step_x > 0 else "left"
+            else:
+                # Additional companions form a staggered V behind the lead.
+                lead = self.followers[0]["pos"]
+                slot_back = self.companion_trail * (0.7 + index * 0.5)
+                slot_side = T.TILE * 0.5 * index
+                side_sign = 1.0 if index % 2 == 0 else -1.0
+                facing = self.followers[0]["facing"]
+                if facing in ("up", "down"):
+                    tx = lead[0] + slot_side * side_sign
+                    ty = lead[1] + (slot_back if facing == "down" else -slot_back)
+                else:
+                    tx = lead[0] + (slot_back if facing == "left" else -slot_back)
+                    ty = lead[1] + slot_side * side_sign
+
+                dx = tx - follower["pos"][0]
+                dy = ty - follower["pos"][1]
+                dist = math.hypot(dx, dy)
+                if dist > 1.0:
+                    speed = min(dist * 6.0 * dt, dist)
+                    step_x = dx / dist * speed
+                    step_y = dy / dist * speed
+                    follower["pos"][0] += step_x
+                    follower["pos"][1] += step_y
+                    if abs(step_y) >= abs(step_x):
+                        follower["facing"] = "down" if step_y > 0 else "up"
+                    else:
+                        follower["facing"] = "right" if step_x > 0 else "left"
+
+        # The lead follower's position is the legacy companion_pos so
+        # existing draw code keeps working.
+        if self.followers:
+            self.companion_pos = self.followers[0]["pos"]
+            self.companion_facing = self.followers[0]["facing"]
+
+    def _update_followers_combat(self, dt: float) -> None:
+        """Each team-fighter follower auto-attacks nearby enemies.
+
+        Like Secret of Mana: companions fight on their own, with their own
+        attack cooldowns and damage drawn from their Fighter stats. They
+        also take damage from beasts that reach them.
+        """
+        for follower in self.followers:
+            fighter = follower.get("fighter")
+            if fighter is None or not fighter.alive:
+                continue
+            follower["atk_cd"] = max(0.0, follower["atk_cd"] - dt)
+            px, py = follower["pos"]
+
+            # Attack: find the nearest beast within reach and hit it.
+            if follower["atk_cd"] <= 0.0:
+                best_npc = None
+                best_dist = T.TILE * 2.0
+                for npc in getattr(self, "people", []):
+                    if getattr(npc, "kind", "") == "beast":
+                        d = math.hypot(npc.x - px, npc.y - py)
+                        if d < best_dist:
+                            best_dist = d
+                            best_npc = npc
+                if best_npc is not None and self._marked_nm(best_npc) <= 0.0:
+                    damage = float(fighter.attack_power) * 0.4
+                    best_npc.hp = max(0.0, getattr(best_npc, "hp", 60.0) - damage)
+                    best_npc.startled = True
+                    follower["atk_cd"] = 0.7
+                    if self.particle_fx_enabled:
+                        self.sparks.rise(
+                            f"-{int(damage)}",
+                            (best_npc.x, best_npc.y - 8),
+                            color=(0.9, 0.8, 0.3, 1.0), height=8.0)
+                        self.sparks.burst(
+                            (best_npc.x, best_npc.y), count=5, kind="sparkle",
+                            color=(0.9, 0.8, 0.3, 1.0), speed=50.0)
+                    kb = ((best_npc.x - px) or 1.0) * 3.0
+                    best_npc.knockback_vx = kb
+                    best_npc.knockback_vy = 0.0
+                    best_npc.knockback_timer = 0.15
+                    self._sound("slash", frequency=480.0)
+                    if best_npc.hp <= 0.0 and best_npc in self.people:
+                        self.sparks.burst((best_npc.x, best_npc.y), count=12,
+                                          kind="nova", speed=80.0)
+                        self.energy = min(self.energy_max, self.energy + 20)
+                        self.people.remove(best_npc)
+
+    def _ambient_leaves(self, dt: float) -> None:
+        """Drift autumn leaves through a village, the way the reference does.
+
+        The reference's villages read as *alive* partly because something is
+        always falling through them. Leaves spawn across the top of the view
+        while the player stands inside a settlement, fall slowly with a
+        sideways drift, and are pure dressing: they hit nothing, cost nothing,
+        and stop the moment the particle setting is off or the player leaves.
+        """
+        if self.dark or not self.particle_fx_enabled:
+            return
+        if self.world.village_at(*self.player_pos) is None:
+            return
+        self._leaf_timer -= dt
+        if self._leaf_timer > 0.0:
+            return
+        self._leaf_timer = 0.30
+        camera = self.host.camera
+        width_px, height_px = self.host.ctx.size
+        half = camera.half_extent(width_px / max(height_px, 1))
+        x = float(camera.center[0]) + random.uniform(-half[0], half[0]) * 0.9
+        y = float(camera.center[1]) - half[1] - 8.0
+        colour = random.choice(
+            ((0.86, 0.46, 0.20, 1.0), (0.91, 0.63, 0.26, 1.0),
+             (0.76, 0.34, 0.30, 1.0))
+        )
+        self.sparks.add(chigame.Particle(
+            x=x, y=y,
+            vx=random.uniform(-16.0, 16.0), vy=random.uniform(28.0, 40.0),
+            span=6.0, kind="leaf", size=2.2, color=colour,
+            gravity=6.0, drag=0.25,
+        ))
+
     def _rest(self, dt: float) -> None:
         """Recover photons while standing on a recovery station.
 
@@ -2774,20 +3064,20 @@ class OverworldGame(chigame.Game):
         dt : float
             Seconds elapsed.
         """
-        col = int(self.iris[0] // T.TILE)
-        row = int(self.iris[1] // T.TILE)
+        col = int(self.player_pos[0] // T.TILE)
+        row = int(self.player_pos[1] // T.TILE)
         self.resting = self.world.tile_at(col, row, self.dark) == T.CLINIC
         if not self.resting:
             return
         for fighter in self.team:
-            if fighter.hp < fighter.beast.max_hp:
+            if fighter.hp < fighter.max_hp:
                 fighter.hp = min(
-                    fighter.beast.max_hp,
-                    fighter.hp + max(1, int(fighter.beast.max_hp * 0.6 * dt)),
+                    fighter.max_hp,
+                    fighter.hp + max(1, int(fighter.max_hp * 0.6 * dt)),
                 )
         # Her own bars recover the same way and the same place.
-        self.iris_hp = min(self.iris_max_hp, self.iris_hp + max(1, int(self.iris_max_hp * 0.6 * dt)))
-        self.photons = min(self.photons_max, self.photons + max(1, int(self.photons_max * 0.4 * dt)))
+        self.player_vitality = min(self.player_max_vitality, self.player_vitality + max(1, int(self.player_max_vitality * 0.6 * dt)))
+        self.energy = min(self.energy_max, self.energy + max(1, int(self.energy_max * 0.4 * dt)))
 
     def _faint(self) -> None:
         """Iris' HP has run out in real-time combat or battle defeat.
@@ -2799,15 +3089,15 @@ class OverworldGame(chigame.Game):
         bars half restored, the same shape as fainting costs a trip, not a
         run.
         """
-        self.iris_hp = self.iris_max_hp // 2
-        self.photons = min(self.photons_max, self.photons + self.photons_max // 4)
+        self.player_vitality = self.player_max_vitality // 2
+        self.energy = min(self.energy_max, self.energy + self.energy_max // 4)
         for fighter in self.team:
             if fighter.hp <= 0:
-                fighter.hp = max(1, fighter.beast.max_hp // 3)
-        self.iris = list(self.world.spawn())
-        self.host.camera.center[:] = self.iris
+                fighter.hp = max(1, fighter.max_hp // 3)
+        self.player_pos = list(self.world.spawn())
+        self.host.camera.center[:] = self.player_pos
         self._sound("cancel", frequency=180.0)
-        self.sparks.rise("Bleached out...", tuple(self.iris),
+        self.sparks.rise("Bleached out...", tuple(self.player_pos),
                          color=(1.0, 0.5, 0.5, 1.0), height=9.0)
         self._encounter_cooldown = 3.0
         self._iris_hit_flash = 2.0
@@ -2849,18 +3139,18 @@ class OverworldGame(chigame.Game):
         if room is None or room.state not in (WILD, WITHERED) or not self.pool:
             return
         x, y = room.position
-        if not force and math.hypot(x - self.iris[0], y - self.iris[1]) > T.TILE * 2.2:
+        if not force and math.hypot(x - self.player_pos[0], y - self.player_pos[1]) > T.TILE * 2.2:
             return
         if not any(fighter.alive for fighter in self.team):
             return
         self.encounter_room = room
         self.menu_index = 0
-        self.warden_fight = ""
+        self.boss_fight = ""
         # Which bodies are around is the ground you are standing on, and how
         # far the beast may outrank you is your seals: a land you have no
         # licence for does not open with something you cannot answer.
-        tile = self.world.tile_at(int(self.iris[0] // T.TILE),
-                                  int(self.iris[1] // T.TILE), self.dark)
+        tile = self.world.tile_at(int(self.player_pos[0] // T.TILE),
+                                  int(self.player_pos[1] // T.TILE), self.dark)
         self.battle = battle_api.Battle(
             self.team,
             battle_api.wild_encounter(
@@ -2872,6 +3162,9 @@ class OverworldGame(chigame.Game):
             seals=self.story.seals,
         )
         self.story.witness("the-marked")
+        if not hasattr(self, "_bestiary_encountered"):
+            self._bestiary_encountered = set()
+        self._bestiary_encountered.add(self.battle.opponent.beast.species.key)
         # Opens zoomed in; update() eases it back out and _draw_battle fades
         # a flash over the same window -- see BATTLE_ZOOM_START.
         self._battle_intro = ENCOUNTER_FLASH_SECONDS
@@ -2910,16 +3203,23 @@ class OverworldGame(chigame.Game):
                 self.battle = None
                 self.battle_sparks.clear()
                 self.encounter_room = None
-                self.warden_fight = ""
+                if self.boss_fight and was_won:
+                    self.vitality_boosts += 1
+                    self.player_max_vitality = PLAYER_MAX_VITALITY + self.vitality_bonus
+                    self.player_vitality = self.player_max_vitality
+                    self.sparks.rise("+Vitality Boost!",
+                                     tuple(self.player_pos),
+                                     color=(0.9, 0.3, 0.9, 1.0), height=12.0)
+                self.boss_fight = ""
                 self.verdict = None
                 self._encounter_cooldown = 3.0
                 if not was_won and not was_fled:
                     self._faint()
                 elif was_fled:
                     for npc in self.people:
-                        if npc.kind == "beast" and npc.distance_to(*self.iris) < T.TILE * 1.5:
-                            dx = npc.x - self.iris[0]
-                            dy = npc.y - self.iris[1]
+                        if npc.kind == "beast" and npc.distance_to(*self.player_pos) < T.TILE * 1.5:
+                            dx = npc.x - self.player_pos[0]
+                            dy = npc.y - self.player_pos[1]
                             dist = math.hypot(dx, dy) or 1.0
                             npc.x += (dx / dist) * T.TILE * 2.5
                             npc.y += (dy / dist) * T.TILE * 2.5
@@ -2959,12 +3259,12 @@ class OverworldGame(chigame.Game):
         fight : chisurf.plugins.misc.games.lumis_quest.api.battle.Battle
             The finished encounter.
         """
-        at = (self.iris[0], self.iris[1] - T.TILE * 0.9)
+        at = (self.player_pos[0], self.player_pos[1] - T.TILE * 0.9)
         if fight.taken is not None:
             self.sparks.rise(f"+ {fight.taken.name}", at, span=1.8,
                              distance=20.0, height=8.5,
                              color=(0.72, 0.96, 0.84, 1.0))
-            self.sparks.burst(tuple(self.iris), count=10, span=0.7, speed=32.0,
+            self.sparks.burst(tuple(self.player_pos), count=10, span=0.7, speed=32.0,
                               emission_nm=fight.taken.emission_nm)
             at = (at[0], at[1] - 11.0)
         if fight.joined and fight.freed is not None:
@@ -3056,8 +3356,8 @@ class OverworldGame(chigame.Game):
         if fight.joined and fight.freed is not None:
             if fight.freed.key not in {body.key for body in self.bodies}:
                 self.bodies.append(fight.freed)
-        if fight.won and self.warden_fight:
-            self.story.seal(self.warden_fight)
+        if fight.won and self.boss_fight:
+            self.story.seal(self.boss_fight)
             self._sound("seal", 880.0)
             self.save_run()
 
@@ -3162,19 +3462,19 @@ class OverworldGame(chigame.Game):
             The level going in, so a level-up gets its own line rather than
             reading as an ordinary XP tick.
         """
-        at = (self.iris[0], self.iris[1] - 20.0)
+        at = (self.player_pos[0], self.player_pos[1] - 20.0)
         self._sound("seal", 760.0)
-        self.sparks.burst(tuple(self.iris), count=10, kind="photon", speed=60.0)
+        self.sparks.burst(tuple(self.player_pos), count=10, kind="photon", speed=60.0)
         self.sparks.rise(f"+{reward['xp']} XP -- {reward['label']}", at,
                          color=(1.0, 0.90, 0.45, 1.0), height=9.0)
         if reward["level"] > level_before:
             self.sparks.rise(f"Level {reward['level']}: {reward['level_title']}!",
-                             (self.iris[0], self.iris[1] - 32.0),
+                             (self.player_pos[0], self.player_pos[1] - 32.0),
                              color=(0.55, 0.95, 1.0, 1.0), height=11.0)
             self._sound("cross", 900.0)
         if reward["streak"] > 1:
             self.sparks.rise(f"{reward['streak']}-day streak",
-                             (self.iris[0], self.iris[1] - 44.0),
+                             (self.player_pos[0], self.player_pos[1] - 44.0),
                              color=(0.95, 0.75, 0.45, 1.0), height=8.0)
 
     def _begin_flag(self) -> None:
@@ -3280,7 +3580,7 @@ class OverworldGame(chigame.Game):
     _COMPASS = ("east", "northeast", "north", "northwest",
                "west", "southwest", "south", "southeast")
 
-    def _warden_compass(self) -> str:
+    def _boss_compass(self) -> str:
         """Which way the next unbeaten Warden lies.
 
         The seal ladder used to be findable only by wandering until a
@@ -3293,19 +3593,19 @@ class OverworldGame(chigame.Game):
             A STATUS row naming the Warden, their land, and a bearing --
             or that the ladder is already climbed.
         """
-        warden = tiers_api.next_warden(self.story.seals)
-        if warden is None:
+        boss = tiers_api.next_warden(self.story.seals)
+        if boss is None:
             return "every Warden's seal is held"
-        village = next((v for v in self.world.villages if v.warden == warden.key), None)
+        village = next((v for v in self.world.villages if v.boss_seat == boss.key), None)
         if village is None:
-            return f"next: {warden.name}, seat unknown"
+            return f"next: {boss.name}, seat unknown"
         col, row, width, height = village.rect
         vx, vy = (col + width * 0.5) * T.TILE, (row + height * 0.5) * T.TILE
         region = self.world.region_at(vx, vy)
         land = region.title if region is not None else village.place
-        bearing = math.atan2(-(vy - self.iris[1]), vx - self.iris[0])
+        bearing = math.atan2(-(vy - self.player_pos[1]), vx - self.player_pos[0])
         octant = int(round(bearing / (math.pi / 4.0))) % 8
-        return f"next: {warden.name}, {self._COMPASS[octant]} in {land}"
+        return f"next: {boss.name}, {self._COMPASS[octant]} in {land}"
 
     def equip(self, part) -> None:
         """Fit a piece of gear into its slot.
@@ -3352,7 +3652,7 @@ class OverworldGame(chigame.Game):
         """
         if not self.jumping and self.z <= 0.0:
             return
-        self.fall += GRAVITY * dt
+        self.fall += self.gravity * dt
         self.z -= self.fall * dt
         if self.z <= 0.0:
             self.z = 0.0
@@ -3413,15 +3713,15 @@ class OverworldGame(chigame.Game):
         """
         if dx and not self._slide(dx, 0.0):
             for nudge in (CORNER_SLIP, -CORNER_SLIP):
-                if not self._solid(self.iris[0] + dx, self.iris[1] + nudge):
-                    self.iris[0] += dx
-                    self.iris[1] += nudge
+                if not self._solid(self.player_pos[0] + dx, self.player_pos[1] + nudge):
+                    self.player_pos[0] += dx
+                    self.player_pos[1] += nudge
                     break
         if dy and not self._slide(0.0, dy):
             for nudge in (CORNER_SLIP, -CORNER_SLIP):
-                if not self._solid(self.iris[0] + nudge, self.iris[1] + dy):
-                    self.iris[0] += nudge
-                    self.iris[1] += dy
+                if not self._solid(self.player_pos[0] + nudge, self.player_pos[1] + dy):
+                    self.player_pos[0] += nudge
+                    self.player_pos[1] += dy
                     break
 
     def _slide(self, dx: float, dy: float) -> bool:
@@ -3437,10 +3737,10 @@ class OverworldGame(chigame.Game):
         bool
             Whether it was taken.
         """
-        if self._solid(self.iris[0] + dx, self.iris[1] + dy):
+        if self._solid(self.player_pos[0] + dx, self.player_pos[1] + dy):
             return False
-        self.iris[0] += dx
-        self.iris[1] += dy
+        self.player_pos[0] += dx
+        self.player_pos[1] += dy
         return True
 
     def _solid(self, x: float, y: float) -> bool:
@@ -3516,10 +3816,10 @@ class OverworldGame(chigame.Game):
         bool
             Whether she had to be moved.
         """
-        if not self._solid(*self.iris):
+        if not self._solid(*self.player_pos):
             return False
-        col = int(self.iris[0] // T.TILE)
-        row = int(self.iris[1] // T.TILE)
+        col = int(self.player_pos[0] // T.TILE)
+        row = int(self.player_pos[1] // T.TILE)
         for radius in range(1, 24):
             for drow in range(-radius, radius + 1):
                 for dcol in range(-radius, radius + 1):
@@ -3528,7 +3828,7 @@ class OverworldGame(chigame.Game):
                     x = (col + dcol + 0.5) * T.TILE
                     y = (row + drow + 0.5) * T.TILE
                     if not self._solid(x, y):
-                        self.iris[0], self.iris[1] = x, y
+                        self.player_pos[0], self.player_pos[1] = x, y
                         return True
         return False
 
@@ -3549,7 +3849,7 @@ class OverworldGame(chigame.Game):
         tuple
             ``((x, y), height)``.
         """
-        here = screens_api.screen_of(*self.iris)
+        here = screens_api.screen_of(*self.player_pos)
         if here != self.screen_at:
             self.flip_from = screens_api.centre_of(*self.screen_at)
             self.flip_left = screens_api.FLIP_SECONDS
@@ -3702,7 +4002,7 @@ class OverworldGame(chigame.Game):
 
         # Everyone who lives here, drawn before Iris so she walks in front of
         # them. Culled to the view: the world holds well over a hundred.
-        frame_index = int(self._clock * 3.0) % 2
+        frame_index = int(self._clock * WALK_FPS) % 4
         for npc in self.people:
             if abs(npc.x - camera.center[0]) > half[0] + T.TILE:
                 continue
@@ -3768,13 +4068,13 @@ class OverworldGame(chigame.Game):
                 doctrine = npc.role.split(":", 1)[-1]
                 scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 1.1, T.TILE * 1.1),
-                           emission_nm=EMISSARY_NM.get(doctrine, 488.0))
-                tint = EMISSARY_TINT.get(doctrine, tint)
+                           emission_nm=FACTION_NM.get(doctrine, 488.0))
+                tint = FACTION_TINT.get(doctrine, tint)
             elif npc.kind == "lumi":
                 # The dim hound: an ember of the glow it will have at heel.
                 scene.draw("photon", "halo", at=drawn,
                            size=(T.TILE * 0.5, T.TILE * 0.5),
-                           emission_nm=LUMI.wavelength_nm)
+                           emission_nm=COMPANION.wavelength_nm)
                 tint = (0.55, 0.62, 0.55, 1.0)
             self._sprite(scene, "shadow", (npc.x, npc.y + 2.0),
                          T.TILE * (1.0 - min(lift / 12.0, 0.35)))
@@ -3795,7 +4095,7 @@ class OverworldGame(chigame.Game):
                 # townsperson narrating themselves at once -- it only earns
                 # its keep once the player is close enough to actually hear
                 # the two of them, same reach as walking up and joining in.
-                if mind.npc.distance_to(*self.iris) > agents_api.OVERHEAR_RANGE:
+                if mind.npc.distance_to(*self.player_pos) > agents_api.OVERHEAR_RANGE:
                     continue
                 wrapped = _wrap(spoken[1], 16)[:2]
                 width = 10.0 + 5.2 * max((len(line) for line in wrapped), default=0)
@@ -3810,25 +4110,30 @@ class OverworldGame(chigame.Game):
 
         # The glow under each of them is the photon they are; the sprite on top
         # is the body that photon wears. No hound at heel until it is found.
-        frame = int(self._walk_clock * WALK_FPS) % 2 if self.walking else 0
-        if self.story.has_lumi:
-            self._sprite(scene, "shadow", (self.lumi[0], self.lumi[1] + 2.0), T.TILE)
-            scene.draw("photon", "halo", at=tuple(self.lumi),
+        frame = int(self._walk_clock * WALK_FPS) % 4 if self.walking else 0
+        if self.story.has_companion:
+            self._sprite(scene, "shadow", (self.companion_pos[0], self.companion_pos[1] + 2.0), T.TILE)
+            scene.draw("photon", "halo", at=tuple(self.companion_pos),
                        size=(T.TILE * 0.7, T.TILE * 0.7),
-                       emission_nm=LUMI.wavelength_nm)
-            lumi_suffix, lumi_mirror = self._lumi_sprite()
+                       emission_nm=COMPANION.wavelength_nm)
+            lumi_suffix, lumi_mirror = self._companion_sprite()
             self._sprite(scene, f"lumi_{lumi_suffix}_{frame}",
-                         self.lumi, T.TILE, mirror=lumi_mirror)
+                         self.companion_pos, T.TILE, mirror=lumi_mirror)
         # The shadow stays on the ground and shrinks; the body rises off it.
         # Nothing else reads as height in a top-down view -- without the
         # shadow staying put, a jump is indistinguishable from walking north.
         shade = 1.15 - min(self.z / 40.0, 0.45)
-        self._sprite(scene, "shadow", (self.iris[0], self.iris[1] + 3.0),
+        self._sprite(scene, "shadow", (self.player_pos[0], self.player_pos[1] + 3.0),
                      T.TILE * shade)
-        scene.draw("photon", "halo", at=tuple(self.iris), size=(T.TILE * 0.9, T.TILE * 0.9),
-                   emission_nm=IRIS.wavelength_nm)
-        self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self._drawn_at,
+        scene.draw("photon", "halo", at=tuple(self.player_pos), size=(T.TILE * 0.9, T.TILE * 0.9),
+                   emission_nm=PLAYER.wavelength_nm)
+        # While a swing is out she shows the sheet's attack pose and the
+        # weapon itself, laid in front of her the way the reference holds it.
+        pose = "a" if getattr(self, "_attack_anim_timer", 0.0) > 0.0 else frame
+        self._sprite(scene, f"iris_{self._sheet_facing()}_{pose}", self._drawn_at,
                      T.TILE * 1.15, mirror=self.facing == "left")
+        if getattr(self, "_attack_anim_timer", 0.0) > 0.0:
+            self._draw_held_weapon(scene)
 
         if getattr(self, "_attack_anim_timer", 0.0) > 0.0:
             self._draw_attack_effect(scene)
@@ -3837,17 +4142,41 @@ class OverworldGame(chigame.Game):
 
         # World feedback goes over the world and under the panels: a number
         # behind a dialogue box is a number nobody saw.
-        self.sparks.draw(scene)
+        if self.particle_fx_enabled:
+            self.sparks.draw(scene)
+
+        # The sky over the land, over the world and under every panel.
+        self._draw_weather(scene, camera, half)
 
         if self.battle is not None:
             self._draw_battle(scene, camera, half)
             # ...and battle feedback goes over the battle screen, because that
             # is what it is about.
-            self.battle_sparks.draw(scene)
+            if self.particle_fx_enabled:
+                self.battle_sparks.draw(scene)
         elif self.menu_open:
             self._draw_menu(scene, camera, half)
         else:
             self._draw_hud(scene, camera, half)
+
+        if self.crt_filter_enabled:
+            self._draw_crt_filter(scene, camera, half)
+
+    def _draw_crt_filter(self, scene, camera, half) -> None:
+        """Draw a scanline overlay across the whole view.
+
+        A classic CRT effect: alternating dark bands every few world units,
+        faint enough to read through, present enough to read as a tube.
+        """
+        cx, cy = float(camera.center[0]), float(camera.center[1])
+        w = half[0] * 2.0
+        spacing = 6.0 * (camera.height / VIEW_HEIGHT)
+        top = cy - half[1]
+        y = top + spacing * 0.5
+        while y < cy + half[1]:
+            scene.draw("ui", "bar", at=(cx, y), size=(w, spacing * 0.45),
+                       color=(0.0, 0.0, 0.0, 0.18))
+            y += spacing
 
     @property
     def _drawn_at(self) -> tuple[float, float]:
@@ -3858,7 +4187,7 @@ class OverworldGame(chigame.Game):
         tuple of float
             Her position lifted by her height off the ground.
         """
-        return (self.iris[0], self.iris[1] - self.z)
+        return (self.player_pos[0], self.player_pos[1] - self.z)
 
     def _sheet_facing(self) -> str:
         """Which drawn facing to use for Iris.
@@ -3871,7 +4200,7 @@ class OverworldGame(chigame.Game):
         """
         return "right" if self.facing in ("left", "right") else self.facing
 
-    def _lumi_sprite(self) -> tuple[str, bool]:
+    def _companion_sprite(self) -> tuple[str, bool]:
         """Which drawn sprite and mirror flag matches Lumi's own facing.
 
         Lumi has ``down``, ``up`` and ``right`` art (see :mod:`.pixelart`) --
@@ -3883,13 +4212,13 @@ class OverworldGame(chigame.Game):
         tuple of (str, bool)
             Sprite-name facing suffix and whether to mirror it.
         """
-        facing = self.lumi_facing
+        facing = self.companion_facing
         if facing == "left":
             return "right", True
         return facing, False
 
     def _sprite(self, scene, name: str, at, size: float, mirror: bool = False,
-                tint=(1.0, 1.0, 1.0, 1.0)) -> None:
+                tint=(1.0, 1.0, 1.0, 1.0), alpha: float | None = None) -> None:
         """Draw one pixel-art sprite.
 
         Parameters
@@ -3913,7 +4242,11 @@ class OverworldGame(chigame.Game):
             artwork, which is why the atlas needs no left-facing sprites.
         tint : tuple of float, optional
             Multiplied into the artwork; white leaves it alone.
+        alpha : float, optional
+            Overall opacity, applied on top of the tint.
         """
+        if alpha is not None:
+            tint = (tint[0], tint[1], tint[2], tint[3] * float(alpha))
         u0, v0, u1, v1 = self._uvs[name]
         if mirror:
             u0, u1 = u1, u0
@@ -3983,13 +4316,13 @@ class OverworldGame(chigame.Game):
         left = at[0] - card_w * 0.5 + 10.0 * scale
         scene.text(fighter.name, at=(left, at[1] - card_h * 0.5 + 12.0 * scale),
                    height=12.0 * scale, color=(0.96, 0.96, 0.92, 1.0))
-        scene.text(f"T{fighter.beast.tier}",
+        scene.text(f"T{fighter.beast.tier}  Lv{fighter.level}",
                    at=(at[0] + card_w * 0.5 - 10.0 * scale,
                        at[1] - card_h * 0.5 + 12.0 * scale),
                    height=10.0 * scale, align="right", color=(0.80, 0.84, 0.94, 1.0))
         self._bar(scene, (at[0], at[1] + 2.0 * scale), card_w - 20.0 * scale,
-                  6.0 * scale, fighter.hp / max(fighter.beast.max_hp, 1), tone)
-        tail = (f"{fighter.hp}/{fighter.beast.max_hp}" if numbers
+                  6.0 * scale, fighter.hp / max(fighter.max_hp, 1), tone)
+        tail = (f"{fighter.hp}/{fighter.max_hp}" if numbers
                 else f"{fighter.beast.emission_nm:.0f} nm")
         scene.text(tail, at=(at[0] + card_w * 0.5 - 10.0 * scale,
                              at[1] + card_h * 0.5 - 9.0 * scale),
@@ -4358,7 +4691,7 @@ class OverworldGame(chigame.Game):
         scale : float
             The battle screen's own scale.
         """
-        region = self.world.region_at(float(self.iris[0]), float(self.iris[1]))
+        region = self.world.region_at(float(self.player_pos[0]), float(self.player_pos[1]))
         biome = region.biome if region is not None else "meadow"
         horizon = cy + height * 0.10
         sky_top = cy - height * 0.5
@@ -4539,6 +4872,31 @@ class OverworldGame(chigame.Game):
         self._fighter_card(scene, active, (cx + half[0] * 0.40, cy + half[1] * 0.12),
                            scale, (0.40, 0.85, 0.70, 1.0), numbers=True)
 
+        # A Warden fight gets a boss bar across the top of the screen -- the
+        # creature card in the corner is too small for something the whole
+        # fight is about. The bar turns red when the surge phase is live, so
+        # the player knows the fight has changed before the signature move
+        # hits.
+        if self.boss_fight:
+            boss = tiers_api.BY_KEY.get(self.boss_fight)
+            boss_name = boss.title if boss is not None else enemy.name
+            boss_w = half[0] * 1.5
+            boss_x, boss_y = cx, cy - half[1] * 0.78
+            scene.text(boss_name, at=(boss_x, boss_y - 8.0 * scale),
+                       height=11.0 * scale, align="center",
+                       color=(0.96, 0.84, 0.45, 1.0))
+            boss_frac = enemy.hp / max(enemy.max_hp, 1)
+            surged = (self.boss_fight in BOSS_SURGE_MOVES
+                      and enemy.depleted >= BOSS_SURGE_HP)
+            boss_color = ((0.95, 0.30, 0.30, 1.0) if surged
+                          else (0.80, 0.45, 0.25, 1.0))
+            self._bar(scene, (boss_x, boss_y + 2.0 * scale), boss_w,
+                      8.0 * scale, boss_frac, boss_color)
+            if surged:
+                scene.text("!! SURGE !!", at=(boss_x, boss_y + 12.0 * scale),
+                           height=10.0 * scale, align="center",
+                           color=(1.0, 0.35, 0.35, 1.0))
+
         # The bottom band: what just happened on the left, what you may do on
         # the right, both in framed windows rather than floating over the art.
         band_h = half[1] * 0.62
@@ -4548,7 +4906,8 @@ class OverworldGame(chigame.Game):
                      (said_w, band_h), scale=scale)
 
         lines: list[str] = []
-        for turn in fight.log[-2:]:
+        log_entries = fight.log[-3:] if self.boss_fight else fight.log[-2:]
+        for turn in log_entries:
             lines.extend(_wrap(turn.text, 34))
         if fight.finished:
             outcome = "The light holds." if fight.won else (
@@ -4558,10 +4917,10 @@ class OverworldGame(chigame.Game):
                 outcome = f"{fight.taken.name} is yours."
             elif fight.won and not fight.fled:
                 outcome = "Driven all the way down. It crossed."
-            if fight.won and self.warden_fight:
-                warden = tiers_api.BY_KEY.get(self.warden_fight)
-                if warden is not None:
-                    outcome = warden.after
+            if fight.won and self.boss_fight:
+                boss = tiers_api.BY_KEY.get(self.boss_fight)
+                if boss is not None:
+                    outcome = boss.after
             lines = _wrap(outcome, 34)[:2] + ["", "Confirm to continue"]
         left = cx - half[0] + 16.0 * scale
         for offset, line in enumerate(lines[-4:]):
@@ -4632,7 +4991,7 @@ class OverworldGame(chigame.Game):
         frame = int(self._walk_clock * WALK_FPS) % 2 if self.walking else 0
         self._sprite(scene, "shadow", (self._indoor_pos[0], self._indoor_pos[1] + 3.0), T.TILE)
         scene.draw("photon", "halo", at=tuple(self._indoor_pos),
-                   size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=IRIS.wavelength_nm)
+                   size=(T.TILE * 0.9, T.TILE * 0.9), emission_nm=PLAYER.wavelength_nm)
         self._sprite(scene, f"iris_{self._sheet_facing()}_{frame}", self._indoor_pos,
                      T.TILE * 1.15, mirror=self.facing == "left")
 
@@ -4673,8 +5032,8 @@ class OverworldGame(chigame.Game):
         else:
             dy = reach
 
-        at_x = self.iris[0] + dx
-        at_y = self.iris[1] + dy
+        at_x = self.player_pos[0] + dx
+        at_y = self.player_pos[1] + dy
         self._attack_arc_pos = (at_x, at_y)
 
         self._sound("slash", frequency=580.0)
@@ -4688,9 +5047,9 @@ class OverworldGame(chigame.Game):
             cell_kind = grid[tile_row, tile_col]
             if cell_kind in (T.GRASS, T.MARSH, T.FLOWERS, T.GARDEN):
                 self.sparks.burst((at_x, at_y), count=6, kind="leaf", speed=35.0)
-                self.sparks.orbs((at_x, at_y), target=tuple(self.iris), count=3, kind="photon", speed=80.0)
+                self.sparks.orbs((at_x, at_y), target=tuple(self.player_pos), count=3, kind="photon", speed=80.0)
                 self.sparks.rise("+5 Photons", (at_x, at_y - 6), color=(0.4, 0.95, 0.5, 1.0), height=7.0)
-                self.photons = min(self.photons_max, self.photons + 5)
+                self.energy = min(self.energy_max, self.energy + 5)
                 self._gather(random.choice(("roxs", "bsa")), (at_x, at_y - 14), chance=0.12)
 
         # Hit overworld beasts
@@ -4711,8 +5070,8 @@ class OverworldGame(chigame.Game):
                     npc.startled = True
                     self.sparks.rise(f"-{int(damage)}", (npc.x, npc.y - 10), color=(1.0, 0.3, 0.3, 1.0), height=9.0)
                     self.sparks.burst((npc.x, npc.y), count=10, kind="sparkle", speed=60.0)
-                    kb_dir_x = (npc.x - self.iris[0]) or 1.0
-                    kb_dir_y = (npc.y - self.iris[1]) or 0.0
+                    kb_dir_x = (npc.x - self.player_pos[0]) or 1.0
+                    kb_dir_y = (npc.y - self.player_pos[1]) or 0.0
                     kb_len = math.hypot(kb_dir_x, kb_dir_y) or 1.0
                     npc.knockback_vx = (kb_dir_x / kb_len) * 160.0
                     npc.knockback_vy = (kb_dir_y / kb_len) * 160.0
@@ -4721,12 +5080,55 @@ class OverworldGame(chigame.Game):
                     if npc.hp <= 0.0 and npc in self.people:
                         self._sound("defeat", frequency=240.0)
                         self.sparks.burst((npc.x, npc.y), count=16, kind="nova", speed=90.0)
-                        self.sparks.orbs((npc.x, npc.y), target=tuple(self.iris), count=8, kind="photon", speed=90.0)
+                        self.sparks.orbs((npc.x, npc.y), target=tuple(self.player_pos), count=8, kind="photon", speed=90.0)
                         self.sparks.rise("+50 Photons", (npc.x, npc.y - 14), color=(1.0, 0.85, 0.3, 1.0), height=10.0)
-                        self.photons = min(self.photons_max, self.photons + 50)
+                        self.energy = min(self.energy_max, self.energy + 50)
                         self._gather(random.choice(("trolox", "godcat")),
                                     (npc.x, npc.y - 22), chance=0.2)
                         self._gather("pagfp", (npc.x, npc.y - 30), chance=0.08)
+                        self.people.remove(npc)
+
+    def _spin_attack(self) -> None:
+        """A charged spin attack hitting all adjacent enemies.
+
+        Deals double weapon damage in a radius around Iris. Costs no energy
+        but has the weapon's full cooldown.
+        """
+        weapon_key = getattr(self, "active_weapon", "sword")
+        info = WEAPON_DATA.get(weapon_key, WEAPON_DATA["sword"])
+        self._attack_cooldown = info["cooldown"] * 1.5
+        self._attack_anim_timer = 0.30
+        damage = info["damage"] * 2.0
+        radius = info["reach"] * 1.6
+
+        self._sound("slash", frequency=720.0)
+        self._attack_arc_pos = tuple(self.player_pos)
+        if self.particle_fx_enabled:
+            for angle in range(0, 360, 30):
+                rad = math.radians(angle)
+                sx = self.player_pos[0] + math.cos(rad) * radius * 0.7
+                sy = self.player_pos[1] + math.sin(rad) * radius * 0.7
+                self.sparks.burst((sx, sy), count=4, kind="sparkle",
+                                  color=info["color"], speed=70.0)
+
+        for npc in list(getattr(self, "people", [])):
+            if getattr(npc, "kind", "") == "beast":
+                dist = math.hypot(npc.x - self.player_pos[0], npc.y - self.player_pos[1])
+                if dist < radius:
+                    if self._marked_nm(npc) > 0.0:
+                        self._try_encounter(force=True)
+                        return
+                    hp = getattr(npc, "hp", 60.0) - damage
+                    npc.hp = max(0.0, hp)
+                    npc.startled = True
+                    npc.knockback_vx = ((npc.x - self.player_pos[0]) or 1.0) * 4.0
+                    npc.knockback_vy = ((npc.y - self.player_pos[1]) or 0.0) * 4.0
+                    npc.knockback_timer = 0.35
+                    self.sparks.rise(f"-{int(damage)}", (npc.x, npc.y - 10),
+                                     color=(1.0, 0.85, 0.3, 1.0), height=10.0)
+                    if npc.hp <= 0.0 and npc in self.people:
+                        self.sparks.burst((npc.x, npc.y), count=16, kind="nova", speed=90.0)
+                        self.energy = min(self.energy_max, self.energy + 30)
                         self.people.remove(npc)
 
     def _cast_magic(self) -> None:
@@ -4737,12 +5139,12 @@ class OverworldGame(chigame.Game):
         info = MAGIC_DATA.get(magic_key, MAGIC_DATA["flame"])
         cost = info["cost"]
 
-        if self.photons < cost:
-            self.sparks.rise("No Photons!", tuple(self.iris), color=(1.0, 0.4, 0.4, 1.0), height=8.0)
+        if self.energy < cost:
+            self.sparks.rise("No Photons!", tuple(self.player_pos), color=(1.0, 0.4, 0.4, 1.0), height=8.0)
             self._sound("cancel", frequency=220.0)
             return
 
-        self.photons -= cost
+        self.energy -= cost
         self._magic_cooldown = info["cooldown"]
 
         if magic_key == "flame":
@@ -4761,8 +5163,8 @@ class OverworldGame(chigame.Game):
                 dy = 1.0
 
             for step in range(1, 6):
-                fx = self.iris[0] + dx * (step * T.TILE * 0.8)
-                fy = self.iris[1] + dy * (step * T.TILE * 0.8)
+                fx = self.player_pos[0] + dx * (step * T.TILE * 0.8)
+                fy = self.player_pos[1] + dy * (step * T.TILE * 0.8)
                 self.sparks.burst((fx, fy), count=5, kind="flame", color=info["color"], speed=40.0)
                 for npc in list(getattr(self, "people", [])):
                     if getattr(npc, "kind", "") == "beast":
@@ -4776,7 +5178,7 @@ class OverworldGame(chigame.Game):
                             self.sparks.rise(f"-{int(damage)}", (npc.x, npc.y - 10), color=(1.0, 0.4, 0.2, 1.0), height=9.0)
                             if npc.hp <= 0.0 and npc in self.people:
                                 self.sparks.burst((npc.x, npc.y), count=16, kind="nova")
-                                self.sparks.orbs((npc.x, npc.y), target=tuple(self.iris), count=6)
+                                self.sparks.orbs((npc.x, npc.y), target=tuple(self.player_pos), count=6)
                                 self.people.remove(npc)
 
         elif magic_key == "heal":
@@ -4784,14 +5186,14 @@ class OverworldGame(chigame.Game):
             for f in getattr(self, "team", []):
                 if hasattr(f, "hp") and hasattr(f, "max_hp"):
                     f.hp = min(f.max_hp, f.hp + info["heal"])
-            self.sparks.burst(tuple(self.iris), count=18, radius=12.0, kind="aura", color=info["color"], speed=45.0)
-            self.sparks.rise(f"+{int(info['heal'])} HP", (self.iris[0], self.iris[1] - 12.0), color=(0.3, 1.0, 0.6, 1.0), height=10.0)
+            self.sparks.burst(tuple(self.player_pos), count=18, radius=12.0, kind="aura", color=info["color"], speed=45.0)
+            self.sparks.rise(f"+{int(info['heal'])} HP", (self.player_pos[0], self.player_pos[1] - 12.0), color=(0.3, 1.0, 0.6, 1.0), height=10.0)
 
         elif magic_key == "shield":
             self._sound("shield", frequency=880.0)
             self._shield_timer = info["duration"]
-            self.sparks.burst(tuple(self.iris), count=14, radius=16.0, kind="sparkle", color=info["color"], speed=50.0)
-            self.sparks.rise("FRET Shield Active!", tuple(self.iris), color=(0.2, 0.9, 1.0, 1.0), height=9.0)
+            self.sparks.burst(tuple(self.player_pos), count=14, radius=16.0, kind="sparkle", color=info["color"], speed=50.0)
+            self.sparks.rise("FRET Shield Active!", tuple(self.player_pos), color=(0.2, 0.9, 1.0, 1.0), height=9.0)
 
     def _cycle_weapon(self) -> None:
         """Switch to the next available overworld weapon."""
@@ -4800,7 +5202,7 @@ class OverworldGame(chigame.Game):
         idx = (weapons.index(current) + 1) % len(weapons) if current in weapons else 0
         self.active_weapon = weapons[idx]
         info = WEAPON_DATA[self.active_weapon]
-        self.sparks.rise(f"Equipped {info['name']}", tuple(self.iris), color=info["color"], height=8.0)
+        self.sparks.rise(f"Equipped {info['name']}", tuple(self.player_pos), color=info["color"], height=8.0)
         self._sound("confirm", frequency=600.0)
 
     def _cycle_magic(self) -> None:
@@ -4810,7 +5212,7 @@ class OverworldGame(chigame.Game):
         idx = (magics.index(current) + 1) % len(magics) if current in magics else 0
         self.active_magic = magics[idx]
         info = MAGIC_DATA[self.active_magic]
-        self.sparks.rise(f"Selected {info['name']}", tuple(self.iris), color=info["color"], height=8.0)
+        self.sparks.rise(f"Selected {info['name']}", tuple(self.player_pos), color=info["color"], height=8.0)
         self._sound("confirm", frequency=680.0)
 
     def _update_overworld_enemies(self, dt: float) -> None:
@@ -4826,30 +5228,142 @@ class OverworldGame(chigame.Game):
                     npc.x += getattr(npc, "knockback_vx", 0.0) * dt
                     npc.y += getattr(npc, "knockback_vy", 0.0) * dt
 
-                dist = npc.distance_to(*self.iris)
-                notice_rad = getattr(npc, "notice_radius", T.TILE * 6.0)
+                targets = [(self.player_pos[0], self.player_pos[1])]
+                for fld in getattr(self, "followers", []):
+                    if fld.get("fighter") and fld["fighter"].alive:
+                        targets.append((fld["pos"][0], fld["pos"][1]))
+                nearest = min(targets, key=lambda t: math.hypot(t[0] - npc.x, t[1] - npc.y))
+                dist = math.hypot(nearest[0] - npc.x, nearest[1] - npc.y)
+                notice_rad = getattr(npc, "notice_radius",
+                                     self.enemy_aggro_radius * T.TILE)
                 if dist < notice_rad and getattr(npc, "knockback_timer", 0.0) <= 0.0:
                     npc.startled = True
                     speed = getattr(npc, "speed", 75.0)
-                    dx = (self.iris[0] - npc.x) / (dist or 1.0)
-                    dy = (self.iris[1] - npc.y) / (dist or 1.0)
+                    dx = (nearest[0] - npc.x) / (dist or 1.0)
+                    dy = (nearest[1] - npc.y) / (dist or 1.0)
                     npc.x += dx * speed * dt
                     npc.y += dy * speed * dt
 
-                    if dist < T.TILE * 0.7 and getattr(self, "_shield_timer", 0.0) <= 0.0 and getattr(self, "_iris_hit_flash", 0.0) <= 0.0:
-                        self._iris_hit_flash = 0.4
-                        self._sound("hit", frequency=180.0)
-                        self.iris_hp = max(0, self.iris_hp - 10)
-                        self.sparks.rise("-10 HP", tuple(self.iris), color=(1.0, 0.2, 0.2, 1.0), height=9.0)
-                        self.sparks.burst(tuple(self.iris), count=6, kind="sparkle", color=(1.0, 0.2, 0.2, 1.0))
-                        if self.iris_hp <= 0:
-                            self._faint()
+                    tgt_dist = math.hypot(nearest[0] - npc.x, nearest[1] - npc.y)
+                    if tgt_dist < T.TILE * 0.7:
+                        if nearest == (self.player_pos[0], self.player_pos[1]):
+                            if getattr(self, "_shield_timer", 0.0) <= 0.0 and getattr(self, "_player_hit_flash", 0.0) <= 0.0:
+                                self._player_hit_flash = 0.4
+                                self._sound("hit", frequency=180.0)
+                                self.player_vitality = max(0, self.player_vitality - 10)
+                                self.sparks.rise("-10", tuple(self.player_pos), color=(1.0, 0.2, 0.2, 1.0), height=9.0)
+                                if self.player_vitality <= 0:
+                                    self._faint()
+                        else:
+                            for f in self.followers:
+                                if (f.get("fighter") and f["fighter"].alive
+                                        and abs(f["pos"][0] - nearest[0]) < 2.0
+                                        and abs(f["pos"][1] - nearest[1]) < 2.0):
+                                    f["fighter"].hp = max(0, f["fighter"].hp - 8)
+                                    self.sparks.rise("-8", (f["pos"][0], f["pos"][1] - 8),
+                                                     color=(1.0, 0.3, 0.3, 1.0), height=7.0)
+                                    break
+    def _weather_kinds(self) -> tuple[str, ...]:
+        """What the sky over this land is doing.
+
+        Returns
+        -------
+        tuple of str
+            Engine weather kinds. The dark manifold fogs over; a withered
+            land rains under cloud; wild country drifts leaves; settled and
+            scouted lands are clear.
+        """
+        if getattr(self, "dark", False):
+            return (chigame.FOG,)
+        land = getattr(self, "land", None)
+        state = getattr(land, "state", None)
+        if state == WITHERED:
+            return (chigame.RAIN, chigame.CLOUD)
+        if state == WILD:
+            return (chigame.LEAF,)
+        return ()
+
+    def _update_weather(self, dt: float) -> None:
+        """Keep the engine's weather pointed at this land.
+
+        Parameters
+        ----------
+        dt : float
+            Seconds elapsed.
+        """
+        weather = getattr(self, "weather", None)
+        if weather is None:
+            return
+        kinds = self._weather_kinds()
+        if tuple(sorted(kinds)) != tuple(sorted(weather.active)):
+            weather.set(kinds)
+        weather.update(dt)
+
+    def _draw_weather(self, scene, camera, half) -> None:
+        """Draw the active weather over the world, under the panels.
+
+        Parameters
+        ----------
+        scene : chigurf.gui.chigame.scene.Scene
+            The frame under construction.
+        camera : chigurf.gui.chigame.render.Camera
+            The view.
+        half : numpy.ndarray
+            Half-extent in world units.
+        """
+        weather = getattr(self, "weather", None)
+        if weather is None or camera.height > MAP_THRESHOLD:
+            return
+        left = float(camera.center[0] - half[0])
+        top = float(camera.center[1] - half[1])
+        for kind, sprite, size in ((chigame.RAIN, "fx_rain", (2.0, 5.0)),
+                                   (chigame.SNOW, None, (8.0, 8.0)),
+                                   (chigame.LEAF, None, (12.0, 7.0))):
+            for index, (x, y, _scale, _phase) in enumerate(weather.particles(kind)):
+                if kind == chigame.RAIN:
+                    self._sprite(scene, sprite, (left + x, top + y),
+                                 size[1], alpha=0.55)
+                else:
+                    step = index % (7 if kind == chigame.SNOW else 6)
+                    self._sprite(scene, f"fx_{'snow' if kind == chigame.SNOW else 'leaf'}_{step}",
+                                 (left + x, top + y), size[1], alpha=0.8)
+        if weather.fog_alpha > 0.02:
+            drift = weather._fog_scroll * 0.3 % weather.view[0]
+            for layer in (0.0, 0.5):
+                x = camera.center[0] - half[0] * (1.0 - layer) + drift
+                self._sprite(scene, "fx_fog", (x, camera.center[1]),
+                             weather.view[1] / T.TILE, alpha=weather.fog_alpha * 0.8)
+
+    def _draw_held_weapon(self, scene) -> None:
+        """Lay the real weapon sprite into the swing.
+
+        The reference carries a weapon rotated into the hand; here it appears
+        with the swing, pointed the way she faces, over the attack pose the
+        character sheet already shows.
+        """
+        key = getattr(self, "active_weapon", "sword")
+        name = f"weapon_{key}"
+        if name not in self._uvs:
+            return
+        step = {"up": (0.0, -1.0), "down": (0.0, 1.0),
+                "left": (-1.0, 0.0), "right": (1.0, 0.0)}.get(self.facing, (0.0, 1.0))
+        angle = math.atan2(step[1], step[0]) - math.pi / 2.0
+        at = (self.player_pos[0] + step[0] * 12.0, self.player_pos[1] + step[1] * 12.0)
+        tiles_w, tiles_h = self._sprite_tiles.get(name, (1.0, 1.0))
+        scene.batch.add(
+            pos=at,
+            size=(T.TILE * tiles_w, T.TILE * tiles_h),
+            color=(1.0, 1.0, 1.0, 1.0),
+            shape=chigame.SPRITE,
+            rotation=angle,
+            uv=self._uvs[name],
+        )
 
     def _draw_attack_effect(self, scene) -> None:
         """Draw the active weapon attack arc visual in front of Iris."""
         weapon = getattr(self, "active_weapon", "sword")
         info = WEAPON_DATA.get(weapon, WEAPON_DATA["sword"])
-        arc_pos = getattr(self, "_attack_arc_pos", tuple(self.iris))
+        arc_pos = getattr(self, "_attack_arc_pos", tuple(self.player_pos))
         reach = info["reach"]
         color = info["color"]
         scene.draw("photon", "halo", at=arc_pos, size=(reach * 1.6, reach * 1.6),
@@ -4863,10 +5377,37 @@ class OverworldGame(chigame.Game):
         color = MAGIC_DATA["shield"]["color"]
         for i in range(4):
             a = angle + i * (math.pi / 2.0)
-            sx = self.iris[0] + math.cos(a) * 14.0
-            sy = self.iris[1] + math.sin(a) * 14.0
+            sx = self.player_pos[0] + math.cos(a) * 14.0
+            sy = self.player_pos[1] + math.sin(a) * 14.0
             scene.draw("photon", "spark", at=(sx, sy), size=(6.0, 6.0),
                        hints={"color": color, "alpha": 0.85})
+
+    def _draw_title_subscreen(self, scene, cx, cy, scale, half) -> None:
+        """Draw the OPTIONS or DEBUG JUMP subscreen over the title."""
+        title = "OPTIONS" if self.title_subscreen == "options" else "DEBUG: JUMP TO MILESTONE"
+        rows = self._title_sub_rows()
+        pitch = 15.0
+        start_y = cy - (len(rows) - 1) * pitch * 0.5 * scale
+        tall = pitch * len(rows) + 36.0
+        wide = max(self._text_width(scene, row, 11.0) for row in rows) + 80.0
+        wide = max(wide, self._text_width(scene, title, 14.0) + 80.0)
+        scene.window((cx, cy), (wide * scale, tall * scale), scale=scale)
+        scene.text(title, at=(cx, cy - tall * 0.5 * scale + 8.0 * scale),
+                   height=14.0 * scale, align="center",
+                   color=(0.92, 0.86, 0.60, 1.0))
+        for index, row in enumerate(rows):
+            selected = index == self.title_sub_index
+            y = start_y + index * pitch * scale
+            if selected:
+                scene.draw("ui", "selected", at=(cx - wide * 0.4 * scale, y),
+                           size=(7.0 * scale, 7.0 * scale))
+            scene.text(row, at=(cx, y), height=11.0 * scale, align="center",
+                       color=(0.94, 0.92, 0.86, 1.0) if selected
+                       else (0.55, 0.59, 0.66, 1.0))
+        scene.text("Up/Down choose   Confirm select   Cancel back",
+                   at=(cx, cy + tall * 0.5 * scale - 6.0 * scale),
+                   height=9.0 * scale, align="center",
+                   color=(0.46, 0.50, 0.58, 1.0))
 
     def _draw_curtain(self, scene, camera, half) -> None:
         """Draw the loading screen and the opening.
@@ -4891,7 +5432,7 @@ class OverworldGame(chigame.Game):
                    color=wash)
 
         if self.phase == "loading":
-            scene.text("LUMIS QUEST", at=(cx, cy - 26.0 * scale), height=20.0 * scale,
+            scene.text("COMPANIONS QUEST", at=(cx, cy - 26.0 * scale), height=20.0 * scale,
                        align="center", color=(0.88, 0.82, 0.58, 1.0))
             scene.text(self.load_note, at=(cx, cy + 6.0 * scale), height=11.0 * scale,
                        align="center", color=(0.52, 0.58, 0.66, 1.0))
@@ -4906,15 +5447,16 @@ class OverworldGame(chigame.Game):
         if self.phase == "title":
             scene.draw("photon", "halo", at=(cx, cy - 62.0 * scale),
                        size=(46.0 * scale, 46.0 * scale), emission_nm=488.0)
-            scene.text("LUMIS QUEST", at=(cx, cy - 62.0 * scale), height=24.0 * scale,
+            scene.text("COMPANIONS QUEST", at=(cx, cy - 62.0 * scale), height=24.0 * scale,
                        align="center", color=(0.92, 0.86, 0.60, 1.0))
             scene.text("the documentation is the world",
                        at=(cx, cy - 40.0 * scale), height=10.0 * scale,
                        align="center", color=(0.52, 0.58, 0.66, 1.0))
-            # A framed window, the same console-dialogue box every other menu
-            # and every line of speech in the game already stands in -- the
-            # title screen was the one place still a name floating over a
-            # flat panel with nothing to say it was a menu.
+
+            if self.title_subscreen is not None:
+                self._draw_title_subscreen(scene, cx, cy, scale, half)
+                return
+
             rows = self._title_rows()
             pitch = 16.0
             tall = pitch * len(rows) + 20.0
@@ -5154,8 +5696,18 @@ class OverworldGame(chigame.Game):
 
         rows = self._menu_rows()
         start = top + (92.0 if tab == "RIG" else 0.0) * scale
-        window = rows[max(0, self.menu_row - 6): max(0, self.menu_row - 6) + 8]
-        base = max(0, self.menu_row - 6)
+        # The scroll window keeps the selected row visible and roughly centred
+        # when there are more rows than fit. Twelve rows fit the panel's content
+        # area at default zoom (half[1] * 0.94 / (13 * scale) ≈ 12), so the
+        # window is sized to that and the scroll keeps the cursor in view
+        # without clipping the first or last row off the bottom.
+        visible_rows = 12
+        if len(rows) <= visible_rows:
+            base = 0
+        else:
+            base = max(0, min(self.menu_row - visible_rows // 2,
+                              len(rows) - visible_rows))
+        window = rows[base:base + visible_rows]
         row_w, row_h = half[0] * 1.2, 10.5 * scale
         for offset, row in enumerate(window):
             selected = base + offset == self.menu_row
@@ -5312,16 +5864,24 @@ class OverworldGame(chigame.Game):
         if getattr(self, "phase", "") == "play" and self.interior is None:
             bar_w = 74.0 * scale
             bar_x = left + 6.0 * scale + bar_w * 0.5
-            scene.text(f"HP {self.iris_hp}/{self.iris_max_hp}",
-                       at=(left + 6.0 * scale, top + 8.0 * scale), height=7.0 * scale,
-                       color=(0.95, 0.90, 0.90, 1.0))
-            self._bar(scene, (bar_x, top + 16.0 * scale), bar_w, 6.0 * scale,
-                      self.iris_hp / max(self.iris_max_hp, 1), (0.90, 0.25, 0.30, 1.0))
-            scene.text(f"EN {self.photons}/{self.photons_max}",
+            # Life reads as hearts now -- the strip art the engine ships,
+            # quarter-hearts and all -- rather than a text bar. Five hearts
+            # for the whole range, four steps each, exactly the reference's
+            # UI.
+            quarters = self.player_vitality / max(self.player_max_vitality, 1.0) * 20.0
+            for heart in range(5):
+                filled = quarters - heart * 4.0
+                step = 4 if filled >= 4.0 else (3 if filled >= 3.0 else
+                                                (2 if filled >= 2.0 else
+                                                 (1 if filled >= 1.0 else 0)))
+                self._sprite(scene, f"hearts_a_{step}",
+                             (left + (10.0 + heart * 17.0) * scale, top + 10.0 * scale),
+                             T.TILE * scale)
+            scene.text(f"EN {self.energy}/{self.energy_max}",
                        at=(left + 6.0 * scale, top + 26.0 * scale), height=7.0 * scale,
                        color=(0.88, 0.95, 0.96, 1.0))
             self._bar(scene, (bar_x, top + 34.0 * scale), bar_w, 6.0 * scale,
-                      self.photons / max(self.photons_max, 1), (0.35, 0.85, 0.95, 1.0))
+                      self.energy / max(self.energy_max, 1), (0.35, 0.85, 0.95, 1.0))
             # What Shoulder-L and Shoulder-R actually do right now -- cycled
             # from the RIG tab, since there was no button left to spare for a
             # dedicated key.

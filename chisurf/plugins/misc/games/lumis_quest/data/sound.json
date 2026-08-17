@@ -1,0 +1,134 @@
+{
+    "sfx_events": {
+        "emit": {
+            "clip": "wpn_sword1"
+        },
+        "unbind": {
+            "clip": "coin_cluster4"
+        },
+        "seal": {
+            "clip": "coin_cluster9"
+        },
+        "bleach": {
+            "clip": "deathscream_alien1"
+        },
+        "step": {
+            "clip": "movement_footsteps1b"
+        },
+        "door": {
+            "clip": "movement_dooropen1"
+        },
+        "talk": {
+            "clip": "menu_move2"
+        },
+        "cross": {
+            "clip": "alarm_loop1"
+        },
+        "type": {
+            "clip": "sounds_blip1"
+        }
+    },
+    "music_contexts": [
+        "overworld",
+        "town",
+        "battle",
+        "underworld",
+        "victory"
+    ],
+    "music_tracks": {
+        "overworld": {
+            "clip": "ninja_plain",
+            "root": 293.66,
+            "tempo": 132,
+            "loop": true
+        },
+        "town": {
+            "clip": "ninja_lost_village",
+            "root": 392.0,
+            "tempo": 96,
+            "loop": true
+        },
+        "battle": {
+            "clip": "ninja_dream",
+            "root": 220.0,
+            "tempo": 150,
+            "loop": true
+        },
+        "underworld": {
+            "clip": "ninja_swamp",
+            "root": 174.61,
+            "tempo": 120,
+            "loop": true
+        },
+        "victory": {
+            "clip": "ending",
+            "root": 329.63,
+            "tempo": 132,
+            "loop": false
+        }
+    },
+    "soundtracks": [
+        "Ninja Adventure (CC0)",
+        "Classic Chiptune",
+        "Synthesiser"
+    ],
+    "sound_event_map": {
+        "jump": {
+            "default_frequency": 520.0
+        },
+        "talk": {
+            "default_frequency": 620.0
+        },
+        "type": {
+            "default_frequency": 900.0
+        },
+        "seal": {
+            "default_frequency": 720.0
+        },
+        "cross": {
+            "default_frequency": 300.0
+        },
+        "heal": {
+            "default_frequency": 750.0
+        },
+        "confirm": {
+            "default_frequency": 680.0
+        },
+        "cancel": {
+            "default_frequency": 240.0
+        },
+        "pickup": {
+            "default_frequency": 540.0
+        },
+        "door": {
+            "default_frequency": 440.0
+        },
+        "emit": {
+            "default_frequency": 700.0
+        },
+        "bleach": {
+            "default_frequency": 240.0
+        },
+        "step": {
+            "default_frequency": 300.0
+        },
+        "slash": {
+            "default_frequency": 580.0
+        },
+        "defeat": {
+            "default_frequency": 240.0
+        },
+        "flame": {
+            "default_frequency": 440.0
+        },
+        "shield": {
+            "default_frequency": 880.0
+        },
+        "hit": {
+            "default_frequency": 180.0
+        },
+        "unbind": {
+            "default_frequency": 700.0
+        }
+    }
+}

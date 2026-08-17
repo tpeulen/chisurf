@@ -1,6 +1,6 @@
 """The viewport's single-key shortcuts: one table, read and written.
 
-The point of `chimol.chrome.keybindings` is that the same information reaches three
+The point of `chimol.ui.input.keybindings` is that the same information reaches three
 places -- the ``keys`` overlay, the settings panel, and the key handler that
 actually performs an action -- without being written down three times. These
 tests hold that: a rebind has to change what the key *does*, not just what the
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.chrome import keybindings as kb
+from chimol.ui.input import keybindings as kb
 
 
 @pytest.fixture(autouse=True)
@@ -150,7 +150,7 @@ def test_the_settings_panel_offers_every_binding_as_an_editable_field():
     """"Adjust the keyboard bindings" is this: the panel walks the display
     config, so the rows exist without a hand-written control -- but they have
     to come out editable rather than as a read-only label."""
-    from chimol.chrome.panels.settings import build_model
+    from chimol.ui.panels.settings import build_model
 
     model = build_model(lambda *_a: None)
     rows = {s.key: s for s in model.settings if s.key.startswith("keys.")}

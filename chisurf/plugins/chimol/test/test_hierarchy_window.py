@@ -15,9 +15,9 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.core.hierarchy import HierarchyNode  # noqa: E402
+from chimol.core.model.hierarchy import HierarchyNode  # noqa: E402
 from chimol.plugins.hierarchy.window import HierarchyWindow  # noqa: E402
-from chimol.chrome.gui import InternalGui  # noqa: E402
+from chimol.ui.gui import InternalGui  # noqa: E402
 
 
 class _Recorder:
@@ -181,7 +181,7 @@ def test_it_says_so_when_there_is_no_tree():
 
     window = HierarchyWindow(_Viewer())
     painter = _Recorder()
-    from chimol.chrome.gui import Rect
+    from chimol.ui.gui import Rect
 
     window.draw(painter, Rect(0, 0, 300, 200))
     assert any("Nothing loaded" in text for text in painter.texts)
@@ -360,7 +360,7 @@ def test_a_tree_taller_than_the_window_gets_a_bar(panel):
     looking at.
     """
     window, gui, _applied = panel
-    from chimol.chrome.gui import Rect
+    from chimol.ui.gui import Rect
 
     window.draw(_Recorder(), Rect(0, 0, 300, 200))
     assert window._bar is None, "a tree that fits does not get a bar"
@@ -373,7 +373,7 @@ def test_a_tree_taller_than_the_window_gets_a_bar(panel):
 
 def test_dragging_the_bar_scrolls(panel):
     window, gui, _applied = panel
-    from chimol.chrome.gui import Rect
+    from chimol.ui.gui import Rect
 
     for molecule in window._root().children:
         window._expanded.add(id(molecule))

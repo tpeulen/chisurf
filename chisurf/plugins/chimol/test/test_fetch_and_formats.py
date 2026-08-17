@@ -17,7 +17,7 @@ import re
 
 import pytest
 
-from chimol.commands.loader import LoaderCommands
+from chimol.commands.builtin.loader import LoaderCommands
 
 
 def _repository_for(code: str) -> str:

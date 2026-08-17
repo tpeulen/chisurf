@@ -8,12 +8,12 @@ Declared in a ``.view.json`` as::
 The bound attribute may be:
 
 * ``bytes`` / ``bytearray`` / ``memoryview`` / a NumPy array -- shown directly;
-* a :class:`~chimol.cmtk.memory_editor.MemorySource`;
+* a :class:`~chimol.cmtk.widgets.memory_editor.MemorySource`;
 * a **list** of either, or a callable returning one -- which grows a picker
   above the dump, so one section can show a whole set of buffers.
 
 Leaving ``target`` off probes the running renderer instead
-(:mod:`chimol.core.memory_probe`) and lists what it holds in host memory
+(:mod:`chimol.core.services.memory_probe`) and lists what it holds in host memory
 and on the device, largest first, with the totals in the caption. That is the
 "where did the memory go" view, and it is the reason this section exists: the
 question used to be answerable only by adding a print statement and re-running,
@@ -76,7 +76,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
         self.editor = None
         self._host = None
         try:
-            from chimol.cmtk import memory_editor as me
+            from chimol.cmtk.widgets import memory_editor as me
             from chimol.cmtk.qt_host import ControlHost
 
             self.editor = me.MemoryEditor(
@@ -105,7 +105,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
     # -- sources -------------------------------------------------------- #
     def _gather(self) -> tuple[list, str]:
         """Return ``(sources, caption)`` for whatever this section is bound to."""
-        from chimol.cmtk import memory_editor as me
+        from chimol.cmtk.widgets import memory_editor as me
 
         if not self._target:
             return self._probe()
@@ -135,7 +135,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
     def _probe(self) -> tuple[list, str]:
         """Probe the running renderer for its RAM and VRAM blocks."""
         try:
-            from chimol.core import memory_probe
+            from chimol.core.services import memory_probe
         except ImportError as problem:
             return [], f"probe unavailable ({problem})"
 

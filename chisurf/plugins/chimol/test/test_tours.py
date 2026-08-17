@@ -35,7 +35,7 @@ import json
 
 import pytest
 
-from chimol.chrome.tours import TOUR_DIR, available_tours, load_tour
+from chimol.ui.tours import TOUR_DIR, available_tours, load_tour
 
 TOURS = [name for name, _title in available_tours()]
 

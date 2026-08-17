@@ -19,7 +19,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.core.view_state import pack_view_state, unpack_view_state
+from chimol.core.camera.view_state import pack_view_state, unpack_view_state
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]

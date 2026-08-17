@@ -20,53 +20,26 @@ from typing import Any
 STATE_DIR = pathlib.Path.home() / ".chisurf"
 STATE_FILE = STATE_DIR / "lumis_quest.json"
 
-#: Level thresholds, cumulative XP. Front-loaded so early levels come fast
-#: (the hook) and later levels take sustained effort (the retention).
+#: Game configuration loaded from ``data/game_state.json``.
+_CONFIG_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "game_state.json"
+_CFG = json.loads(_CONFIG_FILE.read_text(encoding="utf-8"))
+
+#: Level thresholds, cumulative XP. Loaded from ``data/game_state.json``.
 LEVELS: list[tuple[int, str]] = [
-    (0, "Initiate"),
-    (150, "Proofreader"),
-    (400, "Copy Editor"),
-    (850, "Senior Editor"),
-    (1700, "Documentation Wizard"),
-    (3200, "Sage of the Manual"),
-    (5500, "Lorekeeper"),
+    (e["xp"], e["title"]) for e in _CFG["levels"]
 ]
 
-#: Variable reward schedule. The reviewer does not know which roll they got
-#: until they sign off — the variable-ratio schedule that sustains engagement.
-#: (probability, low, high, label)
+#: Variable reward schedule. Loaded from ``data/game_state.json``.
 REWARD_TABLE: list[tuple[float, int, int, str]] = [
-    (0.60, 30, 50, "Standard review"),
-    (0.25, 60, 80, "Thorough review"),
-    (0.10, 100, 120, "Deep read"),
-    (0.04, 150, 180, "Critical insight"),
-    (0.01, 250, 300, "Golden review"),
+    (e["prob"], e["low"], e["high"], e["label"]) for e in _CFG["rewards"]
 ]
 
-#: Difficulty multipliers for section-level review.
-DIFFICULTY_MULTIPLIER: dict[str, float] = {
-    "easy": 1.0,
-    "medium": 1.25,
-    "hard": 1.5,
-    "expert": 2.0,
-}
+#: Difficulty multipliers. Loaded from ``data/game_state.json``.
+DIFFICULTY_MULTIPLIER: dict[str, float] = dict(_CFG["difficulty_multiplier"])
 
-#: Achievement definitions: (id, name, condition description).
+#: Achievement definitions. Loaded from ``data/game_state.json``.
 ACHIEVEMENTS: list[tuple[str, str, str]] = [
-    ("first_steps", "First Steps", "Review your first page"),
-    ("warming_up", "Warming Up", "3-day streak"),
-    ("week_warrior", "Week Warrior", "7-day streak"),
-    ("documented_devotion", "Documented Devotion", "30-day streak"),
-    ("completionist", "Completionist", "Every page in one tracked directory is reviewed"),
-    ("speed_reader", "Speed Reader", "Review 5 pages in one session"),
-    ("mentor", "Mentor", "Review 10 pages that were AI-reviewed only"),
-    ("bug_hunter", "Bug Hunter", "Submit 5 suggestions that get merged"),
-    ("renaissance_scholar", "Renaissance Scholar", "Review at least one page in every tracked directory"),
-    ("stale_slayer", "Stale Slayer", "Re-review 20 stale pages"),
-    ("equation_whisperer", "Equation Whisperer", "Review 10 sections tagged 'equations'"),
-    ("derivation_master", "Derivation Master", "Review 5 sections tagged 'derivations'"),
-    ("well_rounded", "Well-Rounded", "Review at least one section of every difficulty"),
-    ("lorekeeper", "Lorekeeper", "Reach level 7"),
+    (e["id"], e["name"], e["condition"]) for e in _CFG["achievements"]
 ]
 
 

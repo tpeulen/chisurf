@@ -36,7 +36,7 @@ def test_an_unmarked_animal_is_an_animal():
     hare = bestiary.Beast(bestiary.BY_KEY["hare"])
     assert not hare.marked
     assert hare.attack <= 5, "nothing to shine with"
-    assert hare.bleach_rate == 0.0, "and so nothing to burn"
+    assert hare.cost_rate == 0.0, "and so nothing to burn"
     assert hare.tier == 1
     assert hare.name == "hare"
 

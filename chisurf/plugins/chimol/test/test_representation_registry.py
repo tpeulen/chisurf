@@ -1,6 +1,6 @@
 """A plugin can add a representation, and ``show``/``hide``/``as`` treat it as a built-in.
 
-The registry (``chimol.core.representations``) is the plugin door into the
+The registry (``chimol.core.services.representations``) is the plugin door into the
 scene: a ``RepresentationSpec`` with a builder; the viewer keeps a per-object
 ``RepState`` (visible + atom mask); the commands scope it like a built-in.
 Pinned here: geometry appears in the scene when shown, disappears when hidden,
@@ -15,7 +15,11 @@ import numpy as np
 import pytest
 
 import chimol
-from chimol.core.representations import REPRESENTATIONS, BuildContext, RepresentationSpec
+from chimol.core.services.representations import (
+    REPRESENTATIONS,
+    BuildContext,
+    RepresentationSpec,
+)
 from chimol.plugins import load_plugins
 from chimol.render.scene import Geometry, Material, SceneObject
 

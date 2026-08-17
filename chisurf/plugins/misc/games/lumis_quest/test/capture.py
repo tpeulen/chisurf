@@ -94,11 +94,11 @@ def _stand_in(game, warden: bool = False, which: int = 0):
     Village
         Where she is standing.
     """
-    villages = [v for v in game.world.villages if bool(v.warden) is warden]
+    villages = [v for v in game.world.villages if bool(v.boss_seat) is warden]
     village = villages[which % len(villages)]
     col, row, width, height = village.rect
-    game.iris = [(col + width / 2) * TILE, (row + height * 0.62) * TILE]
-    game.host.camera.center[:] = game.iris
+    game.player_pos = [(col + width / 2) * TILE, (row + height * 0.62) * TILE]
+    game.host.camera.center[:] = game.player_pos
     return village
 
 
@@ -145,8 +145,8 @@ def main(argv: list[str]) -> int:
 
     def country(game):
         col, row, width, height = game.world.regions[0].rect
-        game.iris = [(col + width * 0.5) * TILE, (row + height * 0.5) * TILE]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [(col + width * 0.5) * TILE, (row + height * 0.5) * TILE]
+        game.host.camera.center[:] = game.player_pos
         game.view_height = 380.0
 
     capture(out, world, "lumis_country", country)
@@ -167,8 +167,8 @@ def main(argv: list[str]) -> int:
             key=lambda one: abs(one.x) + abs(one.y), default=None,
         )
         if beast is not None:
-            game.iris = [beast.x, beast.y + TILE * 3.0]
-        game.host.camera.center[:] = game.iris
+            game.player_pos = [beast.x, beast.y + TILE * 3.0]
+        game.host.camera.center[:] = game.player_pos
         game.view_height = 300.0
 
     capture(out, world, "lumis_wilds", wilds, frames=240)
@@ -206,8 +206,8 @@ def main(argv: list[str]) -> int:
 
     def warden(game):
         npc = next(one for one in game.people if one.kind == "warden")
-        game.iris = [npc.x, npc.y + 12.0]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [npc.x, npc.y + 12.0]
+        game.host.camera.center[:] = game.player_pos
         game._talk_to(npc)
         for _ in range(3):
             game.screen = game.runner.advance()
@@ -216,8 +216,8 @@ def main(argv: list[str]) -> int:
 
     def dark(game):
         col, row, width, height = game.world.regions[0].rect
-        game.iris = [(col + width * 0.5) * TILE, (row + height * 0.5) * TILE]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [(col + width * 0.5) * TILE, (row + height * 0.5) * TILE]
+        game.host.camera.center[:] = game.player_pos
         game._cross("dark")
 
     # Long enough for the shelved to have drifted and to be mid-hover, which is
@@ -240,10 +240,10 @@ def main(argv: list[str]) -> int:
         game.view_height = 150.0
         found = [one for one in game.people if one.kind == "wraith"]
         for offset, one in enumerate(found[:3]):
-            one.x = game.iris[0] + (offset - 1) * TILE * 1.6
-            one.y = game.iris[1] - TILE * 1.6
+            one.x = game.player_pos[0] + (offset - 1) * TILE * 1.6
+            one.y = game.player_pos[1] - TILE * 1.6
             one.home = (one.x, one.y)
-        game.host.camera.center[:] = game.iris
+        game.host.camera.center[:] = game.player_pos
 
     capture(out, world, "lumis_shelved", shelved, frames=90)
 
@@ -269,8 +269,8 @@ def main(argv: list[str]) -> int:
 
     def tavern(game):
         npc = next(one for one in game.people if one.role == "tavern")
-        game.iris = [npc.x, npc.y + 12.0]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [npc.x, npc.y + 12.0]
+        game.host.camera.center[:] = game.player_pos
         game._talk_to(npc)
         for _ in range(2):
             game.screen = game.runner.advance()
@@ -283,8 +283,8 @@ def main(argv: list[str]) -> int:
         pair = _pair_up(game, village)
         if pair is not None:
             game.society.begin(*pair, topic="marking")
-            game.iris = [pair[0].npc.x - 6.0, pair[0].npc.y + 40.0]
-            game.host.camera.center[:] = game.iris
+            game.player_pos = [pair[0].npc.x - 6.0, pair[0].npc.y + 40.0]
+            game.host.camera.center[:] = game.player_pos
         game.view_height = 260.0
 
     capture(out, world, "lumis_gossip", gossip)
@@ -295,8 +295,8 @@ def main(argv: list[str]) -> int:
         if pair is None:
             return
         game.society.begin(*pair, topic="probe")
-        game.iris = [pair[0].npc.x + 6.0, pair[0].npc.y + 16.0]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [pair[0].npc.x + 6.0, pair[0].npc.y + 16.0]
+        game.host.camera.center[:] = game.player_pos
         game._overhear()
 
     capture(out, world, "lumis_joinin", joining)
@@ -309,8 +309,8 @@ def main(argv: list[str]) -> int:
                        if one.kind == "lanternwright"), None)
         if vesper is None:
             return
-        game.iris = [vesper.x, vesper.y + 26.0]
-        game.host.camera.center[:] = game.iris
+        game.player_pos = [vesper.x, vesper.y + 26.0]
+        game.host.camera.center[:] = game.player_pos
         game.story.choose("discovery")
         game._talk_to(vesper)
         for _ in range(3):

@@ -140,7 +140,7 @@ check("esc_resets_scroll", gui._info_scroll == 0,
 app.cmd.do("help")
 app.draw_frame()
 gui.info_visible = True
-from chimol.chrome.gui import char_width
+from chimol.ui.gui import char_width
 rect = gui._info_rect
 cw = char_width(gui.FONT_PT)
 spot = (rect.x + gui.PAD + 2 * cw + 1, rect.y + gui.PAD + 3 * gui.INFO_ROW_H + 2)

@@ -119,7 +119,7 @@ class GameContext:
         return self.story.chosen_order
 
     @property
-    def has_lumi(self) -> bool:
+    def has_companion(self) -> bool:
         """Whether the hound travels with you.
 
         Returns
@@ -127,10 +127,10 @@ class GameContext:
         bool
             True once found.
         """
-        return self.story.has_lumi
+        return self.story.has_companion
 
-    @has_lumi.setter
-    def has_lumi(self, value: bool) -> None:
+    @has_companion.setter
+    def has_companion(self, value: bool) -> None:
         """Set whether the hound travels with you.
 
         Parameters
@@ -138,7 +138,7 @@ class GameContext:
         value : bool
             True once found.
         """
-        self.story.has_lumi = bool(value)
+        self.story.has_companion = bool(value)
 
     def room_counts(self) -> dict[str, int]:
         """How much of the corpus is in each state.

@@ -20,7 +20,7 @@ import pathlib
 
 import pytest
 
-from chimol.chrome import object_menus as om
+from chimol.ui.menus import objects as om
 from chimol.core.settings.config import _DISPLAY_CONFIG
 
 

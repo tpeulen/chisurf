@@ -1,6 +1,6 @@
 """The compute dispatcher: UI answers the mouse, work lands one frame later.
 
-The contract (`chimol.core.compute_dispatch`):
+The contract (`chimol.core.services.compute_dispatch`):
 
 * a drag's ticks are **immediate** -- the calling thread only moves UI state
   and bumps the chrome revision; the worst tick measured well under a
@@ -20,7 +20,7 @@ import time
 
 import pytest
 
-from chimol.core import compute_dispatch
+from chimol.core.services import compute_dispatch
 
 
 @pytest.fixture(autouse=True)

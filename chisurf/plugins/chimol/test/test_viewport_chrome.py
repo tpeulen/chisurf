@@ -26,7 +26,7 @@ import pytest
 pytest.importorskip("qtpy")
 
 from chimol.hosts.qt.window import _INITIALLY_HIDDEN_DOCKS
-from chimol.chrome.gui import InternalGui
+from chimol.ui.gui import InternalGui
 
 
 # --------------------------------------------------------------------------- #
@@ -186,7 +186,7 @@ def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
     the panel that is now the primary one. The command line is one row below it,
     so the entry goes *there*, with the placeholder selected.
     """
-    from chimol.chrome.object_menus import MenuEntry
+    from chimol.ui.menus.objects import MenuEntry
 
     window.resize(1200, 800)
     window.show()

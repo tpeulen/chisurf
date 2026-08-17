@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import tabs
+from chimol.cmtk.widgets import tabs
 
 
 class RecordingPainter:

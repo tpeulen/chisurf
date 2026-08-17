@@ -36,7 +36,7 @@ def window(qapp):
 
 
 def _grid(name: str, width: float):
-    from chimol.core.volume import VolumeGrid
+    from chimol.core.model.volume import VolumeGrid
 
     z, y, x = np.mgrid[-6:6, -6:6, -6:6]
     values = np.exp(-(x * x + y * y + z * z) / width).astype(np.float32)

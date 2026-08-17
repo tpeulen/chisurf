@@ -182,7 +182,7 @@ def test_every_array_field_is_classified():
     or masks with the wrong coordinates. So the list is written out -- and this
     test is what stops it going stale.
     """
-    from chimol.core.object_state import _MolViewObjectState
+    from chimol.core.model.object_state import _MolViewObjectState
 
     classified = set(ATOM_INDEXED_FIELDS) | set(NON_ATOM_INDEXED_FIELDS)
     unclassified = []

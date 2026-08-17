@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk.axis import Axis, nice_ticks
-from chimol.cmtk.plot import Plot, begin_plot
+from chimol.cmtk.widgets.axis import Axis, nice_ticks
+from chimol.cmtk.widgets.plot import Plot, begin_plot
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 

@@ -14,7 +14,7 @@ def test_a_run_round_trips(tmp_path):
     path = tmp_path / "run.json"
     state = save.RunState(
         position=(123.5, 456.5),
-        team=[("hare", 11, 40, "photostable"), ("beetle", 22, 5, None)],
+        team=[("hare", 11, 40, "photostable", 1, 0), ("beetle", 22, 5, None, 1, 0)],
         bodies=["fox", "newt"],
         labels=[33, 44],
         seals=["ember", "prism"],
@@ -95,7 +95,7 @@ def test_the_game_uses_the_save_path_it_was_given(qapp, tmp_path):
     game = OverworldGame(world=build_world(tmp_path / "docs"), save_path=run)
     chigame.GameHost(game, context, with_text=False, with_audio=False)
     game.finish_loading()
-    game.iris = [321.0, 654.0]
+    game.player_pos = [321.0, 654.0]
     game.save_run()
 
     assert run.is_file()

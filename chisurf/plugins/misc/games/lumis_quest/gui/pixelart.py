@@ -373,37 +373,37 @@ _SQUID_BEAST_B = [
 #: pack-art replacement asked for a bigger head on the *original* proportions,
 #: not a third design, so the hair/skin/tunic/core/blade palette characters
 #: are the same ones the original used.
-_IRIS_DOWN_A = [
+_PLAYER_DOWN_A = [
     ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AssssssssA...",
     "...AssississA...", "...AssssssssA...", "...aAssssssaa...", "....aassssaa....",
     "...ttTTTTTtt....", "..sttCCCCCtt.l..", "....TCccccCT.L..", "....TCccccCT....",
     "....TTTTTTyyy...", "....tt...tt.y...", "....ee...ee.....", "................",
 ]
-_IRIS_DOWN_B = [
+_PLAYER_DOWN_B = [
     ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AssssssssA...",
     "...AssississA...", "...AssssssssA...", "...aAssssssaa...", "....aassssaa....",
     "...ttTTTTTtt.l..", "...ttCCCCCttsL..", "...TCccccCT.....", "...sTCccccCT....",
     "....TTTTTTyyy...", "....tt.tt.......", ".....ee...ee....", "................",
 ]
-_IRIS_UP_A = [
+_PLAYER_UP_A = [
     ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AAAAAAAAAA...",
     "...AAAAAAAAAA...", "...AAAAAAAAAA...", "...aAAAAAAaa....", "....aaaaaaaa....",
     "...ttTTTTTtt....", "..sttCCCCCtt.l..", "....TCCCCCCT.L..", "....TCCCCCCT....",
     "....TTTTTTyyy...", "....tt...tt.y...", "....ee...ee.....", "................",
 ]
-_IRIS_UP_B = [
+_PLAYER_UP_B = [
     ".....aaaaaa.....", "....aAAAAAAa....", "...aAAAAAAAAa...", "...AAAAAAAAAA...",
     "...AAAAAAAAAA...", "...AAAAAAAAAA...", "...aAAAAAAaa....", "....aaaaaaaa....",
     "...ttTTTTTtt.l..", "...ttCCCCCttsL..", "...TCCCCCCT.....", "...sTCCCCCCT....",
     "....TTTTTTyyy...", "....tt.tt.......", ".....ee...ee....", "................",
 ]
-_IRIS_RIGHT_A = [
+_PLAYER_RIGHT_A = [
     ".....aaaaaa.....", "....aAAAAAa.....", "...aAAAAAAAs....", "...AAAAAsssA....",
     "...AAAssisA.....", "...AAAsssssA....", "...aAAssssaa....", ".....aaassaa....",
     "....tTTTTt......", "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..",
     "....TTTTTTyyl...", "....tt..tt.y....", "....ee..ee......", "................",
 ]
-_IRIS_RIGHT_B = [
+_PLAYER_RIGHT_B = [
     ".....aaaaaa.....", "....aAAAAAa.....", "...aAAAAAAAs....", "...AAAAAsssA....",
     "...AAAssisA.....", "...AAAsssssA....", "...aAAssssaa....", ".....aaassaa....",
     "....tTTTTt......", "...tTCCCCTts....", "...tTCcccCTs.l..", "....TCcccCT..L..",
@@ -411,25 +411,25 @@ _IRIS_RIGHT_B = [
 ]
 
 #: Lumi the dog: a four-legged companion whose body is the same kind of glow.
-_LUMI_RIGHT_A = [
+_COMPANION_RIGHT_A = [
     "................", "................", "................", "..u.........uu..",
     ".uUu.......uUUu.", ".uUUuuuuuuuUUUu.", ".uUUUUUUUUUUUUu.", "uUUpUUUUUUUUUUu.",
     "uUpUUUUUUUUUUUu.", ".uUUUUUUUUUUUu..", "..uUUuuuuuUUUu..", "..uu.u...u.uu...",
     "...u.u...u.u....", "...uUu...uUu....", "................", "................",
 ]
-_LUMI_RIGHT_B = [
+_COMPANION_RIGHT_B = [
     "................", "................", "................", "..u..........uu.",
     ".uUu........uUUu", ".uUUuuuuuuuUUUu.", ".uUUUUUUUUUUUUu.", "uUUpUUUUUUUUUUu.",
     "uUpUUUUUUUUUUUu.", ".uUUUUUUUUUUUu..", "..uUUuuuuuUUUu..", "...u.uu.uu.u....",
     "..u...u.u...u...", "..uUu.u.u.uUu...", "................", "................",
 ]
-_LUMI_DOWN_A = [
+_COMPANION_DOWN_A = [
     "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
     ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUpUUUUUpUu...", "..uUUUUUUUUUu...",
     "...uUUUpUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUu...uUu....",
     "...uUu...uUu....", "...uuu...uuu....", "................", "................",
 ]
-_LUMI_DOWN_B = [
+_COMPANION_DOWN_B = [
     "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
     ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUpUUUUUpUu...", "..uUUUUUUUUUu...",
     "...uUUUpUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "..uUu.....uUu...",
@@ -438,13 +438,13 @@ _LUMI_DOWN_B = [
 # Walking away: the same silhouette as the down frames with the eyes and nose
 # ('p') lifted -- the back of the head has neither, the same trick Iris's own
 # up-facing frames use on her face band.
-_LUMI_UP_A = [
+_COMPANION_UP_A = [
     "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
     ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...",
     "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUu...uUu....",
     "...uUu...uUu....", "...uuu...uuu....", "................", "................",
 ]
-_LUMI_UP_B = [
+_COMPANION_UP_B = [
     "................", "................", "..uu.......uu...", ".uUUu.....uUUu..",
     ".uUUUuuuuuUUUu..", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...", "..uUUUUUUUUUu...",
     "...uUUUUUUUu....", "...uUUUUUUUu....", "...uUUUUUUUu....", "..uUu.....uUu...",
@@ -810,15 +810,15 @@ SPRITES: dict[str, list[str]] = {
     # only ever called with a clear colour by the OVER_GROUND branch above.
     "big_tree": TERRAIN["tree"],
     "shadow": _SHADOW,
-    "iris_down_0": _IRIS_DOWN_A, "iris_down_1": _IRIS_DOWN_B,
-    "iris_up_0": _IRIS_UP_A, "iris_up_1": _IRIS_UP_B,
-    "iris_right_0": _IRIS_RIGHT_A, "iris_right_1": _IRIS_RIGHT_B,
-    "lumi_down_0": _LUMI_DOWN_A, "lumi_down_1": _LUMI_DOWN_B,
-    "lumi_up_0": _LUMI_UP_A, "lumi_up_1": _LUMI_UP_B,
-    "lumi_right_0": _LUMI_RIGHT_A, "lumi_right_1": _LUMI_RIGHT_B,
+    "iris_down_0": _PLAYER_DOWN_A, "iris_down_1": _PLAYER_DOWN_B,
+    "iris_up_0": _PLAYER_UP_A, "iris_up_1": _PLAYER_UP_B,
+    "iris_right_0": _PLAYER_RIGHT_A, "iris_right_1": _PLAYER_RIGHT_B,
+    "lumi_down_0": _COMPANION_DOWN_A, "lumi_down_1": _COMPANION_DOWN_B,
+    "lumi_up_0": _COMPANION_UP_A, "lumi_up_1": _COMPANION_UP_B,
+    "lumi_right_0": _COMPANION_RIGHT_A, "lumi_right_1": _COMPANION_RIGHT_B,
     # The dim hound waiting in the grass is drawn through the NPC path, which
     # names sprites by kind: these alias the down-facing frames.
-    "lumi_0": _LUMI_DOWN_A, "lumi_1": _LUMI_DOWN_B,
+    "lumi_0": _COMPANION_DOWN_A, "lumi_1": _COMPANION_DOWN_B,
     "villager_0": _VILLAGER_A, "villager_1": _VILLAGER_B,
     "townsfolk_0": _TOWNSFOLK_A, "townsfolk_1": _TOWNSFOLK_B,
     "healer_0": _HEALER_A, "healer_1": _HEALER_B,
@@ -915,7 +915,7 @@ def _over(top: np.ndarray, bottom: np.ndarray) -> np.ndarray:
     return out
 
 
-def build_atlas() -> tuple[
+def build_atlas(resolver=None) -> tuple[
     np.ndarray, dict[str, tuple[float, float, float, float]],
     dict[str, tuple[float, float]],
 ]:
@@ -941,6 +941,15 @@ def build_atlas() -> tuple[
     sprite's own uv rectangle covers only the top ``SIZE`` rows of a texture
     that may be taller than that.
 
+    Parameters
+    ----------
+    resolver : callable, optional
+        ``name -> RGBA array or None``, consulted *before* the authored
+        string art. This is how the shipped character sheets
+        (:mod:`.sheetart`) take over a name without the game's vocabulary
+        changing. When the resolver answers, it also names any extra sprites
+        the atlas should make room for via its own ``names()``.
+
     Returns
     -------
     tuple
@@ -954,8 +963,13 @@ def build_atlas() -> tuple[
     # A name may exist only in the big-art pack (a building has no string-art
     # fallback), so the atlas covers the union rather than assuming every
     # drawable name is a key of SPRITES.
-    names = sorted(set(SPRITES) | set(bigart.names()))
-    images = {name: sprite_image(name) for name in names}
+    extra_names = getattr(resolver, "names", None)
+    extra = extra_names() if extra_names is not None else ()
+    names = sorted(set(SPRITES) | set(bigart.names()) | set(extra))
+    resolve = getattr(resolver, "resolve", resolver)
+    resolved = {name: resolve(name) for name in names} if resolver is not None else {}
+    images = {name: resolved[name] if resolved.get(name) is not None else sprite_image(name)
+              for name in names}
     atlas_h = max(image.shape[0] for image in images.values())
     total_w = sum(image.shape[1] + 2 * _PAD for image in images.values())
     atlas = np.zeros((atlas_h, total_w, 4), dtype=np.uint8)

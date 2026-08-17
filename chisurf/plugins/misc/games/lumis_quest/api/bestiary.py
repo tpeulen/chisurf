@@ -37,9 +37,14 @@ Qt-free and engine-free.
 from __future__ import annotations
 
 import dataclasses
+import json
+import pathlib
 import random
 
 from .roster import Creature
+
+#: Where the bestiary data lives.
+_DATA_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "bestiary.json"
 
 #: Where a body is found. Terrain the game already paints decides which of
 #: these can turn up: meadow and wood in the open country, water at the moat
@@ -50,6 +55,18 @@ WOOD = "wood"
 WATER = "water"
 RUIN = "ruin"
 WELLSPRING = "wellspring"
+
+
+def _load() -> dict:
+    """Read the bestiary JSON, cached on the module after first load."""
+    return json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+
+
+_DATA = _load()
+
+#: Battle config loaded for the cost-rate rules (action_cost + cost_rules).
+_BATTLE_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "battle.json"
+_BATTLE_CFG = json.loads(_BATTLE_FILE.read_text(encoding="utf-8"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -90,59 +107,18 @@ class Species:
     lore: str
 
 
-#: The bodies. Real animals, with stat lines that follow the animal rather than
-#: a curve: the fast ones are frail, the armoured ones are slow, and the three
-#: at the bottom are the animals fluorescence was actually *taken from* — the
-#: crystal jelly that gave up GFP, the disc coral behind every red protein, the
-#: sea anemone behind the cherries. They are the only bodies that were shining
-#: before anyone marked anything.
-SPECIES: tuple[Species, ...] = (
-    Species("hare", "hare", 0.85, 0.80, 1.60, MEADOW, "bolt",
-            "Ears up before you have finished arriving."),
-    Species("vole", "vole", 0.70, 0.70, 1.30, MEADOW, "burrow",
-            "Lives in a tunnel it can reach from anywhere in the field."),
-    Species("moth", "moth", 0.60, 1.15, 1.25, MEADOW, "phototaxis",
-            "Goes to the brightest thing in the room. Always has."),
-    Species("mantis", "mantis", 0.75, 1.30, 1.10, MEADOW, "ambush",
-            "Holds perfectly still until the first exchange is already over."),
-    Species("adder", "adder", 0.80, 1.35, 1.00, MEADOW, "venom",
-            "Strikes once and lets the strike keep working."),
-    Species("fox", "fox", 1.00, 1.10, 1.20, WOOD, "cunning",
-            "Watches how you work, then declines to be where you are."),
-    Species("owl", "owl", 0.90, 1.20, 1.15, WOOD, "silent",
-            "Arrives without the sound that should have preceded it."),
-    Species("boar", "boar", 1.50, 1.25, 0.70, WOOD, "charge",
-            "One direction, committed to entirely."),
-    Species("beetle", "beetle", 1.20, 0.85, 0.60, WOOD, "chitin",
-            "Wearing most of a suit of armour and in no hurry."),
-    Species("crow", "crow", 0.85, 1.00, 1.35, WOOD, "mimicry",
-            "Has heard what you sound like and can do it back."),
-    Species("shrew", "shrew", 0.60, 0.95, 1.45, WOOD, "frenzy",
-            "Must eat constantly or die, and fights like it."),
-    Species("newt", "newt", 1.05, 0.85, 0.80, WATER, "regrowth",
-            "Grows the limb back. Grows most things back."),
-    Species("carp", "carp", 1.35, 0.75, 0.65, WATER, "deepwater",
-            "Old, cold, and extremely difficult to hurry."),
-    Species("heron", "heron", 0.95, 1.20, 1.05, WATER, "spearfall",
-            "Stands in the shallows for an hour and then is very fast once."),
-    Species("otter", "otter", 1.10, 1.00, 1.20, WATER, "play",
-            "Treats the whole encounter as a game it is winning."),
-    Species("eel", "eel", 0.90, 1.30, 0.95, WATER, "discharge",
-            "Holds a charge it did not ask anybody about."),
-    Species("toad", "toad", 1.25, 0.80, 0.55, WATER, "mucus",
-            "Coated in something that makes every grip fail."),
-    Species("bat", "bat", 0.70, 1.05, 1.40, RUIN, "echo",
-            "Does not need the light to know exactly where you are."),
-    Species("rat", "rat", 0.75, 0.90, 1.25, RUIN, "frenzy",
-            "Has outlived several better ideas about what should live here."),
-    Species("olm", "olm", 1.10, 0.95, 0.70, RUIN, "regrowth",
-            "A blind cave salamander, pale as a root and older than the cave."),
-    Species("jelly", "crystal jelly", 1.60, 1.40, 0.50, WELLSPRING, "wellspring",
-            "It was glowing on its own long before any of this. Green, at the rim."),
-    Species("coral", "disc coral", 1.80, 1.30, 0.30, WELLSPRING, "wellspring",
-            "A colony that has been red since before the word existed."),
-    Species("anemone", "sea anemone", 1.50, 1.45, 0.40, WELLSPRING, "wellspring",
-            "Waves in a current nobody else can feel, and burns cherry-dark."),
+#: The bodies, loaded from ``data/bestiary.json``. Real animals, with stat
+#: lines that follow the animal rather than a curve: the fast ones are frail,
+#: the armoured ones are slow, and the three at the bottom are the animals
+#: fluorescence was actually *taken from*.
+SPECIES: tuple[Species, ...] = tuple(
+    Species(
+        key=e["key"], name=e["name"],
+        vitality=float(e["vitality"]), power=float(e["power"]),
+        agility=float(e["agility"]), habitat=e["habitat"],
+        trait=e["trait"], lore=e["lore"],
+    )
+    for e in _DATA["species"]
 )
 
 #: By key, for saves and lookups.
@@ -168,82 +144,33 @@ class Trait:
     text: str
 
 
-#: What each body does. The fight reads these by key; nothing here is a stat
-#: bonus wearing a name.
+#: What each body does, loaded from ``data/bestiary.json``. The fight reads
+#: these by key; nothing here is a stat bonus wearing a name.
 TRAITS: dict[str, Trait] = {
-    "bolt": Trait("bolt", "Bolt", "Withdrawing always works, and it is faster when hurt."),
-    "burrow": Trait("burrow", "Burrow", "Sometimes simply is not there when the shot lands."),
-    "phototaxis": Trait("phototaxis", "Phototaxis", "Hits a bright label much harder."),
-    "ambush": Trait("ambush", "Ambush", "The first strike of a fight lands double."),
-    "venom": Trait("venom", "Venom", "The target keeps bleaching after the hit."),
-    "cunning": Trait("cunning", "Cunning", "Half again as likely to get a label off cleanly."),
-    "silent": Trait("silent", "Silent", "Cannot be struck first, and hits a little harder."),
-    "charge": Trait("charge", "Charge", "Much more damage, at twice the bleaching."),
-    "chitin": Trait("chitin", "Chitin", "Takes a third less damage."),
-    "mimicry": Trait("mimicry", "Mimicry", "Copies your band, so you are never strong against it."),
-    "frenzy": Trait("frenzy", "Frenzy", "Strikes twice for half each."),
-    "regrowth": Trait("regrowth", "Regrowth", "Recovers a little every turn."),
-    "deepwater": Trait("deepwater", "Deep Water", "Bleaches at half the rate."),
-    "spearfall": Trait("spearfall", "Spearfall", "Always moves first on turn one."),
-    "play": Trait("play", "Play", "Recovers when swapped in, and is easy to befriend."),
-    "discharge": Trait("discharge", "Discharge", "Sometimes shocks the target into a lost turn."),
-    "mucus": Trait("mucus", "Mucus", "Bright labels do much less damage to it."),
-    "echo": Trait("echo", "Echo", "Finds a target the fitted filter has blinded you to."),
-    "wellspring": Trait("wellspring", "Wellspring", "Cannot be bleached out in one blow."),
-    # Granted by the label, not the body. Every one of these is a real property
-    # of the dye, which is the point: the features come from the marking.
-    "shiftwalk": Trait("shiftwalk", "Shiftwalk",
-                       "A wide Stokes shift -- hard to jam, and it dodges."),
-    "bloom": Trait("bloom", "Bloom", "High yield: more damage, and it burns down fast."),
-    "slowburn": Trait("slowburn", "Slow Burn", "Low yield: dim, but it lasts."),
-    "barrel": Trait("barrel", "Barrel", "A protein shell takes the edge off a hit."),
-    "nightsight": Trait("nightsight", "Nightsight", "Far-red: moves first against anything bluer."),
-    "hardlight": Trait("hardlight", "Hard Light", "Blue and violent: more damage, more bleaching."),
-    "unmeasured": Trait("unmeasured", "Unmeasured",
-                        "Stats are class defaults -- its damage is unpredictable."),
-    # Fixed in at the bench, not grown or worn -- see .crafting. Real
-    # single-molecule antifade and passivation reagents, same rule as the
-    # label traits above: nothing here is an invented stat.
-    "photostable": Trait("photostable", "Antifade Cocktail",
-                         "Trolox and an oxygen scavenger: bleaches much slower."),
-    "unblinking": Trait("unblinking", "Triplet Quencher",
-                        "A reducing-and-oxidizing system: bleaches slower still."),
-    "shielded": Trait("shielded", "Passivation Coat",
-                      "A blocking protein coat: bleaches a little slower."),
-    "turn_on": Trait("turn_on", "Photoactivation Label",
-                     "Dark until struck -- the hit that lands lights it, "
-                     "and its own next hit lands much harder."),
+    k: Trait(key=k, name=e["name"], text=e["text"])
+    for k, e in _DATA["traits"].items()
 }
 
-#: Emission band -> the name a marked animal goes by. A player learns to read
-#: "Garnet" as 625-660 nm without ever being told a number.
-BANDS: tuple[tuple[float, str], ...] = (
-    (450.0, "Violet"),
-    (480.0, "Azure"),
-    (505.0, "Cyan"),
-    (540.0, "Verdant"),
-    (565.0, "Gold"),
-    (590.0, "Ember"),
-    (625.0, "Crimson"),
-    (660.0, "Garnet"),
-    (1e9, "Umbral"),
+#: Emission band, loaded from ``data/bestiary.json``.
+BANDS: tuple[tuple[float, str], ...] = tuple(
+    (float(edge), name) for edge, name in _DATA["bands"]
 )
-
 #: Quantum yield above which a label counts as bright, and below which it counts
 #: as dim. Several traits key off these, so they live in one place.
-BRIGHT_QY = 0.70
-DIM_QY = 0.30
+_th = _DATA["thresholds"]
+BRIGHT_QY = float(_th["bright_qy"])
+DIM_QY = float(_th["dim_qy"])
 
 #: Stokes shift, in nm, above which a label is hard to jam.
-WIDE_SHIFT_NM = 80.0
+WIDE_SHIFT_NM = float(_th["wide_shift_nm"])
 
 #: Emission bounds for the two ends of the spectrum that behave differently.
-FAR_RED_NM = 620.0
-DEEP_BLUE_NM = 470.0
+FAR_RED_NM = float(_th["far_red_nm"])
+DEEP_BLUE_NM = float(_th["deep_blue_nm"])
 
 #: Grade boundaries between tiers. Derived, not assigned: a beast's grade is
 #: its brightness against its stamina, so the ladder measures the roster.
-TIER_BOUNDS: tuple[float, ...] = (0.32, 0.46, 0.60, 0.76)
+TIER_BOUNDS: tuple[float, ...] = tuple(float(v) for v in _th["tier_bounds"])
 
 
 def band_name(emission_nm: float) -> str:
@@ -428,36 +355,25 @@ class Beast:
         return speed
 
     @property
-    def bleach_rate(self) -> float:
-        """Fraction of its own budget one shot costs.
+    def cost_rate(self) -> float:
+        """Fraction of its own budget one action costs.
+
+        The base rate and every trait multiplier are declared in
+        ``data/battle.json`` under ``action_cost`` and ``cost_rules``, so
+        changing how fast a trait burns is editing JSON, not this code.
 
         Returns
         -------
         float
-            0 for an unmarked animal, which cannot shine and so cannot bleach.
+            0 for an unmarked animal, which cannot act.
         """
         if self.label is None:
             return 0.0
-        rate = 0.045 * (0.6 + self.label.quantum_yield)
-        if "deepwater" in self.traits:
-            rate *= 0.5
-        if "slowburn" in self.traits:
-            rate *= 0.6
-        if "bloom" in self.traits:
-            rate *= 1.5
-        if "charge" in self.traits:
-            rate *= 2.0
-        if "hardlight" in self.traits:
-            rate *= 1.3
-        # Bench reagents, not photophysics of the label or the body -- the
-        # real thing they are named for is exactly this: protecting a dye
-        # against its own bleaching, from outside it.
-        if "photostable" in self.traits:
-            rate *= 0.55
-        if "unblinking" in self.traits:
-            rate *= 0.7
-        if "shielded" in self.traits:
-            rate *= 0.85
+        ac = _BATTLE_CFG["action_cost"]
+        rate = float(ac["base_rate"]) * (float(ac["qy_factor"]) + self.label.quantum_yield)
+        for trait_key, multiplier in _BATTLE_CFG["cost_rules"].items():
+            if trait_key in self.traits:
+                rate *= float(multiplier)
         return rate
 
     @property

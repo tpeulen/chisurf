@@ -499,7 +499,7 @@ def test_the_disulfide_expression_is_a_selection_chimol_can_evaluate():
     selection engine answers it -- and that it narrows to *bridged* cysteines
     rather than every one of them.
     """
-    from chimol.chrome.object_menus import _DISULFIDE_SHOW
+    from chimol.ui.menus.objects import _DISULFIDE_SHOW
 
     assert "bound_to" in _DISULFIDE_SHOW and "byres" in _DISULFIDE_SHOW
     assert _DISULFIDE_SHOW.count("{sele}") == 2

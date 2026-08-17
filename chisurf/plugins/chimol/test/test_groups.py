@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-from chimol.chrome.object_menus import OBJECT_MENUS, targets_for
+from chimol.ui.menus.objects import OBJECT_MENUS, targets_for
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -81,7 +81,7 @@ def _rows(win):
 
     Read from the in-viewport panel rather than a ``QListWidget``. The Qt
     object dock this used to inspect is gone; the panel that replaced it holds
-    the same list as :class:`~chimol.chrome.gui.GuiRow` records,
+    the same list as :class:`~chimol.ui.gui.GuiRow` records,
     which is a better thing to assert against anyway -- it is the state the
     renderer draws from, not a widget mirroring it.
 

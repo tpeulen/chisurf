@@ -37,7 +37,7 @@ def loaded(qapp):
     """Build a window with a small map, its view model, and the panel."""
     from chimol.hosts.qt.window import MolViewPluginWindow
     from chimol.plugins.density.window import DensityWindow
-    from chimol.core.volume import VolumeGrid
+    from chimol.core.model.volume import VolumeGrid
 
     win = MolViewPluginWindow()
     win.resize(900, 640)
@@ -184,7 +184,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
     viewer.update_view = counting_update
     viewer.set_volume_levels = recording_set
     try:
-        from chimol.core import compute_dispatch
+        from chimol.core.services import compute_dispatch
 
         start = _marker_x(panel, model)
         gui.mouse_press(start, plot.y + plot.h / 2)
@@ -269,7 +269,7 @@ def test_the_panel_says_so_when_there_is_no_map(qapp):
             def text(self, x, y, w, h, align, text, colour):
                 said.append(text)
 
-        from chimol.chrome.gui import Rect
+        from chimol.ui.gui import Rect
 
         panel.draw(_Text(), Rect(0, 0, 300, 200))
         assert any("No map loaded" in line for line in said)
@@ -526,7 +526,7 @@ def test_subdivision_quadruples_and_welds():
 def test_smoothing_relaxes_noise_without_moving_the_shape():
     """surface_smoothing pulls the noise in while the mean radius holds."""
     from chimol.geometry.refine import smooth_vertex_positions
-    from chimol.core.volume import VolumeGrid
+    from chimol.core.model.volume import VolumeGrid
 
     rng = np.random.default_rng(3)
     z, y, x = np.mgrid[-16:16, -16:16, -16:16]
@@ -594,7 +594,7 @@ def test_the_panel_offers_the_quality_row(loaded):
 # --------------------------------------------------------------------------- #
 def _speckled_map():
     """One big blob plus far-flung single-voxel speckles -- dust by design."""
-    from chimol.core.volume import VolumeGrid
+    from chimol.core.model.volume import VolumeGrid
 
     z, y, x = np.mgrid[-20:20, -20:20, -20:20]
     values = np.exp(-(x * x + y * y + z * z) / 60.0).astype(np.float32)
@@ -659,7 +659,7 @@ def test_hide_dust_is_a_map_setting_and_show_dust_clears_it(qapp):
 
 
 def test_volume_gaussian_adds_a_smoothed_copy(qapp):
-    from chimol.core.volume import VolumeGrid
+    from chimol.core.model.volume import VolumeGrid
 
     view, cmd, messages, errors = _shell(qapp)
     z, y, x = np.mgrid[-14:14, -14:14, -14:14]
@@ -675,7 +675,7 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     ]
     assert any("gaussian" in str(n) for n in names), names
 
-    from chimol.core.volume import gaussian_filtered
+    from chimol.core.model.volume import gaussian_filtered
 
     smoothed = gaussian_filtered(grid, 1.5)
     assert smoothed.values.shape == grid.values.shape

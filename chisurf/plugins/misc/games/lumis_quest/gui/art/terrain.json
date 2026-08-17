@@ -15,10 +15,26 @@
     "sand",
     "water",
     "water2",
+    "animal_0",
+    "animal_1",
+    "beast_0",
+    "beast_1",
+    "emissary_0",
+    "emissary_1",
+    "healer_0",
+    "healer_1",
+    "keeper_0",
+    "keeper_1",
+    "ninja_beast_0",
+    "ninja_beast_1",
+    "samurai_beast_0",
+    "samurai_beast_1",
     "townsfolk_0",
     "townsfolk_1",
     "villager_0",
     "villager_1",
+    "warden_0",
+    "warden_1",
     "flowers",
     "rock"
   ],
@@ -93,6 +109,76 @@
       6,
       23
     ],
+    "animal_0": [
+      "pig/pig",
+      0,
+      0
+    ],
+    "animal_1": [
+      "pig/pig",
+      1,
+      0
+    ],
+    "beast_0": [
+      "pig/pig",
+      0,
+      0
+    ],
+    "beast_1": [
+      "pig/pig",
+      1,
+      0
+    ],
+    "emissary_0": [
+      "samurai_blue/sprite",
+      1,
+      0
+    ],
+    "emissary_1": [
+      "samurai_blue/sprite",
+      1,
+      1
+    ],
+    "healer_0": [
+      "samurai_blue/sprite",
+      0,
+      2
+    ],
+    "healer_1": [
+      "samurai_blue/sprite",
+      0,
+      3
+    ],
+    "keeper_0": [
+      "samurai_green/samurai_green",
+      0,
+      2
+    ],
+    "keeper_1": [
+      "samurai_green/samurai_green",
+      0,
+      3
+    ],
+    "ninja_beast_0": [
+      "ninja_blue/sprite",
+      0,
+      1
+    ],
+    "ninja_beast_1": [
+      "ninja_blue/sprite",
+      0,
+      3
+    ],
+    "samurai_beast_0": [
+      "samurai_green/samurai_green",
+      0,
+      1
+    ],
+    "samurai_beast_1": [
+      "samurai_green/samurai_green",
+      0,
+      3
+    ],
     "townsfolk_0": [
       "samurai_blue/sprite",
       0,
@@ -112,6 +198,16 @@
       "samurai_green/samurai_green",
       0,
       1
+    ],
+    "warden_0": [
+      "samurai_green/samurai_green",
+      0,
+      4
+    ],
+    "warden_1": [
+      "samurai_blue/sprite",
+      0,
+      4
     ],
     "flowers": [
       "grass/grass_3.png"

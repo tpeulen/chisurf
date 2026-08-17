@@ -21,7 +21,7 @@ from chimol.io.mesh_export import (
     write_stl,
     write_wrl,
 )
-from chimol.core.volume import VolumeGrid
+from chimol.core.model.volume import VolumeGrid
 
 
 @pytest.fixture(scope="session")

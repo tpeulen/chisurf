@@ -195,8 +195,8 @@ def test_atom_selection_merges_like_the_residue_one(session):
 
 def test_the_block_row_cycles_and_is_hit_testable(session):
     """The row was drawn and unreachable, which is what made the word a label."""
-    from chimol.chrome.mouse_modes import SELECTION_LEVELS
-    from chimol.chrome.gui import InternalGui
+    from chimol.ui.input.mouse_modes import SELECTION_LEVELS
+    from chimol.ui.gui import InternalGui
 
     sent: list[str] = []
     gui = InternalGui(run_command=sent.append)

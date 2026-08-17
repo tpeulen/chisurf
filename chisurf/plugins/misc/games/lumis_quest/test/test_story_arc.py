@@ -96,13 +96,13 @@ def test_a_fresh_run_starts_asleep_and_without_the_hound(world):
     """Act Zero: nothing is given away at the door."""
     story, _ = _arc(world)
     assert story.current.key == "wake"
-    assert not story.has_lumi
+    assert not story.has_companion
 
     story.witness("wake")
     assert story.current.key == "the-hound"
 
     story.witness("the-hound")
-    story.has_lumi = True
+    story.has_companion = True
     assert story.current.key == "the-marked"
 
 
@@ -121,7 +121,7 @@ def test_the_work_counts_from_the_pledge_not_from_the_start(world):
     story, _ = _arc(world)
     for key in ("wake", "the-hound"):
         story.witness(key)
-    story.has_lumi = True
+    story.has_companion = True
     story.witness("the-marked")
     story.unbound = 1
     world.rooms[0].state = SETTLED
@@ -184,7 +184,7 @@ def test_the_whole_arc_can_actually_be_walked(world):
     hound = next(one for one in cast if one.role == "lumi")
     play("elder", who=elder.name, lines={"lines": elder.dialogue})
     play("lumi", who=hound.name, lines={"lines": hound.dialogue})
-    assert story.has_lumi
+    assert story.has_companion
     assert story.current.key == "the-marked"
 
     # Act One: meet a marked animal, take a label off it, see both kinds of
@@ -223,7 +223,7 @@ def test_the_whole_arc_can_actually_be_walked(world):
     vesper = next((one for one in dark if one.kind == "lanternwright"), None)
     assert vesper is not None, "nobody is standing at the tower door"
     play("lanternwright", who=vesper.name,
-         lines={"lines": story_api.LANTERNWRIGHT, "reply": (story.reply,)})
+         lines={"lines": story_api.ANTAGONIST_LINES, "reply": (story.reply,)})
     assert story.current is None, "the arc has to end"
     assert story.act == (len(story_api.BEATS), len(story_api.BEATS))
 

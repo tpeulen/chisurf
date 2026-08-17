@@ -349,7 +349,7 @@ def test_the_chrome_routes_a_window_right_press(session):
     gui = viewer.gui
     panel = viewer.gui.panels["density"]
     _draw_rows(panel, gui)
-    from chimol.chrome.gui import _WINDOW_BODY
+    from chimol.ui.gui import _WINDOW_BODY
 
     row1 = panel._row_boxes[0][0]
     oid1 = panel._row_boxes[0][1]

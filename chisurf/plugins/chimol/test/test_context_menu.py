@@ -11,8 +11,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.chrome.object_menus import OBJECT_MENUS  # noqa: E402
-from chimol.chrome.gui import GuiRow, InternalGui  # noqa: E402
+from chimol.ui.menus.objects import OBJECT_MENUS  # noqa: E402
+from chimol.ui.gui import GuiRow, InternalGui  # noqa: E402
 
 SIZE = (900, 620)
 
@@ -68,7 +68,7 @@ def test_a_submenu_entry_runs_against_the_target(gui):
 
 def test_the_target_is_quoted_when_it_needs_to_be():
     """An EMDB map is called `EMD-3061`, which the selection grammar splits."""
-    from chimol.chrome.object_menus import quote_selection_name
+    from chimol.ui.menus.objects import quote_selection_name
 
     ran: list[str] = []
     panel = InternalGui(run_command=ran.append)

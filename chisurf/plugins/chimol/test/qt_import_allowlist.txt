@@ -7,7 +7,7 @@
 # QPainter half of the painter seam; `cmtk/qt_host.py` hosts a
 # `hosts/qt/*` and `hosts/qt/wgpu_view.py` are the embedding window and are expected
 # `code_editor`/`memory_editor` custom sections embed a chimol control
-# all. `commands/exporting.py` and `commands/inspect.py` are commands that open a Qt
+# all. `commands/builtin/exporting.py` and `commands/builtin/inspect.py` are commands that open a Qt
 # chimol runs in three hosts and only one of them has Qt: the plugin. The other
 # constructor, same reason as qt_painter.py) and is the seam AutoForm's
 # convenience -- typing the command still works with no Qt binding present.
@@ -23,7 +23,7 @@ hosts/qt/menu_bar.py
 hosts/qt/window.py
 hosts/qt/rmf_panel.py
 hosts/qt/settings_table.py
-commands/inspect.py
+commands/builtin/inspect.py
 cmtk/qt_host.py
 cmtk/qt_painter.py
 hosts/qt/overlay.py

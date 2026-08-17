@@ -318,7 +318,7 @@ class TestImpostorsOnTheGpu:
         in a single-column render.
         """
         from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         centre = np.zeros((1, 3), dtype=np.float32)
         radius = np.array([[4.0]], dtype=np.float32)
@@ -381,7 +381,7 @@ class TestImpostorsOnTheGpu:
         near sphere's own colour covers fewer pixels than its full disc.
         """
         from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
-        from chimol.core.view_state import pack_view_state
+        from chimol.core.camera.view_state import pack_view_state
 
         # Overlapping, and the far one offset sideways so it emerges.
         geom = PackedGeometry(

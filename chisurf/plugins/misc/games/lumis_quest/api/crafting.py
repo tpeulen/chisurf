@@ -19,6 +19,11 @@ Qt-free and engine-free.
 from __future__ import annotations
 
 import dataclasses
+import json
+import pathlib
+
+_DATA_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "crafting.json"
+_DATA = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
 
 
 @dataclasses.dataclass(frozen=True)
@@ -41,28 +46,11 @@ class Material:
     found: str
 
 
-#: Real single-molecule-fluorescence sample-prep reagents, not invented ones.
+#: Real single-molecule-fluorescence sample-prep reagents, loaded from
+#: ``data/crafting.json``.
 MATERIALS: dict[str, Material] = {
-    "trolox": Material(
-        "trolox", "Trolox",
-        "a rare drop from a beast defeated in the field",
-    ),
-    "godcat": Material(
-        "godcat", "Glucose Oxidase",
-        "a rarer drop from a beast defeated in the field",
-    ),
-    "roxs": Material(
-        "roxs", "ROXS Mix",
-        "cut from marsh and garden tiles, like grass",
-    ),
-    "bsa": Material(
-        "bsa", "BSA",
-        "cut from marsh and garden tiles, like grass",
-    ),
-    "pagfp": Material(
-        "pagfp", "PA-GFP",
-        "a rare drop from a beast defeated in the field",
-    ),
+    k: Material(key=k, name=e["name"], found=e["found"])
+    for k, e in _DATA["materials"].items()
 }
 
 
@@ -86,24 +74,11 @@ class Recipe:
     inputs: tuple[tuple[str, int], ...]
 
 
-#: The gold-standard smFRET antifade cocktail (Trolox + an oxygen-scavenging
-#: enzyme), ROXS (a reducing-and-oxidizing system that suppresses blinking),
-#: plain surface passivation with a blocking protein, and a photoactivatable
-#: label -- dark until struck with the activating light, the same way PA-GFP
-#: and its relatives are dark until switched on for real.
+#: Loaded from ``data/crafting.json``.
 RECIPES: dict[str, Recipe] = {
-    "photostable": Recipe(
-        "photostable", "Antifade Cocktail", inputs=(("trolox", 2), ("godcat", 1)),
-    ),
-    "unblinking": Recipe(
-        "unblinking", "Triplet Quencher", inputs=(("roxs", 2), ("trolox", 1)),
-    ),
-    "shielded": Recipe(
-        "shielded", "Passivation Coat", inputs=(("bsa", 3),),
-    ),
-    "turn_on": Recipe(
-        "turn_on", "Photoactivation Label", inputs=(("pagfp", 2),),
-    ),
+    k: Recipe(key=k, name=e["name"],
+              inputs=tuple((inp[0], inp[1]) for inp in e["inputs"]))
+    for k, e in _DATA["recipes"].items()
 }
 
 

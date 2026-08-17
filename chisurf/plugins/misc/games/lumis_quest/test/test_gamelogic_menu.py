@@ -17,13 +17,15 @@ def test_gamelogic_tab_presence_and_menu_rows(game):
     assert "GAMELOGIC" in game.TABS
     game.menu_tab = game.TABS.index("GAMELOGIC")
     rows = game._menu_rows()
-    assert len(rows) == 9
+    assert len(rows) == 13
     assert "soundtrack:" in rows[0]
     assert "enemy aggro:" in rows[1]
-    assert "action combat:" in rows[2]
-    assert "particle effects:" in rows[3]
-    assert "crt retro shader:" in rows[4]
-    assert "ui accent tone:" in rows[5]
+    assert "sprint boost:" in rows[2]
+    assert "encounter rate:" in rows[3]
+    assert "action combat:" in rows[6]
+    assert "particle effects:" in rows[7]
+    assert "crt retro shader:" in rows[8]
+    assert "ui accent tone:" in rows[9]
 
 
 def test_gamelogic_confirm_and_stepping(game):
@@ -42,26 +44,36 @@ def test_gamelogic_confirm_and_stepping(game):
     game._gamelogic_confirm(direction=1)
     assert pytest.approx(game.enemy_aggro_radius) == 5.0
 
-    # Row 2: Action combat checkbox
+    # Row 2: Sprint multiplier slider
     game.menu_row = 2
+    game._gamelogic_confirm(direction=1)
+    assert pytest.approx(game.sprint_multiplier) == 2.8
+
+    # Row 3: Encounter rate slider
+    game.menu_row = 3
+    game._gamelogic_confirm(direction=1)
+    assert pytest.approx(game.encounter_rate) == 1.1
+
+    # Row 6: Action combat checkbox
+    game.menu_row = 6
     initial_combat = game.action_combat_enabled
     game._gamelogic_confirm()
     assert game.action_combat_enabled is not initial_combat
 
-    # Row 3: Particle effects checkbox
-    game.menu_row = 3
+    # Row 7: Particle effects checkbox
+    game.menu_row = 7
     initial_fx = game.particle_fx_enabled
     game._gamelogic_confirm()
     assert game.particle_fx_enabled is not initial_fx
 
-    # Row 4: CRT retro shader checkbox
-    game.menu_row = 4
+    # Row 8: CRT retro shader checkbox
+    game.menu_row = 8
     initial_crt = game.crt_filter_enabled
     game._gamelogic_confirm()
     assert game.crt_filter_enabled is not initial_crt
 
-    # Row 5: UI accent tone swatch
-    game.menu_row = 5
+    # Row 9: UI accent tone swatch
+    game.menu_row = 9
     game._gamelogic_confirm(direction=1)
     assert game.ui_accent_tone == "Cyan"
 

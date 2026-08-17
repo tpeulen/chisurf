@@ -43,7 +43,7 @@ from .tiles import (
     SHOP,
     SHRINE,
     SIGN,
-    SMITHY,
+    SERVICE_SMITHYY,
     STALL,
     TAVERN,
     WALL,
@@ -73,21 +73,21 @@ VILLAGE_MAX = 6
 PREMISES_FOR: dict[str, tuple[int, ...]] = {
     "hamlet": (WELL,),
     "village": (TAVERN, SHOP),
-    "town": (TAVERN, SHOP, SMITHY, SHRINE),
+    "town": (TAVERN, SHOP, SERVICE_SMITHYY, SHRINE),
 }
 
 #: Landmark key for each premises tile, and the words the world uses for it.
 PREMISES_KEY: dict[int, str] = {
     TAVERN: "tavern",
     SHOP: "shop",
-    SMITHY: "smithy",
+    SERVICE_SMITHYY: "smithy",
     SHRINE: "shrine",
     HALL: "hall",
 }
 PREMISES_NAME: dict[int, str] = {
     TAVERN: "the tavern",
     SHOP: "the supply house",
-    SMITHY: "the lens-grinder",
+    SERVICE_SMITHYY: "the lens-grinder",
     SHRINE: "the shrine",
     HALL: "the warden's hall",
 }
@@ -128,14 +128,14 @@ class Plan:
     gate: tuple[int, int] = (0, 0)
 
 
-def kind_for(room_count: int, warden: bool = False) -> str:
+def kind_for(room_count: int, boss_seat: bool = False) -> str:
     """How big a settlement this many pages makes.
 
     Parameters
     ----------
     room_count : int
         Pages in the section.
-    warden : bool, optional
+    boss_seat : bool, optional
         Whether a Warden holds their hall here. A Warden's seat is never a
         hamlet: somebody has to have built the hall.
 
@@ -144,7 +144,7 @@ def kind_for(room_count: int, warden: bool = False) -> str:
     str
         ``hamlet``, ``village`` or ``town``.
     """
-    if warden:
+    if boss_seat:
         return "town"
     if room_count <= HAMLET_MAX:
         return "hamlet"
@@ -153,7 +153,7 @@ def kind_for(room_count: int, warden: bool = False) -> str:
     return "town"
 
 
-def plan(room_count: int, kind: str, warden: bool = False) -> Plan:
+def plan(room_count: int, kind: str, boss_seat: bool = False) -> Plan:
     """Lay a settlement out in plots.
 
     Parameters
@@ -162,7 +162,7 @@ def plan(room_count: int, kind: str, warden: bool = False) -> Plan:
         How many pages need a building.
     kind : str
         From :func:`kind_for`.
-    warden : bool, optional
+    boss_seat : bool, optional
         Reserve a plot for the Warden's hall.
 
     Returns
@@ -171,7 +171,7 @@ def plan(room_count: int, kind: str, warden: bool = False) -> Plan:
         Everything placed, in compound-relative tiles.
     """
     premises = list(PREMISES_FOR.get(kind, ()))
-    if warden:
+    if boss_seat:
         premises.insert(0, HALL)
     # A hamlet's well is placed at the square's centre rather than on a plot.
     plot_premises = [tile for tile in premises if tile != WELL]
@@ -239,7 +239,7 @@ def plan(room_count: int, kind: str, warden: bool = False) -> Plan:
 
 
 def paint(grid: list[list[int]], origin: tuple[int, int], layout: Plan,
-          seed: int, warden: bool = False) -> dict[str, tuple[int, int]]:
+          seed: int, boss_seat: bool = False) -> dict[str, tuple[int, int]]:
     """Paint a planned settlement onto the world grid.
 
     Parameters
@@ -252,7 +252,7 @@ def paint(grid: list[list[int]], origin: tuple[int, int], layout: Plan,
         From :func:`plan`.
     seed : int
         Deterministic decoration.
-    warden : bool, optional
+    boss_seat : bool, optional
         Whether this settlement has a Warden's hall.
 
     Returns

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import buttons
+from chimol.cmtk.widgets import buttons
 
 
 class RecordingPainter:

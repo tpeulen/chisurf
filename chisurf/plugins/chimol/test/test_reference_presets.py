@@ -34,13 +34,13 @@ import pathlib
 
 import pytest
 
-from chimol.commands.presets import load_reference_presets
+from chimol.commands.builtin.presets import load_reference_presets
 
 PRESETS = load_reference_presets()
 KEYS = sorted(PRESETS)
 
 _FILE = (
-    pathlib.Path(__import__("chimol").__file__).resolve().parent / "chrome" / "data" / "presets.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent / "ui" / "data" / "presets.json"
 )
 
 

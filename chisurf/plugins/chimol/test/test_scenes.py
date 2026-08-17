@@ -21,7 +21,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.core.views import SceneStore
+from chimol.core.services.views import SceneStore
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]

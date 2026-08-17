@@ -238,18 +238,18 @@ def test_menu_rows_map_to_the_expected_controls():
     # Three short schemes fit side by side; "screen by screen" does not, so
     # the camera gets a selector rather than a row that overlaps itself.
     assert options[:2] == ["RadioGroup", "Combo"]
-    assert options[2:6] == ["SliderFloat"] * 4
-    assert options[6] == "NoneType"          # the llm row stays text: it has a light
-    assert options[7:9] == ["Button", "Button"]
+    assert options[2:10] == ["SliderFloat"] * 8
+    assert options[10] == "NoneType"          # the llm row stays text: it has a light
+    assert options[11:13] == ["Button", "Button"]
 
     game.menu_tab = game.TABS.index("GAMELOGIC")
     logic = [type(game._menu_widget("GAMELOGIC", i, row)).__name__
              for i, row in enumerate(game._menu_rows())]
     assert logic[0] == "Combo"
-    assert logic[1] == "SliderFloat"
-    assert logic[2:5] == ["Toggle"] * 3
-    assert logic[5] == "ColorEdit4"
-    assert logic[6:9] == ["Button"] * 3
+    assert logic[1:6] == ["SliderFloat"] * 5
+    assert logic[6:9] == ["Toggle"] * 3
+    assert logic[9] == "ColorEdit4"
+    assert logic[10:13] == ["Button"] * 3
 
 
 def test_soundtrack_control_and_option_share_one_list():
