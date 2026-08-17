@@ -37009,3 +37009,17 @@
   chimol landed sele_parser.py only; the labelling/ subsystem stays
   uncommitted until the chrome work lands (its renderer hunks share
   view.py with that uncommitted diff).
+
+- 2026-08-17 — olga fps documents on the whole-residue strip. The masks now
+  name the full attachment residue ('chain A and resid N'), so the side
+  chain AND the attachment atom both go as obstacles -- the attachment atom
+  is retained in the stripped file only as the geometric source the backend
+  resolves, and the free sphere neutralizes it (measured on 148L: identical
+  clouds with it present vs the old whole-residue reduction). Dye
+  parameters set per user direction: linker_width 0.5, grid 0.5; the
+  clearances are the measured minima at exactly those parameters (a fine
+  grid walls the source tile in below them -- at grid 0.5 nothing computes
+  under asr 1.75, at grid 0.9 + W 0.5 all three sites compute at asr 1):
+  screening A132/D36/D60 all at 1.75 (104573/101788/101827 points), the
+  33 pair-selection positions likewise. No escalation: the documents state
+  values that compute, the code honours them exactly.
