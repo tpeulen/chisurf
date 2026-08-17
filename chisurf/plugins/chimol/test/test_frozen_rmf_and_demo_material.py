@@ -10,7 +10,7 @@ hits the same walls. So the pieces are pinned here, in-process:
   ``_parse_rmf`` path -- with the RMF library present or blocked;
 * the demo catalogue resolves the biofilm's ``load biofilm_growth.rmf`` to
   the shipped frozen copy when the simulator cannot run;
-* the shipped ``demos/data`` carries every file a demo names;
+* the shipped ``plugins/demos/data`` carries every file a demo names;
 * chimol's own PDB/mmCIF readers fill van der Waals radii by element -- left
   at zero, ``get_area polymer`` reported ``0.000 A^2`` on every host without
   the core reader.
@@ -23,9 +23,9 @@ import sys
 import numpy as np
 import pytest
 
-from chimol.demos.catalog import DEMO_DIR, DEMOS, read_demo, resolve_structure
+from chimol.plugins.demos.catalog import DEMO_DIR, DEMOS, read_demo, resolve_structure
 
-DATA = pathlib.Path(DEMO_DIR) / "data"
+DATA = pathlib.Path(DEMO_DIR)
 
 
 # --------------------------------------------------------------------------- #
@@ -91,12 +91,12 @@ def test_the_loader_takes_the_sidecar_when_rmf_is_missing(tmp_path, monkeypatch)
 # The demo material
 # --------------------------------------------------------------------------- #
 def test_the_biofilm_resolves_to_the_frozen_copy_without_the_simulator(monkeypatch):
-    from chimol.demos import data as demo_data
+    from chimol.plugins.demos import material as demo_data
 
     def unavailable(name):
         raise demo_data.DemoDataUnavailable("no simulator here")
 
-    monkeypatch.setattr("chimol.demos.data.generated_demo_path", unavailable)
+    monkeypatch.setattr("chimol.plugins.demos.material.generated_demo_path", unavailable)
     resolved = pathlib.Path(resolve_structure("biofilm_growth.rmf"))
     assert resolved.name == "biofilm_growth.rmf.npz" and resolved.is_file()
 
@@ -113,7 +113,7 @@ def test_every_file_a_demo_names_ships_with_the_demos():
         name for name in sorted(named)
         if not (DATA / name).is_file() and not (DATA / f"{name}.npz").is_file()
     ]
-    assert not missing, f"not shipped in demos/data: {missing}"
+    assert not missing, f"not shipped in plugins/demos/data: {missing}"
 
 
 def test_the_shipped_trajectory_fits_its_topology():

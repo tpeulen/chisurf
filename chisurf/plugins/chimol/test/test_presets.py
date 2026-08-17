@@ -22,12 +22,12 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.colors import (
+from chimol.core.colors import (
     CHAIN_COLOR_CYCLE,
     _build_chain_color_array,
     get_pymol_color,
 )
-from chimol.cmd.presets import PresetMixin
+from chimol.commands.presets import PresetMixin
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -97,10 +97,8 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win._load_structure_from_path(_PDB)
@@ -203,7 +201,7 @@ def test_simple_colours_the_first_chain_pymols_first_colour(session):
 
 def test_b_factor_putty_switches_the_cartoon_to_putty(session):
     win, do, _messages, errors = session
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     style_before = _DISPLAY_CONFIG.get("cartoon", {}).get("style")
     try:
@@ -236,7 +234,7 @@ def test_the_menu_offers_pymols_presets_and_runs_the_real_ones():
     PyMOL's menu lists thirteen presets plus a *submenu* for the ligand-site
     variants, which is where ``ligand_cartoon`` lives.
     """
-    from chimol.object_menus import ACTION_MENU
+    from chimol.chrome.object_menus import ACTION_MENU
 
     entry = next(e for e in ACTION_MENU if e.label == "preset")
     commands = _menu_commands(entry)
@@ -250,7 +248,7 @@ def test_the_menu_offers_pymols_presets_and_runs_the_real_ones():
 
 def test_every_disabled_ligand_site_variant_says_why():
     """A greyed row with no tooltip is indistinguishable from a bug."""
-    from chimol.object_menus import ACTION_MENU
+    from chimol.chrome.object_menus import ACTION_MENU
 
     entry = next(e for e in ACTION_MENU if e.label == "preset")
     sites = next(c for c in entry.children if c.label == "ligand sites")

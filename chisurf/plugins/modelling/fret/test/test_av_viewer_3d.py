@@ -16,7 +16,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qtpy import QtWidgets
 
-from chimol.renderer.view import _DISPLAY_CONFIG
+from chimol.core.viewer import _DISPLAY_CONFIG
 from chisurf.plugins.modelling.fret.core.av_viewer_3d import AVViewer3D
 
 

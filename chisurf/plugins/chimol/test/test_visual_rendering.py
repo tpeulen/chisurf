@@ -6,11 +6,7 @@ from PIL import Image
 
 import chisurf.core.structure as cs_struct
 from chimol.geometry.primitives import _compute_center_radius
-from chimol.renderer.raytracer import (
-    RayCamera,
-    Sphere,
-    trace,
-)
+from chimol.render.raytracer import RayCamera, Sphere, trace
 
 
 class TestVisualRendering(unittest.TestCase):

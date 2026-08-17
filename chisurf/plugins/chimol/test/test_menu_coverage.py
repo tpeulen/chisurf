@@ -25,8 +25,8 @@ import pathlib
 
 import pytest
 
-from chimol import object_menus as om
-from chimol.cmd.command import Cmd
+from chimol.chrome import object_menus as om
+from chimol.commands.command import Cmd
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -111,10 +111,8 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(800, 600)
@@ -221,9 +219,9 @@ def test_showing_the_plane_adds_geometry(session):
 #: one sitting: `origin` ("chimol rotates about the scene centre") and `cell`
 #: ("chimol does not read crystal cells") had both had working commands for a
 #: while, and `generate` claimed chimol could not build symmetry mates while
-#: `symexp` sat in cmd/symmetry.py under 53 tests. To the user those read
+#: `symexp` sat in plugins/symmetry/commands.py under 53 tests. To the user those read
 #: exactly like a missing feature -- and `A > hydrogens > add` was a fourth,
-#: found the same day: `h_add` has been in cmd/editing.py the whole time.
+#: found the same day: `h_add` has been in commands/editing.py the whole time.
 DISABLED_ENTRIES = {
     # No structure editing.
     "A > clean",
@@ -257,7 +255,7 @@ DISABLED_ENTRIES = {
 
 def _disabled_leaves():
     """Every leaf entry with no command, as ``"A > preset > ..."`` paths."""
-    from chimol.object_menus import OBJECT_MENUS
+    from chimol.chrome.object_menus import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:
@@ -291,7 +289,7 @@ def test_the_disabled_entries_are_the_inventory():
 
 def test_every_disabled_entry_says_why():
     """A greyed-out row with no tooltip is indistinguishable from a bug."""
-    from chimol.object_menus import OBJECT_MENUS
+    from chimol.chrome.object_menus import OBJECT_MENUS
 
     def walk(entries, path):
         for entry in entries:

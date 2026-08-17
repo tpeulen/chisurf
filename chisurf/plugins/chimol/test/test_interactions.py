@@ -483,10 +483,8 @@ def wizard_cmd(qapp, tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands.command import Cmd
 
     src = _PDB / "148l.pdb"
     if not src.is_file():

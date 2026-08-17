@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-from chimol.logging_setup import (
+from chimol.core.settings.logging import (
     LOGGER,
     configure_logging,
     console_handler,
@@ -45,7 +45,7 @@ def _restore_root():
     before_root_level = root.level
     before_chimol_handlers = list(LOGGER.handlers)
     LOGGER.handlers.clear()
-    import chimol.logging_setup as _setup
+    import chimol.core.settings.logging as _setup
 
     _setup._FILE_HANDLER = None
     _setup._CONSOLE_HANDLER = None

@@ -15,11 +15,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.app.menu_bar import TOOLBAR  # noqa: E402
-from chimol.renderer.internal_gui import (  # noqa: E402
-    InternalGui,
-    SequenceRow,
-)
+from chimol.hosts.qt.menu_bar import TOOLBAR  # noqa: E402
+from chimol.chrome.gui import InternalGui, SequenceRow  # noqa: E402
 
 SIZE = (900, 640)
 
@@ -101,10 +98,8 @@ def window():
 
     from qtpy import QtWidgets
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -139,7 +134,7 @@ def test_toggle_rep_flips_rather_than_only_showing(window):
 
 
 def test_toggle_rep_refuses_an_unknown_representation(window):
-    from chimol.cmd import cmd as shared
+    from chimol.commands import cmd as shared
 
     errors: list[str] = []
     shared.set_error_callback(errors.append)

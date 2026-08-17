@@ -584,10 +584,8 @@ def crystal_cmd(qapp, tmp_path):
     """A window with 1RTD -- a file that carries its own CRYST1 record."""
     import shutil
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands.command import Cmd
 
     if not _CRYSTAL.is_file():
         pytest.skip("no crystal fixture")

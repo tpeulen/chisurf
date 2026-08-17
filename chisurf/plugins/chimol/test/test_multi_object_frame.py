@@ -17,7 +17,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.renderer.view import MolView  # noqa: E402
+from chimol.core.viewer import MolView  # noqa: E402
 
 
 @pytest.fixture(scope="module")

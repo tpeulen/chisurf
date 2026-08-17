@@ -84,14 +84,9 @@ def main() -> int:
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd.command import Cmd
-    from chimol.renderer.raytracer import (
-        _camera_from_view_state,
-        render_scene,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands.command import Cmd
+    from chimol.render.raytracer import _camera_from_view_state, render_scene
 
     window = MolViewPluginWindow()
     window._load_structure_from_path(PDB, name="148l")

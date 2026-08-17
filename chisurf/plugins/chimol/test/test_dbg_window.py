@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.renderer import dbg_window as dw
-from chimol.renderer.frame_stats import FrameStats
+from chimol.plugins.dbg import window as dw
+from chimol.render.frame_stats import FrameStats
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 
@@ -76,7 +76,7 @@ def test_every_row_issues_a_command_the_viewer_actually_has():
     reading the window -- only by checking what it would issue against what
     the command layer answers to.
     """
-    from chimol.cmd import cmd
+    from chimol.commands import cmd
 
     known = set(cmd.command_names())
     panel = dw.DbgWindow(lambda _c: None)
@@ -190,7 +190,7 @@ def test_counters_are_published_a_frame_behind():
 
 def test_the_readout_says_where_a_load_figure_came_from():
     """A load average is not a utilisation, and must not be shown as one."""
-    from chimol.renderer.frame_stats import cpu_load
+    from chimol.render.frame_stats import cpu_load
 
     _value, source = cpu_load()
     assert source in ("util", "load avg", "n/a")
@@ -198,7 +198,7 @@ def test_the_readout_says_where_a_load_figure_came_from():
 
 def test_the_machine_line_is_assembled_from_the_standard_library():
     """No optional dependency, so it reads the same in a frozen build."""
-    from chimol.renderer.frame_stats import machine_info
+    from chimol.render.frame_stats import machine_info
 
     assert machine_info()
 
@@ -211,18 +211,15 @@ def test_the_publishing_interval_is_slower_than_a_frame():
     stays a check on the module's own default, unaffected by whatever a
     session has configured.
     """
-    from chimol.renderer.frame_stats import REPORT_INTERVAL
+    from chimol.render.frame_stats import REPORT_INTERVAL
 
     assert REPORT_INTERVAL >= 1.0 / 30.0
 
 
 def test_the_live_interval_falls_back_to_the_default():
     """No config section, no key: the live getter still answers the default."""
-    from chimol.config import _DISPLAY_CONFIG
-    from chimol.renderer.frame_stats import (
-        REPORT_INTERVAL,
-        nerd_report_interval,
-    )
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.render.frame_stats import REPORT_INTERVAL, nerd_report_interval
 
     before = _DISPLAY_CONFIG.get("nerd")
     try:
@@ -236,11 +233,8 @@ def test_the_live_interval_falls_back_to_the_default():
 def test_the_live_interval_is_clamped_to_the_floor():
     """A value typed too small in the panel cannot make the instrument
     dominate what it measures -- the whole point of a publishing interval."""
-    from chimol.config import _DISPLAY_CONFIG
-    from chimol.renderer.frame_stats import (
-        MIN_REPORT_INTERVAL,
-        nerd_report_interval,
-    )
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.render.frame_stats import MIN_REPORT_INTERVAL, nerd_report_interval
 
     before = dict(_DISPLAY_CONFIG.get("nerd") or {})
     try:
@@ -252,8 +246,8 @@ def test_the_live_interval_is_clamped_to_the_floor():
 
 def test_the_live_interval_reads_a_configured_value():
     """A value inside the floor is honoured as-is."""
-    from chimol.config import _DISPLAY_CONFIG
-    from chimol.renderer.frame_stats import nerd_report_interval
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.render.frame_stats import nerd_report_interval
 
     before = dict(_DISPLAY_CONFIG.get("nerd") or {})
     try:
@@ -276,7 +270,7 @@ def test_nerd_lines_fit_the_fixed_width():
     past the box -- a silent clip is a defect a person only ever notices by
     accident.
     """
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     stats = FrameStats()
     stats.enabled = True
@@ -311,7 +305,7 @@ def test_nerd_lines_fit_the_fixed_width():
 # --------------------------------------------------------------------------
 def test_the_block_is_drawn_only_when_there_is_something_to_draw():
     """Off, or on with nothing published yet, must both draw nothing."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = False
@@ -328,7 +322,7 @@ def test_the_block_is_drawn_only_when_there_is_something_to_draw():
 
 def test_the_block_is_part_of_the_chrome_fingerprint():
     """Otherwise the numbers freeze at whatever they were when it opened."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True
@@ -341,7 +335,7 @@ def test_the_block_is_part_of_the_chrome_fingerprint():
 @pytest.mark.parametrize("lines", [("a",), ("a", "bb"), ("x" * 60, "y")])
 def test_the_block_sizes_itself_to_its_longest_line(lines):
     """A plate narrower than its text is worse than no plate."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True
@@ -454,8 +448,8 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     object that handled nothing was a black hole: Return never reached the
     command line and the viewport could not be typed into at all.
     """
-    from chimol.host.keys import KEY_RETURN
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.hosts.keys import KEY_RETURN
+    from chimol.chrome.gui import InternalGui
 
     class _Deaf:
         """A focusable object that consumes nothing."""
@@ -512,7 +506,7 @@ def test_the_graphs_carry_one_sample_per_frame():
 
 def test_the_history_is_bounded():
     """A viewport left running for an hour must not grow a graph an hour long."""
-    from chimol.renderer.frame_stats import HISTORY
+    from chimol.render.frame_stats import HISTORY
 
     stats = _filled(HISTORY * 2)
     assert len(stats.graphs()[0][3]) == HISTORY
@@ -542,7 +536,7 @@ def test_the_breakdown_carries_the_parts_that_add_up_to_the_frame():
 
 def test_a_stacked_graph_is_scaled_by_the_sum_not_the_tallest_part():
     """Scaling by the tallest part draws every bar off the top of the plot."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -569,7 +563,7 @@ def test_the_reference_lines_are_drawn_over_the_line():
     lands in, in order) rather than compared index-for-index within a single
     per-kind list the way the old bar-chart version of this test could.
     """
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -590,7 +584,7 @@ def test_the_reference_lines_are_drawn_over_the_line():
 
 def test_a_graph_with_no_samples_still_draws_its_frame():
     """Before the first frame there is nothing to plot and something to say."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.layout(1200, 800)
@@ -601,7 +595,7 @@ def test_a_graph_with_no_samples_still_draws_its_frame():
 
 def test_the_block_grows_to_hold_its_graphs():
     """Drawn past the plate, the last graph is the one nobody sees."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.nerd = True
@@ -624,7 +618,7 @@ def test_the_first_cpu_reading_says_it_is_priming_rather_than_idle():
     Reported as 0 %, that reads as an idle machine -- a wrong answer rather
     than a missing one.
     """
-    import chimol.renderer.frame_stats as fs
+    import chimol.render.frame_stats as fs
 
     if not hasattr(fs, "_CPU_PRIMED"):
         pytest.skip("no psutil path")

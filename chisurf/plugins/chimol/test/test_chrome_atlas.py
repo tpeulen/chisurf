@@ -130,8 +130,8 @@ def test_the_charset_covers_what_the_chrome_draws():
     """
     _alpha, meta = _load()
     source = (
-        pathlib.Path(__file__).resolve().parents[1]
-        / "chimol" / "renderer" / "internal_gui.py"
+        pathlib.Path(__import__("chimol").__file__).resolve().parent
+        / "chrome" / "gui.py"
     ).read_text(encoding="utf-8")
 
     tree = ast.parse(source)

@@ -41,9 +41,7 @@ def qapp():
 @pytest.fixture(scope="module")
 def viewport(qapp):
     """Build a laid-out viewport with a structure in it, and its GL widget."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -241,7 +239,7 @@ def test_nothing_is_laid_over_the_viewport(viewport):
 
 def test_changing_what_is_drawn_drops_the_image(viewport):
     """A traced image is a picture of the scene that was."""
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     window, widget, qapp = viewport
     assert widget.show_ray_image(_ray_image())

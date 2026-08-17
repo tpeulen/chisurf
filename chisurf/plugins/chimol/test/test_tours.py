@@ -35,11 +35,7 @@ import json
 
 import pytest
 
-from chimol.tour import (
-    TOUR_DIR,
-    available_tours,
-    load_tour,
-)
+from chimol.chrome.tours import TOUR_DIR, available_tours, load_tour
 
 TOURS = [name for name, _title in available_tours()]
 
@@ -367,7 +363,7 @@ def test_the_tours_are_on_the_help_menu():
     tour points at real controls and waits for you to press them, which is what
     someone opens the command list for.
     """
-    from chimol.app.menu_bar import DEMO_MENU, HELP_MENU
+    from chimol.hosts.qt.menu_bar import DEMO_MENU, HELP_MENU
 
     def commands_of(entries):
         found = set()

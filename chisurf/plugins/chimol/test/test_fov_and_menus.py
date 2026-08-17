@@ -7,7 +7,7 @@ spelling that did anything: ``fov 60`` answered "not implemented" and
 ``set fov, 60`` answered "unknown setting". Between them those read as a missing
 feature rather than a missing alias, which is what was reported.
 
-Two reasons it could not be found. :func:`~chimol.settings.resolve` accepts any
+Two reasons it could not be found. :func:`~chimol.core.settings.registry.resolve` accepts any
 unambiguous **prefix**, and ``fov`` is not a prefix of ``field_of_view`` -- it
 is a different word, the one the other two viewers use. And there was no ``fov``
 command, so the spelling a user reaches for first hit the command layer before
@@ -132,7 +132,7 @@ def test_the_bar_is_seven_menus():
     Every one of the three is still complete and one level down, which is what
     `FOLDED_MENUS` and `NESTED_MENUS` declare and what the tests below check.
     """
-    from chimol.app.menu_bar import MENU_BAR
+    from chimol.hosts.qt.menu_bar import MENU_BAR
 
     titles = [title for title, _entries in MENU_BAR]
     for gone in ("Build", "Wizard", "Preset"):
@@ -144,8 +144,8 @@ def test_the_bar_is_seven_menus():
 
 def test_the_presets_are_the_first_thing_under_display():
     """A preset is a display choice, so Display is where it is looked for."""
-    from chimol.app.menu_bar import DISPLAY_MENU
-    from chimol.cmd.presets import load_reference_presets
+    from chimol.hosts.qt.menu_bar import DISPLAY_MENU
+    from chimol.commands.presets import load_reference_presets
 
     first = DISPLAY_MENU[0]
     assert str(getattr(first, "label", "")) == "Preset"
@@ -163,11 +163,7 @@ def test_nothing_was_lost_in_the_fold():
     The check that makes the move safe: a menu is a way to find a command, and
     folding one into another must not quietly drop half of it.
     """
-    from chimol.app.menu_bar import (
-        BUILD_MENU,
-        TOOLS_MENU,
-        WIZARD_MENU,
-    )
+    from chimol.hosts.qt.menu_bar import BUILD_MENU, TOOLS_MENU, WIZARD_MENU
 
     def commands(entries):
         found = set()
@@ -186,8 +182,8 @@ def test_nothing_was_lost_in_the_fold():
 
 def test_the_tours_are_under_help_and_not_under_demo():
     """A tour is help, not a demonstration."""
-    from chimol.app.menu_bar import DEMO_MENU, HELP_MENU
-    from chimol.tour import available_tours
+    from chimol.hosts.qt.menu_bar import DEMO_MENU, HELP_MENU
+    from chimol.chrome.tours import available_tours
 
     def commands(entries):
         found = set()

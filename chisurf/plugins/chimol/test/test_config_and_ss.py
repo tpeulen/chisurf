@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from chimol import config
+from chimol.core.settings import config
 from chimol.analysis.ss import assign_ss_c3_from_atoms
 
 
@@ -61,7 +61,7 @@ def test_display_config_prefers_settings_dir(tmp_path, monkeypatch):
     Pointed through ``CHIMOL_SETTINGS_DIR``, the documented override. This
     used to monkeypatch ``config._cs_settings`` -- ChiSurf's settings module,
     imported by name -- which no longer exists: `config` resolves its
-    directory through :mod:`chimol.settings_dir` so that chimol can find its
+    directory through :mod:`chimol.core.settings.dirs` so that chimol can find its
     own settings with no ChiSurf to ask.
     """
 
@@ -176,7 +176,7 @@ def test_records_after_the_coordinates_are_not_read(tmp_path):
 
 def test_dss_recomputes_and_reports(tmp_path):
     """``dss`` must reach the viewer's assignment, not just redraw."""
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.testing.mock_viewer import MockViewer, MockWindow
 
     viewer = MockViewer()
@@ -197,7 +197,7 @@ def test_dss_recomputes_and_reports(tmp_path):
 
 
 def test_dss_without_a_backbone_reports_an_error():
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.testing.mock_viewer import MockViewer, MockWindow
 
     viewer = MockViewer()

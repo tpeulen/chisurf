@@ -51,10 +51,8 @@ def qapp():
 @pytest.fixture
 def viewer(qapp):
     """A window with 148L shown as cartoon, sticks and surface at once."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.settings import set_setting
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.core.settings.registry import set_setting
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -153,7 +151,7 @@ def test_an_override_reaches_only_its_own_representation(viewer):
 
 def test_pymols_own_spelling_of_default_is_accepted():
     """A script carrying `set stick_color, -1` has to keep working."""
-    from chimol.settings import coerce
+    from chimol.core.settings.registry import coerce
 
     for token in ("-1", "default", "none", "atom"):
         assert coerce(token, "color_or_default") is None, token

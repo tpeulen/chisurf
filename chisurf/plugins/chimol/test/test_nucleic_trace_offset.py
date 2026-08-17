@@ -34,7 +34,7 @@ REPO = pathlib.Path(__file__).resolve().parents[4]
 PDB = REPO / "test" / "data" / "atomic_coordinates" / "pdb_files" / "1rtd.pdb"
 DISPLAY_JSON = (
     pathlib.Path(__import__("chimol").__file__).resolve().parent
-    / "chimol_display.json"
+    / "core" / "settings" / "chimol_display.json"
 )
 
 

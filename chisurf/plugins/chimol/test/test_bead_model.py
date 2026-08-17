@@ -23,11 +23,7 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.renderer.view import (
-    MolView,
-    _bead_mask,
-    _is_bead_model,
-)
+from chimol.core.viewer import MolView, _bead_mask, _is_bead_model
 
 
 # --------------------------------------------------------------------------- #
@@ -329,7 +325,7 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
     pixels, which is the same projection the ray tracer builds its ray grid
     from -- so a GL impostor and a ray-traced sphere are the same size.
     """
-    from chimol.renderer import wgpu_view
+    from chimol.hosts.qt import wgpu_view
 
     if not wgpu_view.is_available():
         pytest.skip("no WebGPU adapter")
@@ -356,9 +352,9 @@ def test_world_radius_reaches_the_draw_call(qapp_chimol):
     really asking -- does a bead's radius survive as a *distance in the model*
     -- is answered by the number that reaches the GPU.
     """
-    from chimol.renderer.pack import pack_geometry
-    from chimol.renderer.scene import Geometry
-    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.render.pack import pack_geometry
+    from chimol.render.scene import Geometry
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
 
     pts = np.zeros((3, 3), dtype=float)
     beads = pack_geometry(

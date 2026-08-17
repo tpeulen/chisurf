@@ -25,9 +25,9 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.config import get_package_display_config_path
+from chimol.core.settings.config import get_package_display_config_path
 from chimol.io.atoms import make_bead_rows
-from chimol.renderer.view import MolView
+from chimol.core.viewer import MolView
 
 
 @pytest.fixture(scope="module")

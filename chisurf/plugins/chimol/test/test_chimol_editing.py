@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chimol.testing.mock_viewer import MockViewer
-from chimol.cmd.command import Cmd
+from chimol.commands.command import Cmd
 from chimol.io.atoms import empty_atoms
 
 class MockWindow:
@@ -199,7 +199,7 @@ def test_chimol_cmd_cartoon_spectrum_settings(editing_context):
     assert np.asarray(colors)[:, :3].std() > 0.0   # a ramp, not one colour
 
     cmd.do("cartoon tube")
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
     assert _DISPLAY_CONFIG["cartoon"]["style"] == "tube"
 
     cmd.do("set cartoon_oval_width, 0.33")
@@ -308,9 +308,7 @@ def test_chimol_cmd_get_color_index(editing_context):
 
 def test_raytracer_single_sphere():
     """A single sphere renders a non-background pixel at its center."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
 
     spheres = [
         Sphere(
@@ -338,9 +336,7 @@ def test_raytracer_single_sphere():
 
 def test_raytracer_no_spheres():
     """Zero spheres produce a fully-background image."""
-    from chimol.renderer.raytracer import (
-        RayCamera, trace,
-    )
+    from chimol.render.raytracer import RayCamera, trace
 
     camera = RayCamera(
         origin=np.array([0.0, 0.0, 0.0]),
@@ -356,9 +352,7 @@ def test_raytracer_no_spheres():
 
 def test_raytracer_shadow():
     """A sphere behind another (w.r.t. light) is in shadow."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
 
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=0.5, color=np.array([0.0, 1.0, 0.0])),
@@ -406,9 +400,7 @@ def test_chimol_cmd_ray_integration(editing_context, tmp_path: Path):
 
 def test_raytracer_multi_light():
     """Two lights produce different lighting than one light."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0, color=np.array([0.8, 0.8, 0.8])),
     ]
@@ -433,9 +425,7 @@ def test_raytracer_multi_light():
 
 def test_raytracer_direct_specular():
     """Direct specular (head-on) adds a bright highlight with power 55."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0, color=np.array([0.5, 0.5, 0.5])),
     ]
@@ -463,9 +453,7 @@ def test_raytracer_direct_specular():
 
 def test_raytracer_lower_ambient():
     """Lower ambient produces higher contrast (darker shadow side)."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     # Use a larger sphere closer so pixels definitely hit it
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 3.0]), radius=1.5,
@@ -507,8 +495,8 @@ def test_raytracer_lower_ambient():
 
 def test_raytracer_gamma_background():
     """Gamma correction changes effective background color."""
-    from chimol.renderer.raytracer import trace
-    from chimol.renderer.raytracer import RayCamera
+    from chimol.render.raytracer import trace
+    from chimol.render.raytracer import RayCamera
 
     camera = RayCamera(
         origin=np.array([0.0, 0.0, 0.0]),
@@ -540,11 +528,7 @@ def test_raytracer_soft_shadow():
     """Soft shadow makes shadowed region brighter than hard shadow."""
     # Numba is a hard requirement of the tracer now -- the pure-NumPy twin that
     # this used to skip for is gone, because nothing ran it and it had rotted.
-    from chimol.renderer.raytracer import (
-        RayCamera,
-        Sphere,
-        trace,
-    )
+    from chimol.render.raytracer import RayCamera, Sphere, trace
 
     # Two spheres side by side at same depth. Light from left [-1,0,0].
     # Sphere 2 (right) casts shadow on sphere 1 (left). The shadow on
@@ -579,9 +563,7 @@ def test_raytracer_soft_shadow():
 
 def test_raytracer_shadow_fudge():
     """Shadow fudge prevents self-shadowing; without it shadow may alias."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0,
                color=np.array([0.5, 0.5, 0.5])),
@@ -607,9 +589,7 @@ def test_raytracer_shadow_fudge():
 
 def test_raytracer_depth_cue():
     """Depth cueing makes far spheres fade to background."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=0.5,
                color=np.array([1.0, 1.0, 1.0])),
@@ -645,9 +625,7 @@ def test_raytracer_depth_cue():
 
 def test_raytracer_antialias_levels():
     """Different SSAA levels produce different images."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0,
                color=np.array([1.0, 0.0, 0.0])),
@@ -680,9 +658,7 @@ def test_raytracer_antialias_levels():
 
 def test_raytracer_color_blend():
     """Color blend raises minimum per-channel values."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace, _apply_color_blend,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace, _apply_color_blend
     import numpy as np
 
     # Create a single-channel-dominant image
@@ -708,9 +684,7 @@ def test_raytracer_color_blend():
 
 def test_raytracer_color_blend_sphere():
     """Ray trace with color_blend=True produces valid output."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0,
                color=np.array([1.0, 0.0, 0.0])),
@@ -737,9 +711,7 @@ def test_raytracer_color_blend_sphere():
 
 def test_raytracer_pymol_defaults():
     """Render with PyMOL defaults produces reasonable output."""
-    from chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-    )
+    from chimol.render.raytracer import Sphere, RayCamera, trace
     spheres = [
         Sphere(center=np.array([0.0, 0.0, 5.0]), radius=1.0,
                color=np.array([0.8, 0.2, 0.2])),
@@ -778,7 +750,7 @@ def test_raytracer_pymol_defaults():
 def test_cmd_ray_uses_config_settings(editing_context, tmp_path):
     """The ray command reads settings from the config's ray section."""
     viewer, cmd = editing_context
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
     messages = []
     errors = []
     cmd.set_message_callback(messages.append)

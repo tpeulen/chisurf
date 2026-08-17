@@ -44,7 +44,7 @@ def test_filter_sections_and_dialog_model():
     import tempfile
     from pathlib import Path
 
-    from chimol.renderer.file_dialog import FileDialog, parse_filter
+    from chimol.chrome.panels.file_dialog import FileDialog, parse_filter
 
     pairs = parse_filter("Structures (*.pdb *.cif);;All files (*.*)")
     assert pairs[0] == ("Structures", ["*.pdb", "*.cif"])
@@ -106,7 +106,7 @@ _DRIVE = '''
 
     # A double click on a row chooses it: press pair through the renderer,
     # exactly as a host delivers it.
-    from chimol.host.events import LEFT_BUTTON
+    from chimol.hosts.events import LEFT_BUTTON
     body = gui.window_body(win)
     d.layout(body)
     row = next(r for r, n in d._file_rows if n == "148l.pdb")
@@ -189,8 +189,8 @@ _KEYS_DRIVE = """
     errors = []
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(errors.append)
-    from chimol.host.keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_RETURN
-    from chimol.host.events import LEFT_BUTTON
+    from chimol.hosts.keys import KEY_DOWN, KEY_PAGE_DOWN, KEY_RETURN
+    from chimol.hosts.events import LEFT_BUTTON
 
     app._open_structure_dialog()
     gui = app.renderer._internal_gui
@@ -294,8 +294,8 @@ _PICTURE_DRIVE = """
     app.cmd.set_message_callback(lambda _m: None)
     app.cmd.set_error_callback(lambda _e: None)
     app.cmd.do("load 148l.pdb")
-    from chimol.host.events import LEFT_BUTTON
-    from chimol.host.keys import KEY_DOWN
+    from chimol.hosts.events import LEFT_BUTTON
+    from chimol.hosts.keys import KEY_DOWN
     r = app.renderer
     gui = r._internal_gui
     app._open_structure_dialog()
@@ -356,8 +356,8 @@ def test_dialog_changes_reach_the_picture_not_just_the_model():
 
 def test_browser_host_gets_the_same_dialog():
     """The page wires the same two hooks -- no system panel exists there."""
-    from chimol.renderer.file_dialog import open_file_dialog
-    from chimol.web.demo import Viewer  # noqa: F401 - import proves Qt-free
+    from chimol.chrome.panels.file_dialog import open_file_dialog
+    from chimol.hosts.web.page import Viewer  # noqa: F401 - import proves Qt-free
 
     import inspect
 

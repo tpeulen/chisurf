@@ -89,10 +89,8 @@ def main() -> int:
 
     from qtpy import QtCore
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd.command import Cmd
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands.command import Cmd
 
     window = MolViewPluginWindow()
     # Realised but never mapped: it gets a real GL context and draws exactly as

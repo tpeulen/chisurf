@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 from chimol.geometry import ambient, neighbors, surface
-from chimol.renderer import compute
+from chimol.render import compute
 
 pytestmark = pytest.mark.skipif(
     not compute.available(), reason="no WebGPU adapter on this machine"

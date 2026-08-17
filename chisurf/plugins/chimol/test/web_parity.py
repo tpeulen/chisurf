@@ -16,7 +16,7 @@ some command is probed with.
 
 The reference half
 ------------------
-:class:`~chimol.host.run.ChimolApp` on the offscreen canvas -- chimol's own
+:class:`~chimol.hosts.native.app.ChimolApp` on the offscreen canvas -- chimol's own
 toolkit-free desktop entry point, not the Qt plugin window. That is the
 like-for-like comparison: both hosts are a canvas, a command layer and the
 in-viewport chrome, and neither has a ``QPainter``. Judging the page against the
@@ -73,7 +73,7 @@ _PLUGIN_DIR = pathlib.Path(__file__).resolve().parents[1]
 
 def _demo_pdb() -> str:
     """The structure both halves open, so they compare the same molecule."""
-    return str(_PLUGIN_DIR / "chimol" / "web" / "data" / "148l.pdb")
+    return str(pathlib.Path(__import__("chimol").__file__).resolve().parent / "data" / "demos" / "148l.pdb")
 
 
 # -- the desktop half --------------------------------------------------------
@@ -93,8 +93,8 @@ def desktop_report(size: tuple[int, int] = SIZE) -> tuple[dict[str, Any], Any]:
         ``(report, image)`` -- the image is whatever the offscreen canvas
         returns for one forced frame, or ``None`` if it returns nothing.
     """
-    from chimol.host.run import ChimolApp
-    from chimol.host.widget import HAS_QT
+    from chimol.hosts.native.app import ChimolApp
+    from chimol.hosts.toolkit import HAS_QT
     from chimol.testing import parity
 
     if HAS_QT:
@@ -180,7 +180,7 @@ def browser_report(
     port = _free_port()
     root = _PLUGIN_DIR.parents[2]
     server = subprocess.Popen(
-        [sys.executable, "-m", "chimol.web.serve",
+        [sys.executable, "-m", "chimol.hosts.web.serve",
          "--port", str(port), "--no-open"],
         cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )

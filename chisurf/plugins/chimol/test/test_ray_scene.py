@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.renderer.raytracer import (
+from chimol.render.raytracer import (
     TRACEABLE_KINDS,
     RayCamera,
     Sphere,
@@ -34,7 +34,7 @@ from chimol.renderer.raytracer import (
     trace,
     traceable_geometry_counts,
 )
-from chimol.renderer.scene import Geometry, Scene, SceneObject
+from chimol.render.scene import Geometry, Scene, SceneObject
 
 
 def _camera(distance: float = 10.0, fov: float = 45.0, far: float | None = None) -> RayCamera:
@@ -305,8 +305,8 @@ def _veil_probe(mode: int, groups: tuple[int, int]) -> float:
     (`_FLAT`), so the arithmetic is exact: one veil composites to 0.5, two to
     0.75. `groups` says which object each sphere belongs to.
     """
-    from chimol.config import _DISPLAY_CONFIG
-    from chimol.renderer import compute
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.render import compute
 
     if not compute.available():
         pytest.skip("no WebGPU adapter on this machine")

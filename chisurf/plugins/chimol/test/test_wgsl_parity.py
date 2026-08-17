@@ -11,11 +11,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.renderer.depth_cue import FOG_OFF, fog_planes
-from chimol.renderer.lighting import (
-    LightRig,
-    resolve_light_rig,
-)
+from chimol.render.depth_cue import FOG_OFF, fog_planes
+from chimol.render.lighting import LightRig, resolve_light_rig
 from chisurf.plugins.chimol.test.capture_gl_baseline import (
     RESET,
     SCENES,
@@ -140,7 +137,7 @@ class TestPipelineRouting:
 
     @staticmethod
     def _geom(kind, n=4, indices=None, **kw):
-        from chimol.renderer.pack import PackedGeometry
+        from chimol.render.pack import PackedGeometry
 
         return PackedGeometry(
             kind=kind,
@@ -150,20 +147,20 @@ class TestPipelineRouting:
         )
 
     def test_mesh_needs_indices(self):
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         route = WgpuMeshRenderer.pipeline_for
         assert route(self._geom("mesh", indices=np.arange(3, dtype=np.uint32))) == "mesh"
         assert route(self._geom("mesh")) is None
 
     def test_points_become_impostors(self):
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         assert WgpuMeshRenderer.pipeline_for(self._geom("points")) == "impostor"
 
     def test_a_single_vertex_is_not_a_line(self):
         """A line list needs pairs; an odd tail draws nothing and reports nothing."""
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         route = WgpuMeshRenderer.pipeline_for
         assert route(self._geom("line", n=2)) == "line"
@@ -171,13 +168,13 @@ class TestPipelineRouting:
 
     def test_text_is_an_acknowledged_gap(self):
         """Labels are skipped, and that is recorded rather than silently dropped."""
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         assert WgpuMeshRenderer.pipeline_for(self._geom("text", n=1)) is None
 
     def test_point_size_is_a_diameter(self):
         """``meta["size"]`` is ``gl_PointSize``, so the instance carries half of it."""
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         packed = WgpuMeshRenderer.interleave_impostors(
             self._geom("points", n=3, meta={"size": 8.0})
@@ -187,7 +184,7 @@ class TestPipelineRouting:
 
     def test_model_radii_are_used_as_given(self):
         """A bead's radius is a distance in the model and is not halved."""
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         packed = WgpuMeshRenderer.interleave_impostors(
             self._geom("points", n=2, radii=np.full((2, 1), 2.5, dtype=np.float32),
@@ -240,7 +237,7 @@ class TestWgslSource:
 
     def test_every_shader_is_classified(self):
         """A new shader must say which prelude it takes."""
-        from chimol.renderer.wgpu_backend import WGSL_DIR
+        from chimol.render.wgpu_backend import WGSL_DIR
 
         present = {p.name for p in WGSL_DIR.glob("*.wgsl")}
         assert present == set(self.FAMILIES), (
@@ -255,10 +252,7 @@ class TestWgslSource:
         thing worth asserting is that no entry-point shader declares its own
         copy of the model.
         """
-        from chimol.renderer.wgpu_backend import (
-            WGSL_DIR,
-            load_wgsl,
-        )
+        from chimol.render.wgpu_backend import WGSL_DIR, load_wgsl
 
         names = [n for n, family in self.FAMILIES.items() if family == "render"]
         assert names, "no render entry points found"
@@ -272,11 +266,7 @@ class TestWgslSource:
 
     def test_every_compute_entry_point_gets_the_grid_prelude(self):
         """The cell-list walk is shared the same way the shading model is."""
-        from chimol.renderer.compute import (
-            COMPUTE_PRELUDE,
-            WGSL_DIR,
-            load_compute_wgsl,
-        )
+        from chimol.render.compute import COMPUTE_PRELUDE, WGSL_DIR, load_compute_wgsl
 
         names = [n for n, family in self.FAMILIES.items() if family == "compute"]
         assert names
@@ -290,10 +280,7 @@ class TestWgslSource:
 
     def test_every_ray_entry_point_gets_the_bvh_prelude(self):
         """`closest_hit` exists once, so the probe tests the tracer's own."""
-        from chimol.renderer.compute import (
-            WGSL_DIR,
-            load_ray_wgsl,
-        )
+        from chimol.render.compute import WGSL_DIR, load_ray_wgsl
 
         names = [n for n, family in self.FAMILIES.items() if family == "ray"]
         assert names
@@ -311,7 +298,7 @@ class TestImpostorsOnTheGpu:
     @staticmethod
     def _renderer(size=320):
         wgpu = pytest.importorskip("wgpu")
-        from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+        from chimol.render.wgpu_backend import WgpuMeshRenderer
 
         try:
             return WgpuMeshRenderer(size, size)
@@ -327,12 +314,8 @@ class TestImpostorsOnTheGpu:
         convention or the depth write is wrong, and each of those is invisible
         in a single-column render.
         """
-        from chimol.renderer.pack import (
-            PackedGeometry,
-            PackedObject,
-            PackedScene,
-        )
-        from chimol.renderer.view_state import pack_view_state
+        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
+        from chimol.core.view_state import pack_view_state
 
         centre = np.zeros((1, 3), dtype=np.float32)
         radius = np.array([[4.0]], dtype=np.float32)
@@ -394,12 +377,8 @@ class TestImpostorsOnTheGpu:
         per-fragment depth the far sphere cuts into it, and the tell is that the
         near sphere's own colour covers fewer pixels than its full disc.
         """
-        from chimol.renderer.pack import (
-            PackedGeometry,
-            PackedObject,
-            PackedScene,
-        )
-        from chimol.renderer.view_state import pack_view_state
+        from chimol.render.pack import PackedGeometry, PackedObject, PackedScene
+        from chimol.core.view_state import pack_view_state
 
         # Overlapping, and the far one offset sideways so it emerges.
         geom = PackedGeometry(
@@ -445,9 +424,7 @@ class TestRemovedSettingsAreMigratedAway:
     """
 
     def test_the_dead_occlusion_switch_is_removed_from_an_old_config(self):
-        from chimol.config import (
-            apply_display_config_migrations,
-        )
+        from chimol.core.settings.config import apply_display_config_migrations
 
         cfg = {"sticks": {"radius": 0.15, "ambient_occlusion": True}}
         changed = apply_display_config_migrations(cfg, from_version=10)
@@ -462,16 +439,14 @@ class TestRemovedSettingsAreMigratedAway:
         Keeping a non-default value would keep exactly the dead second switch
         the removal exists to delete.
         """
-        from chimol.config import (
-            apply_display_config_migrations,
-        )
+        from chimol.core.settings.config import apply_display_config_migrations
 
         cfg = {"sticks": {"ambient_occlusion": False}}
         apply_display_config_migrations(cfg, from_version=10)
         assert cfg["sticks"] == {}
 
     def test_a_current_config_is_left_alone(self):
-        from chimol.config import (
+        from chimol.core.settings.config import (
             DISPLAY_CONFIG_VERSION,
             apply_display_config_migrations,
         )
@@ -483,7 +458,7 @@ class TestRemovedSettingsAreMigratedAway:
 
     def test_every_removal_is_at_or_below_the_current_version(self):
         """A removal stamped past the version never runs."""
-        from chimol.config import (
+        from chimol.core.settings.config import (
             DISPLAY_CONFIG_KEY_REMOVALS,
             DISPLAY_CONFIG_VERSION,
         )

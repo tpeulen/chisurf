@@ -182,9 +182,7 @@ def test_every_array_field_is_classified():
     or masks with the wrong coordinates. So the list is written out -- and this
     test is what stops it going stale.
     """
-    from chimol.renderer.chimol_state import (
-        _MolViewObjectState,
-    )
+    from chimol.core.object_state import _MolViewObjectState
 
     classified = set(ATOM_INDEXED_FIELDS) | set(NON_ATOM_INDEXED_FIELDS)
     unclassified = []
@@ -219,10 +217,8 @@ def qapp():
 @pytest.fixture
 def session(qapp):
     pytest.importorskip("chisurf.core.structure")
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(900, 650)
@@ -400,7 +396,7 @@ def test_masking_is_separate_from_protection(session):
 
 def test_a_masked_atom_is_excluded_from_picking():
     """The flag has to change what picking returns, or it is decoration."""
-    from chimol.renderer import picking
+    from chimol.render import picking
 
     coords = np.zeros((3, 3))
 

@@ -8,7 +8,7 @@ called ``wgpu.*`` directly, and ``wgpu-py``'s browser backend is an explicit
 stub, so there was nothing to point that code at. And the engine imported Qt:
 not just the windows, but the colour tables, the file readers, the panel's
 layout arithmetic, and -- worst -- two package ``__init__`` files that eagerly
-imported a widget, which alone made ``import chimol.renderer.pack`` require a
+imported a widget, which alone made ``import chimol.render.pack`` require a
 window system.
 
 Both are fixed, and both are the kind of thing that comes back one import at a
@@ -50,77 +50,77 @@ _ENGINE_ROOT = _ROOT / "modules" / "chimol"
 #: host, and a host is allowed to need a toolkit.
 ENGINE_MODULES = (
     "chimol",
-    "chimol.colors",
-    "chimol.config",
-    "chimol.cmd",
-    "chimol.mouse_modes",
-    "chimol.object_menus",
-    "chimol.app.menu_bar",
-    "chimol.renderer.picking",
-    "chimol.host.app",
-    "chimol.host.events",
-    "chimol.host.keys",
-    "chimol.host.run",
+    "chimol.core.colors",
+    "chimol.core.settings.config",
+    "chimol.commands",
+    "chimol.chrome.mouse_modes",
+    "chimol.chrome.object_menus",
+    "chimol.hosts.qt.menu_bar",
+    "chimol.render.picking",
+    "chimol.hosts.base",
+    "chimol.hosts.events",
+    "chimol.hosts.keys",
+    "chimol.hosts.native.app",
     "chimol.io.structure",
-    "chimol.renderer.base",
-    "chimol.renderer.canvas_base",
-    "chimol.renderer.canvas_view",
-    "chimol.renderer.gui_state",
-    "chimol.renderer.camera_state",
-    "chimol.renderer.compute",
-    "chimol.renderer.depth_cue",
-    "chimol.renderer.gpu.api",
-    "chimol.renderer.gpu.enums",
-    "chimol.renderer.internal_gui",
-    "chimol.renderer.lighting",
-    "chimol.renderer.markers",
-    "chimol.renderer.pack",
+    "chimol.render.backend",
+    "chimol.viewport.canvas",
+    "chimol.hosts.native.canvas",
+    "chimol.chrome.gui_state",
+    "chimol.core.camera",
+    "chimol.render.compute",
+    "chimol.render.depth_cue",
+    "chimol.render.gpu.api",
+    "chimol.render.gpu.enums",
+    "chimol.chrome.gui",
+    "chimol.render.lighting",
+    "chimol.render.markers",
+    "chimol.render.pack",
     # The viewer itself. It is a ``QWidget`` when there is a toolkit and a plain
-    # object when there is not (`chimol.host.widget`), which is what lets a page
+    # object when there is not (`chimol.hosts.toolkit`), which is what lets a page
     # run *the* viewer and *the* command layer rather than a second set of both.
-    "chimol.renderer.view",
-    "chimol.renderer.scene",
+    "chimol.core.viewer",
+    "chimol.render.scene",
     "chimol.cmtk.command_line",
     "chimol.cmtk.painter",
     "chimol.cmtk.quad_painter",
-    "chimol.renderer.wgpu_backend",
+    "chimol.render.wgpu_backend",
 )
 
 #: The host layer: the modules that are *allowed* to import Qt at module scope.
 #:
 #: A **shrinking** list, and the worklist for what is left of the port. Nine
-#: modules, seven of them ``app/`` panels that draw with Qt widgets what the
+#: modules, seven of them ``hosts/qt/`` panels that draw with Qt widgets what the
 #: in-viewport panel already draws with quads -- so most of this list is closed
 #: by moving those panels into the chrome, not by editing them. The two renderer
 #: entries are the Qt widget and what is left of the image-composited overlay;
-#: the scene builder (``renderer/view.py``) left the list when the viewer stopped
+#: the scene builder (``core/viewer.py``) left the list when the viewer stopped
 #: needing a toolkit to exist, and the whole *draw path* left it when
-#: ``renderer/canvas_base.py`` was extracted -- ``wgpu_view`` is now Qt's event
+#: ``viewport/canvas.py`` was extracted -- ``wgpu_view`` is now Qt's event
 #: translation and nothing else.
 #:
 #: Five left in the change that made the Qt-free window the default:
-#: ``app/hierarchy_panel.py`` (deleted), ``app/timeline_panel.py`` (deleted --
-#: nothing in the tree referred to it), ``app/volume_panel.py`` (already
-#: toolkit-free), ``app/menu_bar.py`` (the bar's *tables* are plain data; only
-#: installing a ``QMenuBar`` needs Qt) and ``app/picking.py`` (a projection and
+#: ``hosts/qt/hierarchy_panel.py`` (deleted), ``hosts/qt/timeline_panel.py`` (deleted --
+#: nothing in the tree referred to it), ``plugins/density/model.py`` (already
+#: toolkit-free), ``hosts/qt/menu_bar.py`` (the bar's *tables* are plain data; only
+#: installing a ``QMenuBar`` needs Qt) and ``hosts/qt/picking.py`` (a projection and
 #: an ``argmin``; it imported Qt for one ``isinstance`` against ``QRect``).
 #:
 #: "Imports Qt at module scope" means an *unconditional* import. A guarded
 #: ``try: from qtpy import ... except ImportError:`` with a stand-in behind it
-#: is the sanctioned shape -- that is what `chimol.host.widget` is -- and the
+#: is the sanctioned shape -- that is what `chimol.hosts.toolkit` is -- and the
 #: subprocess test above is what proves such a module really does load without
 #: a toolkit.
 #:
 #: Never add to it. ``test_the_host_list_is_not_padded`` fails on an entry that
 #: no longer needs to be here, which is how it shrinks.
 HOSTS = frozenset({
-    "app/controls_panel.py",
-    "app/demos.py",
-    "app/molview_main_window.py",
-    "app/rmf_panel.py",
-    "app/settings_table.py",
-    "host/qt_overlay.py",
-    "renderer/wgpu_view.py",
+    "hosts/qt/controls_panel.py",
+    "hosts/qt/demos.py",
+    "hosts/qt/window.py",
+    "hosts/qt/rmf_panel.py",
+    "hosts/qt/settings_table.py",
+    "hosts/qt/overlay.py",
+    "hosts/qt/wgpu_view.py",
 })
 
 #: ``import wgpu`` or ``from wgpu[.x] import ...``.
@@ -253,7 +253,7 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
     """``chimol``'s default run mode builds a viewer and renders a frame.
 
     Importing the modules is not the claim; *running* them is. This drives
-    :class:`chimol.host.run.ChimolApp` end to end in a process where Qt raises
+    :class:`chimol.hosts.native.app.ChimolApp` end to end in a process where Qt raises
     on import -- the viewer, the command layer, the in-viewport panel and one
     real frame through the WGSL renderer -- because every previous version of
     "chimol without Qt" imported cleanly and then reached for a toolkit at the
@@ -264,14 +264,14 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
     """
     result = _run_without_qt(
         """
-        from chimol.renderer.canvas_view import is_available
+        from chimol.hosts.native.canvas import is_available
 
         if not is_available():
             print("SKIP: no WebGPU adapter")
             raise SystemExit(0)
 
-        from chimol.host.run import ChimolApp
-        from chimol.web.demo import demo_pdb_path
+        from chimol.hosts.native.app import ChimolApp
+        from chimol.hosts.web.page import demo_pdb_path
 
         app = ChimolApp(size=(640, 480))
         # T4 lysozyme, the structure this project uses for every protein
@@ -297,7 +297,7 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
         # A click, all the way through: the press/release pair is what the
         # window's own pointer handlers call, and picking used to be gated on
         # there being a QWidget.
-        from chimol.host.events import LEFT_BUTTON
+        from chimol.hosts.events import LEFT_BUTTON
 
         app.renderer.click(320.0, 240.0, LEFT_BUTTON)
 
@@ -361,15 +361,15 @@ def test_qt_is_opt_in_at_the_entry_point():
     branch names the Qt-free host and Qt is behind a flag.
     """
     source = (_CHIMOL / "__main__.py").read_text(encoding="utf-8")
-    assert "from .host.run import main" in source, (
+    assert "from .hosts.native.app import main" in source, (
         "the default branch no longer reaches the Qt-free host"
     )
     assert '"--qt" in args' in source, "Qt is no longer opt-in"
 
 
 def test_only_the_native_backend_imports_the_gpu_binding():
-    """No module outside ``renderer/gpu/native.py`` may import ``wgpu``."""
-    backend = _CHIMOL / "renderer" / "gpu" / "native.py"
+    """No module outside ``render/gpu/native.py`` may import ``wgpu``."""
+    backend = _CHIMOL / "render" / "gpu" / "native.py"
     offenders = []
     for path in sorted(_CHIMOL.rglob("*.py")):
         if path == backend or "__pycache__" in path.parts:
@@ -383,7 +383,7 @@ def test_only_the_native_backend_imports_the_gpu_binding():
             offenders.append(str(path.relative_to(_CHIMOL)))
     assert not offenders, (
         "these modules reach the GPU binding directly instead of through "
-        "chimol.renderer.gpu.api: " + ", ".join(offenders)
+        "chimol.render.gpu.api: " + ", ".join(offenders)
     )
 
 
@@ -407,7 +407,7 @@ def test_the_engine_does_not_import_qt_at_module_scope():
             offenders.append(relative)
     assert not offenders, (
         "these modules import Qt at module scope; move it inside the one "
-        "function that needs it, or into `chimol.host`: " + ", ".join(offenders)
+        "function that needs it, or into `chimol.hosts`: " + ", ".join(offenders)
     )
 
 

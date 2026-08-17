@@ -5,7 +5,7 @@ from the atom-name field. The built-in parser used to take the *first letter* of
 the name, which turned iron into fluorine, chlorine into carbon, and magnesium
 and zinc into ``M`` and ``Z`` -- symbols no element table contains. Consumers
 take the field at face value (``select elem fe`` in
-``cmd/sele_parser.py``, the metal/solvent classes in
+``core/selection/parser.py``, the metal/solvent classes in
 ``analysis/atom_classes.py``), so an ion simply stopped being selectable and was
 coloured as something else.
 

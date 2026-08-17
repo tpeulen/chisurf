@@ -32,8 +32,8 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def session(qapp, tmp_path_factory):
-    from chimol.app.molview_main_window import MolViewPluginWindow
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -58,7 +58,7 @@ def session(qapp, tmp_path_factory):
 def test_the_panel_lists_and_switches_between_densities(session):
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer
-    from chimol.app.volume_panel import VolumeViewModel
+    from chimol.plugins.density.model import VolumeViewModel
 
     model = VolumeViewModel(viewer)
     names = [name for _oid, name in model.density_objects()]
@@ -349,7 +349,7 @@ def test_the_chrome_routes_a_window_right_press(session):
     gui = viewer._renderer._internal_gui
     panel = viewer._density_controls
     _draw_rows(panel, gui)
-    from chimol.renderer.internal_gui import _WINDOW_BODY
+    from chimol.chrome.gui import _WINDOW_BODY
 
     row1 = panel._row_boxes[0][0]
     oid1 = panel._row_boxes[0][1]

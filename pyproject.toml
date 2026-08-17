@@ -150,7 +150,7 @@ csg_fret_dock = "chisurf.plugins.modelling.fret.__main__:main"
 csg_calculator = "chisurf.plugins.calculator.fret_calculator.__main__:main"
 csg_f_test = "chisurf.plugins.core.f_test.__main__:main"
 # chimol in a browser: builds the bundle, serves it, opens the page.
-csg_chimol_web = "chimol.web.serve:main"
+csg_chimol_web = "chimol.hosts.web.serve:main"
 csg_traj_align = "chisurf.plugins.traj.traj_align.__main__:main"
 csg_traj_convert = "chisurf.plugins.traj.traj_convert.__main__:main"
 csg_traj_fret_analysis = "chisurf.plugins.traj.fret_trajectory.__main__:main"

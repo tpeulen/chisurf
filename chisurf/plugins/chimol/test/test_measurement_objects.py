@@ -26,10 +26,8 @@ PDB = (
 def session():
     from qtpy import QtWidgets
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")

@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from qtpy import QtWidgets
 
-from chimol.renderer.chimol_state import _MolViewObjectState
-from chimol.renderer.view import MolView
+from chimol.core.object_state import _MolViewObjectState
+from chimol.core.viewer import MolView
 from chimol.testing.mock_viewer import MockViewer
 
 

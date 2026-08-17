@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.app.menu_bar import (
+from chimol.hosts.qt.menu_bar import (
     EXTRA_MENUS,
     MENU_BAR,
     OMITTED_MENUS,
@@ -31,7 +31,7 @@ def test_the_bar_keeps_pymols_names_and_order():
     for one that leaves the bar: it is either OMITTED (chimol cannot fill it)
     or FOLDED (it is complete, one level down), and both are declared.
     """
-    from chimol.app.menu_bar import FOLDED_MENUS
+    from chimol.hosts.qt.menu_bar import FOLDED_MENUS
 
     ours = [title for title, _ in MENU_BAR if title not in EXTRA_MENUS]
     assert ours == [
@@ -85,7 +85,7 @@ def test_the_bar_matches_a_live_pymol():
 # Wiring
 # --------------------------------------------------------------------------- #
 def test_every_command_is_a_registered_chimol_command():
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     known = set(Cmd().command_names())
 
@@ -108,7 +108,7 @@ def test_every_command_is_a_registered_chimol_command():
 
 def test_every_setting_named_by_the_bar_exists():
     """`set <name>` entries must name a real setting, or they fail on click."""
-    from chimol import settings
+    from chimol.core.settings import registry as settings
 
     def walk(entries):
         for entry in entries:
@@ -156,7 +156,7 @@ def qapp():
 def test_the_bar_installs_and_acts(qapp):
     from qtpy import QtWidgets
 
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     issued: list[str] = []
     window = QtWidgets.QMainWindow()
@@ -181,8 +181,8 @@ def test_a_special_entry_calls_its_handler(qapp):
     """
     from qtpy import QtWidgets
 
-    from chimol.app.menu_bar import _populate
-    from chimol.object_menus import MenuEntry
+    from chimol.hosts.qt.menu_bar import _populate
+    from chimol.chrome.object_menus import MenuEntry
 
     calls: list[str] = []
     menu = QtWidgets.QMenu()

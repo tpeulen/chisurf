@@ -9,7 +9,7 @@ can select anything:
   what "the selection does not show" looked like.
 * the **size** is in pixels and stays the same on screen at any depth, which is
   what an indicator is for.
-* the **geometry** is built by :mod:`chimol.renderer.markers`, an engine module
+* the **geometry** is built by :mod:`chimol.render.markers`, an engine module
   with no toolkit, so the Qt widget and the browser cannot disagree about what a
   selection looks like.
 
@@ -21,10 +21,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.renderer import markers
-from chimol.renderer.pack import pack_scene
-from chimol.renderer.scene import Scene
-from chimol.renderer.view_state import pack_view_state
+from chimol.render import markers
+from chimol.render.pack import pack_scene
+from chimol.render.scene import Scene
+from chimol.core.view_state import pack_view_state
 
 
 # ── the geometry ─────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ def test_a_strip_column_is_not_an_atom_index():
 
 
 def test_the_backend_routes_the_glyph_to_the_marker_pipeline():
-    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
 
     objects = markers.selection_markers([[0.0, 0.0, 0.0]], 6.0)
     packed = pack_scene(Scene(objects=objects, center=(0, 0, 0), radius=1.0))
@@ -90,8 +90,8 @@ def test_the_backend_routes_the_glyph_to_the_marker_pipeline():
 
 def test_a_plain_point_cloud_still_gets_impostors():
     """The routing is by glyph, so nothing else changes pipeline."""
-    from chimol.renderer.scene import Geometry, SceneObject
-    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.render.scene import Geometry, SceneObject
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
 
     geometry = Geometry(
         kind="points",
@@ -109,7 +109,7 @@ def test_a_plain_point_cloud_still_gets_impostors():
 @pytest.fixture(scope="module")
 def renderer():
     """An offscreen renderer, or a skip where there is no adapter."""
-    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
 
     try:
         return WgpuMeshRenderer(240, 240)

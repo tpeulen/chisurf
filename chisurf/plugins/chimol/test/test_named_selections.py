@@ -34,9 +34,7 @@ def qapp():
 
 @pytest.fixture
 def window(qapp, tmp_path):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -52,7 +50,7 @@ def window(qapp, tmp_path):
 
 @pytest.fixture
 def cmd(window):
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     c = Cmd(window)
     messages, errors = [], []

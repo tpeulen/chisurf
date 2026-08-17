@@ -89,9 +89,9 @@ def main() -> int:
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
     from chimol.io.structure import load_structure_payload
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     path = entry_path()
     started = time.perf_counter()

@@ -11,7 +11,7 @@
 #
 # Three groups, and they are not equally hard:
 #
-#   * `app/*` is the ChiSurf integration layer -- the Qt panels, the console,
+#   * `hosts/qt/*` is the ChiSurf integration layer -- the Qt panels, the console,
 #     the dock. Most of it is deleted rather than ported (`HANDOVER_CHIMOL.md`
 #     section 3.4, PRD-101: thirteen of these panels draw with Qt widgets what
 #     the in-viewport chrome already draws with quads). What remains of it is
@@ -22,7 +22,7 @@
 #     them through a seam. The atom dtype is done (2026-08-14): chimol owns
 #     `ATOM_DTYPE` and the host re-exports it, so `io/atoms.py` is off this
 #     list; the DCD reader likewise lives in chimol.
-#   * `settings_dir.py` is **allowed to stay** and is the model for the rest:
+#   * `core/settings/dirs.py` is **allowed to stay** and is the model for the rest:
 #     it asks for ChiSurf inside a `try`, uses it when it is there, and falls
 #     back to its own directory when it is not. A soft dependency that works
 #     both ways is the target shape, not a violation.
@@ -32,6 +32,6 @@
 # ChiSurf must not count as importing it.
 analysis/ss.py
 cli.py
-app/molview_main_window.py
-app/rmf_panel.py
-app/settings_table.py
+hosts/qt/window.py
+hosts/qt/rmf_panel.py
+hosts/qt/settings_table.py

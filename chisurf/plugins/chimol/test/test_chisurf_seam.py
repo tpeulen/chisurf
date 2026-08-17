@@ -122,7 +122,7 @@ def test_no_new_module_imports_chisurf():
         "`analysis/ss.py` for the shape: ask inside a `try`, fall back to "
         "chimol's own answer -- or better, have the host *inject* the answer as "
         "`chisurf/plugins/chimol/__init__.py` does for the settings directory), "
-        "or leave the code in the `app/` integration "
+        "or leave the code in the `hosts/qt/` integration "
         "layer. Do not add a line to the allow-list."
     )
 
@@ -148,7 +148,7 @@ def test_the_allowlist_has_no_stale_entries():
 #: degrade rather than fail; that is what :func:`test_soft_dependencies_are_guarded`
 #: checks.
 SOFT = {
-    # `cmd/exporting.py` used to be here: it asked for ChiSurf's progress
+    # `commands/exporting.py` used to be here: it asked for ChiSurf's progress
     # dialog (and a QThread) when the window was a Qt widget. Severed on
     # 2026-08-17 -- `ray` uses the in-viewport progress overlay on every
     # host, and the module imports neither ChiSurf nor Qt.
@@ -160,7 +160,7 @@ SOFT = {
     "analysis/ss.py",
     # Attaches ChiSurf's console as the prompt's router when it is importable,
     # and uses chimol's own rule when it is not -- see `chimol/repl.py`. This
-    # one was found by moving the CLI out of `app/`: it is toolkit-free, so the
+    # one was found by moving the CLI out of `hosts/qt/`: it is toolkit-free, so the
     # Qt audit never saw it, and it imported ChiSurf at module scope.
     "cli.py",
 }
@@ -179,13 +179,13 @@ HARD: set[str] = set()
 def test_the_engine_does_not_import_chisurf():
     """The half that actually moves must reach a state where it can.
 
-    ``app/`` is the ChiSurf integration layer and may stay behind; everything
+    ``hosts/qt/`` is the ChiSurf integration layer and may stay behind; everything
     else -- the renderer, the command language, the toolkit, the hosts -- is
     the engine, and it is what the new repository will contain. This is the
     check that says how close the *move* is, independently of how much of
-    ``app/`` is left.
+    ``hosts/qt/`` is left.
     """
-    engine = {name for name in _offenders() if not name.startswith("app/")}
+    engine = {name for name in _offenders() if not name.startswith("hosts/qt/")}
     assert engine == SOFT | HARD, (
         "the engine's ChiSurf dependencies changed: " + repr(sorted(engine))
         + "\n\nIf you severed one, take it out of HARD (and the allow-list). "

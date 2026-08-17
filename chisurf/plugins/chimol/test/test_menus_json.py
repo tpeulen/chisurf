@@ -23,10 +23,10 @@ import pathlib
 
 import pytest
 
-import chimol.menus as menus
-from chimol.object_menus import MenuEntry
+import chimol.chrome.menus as menus
+from chimol.chrome.object_menus import MenuEntry
 
-MENUS_JSON = pathlib.Path(menus.__file__).resolve().parent / "gui" / "menus.json"
+MENUS_JSON = pathlib.Path(menus.__file__).resolve().parent / "data" / "menus.json"
 
 
 def _config() -> dict:

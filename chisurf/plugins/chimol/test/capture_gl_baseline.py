@@ -1,6 +1,6 @@
 """The OpenGL renderer's output, feature by feature -- the migration's before-half.
 
-**The capture is retired. The images are not.** ``renderer/qtgl.py`` has been
+**The capture is retired. The images are not.** ``render/qtgl.py`` has been
 removed, so nothing here can photograph anything any more; what remains is the
 *definition* of what was photographed -- the scene list, the reset preamble, and
 the guard that keeps them in step -- beside 22 frozen PNGs and the camera each

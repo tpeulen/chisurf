@@ -11,7 +11,7 @@ or a reader that opens a file dialog on a machine with no display.
 
 Qt is allowed in exactly two places:
 
-* the **embedding window** -- ``app/`` and the widget host that puts the
+* the **embedding window** -- ``hosts/qt/`` and the widget host that puts the
   renderer in it;
 * the **painter seam** -- one ``QPainter`` implementation of the six drawing
   operations, beside the quad one.
@@ -42,10 +42,10 @@ PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 #: Modules still importing Qt. **Shrinking**: never add to this.
 #:
-#: The `app/` entries and `renderer/wgpu_view.py` are the embedding window and
+#: The `hosts/qt/` entries and `hosts/qt/wgpu_view.py` are the embedding window and
 #: are expected to stay. `cmtk/qt_painter.py` and
-#: `host/qt_overlay.py` are the QPainter half of the painter seam.
-#: `host/widget.py` is the seam that decides whether Qt is used at all.
+#: `hosts/qt/overlay.py` are the QPainter half of the painter seam.
+#: `hosts/toolkit.py` is the seam that decides whether Qt is used at all.
 #: The rest are leaks with no reason to exist.
 ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "qt_import_allowlist.txt"
 
@@ -143,15 +143,15 @@ def test_the_allowlist_has_no_stale_entries():
 @pytest.mark.parametrize(
     "module",
     [
-        "renderer/canvas_base.py",
-        "renderer/canvas_view.py",
-        "renderer/base.py",
-        "renderer/scene.py",
-        "renderer/pack.py",
+        "viewport/canvas.py",
+        "hosts/native/canvas.py",
+        "render/backend.py",
+        "render/scene.py",
+        "render/pack.py",
         "io/structure.py",
         "io/mesh_export.py",
-        "colors.py",
-        "config.py",
+        "core/colors.py",
+        "core/settings/config.py",
     ],
 )
 def test_the_toolkit_free_core_stays_toolkit_free(module):

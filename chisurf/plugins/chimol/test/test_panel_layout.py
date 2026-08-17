@@ -64,10 +64,8 @@ def _settle(widget, width, height, app, passes=8):
 def window(qapp):
     """Build a window with a protein and two derived objects, for comparing rows."""
     pytest.importorskip("chisurf.core.structure")
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1300, 850)
@@ -96,11 +94,11 @@ def window(qapp):
 def test_a_gap_is_not_coloured_like_a_residue(window):
     """A row that is mostly gaps hid its few real residues in an identical band.
 
-    Asked of `chimol.colors`, not of the Qt sequence dock: these colours were
+    Asked of `chimol.core.colors`, not of the Qt sequence dock: these colours were
     ``staticmethod``s on a widget, so this test needed a window system to ask
     what colour a gap is. They are chimol's now and answer in plain RGB.
     """
-    from chimol.colors import gap_palette, sequence_palette
+    from chimol.core.colors import gap_palette, sequence_palette
 
     gap_bg, _ = gap_palette()
     coil_bg, _ = sequence_palette("C")
@@ -163,9 +161,7 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
     win.viewer.set_system_info_text("System: coordinates\nAtoms: 1363")
     _settle(win.viewer._container, 900, 600, qapp)
 
-    from chimol.host.qt_overlay import (
-        refresh_gui_state,
-    )
+    from chimol.hosts.qt.overlay import refresh_gui_state
 
     gui = win.viewer._renderer._internal_gui
     # The two calls the renderer makes to build its chrome: the panel's text is

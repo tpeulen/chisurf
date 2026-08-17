@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.labelling.dyes import (
+from chimol.plugins.labelling.dyes import (
     dye_parameters,
     get_dye,
     list_dyes,

@@ -9,7 +9,7 @@ a module that says ``import wgpu`` is a module that cannot run anywhere
 port stops being finishable.
 
 The enum tests fail the other way -- when the seam's own constants drift from
-the binding's. :mod:`chimol.renderer.gpu.enums` writes the WebGPU values out
+the binding's. :mod:`chimol.render.gpu.enums` writes the WebGPU values out
 rather than re-exporting them, because they are fixed by the specification and
 are the same integers and strings in a browser. That is a claim about someone
 else's package, so it is worth asserting: a wrong bit in a usage flag does not
@@ -23,20 +23,20 @@ from pathlib import Path
 
 import pytest
 
-from chimol.renderer.gpu import enums
+from chimol.render.gpu import enums
 
 #: The engine's source root.
 _CHIMOL = Path(__import__("chimol").__file__).resolve().parent
 
 #: The only module allowed to name the binding.
-_BACKEND = _CHIMOL / "renderer" / "gpu" / "native.py"
+_BACKEND = _CHIMOL / "render" / "gpu" / "native.py"
 
 #: ``import wgpu`` or ``from wgpu[.x] import ...``.
 #:
 #: Deliberately *not* matching bare ``wgpu.`` attribute access: the seam is
 #: imported as ``from .gpu import api as wgpu`` precisely so that call sites
 #: keep the binding's spelling, and every ``wgpu.BufferUsage.VERTEX`` in the
-#: renderer now goes through :mod:`chimol.renderer.gpu.api`. What must not
+#: renderer now goes through :mod:`chimol.render.gpu.api`. What must not
 #: reappear is the *import*, which is the thing that ties a module to one
 #: implementation.
 _IMPORTS_WGPU = re.compile(r"^\s*(?:import\s+wgpu\b|from\s+wgpu[\s.])", re.M)
@@ -58,10 +58,10 @@ def _sources():
 def test_only_the_native_backend_imports_wgpu():
     """No module outside the native backend may import ``wgpu``.
 
-    ``renderer/gpu/api.py`` is written to be imported *as* ``wgpu``
+    ``render/gpu/api.py`` is written to be imported *as* ``wgpu``
     (``from .gpu import api as wgpu``), so call sites keep the binding's
     spelling while the binding itself stays behind the seam. Only
-    :mod:`chimol.renderer.gpu.native` may reach it.
+    :mod:`chimol.render.gpu.native` may reach it.
     """
     offenders = []
     for path in _sources():
@@ -76,7 +76,7 @@ def test_only_the_native_backend_imports_wgpu():
             offenders.append(str(path.relative_to(_CHIMOL)))
     assert not offenders, (
         "these modules reach the GPU binding directly instead of through "
-        "chimol.renderer.gpu.api: " + ", ".join(offenders)
+        "chimol.render.gpu.api: " + ", ".join(offenders)
     )
 
 
@@ -122,7 +122,7 @@ def test_our_constants_match_the_binding(namespace):
 
 def test_the_seam_is_a_drop_in_for_the_binding():
     """``api`` answers to every name the engine used to take from ``wgpu``."""
-    from chimol.renderer.gpu import api
+    from chimol.render.gpu import api
 
     assert hasattr(api.gpu, "request_adapter_sync")
     # A spot-check of the two kinds of constant: a spec string and a bit flag.

@@ -22,14 +22,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.renderer import compute
-from chimol.renderer import bvh as bvh_module
-from chimol.renderer.bvh import (
-    _MAX_LEAF,
-    build_bvh,
-    build_bvh_cached,
-    primitive_bounds,
-)
+from chimol.render import compute
+from chimol.render import bvh as bvh_module
+from chimol.render.bvh import _MAX_LEAF, build_bvh, build_bvh_cached, primitive_bounds
 
 pytestmark = pytest.mark.skipif(
     not compute.available(), reason="no WebGPU adapter on this machine"
@@ -313,11 +308,7 @@ def test_cost_grows_far_slower_than_the_triangle_count():
     """
     import time
 
-    from chimol.renderer.raytracer import (
-        RayCamera,
-        Sphere,
-        trace,
-    )
+    from chimol.render.raytracer import RayCamera, Sphere, trace
 
     def scene_kwargs(n_tris: int) -> dict:
         rng = np.random.default_rng(3)
@@ -363,7 +354,7 @@ def test_the_tracer_says_so_when_there_is_no_device(monkeypatch):
     session that can display a molecule can trace one, and a second shading
     implementation would be a large body of code nothing ever runs.
     """
-    from chimol.renderer import raytracer
+    from chimol.render import raytracer
 
     monkeypatch.setattr(compute, "raytrace", lambda *a, **k: None)
     with pytest.raises(raytracer.NoComputeDevice):

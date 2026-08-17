@@ -243,7 +243,7 @@ def qapp():
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     v = MolView()
     v.resize(400, 300)
@@ -271,7 +271,7 @@ def _cartoon_colors(view) -> np.ndarray:
 
 def test_occlusion_varies_the_cartoon_colours(view):
     """Baked into vertex colours, so the live viewport gets it without `ray`."""
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("enabled", True)
@@ -301,7 +301,7 @@ def test_occlusion_leaves_alpha_alone(view):
 
 
 def test_disabling_occlusion_is_honoured(view):
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("darkness", 0.7)
@@ -353,7 +353,7 @@ def test_the_occlusion_matches_the_darkening_in_the_colours(view):
 
 def test_geometry_without_occlusion_is_still_valid():
     """Overlays and grids carry no occlusion; the backend must accept that."""
-    from chimol.renderer.scene import Geometry
+    from chimol.render.scene import Geometry
 
     geom = Geometry(kind="mesh", positions=np.zeros((3, 3)))
     assert geom.occlusion is None
@@ -439,7 +439,7 @@ def test_a_degenerate_light_direction_is_rejected():
 
 def test_shadowing_reaches_the_mesh_colours(view):
     """Off vs on must actually change what is drawn."""
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     cfg = _DISPLAY_CONFIG.setdefault("occlusion", {})
     previous = cfg.get("shadows", True)

@@ -21,7 +21,7 @@ from chimol.io.mesh_export import (
     write_stl,
     write_wrl,
 )
-from chimol.volume import VolumeGrid
+from chimol.core.volume import VolumeGrid
 
 
 @pytest.fixture(scope="session")
@@ -33,8 +33,8 @@ def qapp():
 
 @pytest.fixture
 def shell(qapp):
-    from chimol.cmd.command import Cmd
-    from chimol.renderer.view import MolView
+    from chimol.commands.command import Cmd
+    from chimol.core.viewer import MolView
 
     view = MolView()
     z, y, x = np.mgrid[-10:10, -10:10, -10:10]
@@ -131,7 +131,7 @@ def test_save_routes_the_new_extensions(shell, tmp_path):
 
 def test_spheres_and_sticks_are_tessellated_back(qapp, tmp_path):
     """The scene draws them analytically; the file needs triangles again."""
-    from chimol.renderer.scene import Geometry, Scene, SceneObject
+    from chimol.render.scene import Geometry, Scene, SceneObject
 
     spheres = SceneObject(
         id="balls",

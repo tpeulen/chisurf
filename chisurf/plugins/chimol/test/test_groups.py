@@ -21,7 +21,7 @@ import pathlib
 
 import pytest
 
-from chimol.object_menus import OBJECT_MENUS, targets_for
+from chimol.chrome.object_menus import OBJECT_MENUS, targets_for
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -40,10 +40,8 @@ def qapp():
 def session(qapp):
     """A window with three derived objects to group in various ways."""
     pytest.importorskip("chisurf.core.structure")
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1000, 700)
@@ -83,7 +81,7 @@ def _rows(win):
 
     Read from the in-viewport panel rather than a ``QListWidget``. The Qt
     object dock this used to inspect is gone; the panel that replaced it holds
-    the same list as :class:`~chimol.renderer.internal_gui.GuiRow` records,
+    the same list as :class:`~chimol.chrome.gui.GuiRow` records,
     which is a better thing to assert against anyway -- it is the state the
     renderer draws from, not a widget mirroring it.
 
@@ -416,9 +414,7 @@ def test_an_ordinary_object_is_its_own_target(session):
 # the display-order helper on its own
 # --------------------------------------------------------------------------- #
 def test_grouped_display_order_keeps_blocks_together():
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow as W,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow as W
 
     objects = [
         {"id": "a", "name": "a", "group": None},
@@ -432,9 +428,7 @@ def test_grouped_display_order_keeps_blocks_together():
 
 
 def test_grouped_display_order_is_identity_without_groups():
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow as W,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow as W
 
     objects = [{"id": c, "name": c, "group": None} for c in "abc"]
     assert [o["id"] for o in W._grouped_display_order(objects)] == ["a", "b", "c"]

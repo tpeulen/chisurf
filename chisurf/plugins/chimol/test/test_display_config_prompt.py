@@ -16,7 +16,7 @@ import json
 
 import pytest
 
-from chimol import config as cfg_mod
+from chimol.core.settings import config as cfg_mod
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +29,7 @@ def _restore_display_config():
     what *every other test file* renders with, and the symptom appears somewhere
     unrelated: this file quietly broke the putty tests until it was restored.
     """
-    from chimol import config as _cfg
+    from chimol.core.settings import config as _cfg
 
     snapshot = json.loads(json.dumps(_cfg._DISPLAY_CONFIG))
     try:
@@ -44,8 +44,8 @@ def settings(tmp_path, monkeypatch):
 
     Through ``CHIMOL_SETTINGS_DIR``, which is the documented override and the
     seam that actually exists. Patching ``cfg_mod._cs_settings`` used to work
-    and stopped: :func:`~chimol.config.get_user_display_config_path` now
-    delegates to :mod:`chimol.settings_dir`, which never consults it. The
+    and stopped: :func:`~chimol.core.settings.config.get_user_display_config_path` now
+    delegates to :mod:`chimol.core.settings.dirs`, which never consults it. The
     patch then had **no effect at all**, so every test in this file read the
     developer's own configuration -- which matches the shipped file, so nine
     tests failed on "nothing differs" and the file looked broken rather than
@@ -58,7 +58,7 @@ def settings(tmp_path, monkeypatch):
     There is now exactly **one** seam to point. `_load_display_config` used to
     read ChiSurf's settings module directly, so this fixture had to patch that
     too or a reload reached past the override; it goes through
-    :mod:`chimol.settings_dir` as well now, and that honours the environment
+    :mod:`chimol.core.settings.dirs` as well now, and that honours the environment
     variable above. One override covers every path into the config, which is
     the whole reason chimol resolves its own settings directory rather than
     asking ChiSurf.
@@ -225,7 +225,7 @@ def window(settings, shipped, _qt_app, monkeypatch):
     mine["metaball"]["sigma_factor"] = 3.0
     _write(settings, mine)
 
-    from chimol.app.molview_main_window import MolViewPluginWindow
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     win = MolViewPluginWindow()
     monkeypatch.setattr(win, "status_bar", win.statusBar())
@@ -288,7 +288,7 @@ def test_nothing_is_asked_once_opted_out(window, monkeypatch):
 
 def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt_app, monkeypatch):
     from chisurf.gui import dialogs
-    from chimol.app.molview_main_window import MolViewPluginWindow
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     _write(settings, shipped)
     win = MolViewPluginWindow()
@@ -308,7 +308,7 @@ def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt
 # to keep working is only this: the preference can be read, and it can be put
 # back after being turned off.
 def test_the_panel_shows_the_current_preference(settings, shipped):
-    from chimol.renderer import settings_window
+    from chimol.chrome.panels import settings as settings_window
 
     mine = json.loads(json.dumps(shipped))
     mine[cfg_mod.UPDATE_PROMPT_KEY] = False
@@ -319,7 +319,7 @@ def test_the_panel_shows_the_current_preference(settings, shipped):
 
 
 def test_an_absent_preference_reads_as_asking(settings, shipped):
-    from chimol.renderer import settings_window
+    from chimol.chrome.panels import settings as settings_window
 
     _write(settings, shipped)
     assert settings_window.build_model().get(settings_window.PROMPT_KEY) is True
@@ -327,7 +327,7 @@ def test_an_absent_preference_reads_as_asking(settings, shipped):
 
 def test_the_panel_can_turn_it_back_on(settings, shipped):
     """A preference with no way back on is a preference that only turns off."""
-    from chimol.renderer import settings_window
+    from chimol.chrome.panels import settings as settings_window
 
     mine = json.loads(json.dumps(shipped))
     mine[cfg_mod.UPDATE_PROMPT_KEY] = False
@@ -354,7 +354,7 @@ def test_a_reload_reaches_a_module_that_imported_the_config_by_name(settings, sh
     renderer kept drawing from the old one, which is what made saving in the
     Config editor look like it did nothing.
     """
-    from chimol.renderer.view import _DISPLAY_CONFIG as held_by_renderer
+    from chimol.core.viewer import _DISPLAY_CONFIG as held_by_renderer
 
     mine = json.loads(json.dumps(shipped))
     mine["metaball"]["shininess"] = 12.0

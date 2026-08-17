@@ -19,8 +19,8 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.io.hierarchy import HierarchyNode
-from chimol.renderer.view import MolView
+from chimol.core.hierarchy import HierarchyNode
+from chimol.core.viewer import MolView
 
 
 @pytest.fixture(scope="module")

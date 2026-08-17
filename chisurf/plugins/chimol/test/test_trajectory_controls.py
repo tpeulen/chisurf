@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from chimol.io.atoms import make_bead_rows
-from chimol.renderer.view import MolView
+from chimol.core.viewer import MolView
 
 
 @pytest.fixture(scope="module")

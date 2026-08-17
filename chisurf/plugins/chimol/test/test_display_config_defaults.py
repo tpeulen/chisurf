@@ -1,6 +1,6 @@
 """Two sources of truth for the display defaults, and a copy that never updates.
 
-Chimol's defaults live twice: as a Python dict in `config.py` and as the shipped
+Chimol's defaults live twice: as a Python dict in `core/settings/config.py` and as the shipped
 `chimol_display.json`. The JSON is what is actually read; the dict only fills in
 keys the JSON is missing. So editing the dict changes **nothing** for anyone, and
 it does so quietly -- a whole afternoon's appearance work sat in the dict while
@@ -19,7 +19,7 @@ import json
 
 import pytest
 
-from chimol import config as cfg_mod
+from chimol.core.settings import config as cfg_mod
 
 
 @pytest.fixture(scope="module")
@@ -212,7 +212,7 @@ def test_a_stale_user_copy_is_migrated_on_load(tmp_path, monkeypatch):
     user_path.write_text(json.dumps(stale), encoding="utf-8")
 
     # Patch what the loader actually consults. `_load_display_config` resolves
-    # its directory through `chimol.settings_dir`, which `CHIMOL_SETTINGS_DIR`
+    # its directory through `chimol.core.settings.dirs`, which `CHIMOL_SETTINGS_DIR`
     # overrides; patching `get_user_display_config_path` alone left the test
     # reading the *shipped* file -- which now holds the new values, so it
     # passed while proving nothing. (It patched ChiSurf's settings module

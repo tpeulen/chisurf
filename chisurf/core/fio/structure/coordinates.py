@@ -122,40 +122,28 @@ def write_pdb(
             fp.write('ENDMDL')
 
 
-#: The atom row every reader in chisurf produces. This is the single definition
-#: of it: transcribing it elsewhere is how the copies drift, and a structured
-#: array does not complain when a field is too narrow -- it truncates, silently,
-#: and the loss looks like the file.
-keys_formats = [
-    ('i', 'i4'),
-    # Four characters, because a chain id is not one. A PDB file's is, but an
-    # mmCIF asym id runs A..Z then AA, AB, ... and a one-character field mapped
-    # every one of those onto its first letter: on the eight-spoke nuclear pore
-    # (PDBDEV_00000012), 518 of 544 chains need two characters, so 544 chains
-    # became 26. Nothing raised -- `chain AB` simply selected the whole of A,
-    # and per-chain colouring painted twenty molecules alike.
-    ('chain', '|U4'),
-    ('res_id', 'i4'),
-    ('res_name', '|U5'),
-    ('atom_id', 'i4'),
-    ('atom_name', '|U5'),
-    # Two characters: half the periodic table has a two-letter symbol, and a
-    # one-character field silently truncates every one of them -- ZN becomes Z,
-    # CL becomes C. Anything keyed on the element then fails: `metals` never
-    # matched, `elem ZN` never matched, and a chlorine was coloured as carbon.
-    ('element', '|U2'),
-    ('xyz', '3f8'),
-    ('charge', 'f8'),
-    ('radius', 'f8'),
-    ('bfactor', 'f8'),
-    ('mass', 'f8')
-]
+#: The atom row every reader produces. **chimol owns it** (`chimol.io.atoms.ATOM_DTYPE`)
+#: and this module re-exports it: chimol has to parse a PDB without chisurf on
+#: the path, and two transcriptions of the same twelve fields is how the copies
+#: drift -- a structured array does not complain when a field is too narrow, it
+#: truncates, silently, and the loss looks like the file. The chimol test suite
+#: asserts the two names are the *same object* (`test_engine_is_portable.py`).
+from chimol.io.atoms import ATOM_DTYPE as atom_dtype  # noqa: E402
 
-keys, formats = list(zip(*keys_formats))
+keys = tuple(atom_dtype.names)
 
-#: The same thing as a ``np.dtype``, for the readers that want one directly
-#: rather than the ``names``/``formats`` pair.
-atom_dtype = np.dtype({'names': keys, 'formats': formats})
+
+def _format_of(name: str) -> str:
+    """The dtype spelling ``np.dtype({'names':..,'formats':..})`` accepts."""
+    dt = atom_dtype.fields[name][0]
+    if dt.subdtype is not None:
+        base, shape = dt.subdtype
+        return f"{shape[0]}{base.str[1:]}"          # ('<f8', (3,)) -> '3f8'
+    return dt.str.lstrip("<>|=")                    # '<U4' -> 'U4', '<i4' -> 'i4'
+
+
+formats = tuple(_format_of(name) for name in keys)
+keys_formats = list(zip(keys, formats))
 
 
 _STANDARD_RESIDUES = {

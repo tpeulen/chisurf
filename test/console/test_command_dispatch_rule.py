@@ -29,9 +29,7 @@ def qapp():
 @pytest.fixture(scope="module")
 def console(qapp):
     """The viewer's own command console, with its dispatcher attached."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     window = MolViewPluginWindow()
     window.resize(800, 600)

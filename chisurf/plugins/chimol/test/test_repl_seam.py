@@ -253,7 +253,7 @@ def test_chimol_defaults_to_its_own_settings_directory():
     """
     import os
 
-    from chimol import settings_dir as sd
+    from chimol.core.settings import dirs as sd
 
     before, env = sd.injected_settings_dir(), os.environ.pop(sd.ENV_VAR, None)
     try:
@@ -269,7 +269,7 @@ def test_a_host_can_place_the_settings_directory(tmp_path):
     """What ChiSurf's plugin package does at import."""
     import os
 
-    from chimol import settings_dir as sd
+    from chimol.core.settings import dirs as sd
 
     before, env = sd.injected_settings_dir(), os.environ.pop(sd.ENV_VAR, None)
     try:
@@ -291,7 +291,7 @@ def test_the_environment_overrides_a_host(tmp_path):
     """
     import os
 
-    from chimol import settings_dir as sd
+    from chimol.core.settings import dirs as sd
 
     before, env = sd.injected_settings_dir(), os.environ.get(sd.ENV_VAR)
     try:
@@ -310,7 +310,7 @@ def test_chimols_settings_module_does_not_import_chisurf():
     """The point of the whole exercise, asserted on the import graph."""
     import ast
 
-    from chimol import settings_dir as sd
+    from chimol.core.settings import dirs as sd
 
     source = pathlib.Path(sd.__file__).read_text(encoding="utf-8")
     for node in ast.walk(ast.parse(source)):
@@ -321,6 +321,6 @@ def test_chimols_settings_module_does_not_import_chisurf():
         else:
             continue
         assert "chisurf" not in names, (
-            "chimol.settings_dir imports ChiSurf again -- the host injects the "
+            "chimol.core.settings.dirs imports ChiSurf again -- the host injects the "
             "directory now, see chisurf/plugins/chimol/__init__.py"
         )

@@ -206,7 +206,7 @@ def test_hetero_records_survive_the_parser(parsed):
 
 def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
     """Without this the cartoon has nothing to shape and draws a loop tube."""
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     structure, backbone = load_structure_payload(
         _FALLBACK_PDB, structure_factory=None

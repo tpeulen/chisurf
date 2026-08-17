@@ -4,7 +4,7 @@ What broke, and why a page test
 -------------------------------
 Every menu on the browser page opened and closed within one click: the
 menu bar, the object list's ``A/S/H/L/C`` buttons, the right-click object
-menu. ``Viewer.release`` in ``web/demo.py`` rebuilt the whole panel after
+menu. ``Viewer.release`` in ``hosts/web/page.py`` rebuilt the whole panel after
 *every* release ("so the sequence strip follows the pick") and
 ``InternalGui.set_rows`` dismisses menus -- so the release of the click
 that opened a menu put it away before a frame was drawn. The Qt window and
@@ -95,7 +95,7 @@ def server():
     pytest.importorskip("playwright.sync_api", reason="needs Playwright")
     port = _free_port()
     process = subprocess.Popen(
-        [sys.executable, "-m", "chimol.web.serve", "--port", str(port),
+        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port),
          "--no-open"],
         cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )

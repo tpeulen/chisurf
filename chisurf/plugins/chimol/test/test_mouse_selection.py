@@ -46,9 +46,7 @@ def qapp():
 
 @pytest.fixture
 def window(qapp, tmp_path):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -64,7 +62,7 @@ def window(qapp, tmp_path):
 
 @pytest.fixture
 def cmd(window):
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     c = Cmd(window)
     messages, errors = [], []
@@ -107,7 +105,7 @@ def _atom_count_for_residue_indices(viewer, indices) -> int:
 
 
 def test_click_action_resolves_the_single_cell():
-    from chimol.mouse_modes import click_action_of
+    from chimol.chrome.mouse_modes import click_action_of
     from qtpy import QtCore
 
     no = QtCore.Qt.NoModifier
@@ -147,7 +145,7 @@ def test_selection_merges_like_pymol_actions(window):
 
 
 def test_rect_selection_honours_the_action(window, monkeypatch):
-    from chimol.renderer import view as view_mod
+    from chimol.core import viewer as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(
@@ -197,7 +195,7 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
     """PyMOL: "left-clicking away from any atom should deactivate the
     selection." With nothing picked, `+/-` (toggle) has nothing to toggle, so
     it clears -- it must not leave a stale selection behind."""
-    from chimol.renderer import view as view_mod
+    from chimol.core import viewer as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
@@ -218,7 +216,7 @@ def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
 def test_an_empty_space_pick_leaves_the_selection_alone(window, monkeypatch):
     """`pkat` is an editing pick: it highlights but never owns the selection,
     so an empty pick must not wipe what is selected."""
-    from chimol.renderer import view as view_mod
+    from chimol.core import viewer as view_mod
     from qtpy import QtCore
 
     stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
@@ -253,7 +251,7 @@ def test_a_stored_sele_wins_over_the_viewer_highlight(cmd):
 def viewport(qapp):
     """A laid-out viewer with a structure in it, and its GL widget."""
     from chimol.io.structure import load_structure_payload
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -692,7 +690,7 @@ def test_every_cell_the_block_shows_starts_the_gesture_it_names(viewport):
     """
     from qtpy import QtCore
 
-    from chimol.mouse_modes import action_of
+    from chimol.chrome.mouse_modes import action_of
 
     view, widget, qapp = viewport
     mode = widget._internal_gui.mouse_mode

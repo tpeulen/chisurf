@@ -2408,7 +2408,7 @@ def _restore_chimol_project_files(
         return
 
     try:
-        from chimol.app.molview_main_window import MolViewPluginWindow
+        from chimol.hosts.qt.window import MolViewPluginWindow
     except Exception as exc:
         log.warning(f"load_project: could not import Chimol window: {exc}")
         return

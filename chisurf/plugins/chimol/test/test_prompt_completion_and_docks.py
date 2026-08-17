@@ -16,7 +16,7 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.host.keys import KEY_TAB  # noqa: E402
+from chimol.hosts.keys import KEY_TAB  # noqa: E402
 from chimol.cmtk.command_line import (  # noqa: E402
     CommandLine,
 )
@@ -75,9 +75,7 @@ def qapp():
 def window():
     from qtpy import QtWidgets
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()

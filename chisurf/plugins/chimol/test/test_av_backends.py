@@ -20,7 +20,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.labelling import av
+from chimol.plugins.labelling import av
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]

@@ -15,7 +15,7 @@
     }
   },
   "entrypoints": {
-    "gui": "chimol.app:MolViewPluginWindow"
+    "gui": "chimol.hosts.qt:MolViewPluginWindow"
   },
   "menu_hidden": false,
   "deprecated": false

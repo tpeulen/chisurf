@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from chisurf.core.plugin import load_manifest
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
-    from chimol.app import MolViewPluginWindow
+    from chimol.hosts.qt import MolViewPluginWindow
 
 def _place_chimol_settings_beside_chisurf_s() -> None:
     """Tell chimol to keep its settings where ChiSurf keeps everything else.
@@ -47,7 +47,7 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
     try:
         import chisurf.core.settings as _cs_settings
 
-        from chimol.settings_dir import set_settings_dir
+        from chimol.core.settings.dirs import set_settings_dir
 
         set_settings_dir(_cs_settings.get_path("settings"))
 
@@ -59,7 +59,7 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
         # and console through propagation and are not printed twice. That
         # propagation is the whole of "chimol logs into chisurf"; no chimol
         # module names the host.
-        from chimol.logging_setup import configure_logging
+        from chimol.core.settings.logging import configure_logging
 
         configure_logging()
 
@@ -68,7 +68,7 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
         # samples"; inside ChiSurf the checkout's test data is the sample
         # store, and it is injected here for the same reason the settings
         # directory is: the host is the only side that knows the answer.
-        from chimol.demos.catalog import set_data_dirs
+        from chimol.plugins.demos.catalog import set_data_dirs
 
         _samples = (
             pathlib.Path(__file__).resolve().parents[3]
@@ -116,7 +116,7 @@ def __getattr__(attribute: str):
         If *attribute* is not one this module provides.
     """
     if attribute == "MolViewPluginWindow":
-        from chimol.app import MolViewPluginWindow
+        from chimol.hosts.qt import MolViewPluginWindow
 
         globals()["MolViewPluginWindow"] = MolViewPluginWindow
         return MolViewPluginWindow
@@ -140,7 +140,7 @@ def _open_fps_editor(window, payload: dict) -> None:
 
     Parameters
     ----------
-    window : chimol.app.MolViewPluginWindow
+    window : chimol.hosts.qt.MolViewPluginWindow
         The window the hook was called on; the editor is kept alive on it.
     payload : dict
         The fps.json document, as :attr:`FpsJsonEditor.fps_json_payload` takes.
@@ -165,9 +165,9 @@ def _create_window():
 
     Returns
     -------
-    chimol.app.MolViewPluginWindow
+    chimol.hosts.qt.MolViewPluginWindow
     """
-    from chimol.app import MolViewPluginWindow
+    from chimol.hosts.qt import MolViewPluginWindow
 
     win = MolViewPluginWindow()
     try:
@@ -184,7 +184,7 @@ def _create_window():
 def main() -> None:
     """Launch Chimol as a standalone **Qt** application.
 
-    The Qt-free window is :func:`chimol.host.run.run`,
+    The Qt-free window is :func:`chimol.hosts.native.app.run`,
     and it is what ``python -m chisurf.plugins.chimol`` opens; this is what
     ``--qt`` asks for.
     """

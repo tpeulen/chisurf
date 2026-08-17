@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 import numpy as np
-from chimol.cmd.sele_parser import (
+from chimol.core.selection.parser import (
     AllNode,
     Evaluator,
     NoneNode,

@@ -19,7 +19,7 @@ import pathlib
 
 import pytest
 
-from chimol.object_menus import (
+from chimol.chrome.object_menus import (
     ACTION_MENU,
     COLOR_MENU,
     HIDE_MENU,
@@ -233,7 +233,7 @@ def test_prompted_entries_take_their_value():
 
 def test_every_command_is_a_registered_chimol_command():
     """A menu entry wired to a command that does not exist is a dead button."""
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     known = set(Cmd().command_names())
 
@@ -275,9 +275,7 @@ def window(qapp, tmp_path):
     import pathlib
     import shutil
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -293,7 +291,7 @@ def window(qapp, tmp_path):
 
 
 def _count(window, expression):
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     cmd = Cmd(window)
     messages, errors = [], []

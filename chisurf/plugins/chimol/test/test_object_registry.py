@@ -18,7 +18,7 @@ be pointed back at the first of two maps. Three reported symptoms, one missing
 signal.
 
 The fix is not another call site. It is
-:class:`~chimol.renderer.object_registry.ObjectRegistry`: the list counts its
+:class:`~chimol.core.objects.ObjectRegistry`: the list counts its
 own changes, and the views **consume** that count rather than being dispatched
 to. Pull, not push -- every view here already repaints on a clock, so comparing
 an integer costs nothing and cannot be forgotten the way a subscription can.
@@ -41,10 +41,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.renderer.object_registry import (
-    Change,
-    ObjectRegistry,
-)
+from chimol.core.objects import Change, ObjectRegistry
 
 
 class _Entry:
@@ -78,8 +75,8 @@ def test_every_mutation_counts():
 def test_the_mapping_protocol_is_the_choke_point():
     """Two modules outside the viewer mutate the list directly.
 
-    ``cmd/interactions.py`` drops a mutagenesis preview with ``pop`` and
-    ``renderer/session.py`` empties the list with ``clear``. Neither would call
+    ``commands/interactions.py`` drops a mutagenesis preview with ``pop`` and
+    ``core/session.py`` empties the list with ``clear``. Neither would call
     a named method it does not know about, so the mapping itself has to be what
     counts -- that is the whole reason this is a ``MutableMapping``.
     """
@@ -187,9 +184,9 @@ def test_all_three_hosts_consume_the_registry():
 
     root = pathlib.Path(__import__("chimol").__file__).resolve().parent
     hosts = {
-        "toolkit-free": root / "host" / "run.py",
-        "Qt": root / "app" / "molview_main_window.py",
-        "browser": root / "web" / "demo.py",
+        "toolkit-free": root / "hosts" / "native" / "app.py",
+        "Qt": root / "hosts" / "qt" / "window.py",
+        "browser": root / "hosts" / "web" / "page.py",
     }
     for label, path in hosts.items():
         text = path.read_text(encoding="utf-8")

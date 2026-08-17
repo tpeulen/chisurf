@@ -34,7 +34,7 @@ from chisurf.core.dataspec.schema import validate_guide, validate_view_spec
 _CHIMOL = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
 VIEW_SPECS = sorted(p for p in _CHIMOL.rglob("*.view.json") if "build" not in p.parts)
-TOURS = sorted(p for p in (_CHIMOL / "demos" / "tours").glob("*.json"))
+TOURS = sorted(p for p in (_CHIMOL / "data" / "tours").glob("*.json"))
 
 
 def _label(path: pathlib.Path) -> str:

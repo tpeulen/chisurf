@@ -63,11 +63,7 @@ RESIDUES = 600
 
 def build_gui():
     """Return an ``InternalGui`` carrying a realistic panel."""
-    from chimol.renderer.internal_gui import (
-        GuiRow,
-        InternalGui,
-        SequenceRow,
-    )
+    from chimol.chrome.gui import GuiRow, InternalGui, SequenceRow
 
     gui = InternalGui()
     gui.visible = True

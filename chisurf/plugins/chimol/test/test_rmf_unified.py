@@ -27,7 +27,7 @@ from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolutio
 
 from chimol.io.atoms import bead_mask
 from chimol.io.structure import load_structure_payload
-from chimol.renderer.view import MolView, _is_bead_model
+from chimol.core.viewer import MolView, _is_bead_model
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 

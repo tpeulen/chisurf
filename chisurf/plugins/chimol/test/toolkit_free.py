@@ -79,7 +79,7 @@ def emit(key, value):
 #: viewer the same way the chisurf plugin injects them, so a probe script
 #: that says ``load 148l.pdb`` works regardless of which host imported the
 #: package first.
-from chimol.demos.catalog import set_data_dirs as _set_data_dirs
+from chimol.plugins.demos.catalog import set_data_dirs as _set_data_dirs
 
 _set_data_dirs(
     {str(_DATA_DIRS[0])!r},
@@ -89,7 +89,7 @@ _set_data_dirs(
 
 def open_app(size=(900, 600)):
     """Build the toolkit-free viewer, offscreen."""
-    from chimol.host.run import ChimolApp
+    from chimol.hosts.native.app import ChimolApp
 
     return ChimolApp(backend="offscreen", size=size)
 '''

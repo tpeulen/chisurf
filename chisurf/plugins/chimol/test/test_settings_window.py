@@ -6,7 +6,7 @@ without anybody editing the panel — a test that only checked "some rows exist"
 would pass just as happily on a hand-written subset, which is the thing this
 replaces.
 
-The second is that the editor writes through :mod:`chimol.settings` rather than
+The second is that the editor writes through :mod:`chimol.core.settings.registry` rather than
 poking the config dict, so a registered setting's stored/shown transform runs:
 ``transparency`` edits as transparency and is *kept* as alpha.
 """
@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import pytest
 
-from chimol import settings as settings_api
-from chimol.config import _DISPLAY_CONFIG
-from chimol.renderer import settings_window
+from chimol.core.settings import registry as settings_api
+from chimol.core.settings.config import _DISPLAY_CONFIG
+from chimol.chrome.panels import settings as settings_window
 from chimol.cmtk import settings_editor
 
 

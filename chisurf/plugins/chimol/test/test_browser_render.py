@@ -43,7 +43,7 @@ CHROMIUM_FLAGS = [
     "--ignore-gpu-blocklist",
 ]
 
-_WEB = pathlib.Path(__import__("chimol").__file__).resolve().parent / "web"
+_WEB = pathlib.Path(__import__("chimol").__file__).resolve().parent / "hosts" / "web"
 
 
 def _free_port() -> int:
@@ -60,7 +60,7 @@ def server():
     port = _free_port()
     root = pathlib.Path(__file__).resolve().parents[4]
     process = subprocess.Popen(
-        [sys.executable, "-m", "chimol.web.serve",
+        [sys.executable, "-m", "chimol.hosts.web.serve",
          "--port", str(port)],
         cwd=str(root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )

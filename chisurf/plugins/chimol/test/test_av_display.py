@@ -42,8 +42,8 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def session(qapp):
-    from chimol.app.molview_main_window import MolViewPluginWindow
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -117,7 +117,7 @@ def test_the_density_panel_edits_the_av(session):
     """The panel a map gets is the panel a dye gets."""
     win, shared, errors, qapp = session
     viewer = win.viewer
-    from chimol.app.volume_panel import VolumeViewModel
+    from chimol.plugins.density.model import VolumeViewModel
 
     model = VolumeViewModel(viewer)
     grid = model._grid()
@@ -132,7 +132,7 @@ def test_the_density_panel_edits_the_av(session):
 
 def test_the_contour_is_closed_and_centered_on_the_cloud(session):
     _fresh_av(session)
-    from chimol.labelling import av as avmod
+    from chimol.plugins.labelling import av as avmod
 
     if "imp-bff" not in avmod.available_backends():
         pytest.skip("imp-bff not importable here")
@@ -215,7 +215,7 @@ def test_the_object_menu_colors_the_av(session):
     color = entry.state.volume_levels[0]["color"]
     assert tuple(round(float(c), 3) for c in color[:3]) == (1.0, 0.0, 0.0)
     # The panel's view agrees -- same levels, same object.
-    from chimol.app.volume_panel import VolumeViewModel
+    from chimol.plugins.density.model import VolumeViewModel
 
     model = VolumeViewModel(viewer)
     assert model._grid() is not None
@@ -225,7 +225,7 @@ def test_the_object_menu_colors_the_av(session):
 def test_the_numpy_backend_also_becomes_a_density(session, monkeypatch):
     """The browser backend (no physics library) draws the same way."""
     _fresh_av(session)
-    from chimol.labelling import av as avmod
+    from chimol.plugins.labelling import av as avmod
 
     if "numpy" not in avmod.available_backends():
         pytest.skip("numpy backend missing")

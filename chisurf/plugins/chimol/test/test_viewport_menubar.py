@@ -5,7 +5,7 @@ that they were a Qt menu bar, which on macOS is taken away to the **system**
 bar at the top of the screen, nowhere near the viewport, and in a browser does
 not exist at all. Drawn by the chrome they are in the same place everywhere.
 
-The menu *contents* were already viewport-drawable: `object_menus.py` has fed
+The menu *contents* were already viewport-drawable: `chrome/object_menus.py` has fed
 the in-view A/S/H/L/C pop-ups through the same painter for a long time. What
 was missing was the bar itself.
 """
@@ -15,11 +15,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.app.menu_bar import MENU_BAR  # noqa: E402
-from chimol.renderer.internal_gui import (  # noqa: E402
-    InternalGui,
-    SequenceRow,
-)
+from chimol.hosts.qt.menu_bar import MENU_BAR  # noqa: E402
+from chimol.chrome.gui import InternalGui, SequenceRow  # noqa: E402
 
 SIZE = (860, 520)
 

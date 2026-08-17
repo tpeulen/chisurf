@@ -38,10 +38,10 @@ def qapp():
 @pytest.fixture(scope="module")
 def scenes(qapp):
     """One assembled Scene per representation, built without a display."""
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.io.structure import load_structure_payload
-    from chimol.renderer.headless import SceneSink
-    from chimol.renderer.view import MolView
+    from chimol.render.headless import SceneSink
+    from chimol.core.viewer import MolView
 
     viewer = MolView(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
@@ -63,7 +63,7 @@ def scenes(qapp):
 @pytest.mark.parametrize("representation", REPRESENTATIONS)
 def test_packed_arrays_are_upload_ready(scenes, representation):
     """Every array must be float32/uint32, contiguous, in range and finite."""
-    from chimol.renderer.pack import pack_scene
+    from chimol.render.pack import pack_scene
 
     packed = pack_scene(scenes[representation])
     assert packed.objects, f"{representation}: nothing was assembled"
@@ -90,7 +90,7 @@ def test_packed_arrays_are_upload_ready(scenes, representation):
 
 def test_packing_preserves_the_geometry(scenes):
     """Packing changes dtype and nothing else."""
-    from chimol.renderer.pack import pack_scene
+    from chimol.render.pack import pack_scene
 
     scene = scenes["cartoon"]
     packed = pack_scene(scene)
@@ -107,8 +107,8 @@ def test_packing_preserves_the_geometry(scenes):
 
 def test_a_bad_array_is_reported_not_repaired():
     """NaNs and out-of-range indices must raise, not be silently dropped."""
-    from chimol.renderer.pack import pack_geometry
-    from chimol.renderer.scene import Geometry
+    from chimol.render.pack import pack_geometry
+    from chimol.render.scene import Geometry
 
     good = np.zeros((3, 3), dtype=np.float64)
     with pytest.raises(ValueError, match="NaN"):

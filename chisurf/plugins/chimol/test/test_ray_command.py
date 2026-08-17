@@ -30,9 +30,7 @@ def qapp():
 
 @pytest.fixture
 def window(qapp, tmp_path):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -48,8 +46,8 @@ def window(qapp, tmp_path):
 
 @pytest.fixture
 def cmd(window):
-    from chimol import config as chimol_config
-    from chimol.cmd.command import Cmd
+    from chimol.core.settings import config as chimol_config
+    from chimol.commands.command import Cmd
 
     # One sample per pixel. `_DISPLAY_CONFIG` is process-wide, so it is restored
     # in place rather than replaced -- a dict swapped here changes other files.
@@ -220,11 +218,7 @@ def _shell_over_ball(shell_alpha: float):
     by passing through the shell.
     """
     import numpy as np
-    from chimol.renderer.raytracer import (
-        RayCamera,
-        Sphere,
-        trace,
-    )
+    from chimol.render.raytracer import RayCamera, Sphere, trace
 
     camera = RayCamera(
         origin=np.array([0.0, 0.0, 12.0]),

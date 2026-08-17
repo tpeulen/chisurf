@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmd.sele_keywords import (
+from chimol.core.selection.keywords import (
     CANONICAL,
     KEYWORDS,
     Arity,

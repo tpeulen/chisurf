@@ -9,7 +9,7 @@ from qtpy import QtWidgets
 from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-from chimol.renderer.view import MolView
+from chimol.core.viewer import MolView
 
 
 @pytest.fixture

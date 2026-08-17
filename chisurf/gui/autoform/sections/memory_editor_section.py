@@ -13,7 +13,7 @@ The bound attribute may be:
   above the dump, so one section can show a whole set of buffers.
 
 Leaving ``target`` off probes the running renderer instead
-(:mod:`chimol.renderer.memory_probe`) and lists what it holds in host memory
+(:mod:`chimol.core.memory_probe`) and lists what it holds in host memory
 and on the device, largest first, with the totals in the caption. That is the
 "where did the memory go" view, and it is the reason this section exists: the
 question used to be answerable only by adding a print statement and re-running,
@@ -135,7 +135,7 @@ class MemoryEditorWidget(QtWidgets.QWidget):
     def _probe(self) -> tuple[list, str]:
         """Probe the running renderer for its RAM and VRAM blocks."""
         try:
-            from chimol.renderer import memory_probe
+            from chimol.core import memory_probe
         except ImportError as problem:
             return [], f"probe unavailable ({problem})"
 

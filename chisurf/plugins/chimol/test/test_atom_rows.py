@@ -111,7 +111,7 @@ def test_there_is_one_atom_dtype_and_the_core_owns_it():
     the mismatch showed up only as fields that were quietly always zero.
     """
     from chisurf.core.fio.structure.coordinates import atom_dtype, keys
-    from chimol.cmd.editing import PSEUDOATOM_DTYPE
+    from chimol.commands.editing import PSEUDOATOM_DTYPE
     from chimol.io import structure
 
     assert ATOM_DTYPE is atom_dtype

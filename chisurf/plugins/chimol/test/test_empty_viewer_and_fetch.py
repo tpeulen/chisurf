@@ -25,7 +25,7 @@ import urllib.error
 
 import pytest
 
-from chimol.cmd.selection import _NOTHING_LOADED
+from chimol.commands.selection import _NOTHING_LOADED
 
 
 @pytest.fixture(scope="session")
@@ -38,10 +38,8 @@ def qapp_empty():
 @pytest.fixture
 def session(qapp_empty):
     """A plugin window with the shared command object attached to it."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(600, 400)
@@ -122,7 +120,7 @@ def test_the_message_names_the_way_out(session):
 # fetch does not depend on whatever CA store the interpreter happens to have
 # --------------------------------------------------------------------------- #
 def test_the_tls_context_verifies_and_has_certificates():
-    from chimol.cmd.loader import _tls_context
+    from chimol.commands.loader import _tls_context
 
     context = _tls_context()
     if context is None:
@@ -141,7 +139,7 @@ def scratch_downloads(tmp_path, monkeypatch):
     download to fail has to start from a directory where the entry is absent --
     otherwise it exercises the cache and never reaches the network at all.
     """
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
     return tmp_path
@@ -149,7 +147,7 @@ def scratch_downloads(tmp_path, monkeypatch):
 
 def test_a_certificate_failure_is_explained(session, scratch_downloads, monkeypatch):
     """Not by quoting OpenSSL at someone who cannot act on it."""
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     def _boom(*_args, **_kwargs):
         raise urllib.error.URLError(
@@ -168,7 +166,7 @@ def test_a_certificate_failure_is_explained(session, scratch_downloads, monkeypa
 def test_a_missing_entry_is_not_reported_as_a_network_problem(
     session, scratch_downloads, monkeypatch
 ):
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     def _missing(*_args, **_kwargs):
         raise urllib.error.HTTPError("u", 404, "Not Found", {}, None)
@@ -249,7 +247,7 @@ def test_a_pdb_without_a_reader_still_says_so(tmp_path, caplog):
 
 def test_the_repository_url_is_the_one_that_serves_the_file():
     """A wrong template fails as a network error and reads as one."""
-    from chimol.cmd.loader import LoaderCommands
+    from chimol.commands.loader import LoaderCommands
 
     ihm = LoaderCommands.REPOSITORIES["pdb-ihm"]
     assert ihm["url"].format(id="pdbdev_00000010", num="") == (
@@ -260,7 +258,7 @@ def test_the_repository_url_is_the_one_that_serves_the_file():
 def test_a_downloaded_entry_is_not_downloaded_again(session, scratch_downloads,
                                                     monkeypatch, tmp_path):
     """The eight-spoke pore is 31.5 MB; the demo should not re-fetch it each run."""
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     cached = tmp_path / "chimol_pdb_ihm_pdbdev_00000010.cif"
     cached.write_text(_MINIMAL_MMCIF)
@@ -279,7 +277,7 @@ def test_a_downloaded_entry_is_not_downloaded_again(session, scratch_downloads,
 
 def test_an_empty_cached_file_is_not_trusted(session, scratch_downloads, tmp_path):
     """A zero-byte leftover from an interrupted download is not a cache hit."""
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     (tmp_path / "chimol_pdb_ihm_pdbdev_00000010.cif").write_bytes(b"")
     calls: list = []
@@ -307,7 +305,7 @@ def test_a_failed_download_leaves_nothing_behind(session, scratch_downloads,
     download failed part-way -- in the user's own cache directory, where the
     next run would find it sitting where the entry should be.
     """
-    from chimol.cmd import loader as loader_mod
+    from chimol.commands import loader as loader_mod
 
     class _HalfResponse:
         def __enter__(self):

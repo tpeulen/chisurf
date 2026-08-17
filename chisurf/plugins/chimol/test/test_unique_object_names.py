@@ -135,7 +135,7 @@ def test_pymols_default_is_restored_by_pymols_setting(measured):
 
 def test_the_setting_is_registered_under_pymols_name():
     """A setting under a different name is a different setting."""
-    from chimol import settings as settings_api
+    from chimol.core.settings import registry as settings_api
 
     spec = settings_api.resolve("auto_rename_duplicate_objects")
     assert spec.kind == "bool"

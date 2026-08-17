@@ -18,11 +18,8 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.host import events, keys
-from chimol.renderer.internal_gui import (
-    GuiRow,
-    InternalGui,
-)
+from chimol.hosts import events, keys
+from chimol.chrome.gui import GuiRow, InternalGui
 from chimol.cmtk.command_line import CommandLine
 
 SIZE = (900, 600)
@@ -223,7 +220,7 @@ def test_clicking_the_prompt_focuses_it_and_places_the_caret():
     assert gui.mouse_press(rect.x + rect.w / 2, rect.y + rect.h / 2) is True
     assert gui.command_line.focused is True
 
-    from chimol.renderer.internal_gui import char_width
+    from chimol.chrome.gui import char_width
     from chimol.cmtk.command_line import PROMPT
 
     advance = char_width(gui.FONT_PT)

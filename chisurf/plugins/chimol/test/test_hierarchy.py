@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.io.hierarchy import HierarchyNode
+from chimol.core.hierarchy import HierarchyNode
 
 
 # --------------------------------------------------------------------------- #
@@ -184,7 +184,7 @@ def _three_level_tree():
 # honouring `set_rows_hidden`, whoever calls it.
 def test_hidden_rows_are_not_drawn(qapp_hier):
     """The point of the check box: fewer particles in the picture."""
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     n = 40
     rng = np.random.default_rng(1)
@@ -219,7 +219,7 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
 
 
 def test_hiding_everything_draws_nothing(qapp_hier):
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     n = 12
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
@@ -262,7 +262,7 @@ def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
 
 def test_the_viewer_keeps_the_hierarchy_it_is_given(qapp_hier):
     """One field, whichever reader filled it."""
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     tree = _three_level_tree()
     view = MolView()

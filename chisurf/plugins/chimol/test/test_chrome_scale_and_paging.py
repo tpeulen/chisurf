@@ -20,13 +20,8 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.object_menus import MenuEntry
-from chimol.renderer.internal_gui import (
-    BASE_FONT_PT,
-    GuiRow,
-    InternalGui,
-    char_width,
-)
+from chimol.chrome.object_menus import MenuEntry
+from chimol.chrome.gui import BASE_FONT_PT, GuiRow, InternalGui, char_width
 
 WIDTH, HEIGHT = 900, 600
 

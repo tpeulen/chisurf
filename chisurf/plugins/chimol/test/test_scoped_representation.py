@@ -42,9 +42,7 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def window(qapp):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -57,7 +55,7 @@ def window(qapp):
 
 @pytest.fixture
 def cmd(window):
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     c = Cmd(window)
     c.set_message_callback(lambda _m: None)

@@ -483,6 +483,6 @@ class TestSmoothLoops:
 
     def test_it_is_off_by_default(self):
         """PyMOL ships it off; a rounder loop is further from the truth."""
-        from chimol import settings
+        from chimol.core.settings import registry as settings
 
         assert settings.get_setting("cartoon_smooth_loops") is False

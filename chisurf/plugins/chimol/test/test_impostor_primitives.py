@@ -21,10 +21,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.renderer.pack import pack_scene
-from chimol.renderer.scene import Geometry, Scene, SceneObject
-from chimol.renderer.view_state import pack_view_state
-from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+from chimol.render.pack import pack_scene
+from chimol.render.scene import Geometry, Scene, SceneObject
+from chimol.core.view_state import pack_view_state
+from chimol.render.wgpu_backend import WgpuMeshRenderer
 
 SIZE = (320, 320)
 
@@ -77,7 +77,7 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
     primitive -- 0.3 s against 114 s for 148L. The impostor path has to carry
     the same record, or switching representation silently makes ``ray`` slow.
     """
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     centres = np.array([[0.0, 0.0, 0.0], [3.0, 0.0, 0.0]])
     colours = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
@@ -94,7 +94,7 @@ def test_spheres_carry_their_centres_for_the_ray_tracer():
 
 
 def test_the_impostor_floor_is_a_setting_and_defaults_to_every_sphere():
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     assert MolView._spheres_as_impostors(1) is True
     assert MolView._spheres_as_impostors(100_000) is True

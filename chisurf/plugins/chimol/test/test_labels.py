@@ -187,9 +187,9 @@ def loaded(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -275,7 +275,7 @@ def test_labelling_nothing_is_reported(loaded):
 
 def test_the_label_menu_is_no_longer_disabled():
     """It was greyed out in its entirety because there was no label support."""
-    from chimol.object_menus import LABEL_MENU
+    from chimol.chrome.object_menus import LABEL_MENU
 
     live = [
         e for e in LABEL_MENU

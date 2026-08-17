@@ -4,7 +4,7 @@ import pytest
 from dataclasses import dataclass
 
 from chimol.testing.mock_viewer import MockViewer
-from chimol.cmd.command import Cmd
+from chimol.commands.command import Cmd
 
 class MockWindow:
     def __init__(self, viewer):

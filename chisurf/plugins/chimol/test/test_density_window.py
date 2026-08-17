@@ -35,11 +35,9 @@ def qapp():
 @pytest.fixture
 def loaded(qapp):
     """Build a window with a small map, its view model, and the panel."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.renderer.density_window import DensityWindow
-    from chimol.volume import VolumeGrid
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.plugins.density.window import DensityWindow
+    from chimol.core.volume import VolumeGrid
 
     win = MolViewPluginWindow()
     win.resize(900, 640)
@@ -186,7 +184,7 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
     viewer._update_view = counting_update
     viewer.set_volume_levels = recording_set
     try:
-        from chimol import compute_dispatch
+        from chimol.core import compute_dispatch
 
         start = _marker_x(panel, model)
         gui.mouse_press(start, plot.y + plot.h / 2)
@@ -256,10 +254,8 @@ def test_an_unknown_mode_is_refused(loaded):
 
 def test_the_panel_says_so_when_there_is_no_map(qapp):
     """It must not draw a histogram of nothing."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.renderer.density_window import DensityWindow
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.plugins.density.window import DensityWindow
 
     win = MolViewPluginWindow()
     win.show()
@@ -273,7 +269,7 @@ def test_the_panel_says_so_when_there_is_no_map(qapp):
             def text(self, x, y, w, h, align, text, colour):
                 said.append(text)
 
-        from chimol.renderer.internal_gui import Rect
+        from chimol.chrome.gui import Rect
 
         panel.draw(_Text(), Rect(0, 0, 300, 200))
         assert any("No map loaded" in line for line in said)
@@ -464,8 +460,8 @@ def test_an_indexed_line_geometry_is_expanded_to_its_edges():
     between whichever vertices were adjacent in the array. The packer must
     expand indices into pairs.
     """
-    from chimol.renderer.pack import PackedGeometry
-    from chimol.renderer.wgpu_backend import WgpuMeshRenderer
+    from chimol.render.pack import PackedGeometry
+    from chimol.render.wgpu_backend import WgpuMeshRenderer
 
     positions = np.array(
         [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]], dtype=np.float32
@@ -530,7 +526,7 @@ def test_subdivision_quadruples_and_welds():
 def test_smoothing_relaxes_noise_without_moving_the_shape():
     """surface_smoothing pulls the noise in while the mean radius holds."""
     from chimol.geometry.refine import smooth_vertex_positions
-    from chimol.volume import VolumeGrid
+    from chimol.core.volume import VolumeGrid
 
     rng = np.random.default_rng(3)
     z, y, x = np.mgrid[-16:16, -16:16, -16:16]
@@ -598,7 +594,7 @@ def test_the_panel_offers_the_quality_row(loaded):
 # --------------------------------------------------------------------------- #
 def _speckled_map():
     """One big blob plus far-flung single-voxel speckles -- dust by design."""
-    from chimol.volume import VolumeGrid
+    from chimol.core.volume import VolumeGrid
 
     z, y, x = np.mgrid[-20:20, -20:20, -20:20]
     values = np.exp(-(x * x + y * y + z * z) / 60.0).astype(np.float32)
@@ -630,8 +626,8 @@ def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
 
 def _shell(qapp):
     """Build a viewer plus command shell, mirroring test_volume's fixture."""
-    from chimol.cmd.command import Cmd
-    from chimol.renderer.view import MolView
+    from chimol.commands.command import Cmd
+    from chimol.core.viewer import MolView
 
     view = MolView()
     messages: list[str] = []
@@ -663,7 +659,7 @@ def test_hide_dust_is_a_map_setting_and_show_dust_clears_it(qapp):
 
 
 def test_volume_gaussian_adds_a_smoothed_copy(qapp):
-    from chimol.volume import VolumeGrid
+    from chimol.core.volume import VolumeGrid
 
     view, cmd, messages, errors = _shell(qapp)
     z, y, x = np.mgrid[-14:14, -14:14, -14:14]
@@ -679,7 +675,7 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     ]
     assert any("gaussian" in str(n) for n in names), names
 
-    from chimol.volume import gaussian_filtered
+    from chimol.core.volume import gaussian_filtered
 
     smoothed = gaussian_filtered(grid, 1.5)
     assert smoothed.values.shape == grid.values.shape
@@ -809,7 +805,7 @@ def test_the_panel_opens_narrow_and_declares_its_floor(loaded):
     ("drag off deletes, 2xclick adds"); that text is the plot's tooltip now,
     and the line only reports the level.
     """
-    from chimol.renderer.density_window import DensityWindow
+    from chimol.plugins.density.window import DensityWindow
 
     _win, gui, window, panel, _model, _oid = loaded
     assert window.h == pytest.approx(DensityWindow.DEFAULT_H)

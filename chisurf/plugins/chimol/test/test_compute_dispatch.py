@@ -1,6 +1,6 @@
 """The compute dispatcher: UI answers the mouse, work lands one frame later.
 
-The contract (`chimol.compute_dispatch`):
+The contract (`chimol.core.compute_dispatch`):
 
 * a drag's ticks are **immediate** -- the calling thread only moves UI state
   and bumps the chrome revision; the worst tick measured well under a
@@ -20,7 +20,7 @@ import time
 
 import pytest
 
-from chimol import compute_dispatch
+from chimol.core import compute_dispatch
 
 
 @pytest.fixture(autouse=True)
@@ -110,7 +110,7 @@ def driven_window():
     pytest.importorskip("qtpy")
     from qtpy import QtWidgets
 
-    from chimol.app.molview_main_window import MolViewPluginWindow
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
@@ -130,7 +130,7 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
     dispatcher at the level the mouse ended on.
     """
     win = driven_window
-    from chimol.cmd import cmd as shared
+    from chimol.commands import cmd as shared
 
     errors: list[str] = []
     shared.set_window(win)

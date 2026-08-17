@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from chimol.cmd.command import Cmd
+from chimol.commands.command import Cmd
 from chimol.testing.mock_viewer import MockViewer, MockWindow
 
 
@@ -86,10 +86,10 @@ def test_translate_is_in_angstrom_not_scene_units(qapp):
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
 
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.io.export import unscale_coordinates
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

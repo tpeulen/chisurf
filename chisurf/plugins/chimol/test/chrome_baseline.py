@@ -181,8 +181,8 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
     """
     from qtpy import QtGui, QtWidgets
 
-    from chimol.host import qt_overlay
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.hosts.qt import overlay as qt_overlay
+    from chimol.chrome.gui import InternalGui
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     assert app is not None  # keep it alive; see test_cmd_viewing's qapp note
@@ -226,10 +226,7 @@ def _apply_state(gui, state: str, width: int, height: int) -> None:
     width, height : int
         Viewport size, in pixels.
     """
-    from chimol.renderer.internal_gui import (
-        GuiRow,
-        SequenceRow,
-    )
+    from chimol.chrome.gui import GuiRow, SequenceRow
 
     gui.visible = True
     # The four original states are frozen images of a chrome that had no

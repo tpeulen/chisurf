@@ -24,9 +24,7 @@ def qapp():
 
 @pytest.fixture
 def window(qapp):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     win = MolViewPluginWindow()
     win.resize(800, 600)
@@ -38,7 +36,7 @@ def window(qapp):
 
 
 def _grid(name: str, width: float):
-    from chimol.volume import VolumeGrid
+    from chimol.core.volume import VolumeGrid
 
     z, y, x = np.mgrid[-6:6, -6:6, -6:6]
     values = np.exp(-(x * x + y * y + z * z) / width).astype(np.float32)

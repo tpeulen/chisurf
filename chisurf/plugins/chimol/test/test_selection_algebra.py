@@ -21,7 +21,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.cmd.sele_parser import (
+from chimol.core.selection.parser import (
     Evaluator,
     ParserError,
     UnknownSelectionName,
@@ -45,7 +45,7 @@ def qapp():
 def viewer(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     view = MolView()
     view.add_structure(

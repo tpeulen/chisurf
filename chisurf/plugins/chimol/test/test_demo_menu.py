@@ -14,11 +14,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.app.demos import DEMOS  # noqa: E402
-from chimol.app.menu_bar import (  # noqa: E402
-    DEMO_MENU,
-    MENU_BAR,
-)
+from chimol.hosts.qt.demos import DEMOS  # noqa: E402
+from chimol.hosts.qt.menu_bar import DEMO_MENU, MENU_BAR  # noqa: E402
 
 
 def test_the_bar_has_a_demo_menu():
@@ -63,9 +60,7 @@ def test_the_viewport_bar_lists_demo_exactly_once(qapp_window):
 def qapp_window():
     from qtpy import QtWidgets
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     win = MolViewPluginWindow()
@@ -84,7 +79,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
     ten of them; listing there scrolled the whole catalogue away. Each entry
     also carries its `demo <key>` command, so a click on a name runs it.
     """
-    from chimol.cmd import cmd as shared
+    from chimol.commands import cmd as shared
 
     said: list[str] = []
     shared.set_window(qapp_window)
@@ -102,7 +97,7 @@ def test_demo_with_no_argument_lists_them(qapp_window):
 
 
 def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):
-    from chimol.cmd import cmd as shared
+    from chimol.commands import cmd as shared
 
     errors: list[str] = []
     shared.set_window(qapp_window)

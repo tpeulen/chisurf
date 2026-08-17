@@ -76,6 +76,6 @@ def test_maxent_decay_constructs(app):
 def test_chimol_window_constructs(app):
     """The molecular viewer window builds on the shared base."""
     pytest.importorskip("OpenGL")
-    from chimol.app.molview_main_window import MolViewPluginWindow
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     _assert_is_tool(MolViewPluginWindow())

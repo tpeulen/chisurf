@@ -37,10 +37,8 @@ def qapp():
 
 @pytest.fixture(scope="module")
 def session(qapp):
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -124,9 +122,7 @@ def test_a_click_on_a_residue_column_selects_that_residue(session):
 
 def test_an_object_without_chains_has_no_markers():
     """No chain column is not a reason to invent one."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     rows = MolViewPluginWindow._sequence_rows_for_object(
         "o1", "beads", list("ACDEF"), [1, 2, 3, 4, 5], [], None
@@ -156,10 +152,7 @@ def test_paint_labels_honours_the_size_it_is_given(qapp):
     """The painter, not just the setting: the two were disconnected before."""
     from qtpy import QtGui
 
-    from chimol.host.qt_overlay import (
-        DEFAULT_LABEL_SIZE,
-        paint_labels,
-    )
+    from chimol.hosts.qt.overlay import DEFAULT_LABEL_SIZE, paint_labels
 
     class _Label:
         pos = (0.0, 0.0, 0.0)
@@ -272,7 +265,7 @@ def test_the_info_panel_is_laid_out_between_the_strip_and_the_prompt():
     Driven directly rather than through a window: this is a layout rule, and a
     window whose 3-D view happens to be short is testing something else.
     """
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True
@@ -299,7 +292,7 @@ def test_a_viewport_with_no_room_drops_the_panel_rather_than_overlapping():
     That is exactly how the widget this replaced behaved, and the reason it was
     reported: it kept its height and drew over whatever was under it.
     """
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True
@@ -312,7 +305,7 @@ def test_a_viewport_with_no_room_drops_the_panel_rather_than_overlapping():
 
 def test_a_long_path_is_wrapped_rather_than_run_off_the_panel():
     """The info text carries absolute paths, which have no spaces to break at."""
-    from chimol.renderer.internal_gui import InternalGui
+    from chimol.chrome.gui import InternalGui
 
     gui = InternalGui()
     gui.info_visible = True
@@ -326,9 +319,7 @@ def test_a_long_path_is_wrapped_rather_than_run_off_the_panel():
 
 def test_the_panel_pulls_its_text_and_palette_from_the_viewer(session):
     """It is chrome, so it is pulled at paint time rather than pushed."""
-    from chimol.host.qt_overlay import (
-        refresh_gui_state,
-    )
+    from chimol.hosts.qt.overlay import refresh_gui_state
 
     _run, win = session
     viewer = win.viewer

@@ -64,10 +64,8 @@ def viewer():
     except RuntimeError as exc:  # offscreen platform: no GL context at all
         pytest.skip(str(exc))
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     win = MolViewPluginWindow()
     win.resize(1280, 860)
@@ -140,7 +138,7 @@ def test_occlusion_has_one_enable_key():
     through ``set``, stored on change, and read by nothing. Two keys for one
     concept is the shape every silent drift in this codebase has had.
     """
-    from chimol.config import _DISPLAY_CONFIG
+    from chimol.core.settings.config import _DISPLAY_CONFIG
 
     def walk(node, path=()):
         if isinstance(node, dict):

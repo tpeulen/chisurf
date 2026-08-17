@@ -35,7 +35,7 @@ _ROOT = pathlib.Path(__file__).resolve().parents[4]
 #: `renders/` baselines (these are evidence for a failing run, not references).
 _SHOTS = _ROOT / "build" / "chimol-browser-demos"
 _SHOTS.mkdir(parents=True, exist_ok=True)
-_DEMO_DATA = _ROOT / "modules" / "chimol" / "chimol" / "demos" / "data"
+_DEMO_DATA = _ROOT / "modules" / "chimol" / "chimol" / "data" / "demos"
 
 #: The demos, in catalogue order. Those marked ``net`` reach a public
 #: repository and are skipped when the host is offline.
@@ -54,7 +54,7 @@ DEMOS = [
 ]
 
 #: What each tour tells the reader to type, in order -- the ``expect`` and
-#: ``run`` lines of ``demos/tours/*.json``, flattened. A tour is interactive
+#: ``run`` lines of ``plugins/demos/tours/*.json``, flattened. A tour is interactive
 #: (it waits for the reader), so the *commands* are what a page must be able
 #: to run; the pointing is the chrome's business.
 TOURS = {
@@ -90,7 +90,7 @@ def server():
     pytest.importorskip("playwright.sync_api", reason="needs Playwright")
     port = _free_port()
     process = subprocess.Popen(
-        [sys.executable, "-m", "chimol.web.serve", "--port", str(port), "--no-open"],
+        [sys.executable, "-m", "chimol.hosts.web.serve", "--port", str(port), "--no-open"],
         cwd=str(_ROOT), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     url = f"http://127.0.0.1:{port}/"

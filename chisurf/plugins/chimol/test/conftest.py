@@ -12,7 +12,7 @@ before -- the isolation existed, was described exactly as above, and did not
 work:
 
 **The variable is chimol's own.** This set only ``CHISURF_SETTINGS_DIR``,
-which :mod:`chimol.settings_dir` has never read -- it reads
+which :mod:`chimol.core.settings.dirs` has never read -- it reads
 ``CHIMOL_SETTINGS_DIR``. So the override never applied to chimol's own files
 and every test read ``~/.chisurf/chimol_display.json``. It cost two failures
 that looked like product defects: a background asserted black against a real
@@ -29,7 +29,7 @@ environment wins over an injected directory precisely so a later import cannot
 undo the isolation.
 
 **The directory is set at import, not in a fixture.** ``_DISPLAY_CONFIG`` is
-module-level state, loaded the first time :mod:`chimol.config` is imported --
+module-level state, loaded the first time :mod:`chimol.core.settings.config` is imported --
 which happens while pytest *collects*, before any fixture runs. A
 session-scoped ``autouse`` fixture is therefore already too late. ``conftest``
 is imported before the test modules beside it, so the assignment below happens
@@ -72,7 +72,7 @@ def _settings_isolation_actually_took(_isolated_chisurf_settings):
     however long ``CHIMOL_SETTINGS_DIR`` has existed and nobody noticed, since
     the tests only fail on a machine whose saved settings happen to disagree.
     """
-    from chimol.settings_dir import settings_dir
+    from chimol.core.settings.dirs import settings_dir
 
     resolved = settings_dir()
     assert str(resolved).startswith(tempfile.gettempdir()) or str(resolved) == os.environ.get(

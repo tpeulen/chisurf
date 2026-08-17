@@ -43,10 +43,8 @@ def cmd(qapp):
     seconds instead of 15. The one test that touches a global setting restores
     it in a ``finally``.
     """
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd import cmd as shared
+    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.commands import cmd as shared
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
@@ -130,7 +128,7 @@ def test_buried_area_is_the_solvent_accessible_one_whatever_dot_solvent_says(cmd
     the failure this plugin keeps finding, so the command pins the surface it
     means.
     """
-    from chimol.settings import get_setting, set_setting
+    from chimol.core.settings.registry import get_setting, set_setting
 
     before = get_setting("dot_solvent")
     try:

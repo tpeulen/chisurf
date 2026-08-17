@@ -8,7 +8,7 @@ import chisurf.core.settings
 from chisurf.gui.plots.plotbase import Plot
 
 try:
-    from chimol.renderer.view import MolView as ChimolView
+    from chimol.core.viewer import MolView as ChimolView
 except Exception:  # pragma: no cover - optional GUI backend
     ChimolView = None
 

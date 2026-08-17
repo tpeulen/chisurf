@@ -48,7 +48,7 @@ from chimol.cmtk.view_spec import (
 
 #: chimol's own spec: the appearance settings, bound through ``SettingsProxy``.
 APPEARANCE = (
-    pathlib.Path(__import__("chimol").__file__).resolve().parent / "gui" / "appearance.view.json"
+    pathlib.Path(__import__("chimol").__file__).resolve().parent / "chrome" / "data" / "appearance.view.json"
 )
 
 #: A spec shipped by ChiSurf itself, written with no thought for chimol. Read
@@ -84,7 +84,7 @@ def test_the_shipped_appearance_spec_reads():
 
 def test_every_field_becomes_a_row_with_what_it_declared():
     """Label, kind, range, step and description all survive the crossing."""
-    from chimol.renderer.form_window import model_for
+    from chimol.chrome.panels.form import model_for
 
     spec = load_view_spec(APPEARANCE)
     rows = {row.key: row for row in settings_from_view_spec(spec, model_for(spec, None))}
@@ -105,7 +105,7 @@ def test_every_field_becomes_a_row_with_what_it_declared():
 
 def test_a_panel_title_becomes_the_group():
     """Otherwise every control lands in one undifferentiated list."""
-    from chimol.renderer.form_window import model_for
+    from chimol.chrome.panels.form import model_for
 
     spec = load_view_spec(APPEARANCE)
     model = model_from_view_spec(spec, model_for(spec, None))
@@ -114,8 +114,8 @@ def test_a_panel_title_becomes_the_group():
 
 def test_the_rows_write_through_to_the_settings():
     """A panel that displays without editing is a picture."""
-    from chimol.renderer.form_window import SettingsProxy
-    from chimol import settings as settings_api
+    from chimol.chrome.panels.form import SettingsProxy
+    from chimol.core.settings import registry as settings_api
 
     before = settings_api.get_setting("cartoon_loop_radius")
     try:
@@ -134,7 +134,7 @@ def test_the_rows_write_through_to_the_settings():
 
 def test_the_proxy_refuses_a_name_that_is_not_a_setting():
     """A typo in a spec must not create a setting that goes nowhere."""
-    from chimol.renderer.form_window import SettingsProxy
+    from chimol.chrome.panels.form import SettingsProxy
 
     proxy = SettingsProxy()
     with pytest.raises(AttributeError):

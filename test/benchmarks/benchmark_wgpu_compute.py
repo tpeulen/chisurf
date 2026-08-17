@@ -1,6 +1,6 @@
 """When is a WGSL compute kernel worth dispatching, and when is numpy faster?
 
-ChiSurf already has a GPU compute seam (`chimol.renderer.compute`), and it
+ChiSurf already has a GPU compute seam (`chimol.render.compute`), and it
 guards every kernel with a work-item floor: below `MIN_WORK_ITEMS` the CPU route
 is taken instead. That floor is the whole design, because the naive reading of
 "the GPU is fifty times faster" is wrong in the way that matters -- it is fifty

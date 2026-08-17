@@ -17,10 +17,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.config import _DISPLAY_CONFIG
+from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.io.atoms import make_bead_rows
-from chimol.renderer import backdrop
-from chimol.renderer.view import MolView
+from chimol.render import backdrop
+from chimol.core.viewer import MolView
 
 
 @pytest.fixture(scope="module")

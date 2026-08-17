@@ -104,7 +104,7 @@ def test_a_factory_that_raises_is_not_swallowed():
 # --------------------------------------------------------------------------- #
 @pytest.fixture
 def loaded_view(qapp, structure_factory):
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     view = MolView()
     view.add_structure(
@@ -181,9 +181,7 @@ def test_a_degraded_load_is_reported(tmp_path):
     reader is unavailable" on its own is not something a user can do anything
     with.
     """
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     class _Panel:
         def __init__(self):
@@ -207,9 +205,7 @@ def test_a_degraded_load_is_reported(tmp_path):
 
 def test_a_degraded_load_without_a_panel_does_not_raise(tmp_path):
     """Chimol also runs headless, where there is nothing to append to."""
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
+    from chimol.hosts.qt.window import MolViewPluginWindow
 
     window = MolViewPluginWindow.__new__(MolViewPluginWindow)
     window._report_degraded_load(tmp_path / "x.pdb", None)
@@ -246,7 +242,7 @@ def test_hetero_atoms_reach_the_scene(loaded_view):
 
 
 def test_solvent_and_its_spellings_agree(loaded_view):
-    from chimol.cmd.sele_parser import Evaluator
+    from chimol.core.selection.parser import Evaluator
 
     oid = loaded_view.get_active_object_id()
     evaluator = Evaluator(loaded_view, oid)
@@ -259,7 +255,7 @@ def test_solvent_and_its_spellings_agree(loaded_view):
 
 def test_polymer_is_the_complement_of_hetero(loaded_view):
     """The two must partition the atoms, or `hide polymer` leaves orphans."""
-    from chimol.cmd.sele_parser import Evaluator
+    from chimol.core.selection.parser import Evaluator
 
     oid = loaded_view.get_active_object_id()
     evaluator = Evaluator(loaded_view, oid)
@@ -277,7 +273,7 @@ def test_hiding_by_a_selection_name_works(loaded_view):
     nothing is deliberately left to fail as an unknown representation, which is
     the more useful message in that case.
     """
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     class _Window:
         def __init__(self, viewer):
@@ -302,7 +298,7 @@ def test_hiding_by_a_selection_name_works(loaded_view):
 
 def test_a_name_that_selects_nothing_is_still_an_error(loaded_view):
     """148L has no waters, so `hide water` there is a typo, not an instruction."""
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     class _Window:
         def __init__(self, viewer):

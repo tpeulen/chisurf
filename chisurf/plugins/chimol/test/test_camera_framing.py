@@ -16,11 +16,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from chimol.renderer.view_state import (
-    distance_for_radius,
-    framing_centre,
-    framing_radius,
-)
+from chimol.core.view_state import distance_for_radius, framing_centre, framing_radius
 
 _PDB_148L = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -39,7 +35,7 @@ def qapp():
 def view(qapp):
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
+    from chimol.core.viewer import MolView
 
     v = MolView()
     v.resize(800, 600)
@@ -223,7 +219,7 @@ def test_the_aspect_correction_matches_pymol(width, height, pymol_distance):
 
 def test_a_tiny_fragment_does_not_swallow_the_camera():
     """PyMOL floors the radius at MAX_VDW so one atom is not framed at nothing."""
-    from chimol.renderer.view_state import MIN_FRAMING_RADIUS
+    from chimol.core.view_state import MIN_FRAMING_RADIUS
 
     single = np.zeros((1, 3))
     assert framing_radius(single) == pytest.approx(MIN_FRAMING_RADIUS)

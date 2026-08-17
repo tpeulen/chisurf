@@ -132,7 +132,7 @@ def test_the_eye_is_drawn_rather_than_typed():
     pictogram is drawn from rectangles, and this pins that it is a *picture*
     with ink in it rather than a character that silently went missing.
     """
-    from chimol.renderer.internal_gui import Rect
+    from chimol.chrome.gui import Rect
     from chimol.cmtk.icons import (
         CLOSED_EYE, OPEN_EYE, draw_glyph,
     )
