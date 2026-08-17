@@ -22,9 +22,6 @@ SCOPES = ("commands", "plugins")
 
 #: What still reaches a private, and why it may (for now).
 ALLOWED = {
-    # the per-object representation flags, until the representation registry (plan §3.3)
-    "_show_atoms", "_show_cartoon", "_show_lines", "_show_nonbonded", "_show_sticks",
-    "_show_surface", "_show_trace",
     # object-state readers the ViewerAPI will name (plan §3.2)
     "_get_active_state", "_select_state_frame", "_scale_factor", "_selected_residues",
     "_selected_atoms", "_atoms", "_all_atom_coords", "_raw_center", "_residue_ids",
