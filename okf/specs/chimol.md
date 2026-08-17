@@ -241,6 +241,16 @@ drawn here yet, deliberately.
   cannot read the result, rather than letting it be discovered later.
 * **Extensions are additive.** New arguments and new commands are allowed;
   changing what an existing PyMOL command does is not.
+* **ChiMOL scripts are `.cml`, not `.pml` — close, not identical.** The
+  command language is PyMOL's dialect to *read*, but ChiMOL has commands
+  PyMOL lacks (`add_dye`, `fps_load`, `intra_fit`) and rejects spellings PyMOL
+  accepts, so the two are not interchangeable and a script file must not
+  promise otherwise: `.pml` promises a PyMOL parser, and a `.pml` file with
+  an `add_dye` line in it would run in ChiMOL and fail in PyMOL with no
+  hint why. ChiMOL names its own scripts with its own extension (the shipped
+  demos under `chimol/demos/*.cml`, auto-listed from their `# title:` /
+  `# note:` headers) and still *opens* a `.pml` — the migration cost of a
+  drawer of old scripts is zero, but what ChiMOL writes is `.cml`.
 
 ## Definition of done
 
@@ -261,6 +271,28 @@ has hardened, move it in. Until then: no new labelling UI grows outside
 ChiMOL's eventual reach, and the `fps_json_payload` getter/setter seam (one
 live dict, no file round-trip) is the interface the move will ride on — keep
 it intact.
+
+## Rule — `chisurf.Structure` is closed to new code
+
+**Ruled 2026-08-15: new ChiSurf code MUST NOT use `chisurf.Structure`
+(`chisurf.core.structure.structure.Structure`).** Structure data lives in
+chimol; ChiSurf imports and derives from chimol, never the other way round
+(the relocation invariant, [chimol-relocation](chimol-relocation.md)). So a
+place that needs a structure object reaches for **chimol's** atoms/payload
+path (`chimol.io.structure.load_structure_payload` →
+`MolView.apply_payload`), and ChiSurf code that already carries structure
+data imports it **from** chimol (`chisurf.core.fio.structure.coordinates`
+is the worked example — it owns nothing, it re-exports chimol's
+`ATOM_DTYPE`).
+
+`chisurf.Structure` is the legacy experimental/optical-era reader: a
+place-holder for the thing chimol now owns. New code built on it would be
+new code built on the dependency pointing the wrong way — the same smell the
+`atom_dtype` copy was before it was vendored and inverted. The surviving
+callers (the `potentials_*` GUI widgets, `gui_services.py`, `pdb.py`) are
+legacy debt on a deletion path, not a template to extend. When you touch one
+of them, port it to chimol's structure handling in the same change rather
+than adding another `Structure(...)` call site.
 
 ## Testing
 

@@ -780,7 +780,14 @@ def test_the_panel_view_spec_uses_the_shared_section(shell):
 
     view, _grid, _cmd, _msgs, _errs = shell
     spec = VolumeViewModel(view).view_spec()
-    keys = [getattr(section, "key", "") for section in spec.sections]
+    # chimol's own spec loader (`cmtk.view_spec`) hands back the authored
+    # document as a dict; ChiSurf's dataspec wraps the same file in objects.
+    # The model no longer imports ChiSurf for this, so both shapes are read.
+    sections = spec["sections"] if isinstance(spec, dict) else spec.sections
+    keys = [
+        section.get("key", "") if isinstance(section, dict) else getattr(section, "key", "")
+        for section in sections
+    ]
     assert "level_histogram" in keys, keys
 
 

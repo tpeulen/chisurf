@@ -37,7 +37,7 @@ they exposed is now tooling.** What is open, in order:
 
 ## What this is
 
-chimol's in-viewport chrome — `chimol/renderer/ui/` — is a **port**, not an
+chimol's in-viewport chrome — `chimol/cmtk/` — is a **port**, not an
 original toolkit. Sixteen control families came out of three MIT-licensed
 sources by reading them and transcribing:
 
@@ -60,7 +60,7 @@ transcription of **data**, and it is the third where a mistake is silent — a
 keyword dropped from a 200-word table colours one word wrong in one language
 and fails nothing.
 
-* **`renderer/ui/control.py`** — the contract as a class rather than as prose:
+* **`cmtk/control.py`** — the contract as a class rather than as prose:
   remembered geometry, no-op `press`/`drag`/`release`/`key`/`scroll`, and
   `measure`. It is scaffolding for what comes next; the fourteen existing
   families are plain objects and are not being retrofitted.
@@ -75,7 +75,7 @@ and fails nothing.
   painter. Ten test modules had their own copy; identical copies are how the
   metrics quietly stop agreeing.
 
-`renderer/ui/qt_host.py` is the fourth piece and the one that changes what a
+`cmtk/qt_host.py` is the fourth piece and the one that changes what a
 port is *for*: any control becomes a `QWidget` without a second
 implementation, because `chimol.host.keys` and `chimol.host.events` took Qt's
 numeric values as the engine's own precisely so the translation would be free.

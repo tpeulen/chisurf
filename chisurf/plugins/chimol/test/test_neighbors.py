@@ -12,9 +12,11 @@ from __future__ import annotations
 import numpy as np
 
 from chimol.geometry.neighbors import (
+    ball_lists,
     blocked_cross_pairs,
     count_within_radius,
     cross_pairs_within,
+    self_ball_lists,
     self_pairs_within,
     shade_from_atoms,
     within_distance_mask,
@@ -172,3 +174,35 @@ def test_pair_indices_are_intp_so_bincount_accepts_them():
     assert self_pairs_within_grid(points, 3.0).dtype == np.intp
     # The operation that would raise, run for real.
     assert np.bincount(first, minlength=len(points)).sum() == first.size
+
+
+def test_ball_lists_match_query_ball_point():
+    """The per-point neighbour lists the last scipy callers wanted, from the grid.
+
+    ``get_area``, ``distance`` and ``h_bonds`` were the four remaining
+    ``cKDTree.query_ball_point`` sites; in a page scipy is a 14 MB download,
+    and ``get_area`` failed the measure demo with "No module named scipy".
+    """
+    rng = np.random.default_rng(6)
+    a = rng.standard_normal((300, 3)) * 10.0
+    b = rng.standard_normal((200, 3)) * 10.0
+    r = 3.0
+    got = ball_lists(a, b, r)
+    assert len(got) == len(a)
+    d = np.linalg.norm(a[:, None, :] - b[None, :, :], axis=2)
+    for i in range(len(a)):
+        assert np.array_equal(np.sort(got[i]), np.nonzero(d[i] <= r)[0])
+    # Empty inputs keep the shape contract: one list per point, none for none.
+    assert ball_lists(np.zeros((0, 3)), b, r) == []
+    assert all(len(x) == 0 for x in ball_lists(a, np.zeros((0, 3)), r))
+
+
+def test_self_ball_lists_exclude_the_point_itself():
+    rng = np.random.default_rng(7)
+    a = rng.standard_normal((250, 3)) * 10.0
+    r = 3.0
+    got = self_ball_lists(a, r)
+    d = np.linalg.norm(a[:, None, :] - a[None, :, :], axis=2)
+    np.fill_diagonal(d, np.inf)
+    for i in range(len(a)):
+        assert np.array_equal(np.sort(got[i]), np.nonzero(d[i] <= r)[0])

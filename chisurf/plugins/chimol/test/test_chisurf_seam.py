@@ -119,7 +119,7 @@ def test_no_new_module_imports_chisurf():
         + "\n  ".join(new)
         + "\n\nchimol is moving to its own repository, where ChiSurf is not on "
         "the path. Take what you need through a seam chimol owns (see "
-        "`cmd/exporting.py` for the shape: ask inside a `try`, fall back to "
+        "`analysis/ss.py` for the shape: ask inside a `try`, fall back to "
         "chimol's own answer -- or better, have the host *inject* the answer as "
         "`chisurf/plugins/chimol/__init__.py` does for the settings directory), "
         "or leave the code in the `app/` integration "
@@ -148,7 +148,10 @@ def test_the_allowlist_has_no_stale_entries():
 #: degrade rather than fail; that is what :func:`test_soft_dependencies_are_guarded`
 #: checks.
 SOFT = {
-    "cmd/exporting.py",
+    # `cmd/exporting.py` used to be here: it asked for ChiSurf's progress
+    # dialog (and a QThread) when the window was a Qt widget. Severed on
+    # 2026-08-17 -- `ray` uses the in-viewport progress overlay on every
+    # host, and the module imports neither ChiSurf nor Qt.
     # `io/atoms.py` used to be here -- it imported chisurf's `atom_dtype`
     # inside a try. The direction was inverted on 2026-08-14: chimol owns
     # `ATOM_DTYPE` and the host re-exports it, so the guarded import is gone

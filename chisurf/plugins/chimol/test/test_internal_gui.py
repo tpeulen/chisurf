@@ -173,6 +173,23 @@ def test_an_unimplemented_entry_does_nothing_and_stays_open(gui):
     assert gui.commands == []
 
 
+def test_refreshing_the_same_rows_keeps_the_menu(gui):
+    """A host that re-feeds an unchanged object list must not lose the menu.
+
+    Hosts refresh the panel on all sorts of occasions -- an object-list
+    revision, once even on every pointer release -- and ``set_rows`` used
+    to dismiss the menus unconditionally, so the click that opened a menu
+    was also the click that closed it. Same rows: no change, menu stays.
+    Different rows: the menu's target may be gone, so it goes.
+    """
+    gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
+    assert gui.has_menu() is True
+    gui.set_rows(list(gui.rows))
+    assert gui.has_menu() is True, "an unchanged list closed the menu"
+    gui.set_rows(gui.rows[:2])
+    assert gui.has_menu() is False, "a changed list must dismiss the menu"
+
+
 def test_clicking_away_closes_the_menu(gui):
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     consumed = gui.mouse_press(20, HEIGHT - 20)

@@ -67,6 +67,17 @@ WALKTHROUGH = {
         "fitmap 5a63, EMD-3061, 3.4",
         "molmap 5a63, 3.4, sim",
     ],
+    # The pick is a *typed* one -- `wizard pick, 920` is the same path a click
+    # takes (see the wizard's hook), and 920 is 148l's residue 119 CB: fixed
+    # test data, so the index is stable.
+    "labelling": [
+        "load 148l.pdb",
+        "wizard labelling",
+        "wizard pick, 920",
+        "wizard dye, Cy5",
+        "wizard apply",
+        "wizard done",
+    ],
 }
 
 
@@ -340,7 +351,7 @@ def test_what_run_issues_is_a_command(name):
 @pytest.mark.parametrize("name", TOURS)
 def test_every_target_is_a_control_the_chrome_knows(name):
     """A target spelled wrong resolves to nothing and centres the bubble."""
-    known = {"menu", "toolbar", "command", "object", "movie", "sequence", "window"}
+    known = {"menu", "toolbar", "command", "wizard", "object", "movie", "sequence", "window"}
     for index, step in enumerate(load_tour(name).steps):
         for key in step.target:
             assert key in known, (

@@ -293,3 +293,53 @@ def test_render_scene_fits_the_depth_cue_to_the_scene_by_default():
         return float(flat[flat.max(axis=1) > 4].mean())
 
     assert lit(fitted) > lit(far_plane)
+
+
+# --------------------------------------------------------------------------- #
+# Single-layer transparency: a translucent object veils a ray once
+# --------------------------------------------------------------------------- #
+def _veil_probe(mode: int, groups: tuple[int, int]) -> float:
+    """The centre pixel through two concentric translucent spheres.
+
+    Both spheres are white at alpha 0.5 over a black background, unlit
+    (`_FLAT`), so the arithmetic is exact: one veil composites to 0.5, two to
+    0.75. `groups` says which object each sphere belongs to.
+    """
+    from chimol.config import _DISPLAY_CONFIG
+    from chimol.renderer import compute
+
+    if not compute.available():
+        pytest.skip("no WebGPU adapter on this machine")
+    surface = _DISPLAY_CONFIG.setdefault("surface", {})
+    previous = surface.get("transparency_mode", 1)
+    surface["transparency_mode"] = mode
+    try:
+        img = trace(
+            spheres=[
+                Sphere(center=np.zeros(3), radius=2.0, color=np.ones(3), alpha=0.5, group=groups[0]),
+                Sphere(center=np.zeros(3), radius=1.0, color=np.ones(3), alpha=0.5, group=groups[1]),
+            ],
+            camera=_camera(10.0),
+            light_directions=np.array([[0.0, 0.0, 1.0]]),
+            width=32, height=32, ssaa=1, background=(0, 0, 0),
+            depth_cue=False, max_layers=8,
+            **_FLAT,
+        )
+    finally:
+        surface["transparency_mode"] = previous
+    return float(img[16, 16].mean()) / 255.0
+
+
+def test_a_translucent_object_veils_a_ray_once_in_mode_1():
+    """`transparency_mode 1`: an object's later layers are stepped past.
+
+    Two nested half-transparent shells of **one** object composite as one
+    veil (0.5); the same two shells as **two** objects composite twice
+    (0.75, one veil each); and mode 2 composites every layer regardless --
+    four crossings, 1 - 0.5^4 = 0.9375. This is what took
+    the crumbs out of a ray-traced accessible volume -- and, through the
+    same rule in `shadow_factor`, the speckled shadows they cast on it.
+    """
+    assert _veil_probe(1, (0, 0)) == pytest.approx(0.5, abs=0.02)
+    assert _veil_probe(1, (0, 1)) == pytest.approx(0.75, abs=0.02)
+    assert _veil_probe(2, (0, 0)) == pytest.approx(0.9375, abs=0.02)

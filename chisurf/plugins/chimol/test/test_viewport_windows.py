@@ -91,6 +91,41 @@ def test_the_corner_grip_resizes(gui):
     assert win.h == pytest.approx(before[1] + 30)
 
 
+def test_a_window_declares_its_own_floor(gui):
+    """`GuiWindow.min_h`/`min_w`: a panel's floor, honoured by the framework.
+
+    Architecture-wide: the resize drag and the restored layout both clamp to
+    the window's own minimum, never below the 32-pixel framework floor. A
+    panel that knows the height its controls need (the density stack) sets
+    it once, and no host can squeeze it past that.
+    """
+    gui.add_window(GuiWindow(key="tall", title="Tall", x=40, y=300,
+                             w=200, h=200, min_h=140.0, min_w=150.0,
+                             lines=["needs room"]))
+    gui.layout(*SIZE)
+    x, y = _zones(gui, "tall")["resize"]
+    gui.mouse_press(x, y)
+    gui.drag(x - 900, y - 900)
+    gui.release()
+    win = gui.window("tall")
+    assert win.h == pytest.approx(140.0), "the drag went below the panel's floor"
+    assert win.w == pytest.approx(150.0)
+    # A restored layout that remembers a smaller size is clamped the same way.
+    win.desired_h = 60.0
+    win.h = 60.0
+    gui.layout(*SIZE)
+    assert win.h == pytest.approx(140.0), "the layout restored a size below the floor"
+    # And a floor below the framework's is the framework's.
+    gui.add_window(GuiWindow(key="tiny", title="Tiny", x=40, y=500,
+                             w=200, h=100, min_h=10.0, lines=["x"]))
+    gui.layout(*SIZE)
+    x, y = _zones(gui, "tiny")["resize"]
+    gui.mouse_press(x, y)
+    gui.drag(x - 900, y - 900)
+    gui.release()
+    assert gui.window("tiny").h == pytest.approx(gui.WINDOW_MIN_H)
+
+
 def test_a_window_cannot_be_shrunk_below_the_floor(gui):
     x, y = _zones(gui, "hier")["resize"]
     gui.mouse_press(x, y)

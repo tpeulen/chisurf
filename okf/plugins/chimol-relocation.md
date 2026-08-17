@@ -376,6 +376,17 @@ behind.
    than equality, the allow-list lost `io/atoms.py`, and `SOFT` in
    `test_chisurf_seam.py` dropped it.
 
+   **Ruled 2026-08-15, same invariant made a hard rule:** *new* ChiSurf code
+   MUST NOT use `chisurf.Structure` (`chisurf.core.structure.structure.
+   Structure`) — the legacy structure reader is the dependency pointing the
+   wrong way, and the surviving callers (the `potentials_*` widgets,
+   `gui_services.py`, `pdb.py`) are deletion-path debt, not a template. A
+   place that needs a structure reaches for chimol's atoms/payload path
+   (`chimol.io.structure.load_structure_payload` → `MolView.apply_payload`);
+   ChiSurf code carrying structure data imports it **from** chimol. Full rule
+   in [okf/specs/chimol.md](../specs/chimol.md) ("Rule — `chisurf.Structure`
+   is closed to new code").
+
    Original entry, for the record: `analysis/elements.py` imports
    `chisurf.core.fio.structure.elements` at **module scope**, unguarded: the
    element tables. It is the only unconditional ChiSurf import left in the

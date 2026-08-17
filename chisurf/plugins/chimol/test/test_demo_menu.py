@@ -78,6 +78,12 @@ def qapp_window():
 
 
 def test_demo_with_no_argument_lists_them(qapp_window):
+    """In the info panel -- the same window `help` uses -- not the prompt.
+
+    The prompt's feedback line holds one line at a time and the demo list is
+    ten of them; listing there scrolled the whole catalogue away. Each entry
+    also carries its `demo <key>` command, so a click on a name runs it.
+    """
     from chimol.cmd import cmd as shared
 
     said: list[str] = []
@@ -86,8 +92,13 @@ def test_demo_with_no_argument_lists_them(qapp_window):
     shared.set_error_callback(said.append)
 
     qapp_window._run_object_menu_command("demo")
-    assert len(said) == len(DEMOS)
-    assert all(any(key in line for line in said) for key, _t, _n in DEMOS)
+    gui = qapp_window.viewer._renderer._internal_gui
+    assert gui._info_title == "Demos"
+    assert [name for name, _doc in gui._info_items] == [
+        key for key, _t, _n in DEMOS
+    ]
+    for key, _t, _n in DEMOS:
+        assert gui._info_commands.get(key) == f"demo {key}"
 
 
 def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):

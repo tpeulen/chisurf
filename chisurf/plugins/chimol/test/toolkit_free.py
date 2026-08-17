@@ -115,6 +115,23 @@ sys.meta_path.insert(0, _NoQtFinder())
 '''
 
 
+def _looks_like_key(text: str) -> bool:
+    """Whether *text* is an ``emit`` key: a plain ASCII label starting its line.
+
+    Probes label emissions freely -- ``command:fov``, ``color yellow, resi
+    1-20`` -- so the only things ruled out are what progress output looks
+    like: a line that does not begin with a letter, and text carrying the
+    ellipsis and carriage returns a progress bar prints (``Computing…``).
+    """
+    return (
+        bool(text)
+        and text[0].isalpha()
+        and text.isascii()
+        and "\r" not in text
+        and len(text) < 120
+    )
+
+
 def probe(script: str, *, timeout: int = 300, block_qt: bool = False) -> dict[str, str]:
     """Run *script* against the toolkit-free viewer and return what it emitted.
 
@@ -166,8 +183,12 @@ def probe(script: str, *, timeout: int = 300, block_qt: bool = False) -> dict[st
         # A bare ``key=`` at the line start: chimol's progress rendering can
         # emit output without a trailing newline, and an ``emit`` that lands
         # on the same line as it ("Computing…n_av=5") must not become a key
-        # -- a real key is an identifier at the start of its own line.
-        and line.split("=", 1)[0].replace("_", "a").isalnum()
+        # -- a real key starts its own line and begins with a letter. Not
+        # "is alphanumeric": probes label their emissions ``command:fov``,
+        # ``three_button_viewing:l:ctsh``, ``color red``, and an alnum test
+        # silently dropped every one of those and failed forty tests with a
+        # KeyError.
+        and _looks_like_key(line.split("=", 1)[0])
     }
     if not results:
         tail = (result.stdout + result.stderr)[-3000:]

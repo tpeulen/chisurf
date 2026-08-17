@@ -979,6 +979,34 @@ stops matching is a question, not a failure. `capture_gl_baseline.py` keeps
    wanted it belongs in `chimol_display.json`'s `lighting` section. Asked twice;
    not yet answered.
 
+7. **OpenPBR as the material model (user request, 2026-08-17).**
+   <https://academysoftwarefoundation.github.io/OpenPBR/> — the Academy
+   Software Foundation's open über-shader specification (v1.1.1, Autodesk +
+   Adobe; the merger of Autodesk Standard Surface and Adobe Standard
+   Material), with a MaterialX reference implementation. A slab model:
+   a base substrate that mixes metal and dielectric (glossy-diffuse,
+   subsurface, or translucent with absorption), an optional coat lobe, a
+   fuzz layer, thin-film iridescence, emission — parameters for base/
+   specular/subsurface colour, roughness, metalness, transmission, coat and
+   anisotropy. Why it belongs here: chimol's shading is PyMOL's ad-hoc
+   ambient/direct/reflect/specular sum, spelled twice (the WGSL fragment
+   shaders and `raytrace.wgsl`) and tuned by eye; a published, physically
+   grounded model gives the rasteriser and the tracer **one** BRDF to agree
+   on and a vocabulary users already know from every DCC tool. Scope, in
+   order: (a) the base dielectric slab (diffuse + GGX specular with the
+   spec's Fresnel and roughness) as the default surface for meshes and
+   impostors, in both backends, with `lighting` presets mapped onto it;
+   (b) coat (for the "publication" glossy look) and metal (for the odd
+   metallic colour); (c) transmission/subsurface for translucent surfaces,
+   which is where `transparency_mode 1` would become a physically motivated
+   thin-dielectric approximation rather than a veil. Not on the list:
+   fuzz, thin-film, emission. Constraints that do not move: one WGSL
+   function shared by rasteriser and tracer (`test_wgsl_parity` already
+   compares the two), the browser's eight storage buffers, and the
+   settings surface (`set specular`, `set ambient` …) staying PyMOL-shaped
+   with the OpenPBR parameters underneath. Read the spec's slab algebra
+   before touching a shader; do not re-derive it.
+
 ## What is deliberately not on that list
 
 - **`test_screenshot_helper.py` still exercises a `QOpenGLWidget`.** That is
@@ -1053,7 +1081,103 @@ renderers get it.
   shader does too.
 - **Backgrounds and transparency work** as of `6464a2274`.
 
+## Every demo runs in the page (round 24, 2026-08-17)
+
+Asked: "1+3, all demos must work" -- mount a local folder, drop-to-load,
+and the eleven shipped demos plus the three tours on the browser page.
+What stood in the way, in the order it was found by *running each demo on
+the page* (`test_browser_demos.py` now does that, plus drop and mount):
+
+- `demo <name>` ran nothing: `web/demo.py` never set `host.cmd`, and
+  `run_script_text` silently had nowhere to send lines (it reports now).
+- `orient`/`zoom` after `delete all` raised a `TypeError` (`_radius` is
+  `None` on an empty viewer) instead of "nothing to orient".
+- The page shipped only `148l.pdb`; `demos/data/` now carries every file a
+  demo names (a strided `hgbp1_transition.dcd`, `topol.pdb`,
+  `solvated_fragment.pdb`) and the biofilm as a **frozen RMF**
+  (`io/rmf_snapshot.py`, `.rmf.npz`) -- the RMF reader's dict written to
+  numpy+JSON, read back through the same `_parse_rmf`. `resolve_structure`
+  falls back to it when the simulator is unavailable.
+- `fetch EMD-3061` "succeeded" with garbage: `pyodide.http.open_url` is text
+  and decoded a gzipped map as UTF-8. `host/net.py` reads a synchronous XHR
+  as `x-user-defined` and masks the code units back to bytes.
+- `fetch PDBDEV_...` needs `ihm`, which PyPI ships as an sdist only; the
+  packer copies the pure-Python package from the packing environment.
+- `get_area` imported scipy (14 MB in a page); the last four
+  `cKDTree.query_ball_point` sites now use the grid (`ball_lists`).
+- `get_area polymer` printed `0.000 A^2` on *every* host without the core
+  reader: chimol's PDB/mmCIF readers left `atoms["radius"]` at zero. Filled
+  by element now (`h_add` on the fragment went 32 -> 48 hydrogens, the
+  correct number, because bond inference switched to the radius-based
+  path).
+- `density_panel on` imported `chimol.app.volume_panel` -- Qt package, not
+  shipped. Moved to `renderer/volume_model.py`; the old name re-exports.
+- `load x.mrc` on the non-Qt hosts fed MRC bytes to the PDB parser; the
+  command routes map suffixes to `load_map` for every host.
+- The browser host's PDB-only `_load_structure_from_path` override went; the
+  shared reader already handles a host without the core structure factory.
+
+- Removing the browser host's reader override made every load raise the
+  info panel (as the desktop hosts do) -- and the page had never wired the
+  panel's close hook to the viewer, so it came back each frame and every
+  scene press dismissed it instead of picking. `host/app.py::connect_info_panel`
+  now wires it for the toolkit-free window and the page alike.
+- Test-harness bug found on the way: `toolkit_free.probe` had started
+  dropping every emitted key that was not alphanumeric (`command:fov`,
+  `color red`) -- forty tests failed with `KeyError`, unrelated to any
+  engine change. Fixed in `_looks_like_key`.
+
+Local files: drop → `/mnt/dropped`, "Mount folder…" → `pyodide.mountNativeFS`
+at `/mnt/local` (`syncfs` after a command that may have written), the
+in-viewport dialog opens where the user's files are. Verified with the OPFS
+handle in the test.
+
+## Round 25 (2026-08-17): ray in the page, single-layer transparency, the density panel
+
+- **`ray` had three walls in the page** and one on the desktop: it imported
+  `qtpy` for a QThread + ChiSurf progress dialog (gone; the in-viewport
+  overlay is the only progress path, `cmd/exporting.py` imports neither Qt
+  nor ChiSurf now); the BVH build used `int64` index arrays that wasm32
+  NumPy refuses (`np.intp`); WebGPU readback is async-only -- `boot.js`
+  now enters Python via `callPromising` (JSPI) for command-running events
+  and `gpu/browser.py` reads buffers back with `run_sync`; and the tracer
+  bound 11 storage buffers against a baseline of 8 (Chrome/Metal: 10) --
+  merged to 8 (`node_bounds`, one `colors` buffer). The default device is
+  now requested with the adapter's limits, as wgpu-py does.
+- **`transparency_mode`** (setting, default 1): a translucent mesh gets a
+  depth pre-pass in the rasteriser and, in the tracer, one layer per
+  object (`w = alpha + 2*group` in the colour buffer; later layers of a
+  veiling object are stepped past; veils cast no shadow). Mode 2 is the old
+  every-layer blend. This is what made a translucent AV stop looking like
+  confetti in both the live view and `ray`.
+- **Density panel**: the alpha slider only "worked on double click" because
+  the panel rebuilt its `SliderFloat`s on every draw and a frame lands
+  between press and move on any host that draws per event -- the held
+  slider forgot it was held. Sliders persist now, and the probe test draws
+  a frame mid-gesture. Default height 250 → 181, the gesture hints moved
+  from the status line into the plot's tooltip, and `GuiWindow.min_h/min_w`
+  exists framework-wide (`window_min_h`), so a panel declares the height
+  its controls need and neither a drag nor a restored layout goes below it.
+
 ## Traps that cost real time here
+
+- **The browser host must not refresh the panel from an event handler
+  (round 23, 2026-08-17).** `web/demo.py::Viewer.release` called
+  `sync_panel` after every release "so the strip follows the pick";
+  `InternalGui.set_rows` dismisses menus, so the menu bar, the object
+  list's `A/S/H/L/C` buttons and the right-click object menu all opened on
+  the press and closed on the release of the same click. Only the page did
+  it, so no probe saw it. Fixed by removing the call, wiring the viewer's
+  selection into the strip once for every host
+  (`host/app.py::connect_sequence_mirror`), and making `set_rows` keep the
+  menus when the rows did not change. Alongside: the DOM's `dblclick` has no
+  trailing `pointerup`, which left `_gui_grab` held and swallowed the next
+  click's release (`BUGS/001`, `BUGS/002` — both closed; `boot.js`
+  synthesises the release, `on_pointer_press` drops a stale grab). Also the
+  strip's click never reached the viewer on the two non-Qt hosts: the strip
+  names its row by object *id*, both hosts matched on the *name*.
+  Regression: `test_browser_menus.py` (headless Chromium + Pyodide, real
+  DOM clicks) and `test_browser_chain.py::test_a_lost_release_does_not_swallow_the_next_click`.
 
 - **A parallel implementation that is not the default is not tested.** The WGSL
   renderer had its own green suite and 31 holes in it, every one invisible until

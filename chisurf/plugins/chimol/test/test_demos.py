@@ -1,7 +1,7 @@
 """The Demo menu, the demo scripts, and the trajectory commands they exercise.
 
 The demos are ChiMOL **scripts**, not Python: one command per line, run exactly
-as ``@file.pml`` runs. That is deliberate — it makes them a test of *language
+as ``@file.cml`` runs. That is deliberate — it makes them a test of *language
 parity with PyMOL* rather than of the internals, and a demo that stops working is
 a command that stopped working. They double as documentation that runs.
 
@@ -42,13 +42,13 @@ _TRAJECTORY = _TRAJ_DIR / "hgbp1" / "hgbp1_transition.dcd"
 # --------------------------------------------------------------------------- #
 def test_every_listed_demo_has_a_script():
     for key, _title, _description in DEMOS:
-        assert demo_path(key).exists(), f"{key}.pml is missing"
+        assert demo_path(key).exists(), f"{key}.cml is missing"
 
 
 def test_every_script_is_listed():
     """A script nobody can reach from the menu is dead weight."""
     listed = {key for key, _t, _d in DEMOS}
-    on_disk = {p.stem for p in DEMO_DIR.glob("*.pml")}
+    on_disk = {p.stem for p in DEMO_DIR.glob("*.cml")}
     assert on_disk == listed, f"unlisted: {sorted(on_disk - listed)}"
 
 

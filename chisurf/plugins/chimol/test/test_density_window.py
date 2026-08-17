@@ -186,12 +186,22 @@ def test_one_full_contour_per_drag_and_no_scene_rebuilds(loaded):
     viewer._update_view = counting_update
     viewer.set_volume_levels = recording_set
     try:
+        from chimol import compute_dispatch
+
         start = _marker_x(panel, model)
         gui.mouse_press(start, plot.y + plot.h / 2)
         for step in range(20):
             gui.drag(start - 2 * step, plot.y + plot.h / 2)
         during = list(writes)
         gui.release()
+        # The release's contour is dispatched: it lands at the next frame's
+        # poll, not on the release itself -- the UI answers first, the work
+        # follows. Give the worker a beat and run the landing pass, as the
+        # frame loop does.
+        import time as _time
+
+        _time.sleep(0.1)
+        compute_dispatch.poll()
         after = list(writes)
     finally:
         viewer._update_view = original_update
@@ -297,7 +307,8 @@ def test_the_colour_well_opens_a_palette_and_a_cell_recolours(loaded):
     level, keeping its alpha.
     """
     _win, gui, window, panel, model, _oid = loaded
-    box = panel._color_box
+    # The well is the **row's** swatch now; there is no header colour control.
+    box = panel._row_swatches[0][0]
     assert box is not None
 
     consumed = gui.mouse_press(box.x + 2, box.y + 2)
@@ -323,7 +334,7 @@ def test_a_press_outside_the_palette_closes_it_without_recolouring(loaded):
     _win, gui, window, panel, model, _oid = loaded
     before = list(model.levels[0]["color"])
 
-    gui.mouse_press(panel._color_box.x + 2, panel._color_box.y + 2)
+    gui.mouse_press(panel._row_swatches[0][0].x + 2, panel._row_swatches[0][0].y + 2)
     gui.release()
     _redraw(panel, gui, window)
     plot = panel._plot
@@ -355,11 +366,20 @@ def test_the_selection_persists_and_the_alpha_edits_the_selected_level(loaded):
     assert panel._selected == 1, "clicking the second marker did not select it"
 
     _redraw(panel, gui, window)
-    panel._apply_alpha(0.25, rebuild=True)
-    assert float(model.levels[1]["color"][3]) == pytest.approx(0.25)
-    assert float(model.levels[0]["color"][3]) == pytest.approx(1.0), (
-        "the alpha edit leaked onto the unselected level"
-    )
+    # The alpha is the **row's** slider: one opacity for that density's
+    # contours (the old header slider acted on one selected level -- gone
+    # with the header). And an alpha edit never re-contours: it changes no
+    # geometry, which is the fix for the slider reading slow.
+    oid = model._object_id
+    box, slider = panel._row_alpha[oid]
+    body = gui.window_body(window)
+    panel.press(box.x + box.w * 0.25, box.y + 3, body)
+    panel.drag(box.x + box.w * 0.25, box.y + 3, body)
+    panel.release()
+    for level in model.levels:
+        assert float(level["color"][3]) == pytest.approx(0.25, abs=0.03), (
+            "the row's alpha did not reach one of that density's contours"
+        )
 
 
 def test_a_marker_dragged_off_the_histogram_is_deleted_on_release(loaded):
@@ -669,3 +689,154 @@ def test_volume_gaussian_adds_a_smoothed_copy(qapp):
     assert abs(float(smoothed.values.mean()) - float(np.asarray(grid.values).mean())) < 1e-4, (
         "a Gaussian filter must conserve the total density"
     )
+
+
+def test_a_single_click_on_the_plot_does_not_add_a_level(loaded):
+    """Adding a contour is the heaviest ask this panel can make.
+
+    A stray single click used to trigger one; only a **double** press adds,
+    so an accidental click is free and a deliberate one costs the same as
+    before.
+    """
+    _win, gui, window, panel, model, _oid = loaded
+    _redraw(panel, gui, window)
+    before = len(model.levels)
+    plot = panel._plot
+    low, high = model.value_range()
+    x_empty = plot.x + 0.3 * plot.w
+
+    gui.mouse_press(x_empty, plot.y + plot.h / 2)
+    gui.release()
+    assert len(model.levels) == before, "a single click added a level"
+
+    # A double press adds exactly one, at the clicked value.
+    gui.mouse_press(x_empty, plot.y + plot.h / 2, double=True)
+    gui.release()
+    assert len(model.levels) == before + 1
+    added = float(model.levels[-1]["level"])
+    assert abs(added - (low + 0.3 * (high - low))) < 1e-6
+
+
+def test_the_alpha_slider_slides_free_and_applies_on_release(loaded):
+    """The thumb must never wait on a write -- not even the colour patch.
+
+    During the drag the model's alpha is untouched; the release applies the
+    final value once.
+    """
+    _win, gui, window, panel, model, _oid = loaded
+    _redraw(panel, gui, window)
+    oid = model._object_id
+    box, slider = panel._row_alpha[oid]
+    body = gui.window_body(window)
+    alpha_before = model.alpha_for(oid)
+
+    panel.press(box.x + box.w * 0.25, box.y + 3, body)
+    for fraction in (0.3, 0.35, 0.4, 0.45, 0.5):
+        panel.drag(box.x + box.w * fraction, box.y + 3, body)
+        # Free: mid-drag the model has not moved.
+        assert model.alpha_for(oid) == alpha_before, (
+            "a drag tick wrote the alpha -- the slider is not sliding free"
+        )
+    panel.release()
+    assert abs(model.alpha_for(oid) - 0.5) < 0.02, "the release did not apply"
+
+
+def test_a_double_press_on_a_slider_still_reaches_the_slider(loaded):
+    """The double-click add must not steal a slider's own press.
+
+    A double is two presses; the first already went to `on_press`. When the
+    `on_double` hook took every second press unconditionally, quick clicking
+    a slider disarmed its drag -- the "slider only works on click" failure
+    one level up. The hook now has *first refusal*: only a handled double
+    (the level add) consumes the press.
+    """
+    _win, gui, window, panel, model, _oid = loaded
+    _redraw(panel, gui, window)
+    oid = model._object_id
+    box, slider = panel._row_alpha[oid]
+    alpha_before = model.alpha_for(oid)
+
+    # First of the pair, then the double press -- both on the slider.
+    gui.mouse_press(box.x + box.w * 0.2, box.y + 3)
+    gui.release()
+    # The press jumps the thumb and the release applies it -- that is the
+    # level tool's own contract, and 0.2 landing here is it working.
+    assert model.alpha_for(oid) == pytest.approx(0.2, abs=0.02)
+    gui.mouse_press(box.x + box.w * 0.2, box.y + 3, double=True)
+    assert slider._held, "the double press did not reach the slider"
+    for fraction in (0.3, 0.4, 0.5):
+        gui.drag(box.x + box.w * fraction, box.y + 3)
+    gui.release()
+    assert abs(model.alpha_for(oid) - 0.5) < 0.02, "the drag after a double did not apply"
+
+
+def test_the_alpha_slider_drag_works_through_the_host_pointer_layer(loaded):
+    """Press → drag → release through `on_pointer_*`, the layer Qt feeds.
+
+    The InternalGui route and the panel methods both passed while a routing
+    bug could still sit between them and the real events; this drives the
+    exact chain the Qt host uses (`wgpu_view` → `on_pointer_press/move/
+    release` → `_gui_grab` → `gui.drag`), which is where a broken slider
+    would actually show.
+    """
+    win, gui, window, panel, model, _oid = loaded
+    viewer = win.viewer
+    renderer = viewer._renderer
+    _redraw(panel, gui, window)
+    oid = model._object_id
+    box, slider = panel._row_alpha[oid]
+    x0 = box.x + box.w * 0.3
+    y0 = box.y + box.h / 2
+
+    assert renderer.on_pointer_press(x0, y0, 1, 0, double=False)
+    assert slider._held, "the host press did not reach the slider"
+    assert gui._window_body_drag == "density", "no body drag armed"
+    for fraction in (0.35, 0.4, 0.45, 0.5):
+        assert renderer.on_pointer_move(box.x + box.w * fraction, y0, 1, 0)
+        assert model.alpha_for(oid) != pytest.approx(fraction, abs=0.02), (
+            "a drag tick applied the alpha -- not sliding free"
+        )
+    renderer.on_pointer_release(x0, y0, 1, 0)
+    assert not slider._held
+    assert model.alpha_for(oid) == pytest.approx(0.5, abs=0.02)
+
+
+def test_the_panel_opens_narrow_and_declares_its_floor(loaded):
+    """Narrow by default, never below the height its controls need.
+
+    The default used to be 250 px, most of it histogram, and it covered the
+    molecule being contoured. The status line taught the gestures too
+    ("drag off deletes, 2xclick adds"); that text is the plot's tooltip now,
+    and the line only reports the level.
+    """
+    from chimol.renderer.density_window import DensityWindow
+
+    _win, gui, window, panel, _model, _oid = loaded
+    assert window.h == pytest.approx(DensityWindow.DEFAULT_H)
+    assert DensityWindow.DEFAULT_H < 200.0
+    assert window.min_h == pytest.approx(DensityWindow.MIN_H)
+    assert DensityWindow.MIN_H < DensityWindow.DEFAULT_H
+    # Shrinking below the floor stops at the floor -- the framework's rule.
+    frame = gui.window_frame(window)
+    gx, gy = frame.x + frame.w - 3, frame.y + frame.h - 3
+    gui.mouse_press(gx, gy)
+    gui.drag(gx, gy - 400)
+    gui.release()
+    assert window.h == pytest.approx(DensityWindow.MIN_H)
+    # The gestures live in the tooltip over the plot, not the status line.
+    _redraw(panel, gui, window)
+    plot = panel._plot
+    tip = panel.tooltip(plot.x + plot.w / 2, plot.y + plot.h / 2, gui.window_body(window))
+    assert "double-click" in tip and "delete" in tip
+
+    class _Text(_Recorder):
+        def __init__(self):
+            self.texts = []
+
+        def text(self, x, y, w, h, align, text, color=None):
+            self.texts.append(str(text))
+
+    recorder = _Text()
+    panel.draw(recorder, gui.window_body(window))
+    footer = [t for t in recorder.texts if t.startswith("level")]
+    assert footer and "2xclick" not in footer[-1] and "drag off" not in footer[-1]

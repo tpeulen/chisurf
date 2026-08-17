@@ -221,12 +221,15 @@ def test_the_browser_host_passes_the_character_the_page_produced():
 
     seen = []
 
-    class _Gui:
-        def key_press(self, key, text="", modifiers=0):
+    class _Sink:
+        # The page routes keys through the *renderer* (`on_key_press`), so
+        # the viewer's own keys and the prompt's share one path; the text
+        # must arrive there exactly as the page produced it.
+        def on_key_press(self, key, text="", modifiers=0):
             seen.append(text)
             return True
 
     viewer = object.__new__(web_demo.Viewer)
-    viewer.gui = _Gui()
+    viewer.sink = _Sink()
     viewer.key(name="y", text="z")
     assert seen == ["z"], f"the browser host typed {seen!r}"

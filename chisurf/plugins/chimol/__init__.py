@@ -51,6 +51,18 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
 
         set_settings_dir(_cs_settings.get_path("settings"))
 
+        # chimol's log file follows its settings directory (just injected
+        # above), so the plugin's log lands beside the host's -- one place to
+        # look. Called *after* the injection for exactly that reason, and it
+        # adds no console handler of its own: the root logger is already
+        # configured here, so chimol's records reach the host's session log
+        # and console through propagation and are not printed twice. That
+        # propagation is the whole of "chimol logs into chisurf"; no chimol
+        # module names the host.
+        from chimol.logging_setup import configure_logging
+
+        configure_logging()
+
         # The demo scripts say ``load 148l.pdb`` and expect the host to know
         # where sample structures live. Standalone chimol degrades to "no
         # samples"; inside ChiSurf the checkout's test data is the sample
