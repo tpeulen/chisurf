@@ -73,15 +73,17 @@ def test_the_panel_walks_pick_dye_attach(session):
     win, shared, errors, qapp = session
     shared.do("wizard labelling")
     viewer = win.viewer
-    state = viewer._wizard
-    assert type(state).__name__ == "LabellingWizard"
+    state = viewer.wizard
+    from chimol.chrome.wizards import LabellingWizard
+
+    assert isinstance(state, LabellingWizard)
     labels = [row.label for row in state.panel()]
     assert labels[0] == "Labelling"
     assert "Dye: ..." in labels
     assert state.prompt() == ["Labelling: pick an attachment atom"]
 
     # The click: routed through the same hook the viewport installs.
-    consumed = viewer._wizard_pick(_cb_119(viewer))
+    consumed = viewer.pick_hook(_cb_119(viewer))
     assert consumed
     assert state.atom[:4] == (viewer.get_active_object_id(), "E", 119, "CB")
     assert any("at E119/CB" in row.label for row in state.panel())
@@ -98,20 +100,20 @@ def test_the_panel_walks_pick_dye_attach(session):
     assert state.dye == "Cy5"
     assert state.prompt() == ["Labelling: pick an attachment atom"]
     shared.do("wizard done")
-    assert viewer._wizard is None
+    assert viewer.wizard is None
 
 
 def test_the_second_site_is_one_click_and_attach(session):
     win, shared, errors, qapp = session
     shared.do("wizard labelling")
     viewer = win.viewer
-    state = viewer._wizard
+    state = viewer.wizard
     shared.do("wizard dye, Cy5")
-    viewer._wizard_pick(_cb_119(viewer))
+    viewer.pick_hook(_cb_119(viewer))
     shared.do("wizard apply")
     made = len(state.created)
     # Pick again straight away: the dye survived the previous Attach.
-    viewer._wizard_pick(_cb_119(viewer))
+    viewer.pick_hook(_cb_119(viewer))
     shared.do("wizard apply")
     assert len(state.created) == made + 1
     assert errors == [], errors[:2]
@@ -122,9 +124,9 @@ def test_delete_last_removes_the_av_object(session):
     win, shared, errors, qapp = session
     shared.do("wizard labelling")
     viewer = win.viewer
-    state = viewer._wizard
+    state = viewer.wizard
     shared.do("wizard dye, Cy5")
-    viewer._wizard_pick(_cb_119(viewer))
+    viewer.pick_hook(_cb_119(viewer))
     shared.do("wizard apply")
     doomed = state.created[-1]
     assert doomed in viewer.objects
@@ -145,7 +147,7 @@ def test_attach_keeps_the_structure_the_active_object(session):
     before = viewer.get_active_object_id()
     shared.do("wizard labelling")
     shared.do("wizard dye, Cy5")
-    viewer._wizard_pick(_cb_119(viewer))
+    viewer.pick_hook(_cb_119(viewer))
     shared.do("wizard apply")
     assert viewer.get_active_object_id() == before
     errors.clear()
@@ -158,7 +160,7 @@ def test_a_pick_without_a_dye_attach_says_so(session):
     win, shared, errors, qapp = session
     shared.do("wizard labelling")
     viewer = win.viewer
-    viewer._wizard_pick(_cb_119(viewer))
+    viewer.pick_hook(_cb_119(viewer))
     shared.do("wizard apply")   # no dye chosen: refused, not crashed
-    assert not viewer._wizard.created
+    assert not viewer.wizard.created
     shared.do("wizard done")

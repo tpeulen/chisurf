@@ -83,12 +83,12 @@ def _value(said: str) -> float:
 
 def test_the_wizard_takes_over_picking(session):
     run, viewer = session
-    assert getattr(viewer, "_wizard_pick", None) is None
+    assert viewer.pick_hook is None
     _said, complained = run("wizard measurement")
     assert not complained, complained
-    assert callable(viewer._wizard_pick), "the wizard is not listening for picks"
+    assert callable(viewer.pick_hook), "the wizard is not listening for picks"
     run("wizard done")
-    assert viewer._wizard_pick is None, "clicks were never given back"
+    assert viewer.pick_hook is None, "clicks were never given back"
 
 
 def test_two_picks_measure_the_distance_in_angstrom(session):
@@ -97,8 +97,8 @@ def test_two_picks_measure_the_distance_in_angstrom(session):
     try:
         (i, j, *_rest), xyz = _ca_atoms(viewer)
         truth = float(np.linalg.norm(xyz[i] - xyz[j]))
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
         said = _last_measurement_message(viewer)
         assert _value(said) == pytest.approx(truth, abs=5e-3)
     finally:
@@ -112,8 +112,8 @@ def test_the_measurement_is_stored_in_world_coordinates(session):
     run("wizard measurement")
     try:
         (i, j, *_rest), xyz = _ca_atoms(viewer)
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
         stored = np.asarray(list(viewer.measurements.values())[-1]["positions"])
         assert stored == pytest.approx(np.array([xyz[i], xyz[j]]), abs=1e-6)
     finally:
@@ -128,10 +128,10 @@ def test_angle_and_dihedral_need_three_and_four_picks(session):
         (i, j, k, l), xyz = _ca_atoms(viewer)
 
         run("wizard mode, angle")
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
         assert not viewer.measurements, "an angle was made from two atoms"
-        viewer._wizard_pick(k)
+        viewer.pick_hook(k)
         assert viewer.measurements, "three atoms did not make an angle"
         u, v = xyz[i] - xyz[j], xyz[k] - xyz[j]
         truth = np.degrees(np.arccos(
@@ -144,9 +144,9 @@ def test_angle_and_dihedral_need_three_and_four_picks(session):
         run("wizard delete, all")
         run("wizard mode, dihedral")
         for index in (i, j, k):
-            viewer._wizard_pick(index)
+            viewer.pick_hook(index)
         assert not viewer.measurements, "a dihedral was made from three atoms"
-        viewer._wizard_pick(l)
+        viewer.pick_hook(l)
         assert viewer.measurements, "four atoms did not make a dihedral"
     finally:
         run("wizard delete, all")
@@ -160,12 +160,12 @@ def test_switching_mode_drops_a_half_finished_group(session):
     try:
         (i, j, k, _l), _xyz = _ca_atoms(viewer)
         run("wizard mode, dihedral")
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
-        viewer._wizard_pick(k)
-        assert len(viewer._wizard.picks) == 3
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
+        viewer.pick_hook(k)
+        assert len(viewer.wizard.picks) == 3
         run("wizard mode, distance")
-        assert viewer._wizard.picks == []
+        assert viewer.wizard.picks == []
         assert not viewer.measurements
     finally:
         run("wizard delete, all")
@@ -177,10 +177,10 @@ def test_a_repeated_pick_does_not_measure_an_atom_against_itself(session):
     run("wizard measurement")
     try:
         (i, *_rest), _xyz = _ca_atoms(viewer)
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(i)
+        viewer.pick_hook(i)
+        viewer.pick_hook(i)
         assert not viewer.measurements, "an atom was measured against itself"
-        assert len(viewer._wizard.picks) == 1
+        assert len(viewer.wizard.picks) == 1
     finally:
         run("wizard done")
 
@@ -190,13 +190,13 @@ def test_unpick_takes_back_a_mis_click(session):
     run("wizard measurement")
     try:
         (i, j, *_rest), _xyz = _ca_atoms(viewer)
-        viewer._wizard_pick(i)
-        assert len(viewer._wizard.picks) == 1
+        viewer.pick_hook(i)
+        assert len(viewer.wizard.picks) == 1
         run("wizard unpick")
-        assert viewer._wizard.picks == []
+        assert viewer.wizard.picks == []
         # And the taken-back atom can be picked again straight away.
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
         assert viewer.measurements
     finally:
         run("wizard delete, all")
@@ -208,10 +208,10 @@ def test_delete_last_and_all(session):
     run("wizard measurement")
     try:
         (i, j, k, l), _xyz = _ca_atoms(viewer)
-        viewer._wizard_pick(i)
-        viewer._wizard_pick(j)
-        viewer._wizard_pick(k)
-        viewer._wizard_pick(l)
+        viewer.pick_hook(i)
+        viewer.pick_hook(j)
+        viewer.pick_hook(k)
+        viewer.pick_hook(l)
         assert len(viewer.measurements) == 2
         run("wizard delete, last")
         assert len(viewer.measurements) == 1
@@ -227,8 +227,8 @@ def test_every_panel_row_is_a_real_control(session):
     run("wizard measurement")
     try:
         (i, *_rest), _xyz = _ca_atoms(viewer)
-        viewer._wizard_pick(i)
-        state = viewer._wizard
+        viewer.pick_hook(i)
+        state = viewer.wizard
         for row in state.panel():
             if row.kind == "menu":
                 assert state.menu(row.action), (

@@ -561,7 +561,7 @@ def test_choosing_a_target_builds_one_state_per_rotamer(wizard_cmd):
     preview = _preview(window)
     assert preview is not None, "no `mutation` object was created"
     frames = np.asarray(preview.state.frames)
-    assert frames.ndim == 3 and frames.shape[0] == len(window.viewer._wizard.scores)
+    assert frames.ndim == 3 and frames.shape[0] == len(window.viewer.wizard.scores)
     labels = [label for _kind, label in _panel(window)]
     assert any("rotamer" in label for label in labels)
     assert any("strain" in label for label in labels)
@@ -573,13 +573,13 @@ def test_stepping_is_a_state_change_not_a_rebuild(wizard_cmd):
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
     cmd.do("wizard target, TRP")
-    state = window.viewer._wizard
+    state = window.viewer.wizard
     before = state.rotamer
     frames_before = np.asarray(_preview(window).state.frames).copy()
 
     cmd.do("wizard rotamer, next")
 
-    state = window.viewer._wizard
+    state = window.viewer.wizard
     assert state.rotamer != before
     frames_after = np.asarray(_preview(window).state.frames)
     assert np.array_equal(frames_before, frames_after), (
@@ -643,7 +643,7 @@ def test_done_without_apply_leaves_the_structure_alone(wizard_cmd):
     assert _residue_name(window, 54) == before
     assert _preview(window) is None, "the preview object outlived the wizard"
     assert _panel(window) == [], "the panel outlived the wizard"
-    assert window.viewer._wizard is None
+    assert window.viewer.wizard is None
 
 
 def test_apply_keeps_it(wizard_cmd):
@@ -655,7 +655,7 @@ def test_apply_keeps_it(wizard_cmd):
 
     assert _residue_name(window, 54) == "ALA"
     assert _preview(window) is None
-    assert window.viewer._wizard is None
+    assert window.viewer.wizard is None
 
 
 def test_the_residue_menu_offers_the_twenty_by_class(wizard_cmd):
@@ -664,7 +664,7 @@ def test_the_residue_menu_offers_the_twenty_by_class(wizard_cmd):
     cmd.do("select resi 54")
     cmd.do("wizard mutagenesis")
 
-    entries = window.viewer._wizard.menu("residue")
+    entries = window.viewer.wizard.menu("residue")
     names = [e.label for e in entries if not e.is_separator]
     assert len(names) == 20
     assert names[:3] == ["ALA", "GLY", "PRO"]

@@ -22,8 +22,6 @@ SCOPES = ("commands", "plugins")
 
 #: What still reaches a private, and why it may (for now).
 ALLOWED = {
-    # the wizard state machine, until it moves to chrome/wizards (plan §2)
-    "_wizard", "_wizard_pick", "_wizard_pick_all",
     # the per-object representation flags, until the representation registry (plan §3.3)
     "_show_atoms", "_show_cartoon", "_show_lines", "_show_nonbonded", "_show_sticks",
     "_show_surface", "_show_trace",

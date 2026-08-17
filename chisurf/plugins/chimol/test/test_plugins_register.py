@@ -239,3 +239,33 @@ def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
         assert viewer.bus.count("objects.changed") == 0
     finally:
         viewer.deleteLater()
+
+
+def test_a_plugin_adds_a_wizard_and_a_menu_generator():
+    from chimol.chrome import menus
+    from chimol.chrome.object_menus import MenuEntry
+    from chimol.chrome.wizards import WIZARDS, Wizard
+
+    class _Hello(Wizard):
+        name = "hello"
+        title = "Hello"
+
+    class _P:
+        name = "gen"
+
+        def register(self, api):
+            assert api.add_wizard("hello", _Hello, aliases=("hi",))
+            assert api.add_menu_generator("greetings", lambda: (MenuEntry("Say hi", "wizard hello"),))
+            api.add_menu("Tools", [{"generate": "greetings"}])
+
+    cmd = _cmd(plugins=False)
+    loaded = load_plugins(cmd, [_P()])
+    try:
+        assert "hello" in WIZARDS and "hi" in WIZARDS
+        assert isinstance(WIZARDS.create("hi"), _Hello)
+        tools = dict(menus.menu_bar())["Tools"]
+        assert any(e.label == "Say hi" and e.command == "wizard hello" for e in tools)
+    finally:
+        loaded.unload("gen")
+    assert "hello" not in WIZARDS
+    assert not any(e.label == "Say hi" for e in dict(menus.menu_bar())["Tools"])

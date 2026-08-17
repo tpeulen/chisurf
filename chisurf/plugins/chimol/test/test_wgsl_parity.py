@@ -207,6 +207,9 @@ class TestWgslSource:
         "grid.wgsl": None,      # the compute prelude
         "bvh.wgsl": None,       # the ray prelude
         "mesh.wgsl": "render",
+        # The same mesh drawn N times from a storage buffer of transforms
+        # (the instancing seam); the render prelude for the camera and shade().
+        "mesh_instanced.wgsl": "render",
         "impostor.wgsl": "render",
         # Bonds, as analytic capped cylinders: the same argument as the sphere
         # impostor, with a colour split at the midpoint.

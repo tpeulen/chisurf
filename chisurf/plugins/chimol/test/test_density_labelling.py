@@ -149,7 +149,7 @@ def test_the_wizard_measures_fps_distance_types(session):
     assert len(mp) == 2, f"expected two mean-position objects, got {sorted(mp)}"
 
     shared.do("wizard measurement")
-    state = viewer._wizard
+    state = viewer.wizard
     results = {}
     for distance_type in ("Rmp", "RDAMean", "RDAMeanE"):
         shared.do(f"wizard disttype, {distance_type}")
@@ -174,7 +174,7 @@ def test_the_wizard_measures_fps_distance_types(session):
     # And a plain distance still works after the types were used.
     shared.do("wizard measurement")
     shared.do("wizard disttype, atoms")
-    state = viewer._wizard
+    state = viewer.wizard
     state.picks = []
     a, b = sorted(mp.values())
     shared.do(f"wizard pick, {a}:0")

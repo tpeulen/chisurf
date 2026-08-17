@@ -215,14 +215,14 @@ def test_a_measurement_pick_is_marked_and_then_released(session):
         before = viewer._selection_atom_positions(coords)
         n_before = 0 if before is None else len(before)
 
-        viewer._wizard_pick(ca[0])
+        viewer.pick_hook(ca[0])
         after = viewer._selection_atom_positions(coords)
         assert after is not None and len(after) == n_before + 1, (
             "the first pick drew no marker"
         )
         assert viewer._pick_markers == [ca[0]]
 
-        viewer._wizard_pick(ca[1])
+        viewer.pick_hook(ca[1])
         # The pair became a measurement, which is its own drawing.
         assert viewer._pick_markers == []
         done = viewer._selection_atom_positions(coords)
