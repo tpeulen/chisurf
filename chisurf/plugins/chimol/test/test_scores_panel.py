@@ -161,8 +161,31 @@ def test_a_wheel_over_the_graph_never_reaches_the_camera(panel):
     assert panel.wheel(x + 5.0, y + 5.0, 1, BOX) is True
 
 
-def test_an_object_with_no_series_says_so():
+def test_a_trajectory_with_no_recorded_scores_still_has_something_to_show():
+    """The demo everybody opens records none, and an empty graph teaches
+    nothing about the panel. What the *motion* says stands in: Rg, RMSD, the
+    thickness, and -- where the file stores a radius per frame -- how many
+    particles are actually there."""
     panel = ScoresPanel(_Viewer(series={}), _Cmd())
+    _draw(panel)
+    assert panel.rows.names == ["· RMSD to frame 1", "· Rg", "· thickness"]
+    assert panel._plot_box is not None
+
+
+def test_the_computed_series_are_marked_as_computed():
+    """A derived quantity must not read as one the file recorded."""
+    panel = ScoresPanel(_Viewer(), _Cmd())
+    _draw(panel)
+    recorded = [n for n in panel.rows.names if not n.startswith("· ")]
+    assert set(recorded) == {"Total Score", "ConnectivityRestraint"}
+    assert [n for n in panel.rows.names if n.startswith("· ")]
+
+
+def test_a_single_frame_object_has_no_series_at_all():
+    """Nothing to plot over, so the panel says so rather than drawing an axis."""
+    viewer = _Viewer(series={})
+    viewer.objects["a"].state.frames = np.zeros((1, 3, 3), dtype=np.float32)
+    panel = ScoresPanel(viewer, _Cmd())
     strings = _draw(panel).strings
     assert strings == ["This object records no per-frame scores."]
     assert panel._plot_box is None
@@ -174,4 +197,5 @@ def test_a_series_that_is_all_nan_is_left_out():
         "empty": np.full(FRAMES, np.nan),
     }), _Cmd())
     _draw(panel)
-    assert panel.rows.names == ["good"]
+    assert "good" in panel.rows.names
+    assert "empty" not in panel.rows.names

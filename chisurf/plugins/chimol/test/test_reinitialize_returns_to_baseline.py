@@ -191,3 +191,77 @@ def test_the_shipped_defaults_are_compared_at_every_depth():
     )
     assert "camera.field_of_view" in out
     assert "deep.a.b" in out, "nested keys deeper than two levels are skipped"
+
+
+# -- what a *started* viewer does not have --------------------------------- #
+#
+# The pixel comparison above covers what is drawn behind the panels. It cannot
+# see a panel that is open, a movie that is running or a wizard mid-pick,
+# because those were opened after the "fresh" frame was taken -- and each of
+# them survived `reinitialize`: the report was "reinit does not clear the
+# info, reinit ALL should bring it to the startup state".
+
+
+@pytest.fixture(scope="module")
+def running():
+    """Open everything a session opens, then reinitialise and look."""
+    return probe('''
+        app = open_app(size=(900, 600))
+        cmd, gui = app.cmd, app.viewer.gui
+
+        def windows():
+            return ",".join(sorted(w.key for w in gui.windows if w.visible))
+
+        cmd.do("demo trajectory")
+        cmd.do("help")                 # a listing in the info panel
+        cmd.do("scores")               # a plugin panel
+        cmd.do("settings")             # another
+        cmd.do("editor /tmp/scratch.cml")
+        cmd.do("wizard measurement")
+        cmd.do("mplay")
+        app.renderer._draw()
+
+        emit("before_windows", windows())
+        emit("before_playing", app.viewer.playback.running)
+        emit("before_wizard", app.viewer.wizard is not None)
+        emit("before_info", str(gui.info_text)[:20])
+
+        cmd.do("reinit")
+        app.renderer._draw()
+
+        emit("after_windows", windows())
+        emit("after_playing", app.viewer.playback.running)
+        emit("after_wizard", app.viewer.wizard is not None)
+        emit("after_panels", ",".join(sorted(gui.panels)))
+        emit("after_info", str(gui.info_text))
+        emit("after_title", repr(gui._info_title))
+        emit("after_frame", app.viewer.get_frame_position())
+        emit("after_step", app.viewer.movie_step)
+    ''')
+
+
+def test_the_panels_a_command_opened_are_closed(running):
+    """A Scores window is not part of a started viewer; an object list is."""
+    assert "scores" in running["before_windows"]
+    assert running["after_windows"] == "mouse,objects"
+    assert running["after_panels"] == ""
+
+
+def test_the_movie_is_stopped_and_rewound(running):
+    assert running["before_playing"] == "True"
+    assert running["after_playing"] == "False"
+    assert float(running["after_frame"]) == 0.0
+    assert float(running["after_step"]) == 1.0
+
+
+def test_a_running_wizard_is_ended(running):
+    assert running["before_wizard"] == "True"
+    assert running["after_wizard"] == "False"
+
+
+def test_the_info_panel_forgets_what_it_was_showing(running):
+    """It closed but still *held* the last `help` listing, so the next thing
+    that opened it showed a command list from before the reset."""
+    assert running["before_info"].startswith("Commands")
+    assert running["after_info"] in ("(no system loaded)", "")
+    assert running["after_title"] == "''"
