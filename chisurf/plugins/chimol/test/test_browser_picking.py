@@ -73,7 +73,7 @@ assert (sink.width(), sink.height()) == CSS, (sink.width(), sink.height())
 gui = sink.internal_gui
 gui.visible = True
 gui.sequence_visible = True
-from chimol_pkg.chrome.menus import MENU_BAR, TOOLBAR
+from chimol_pkg.ui.menus.bar import MENU_BAR, TOOLBAR
 gui.menubar = [(t, e) for t, e in MENU_BAR if e]
 gui.toolbar = list(TOOLBAR)
 
