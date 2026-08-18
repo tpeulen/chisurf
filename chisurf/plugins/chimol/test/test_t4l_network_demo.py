@@ -235,6 +235,23 @@ def test_the_demo_starts_with_the_structure_visible(look):
     assert int(look["clouds_visible"]) == 0
 
 
+def test_the_script_does_not_name_what_the_loader_invents():
+    """A demo is *data* shipped beside code, and the two can be out of step.
+
+    The script switched off a group `fps_load` had created -- and a session
+    running the new script against older code answered "unknown object
+    av_clouds", because the group did not exist yet. Whoever makes the objects
+    decides how they are first shown; the script says what the demo is about.
+    """
+    script = (DEMOS / "t4l_network.cml").read_text()
+    commands = [
+        line.strip() for line in script.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    for line in commands:
+        assert "av_clouds" not in line and "av_means" not in line, line
+
+
 def test_two_dyes_are_still_solid_clouds():
     """The rule is about a *network*: `add_dye` on a pair keeps its surfaces."""
     ran = probe('''
