@@ -473,3 +473,86 @@ def test_labelling_has_its_own_submenu():
     # ...and the rows are not also loose in Tools itself.
     loose = [row for row in tools if "Labelling:" in str(getattr(row, "label", ""))]
     assert not loose, loose
+
+
+# --------------------------------------------------------------------------- #
+# Selecting a position: one act, two pictures, three colours
+# --------------------------------------------------------------------------- #
+def test_selecting_a_position_and_clearing_it():
+    panel = _panel(_network())
+    assert panel.select("a") and panel.selected == "a"
+    assert not panel.select("a"), "selecting the same one again is not a change"
+    assert panel.select(None) and panel.selected is None
+
+
+def test_the_partners_are_the_ones_it_is_measured_against():
+    panel = _panel(_network())
+    assert panel.partners("a") == {"b", "c"}
+    assert panel.partners("b") == {"a", "c"}
+
+
+def test_the_partners_are_taken_from_the_dataset_that_is_drawn():
+    """What is on screen is what the question is about."""
+    panel = _panel(_network())
+    panel.choose("chi2_C2")            # only b-c
+    assert panel.partners("a") == set()
+    assert panel.partners("b") == {"c"}
+
+
+def test_the_circle_draws_the_three_roles():
+    from chimol.plugins.labelling.circle_window import MUTED, PARTNER, SELECTED
+
+    panel = _panel(_network())
+    panel.select("a")
+    circle = panel.build(0, 0, 400, 400)
+    colours = {tuple(point.colour) for point in circle._points}
+    assert tuple(SELECTED) in colours and tuple(PARTNER) in colours
+    selected = [p for p in circle._points if tuple(p.colour) == tuple(SELECTED)]
+    partners = [p for p in circle._points if tuple(p.colour) == tuple(PARTNER)]
+    assert len(selected) == 1 and len(partners) == 2
+    assert selected[0].radius > partners[0].radius, (
+        "the selected dot should be the biggest thing in the circle"
+    )
+
+
+def test_a_selected_positions_chords_are_thick_and_the_rest_are_not():
+    from chimol.plugins.labelling.circle_window import MUTED, SELECTED
+
+    panel = _panel(_network())
+    panel.select("a")
+    links = panel.build(0, 0, 400, 400)._links
+    mine = [link for link in links if tuple(link.colour) == tuple(SELECTED)]
+    others = [link for link in links if tuple(link.colour) == tuple(MUTED)]
+    assert len(mine) == 2 and len(others) == 1
+    assert mine[0].width > others[0].width * 1.5
+
+
+def test_chords_are_not_hairlines_when_nothing_is_selected():
+    """"Thicker in general": a hundred chords at one pixel is a smudge."""
+    panel = _panel(_network())
+    assert all(link.width >= 2.0 for link in panel.build(0, 0, 400, 400)._links)
+
+
+def test_a_press_on_a_dot_selects_it_and_a_press_beside_it_clears():
+    panel = _panel(_network())
+    panel.draw(RecordingPainter(), _Rect())
+    x, y = panel._dots["b"]
+    assert panel.press(x, y, _Rect())
+    assert panel.selected == "b"
+    panel.draw(RecordingPainter(), _Rect())
+    centre_x = sum(dot[0] for dot in panel._dots.values()) / len(panel._dots)
+    centre_y = sum(dot[1] for dot in panel._dots.values()) / len(panel._dots)
+    assert panel.press(centre_x, centre_y, _Rect())
+    assert panel.selected is None
+
+
+def test_a_hover_does_not_take_the_answer_off_the_structure():
+    """With a selection showing, moving the pointer must not repaint the scene."""
+    panel = _panel(_network())
+    panel.viewer = _Scene()
+    panel.draw(RecordingPainter(), _Rect())
+    panel.select("a")
+    before = panel.viewer.updates
+    panel.hover(*panel._dots["b"], _Rect())
+    assert panel.hovered == "b"
+    assert panel.viewer.updates == before, "the hover repainted the selection away"

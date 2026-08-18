@@ -270,3 +270,112 @@ emit("visible", sum(1 for e in clouds if e.visible))
     assert int(ran["clouds"]) == 2
     assert ran["style"] == "surface"
     assert int(ran["visible"]) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Selecting a position, on the structure
+# --------------------------------------------------------------------------- #
+PICK = '''
+app = open_app(size=(900, 600))
+cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
+cmd.do("demo t4l_network")
+cmd.do("enable av_clouds")
+app.renderer._draw()
+panel = gui.panels.get("fps_circle")
+
+def bead(position):
+    oid = panel._object_for(position)
+    state = viewer.objects[oid].state
+    mean = viewer.objects[state.av_mean_object_id].state
+    colour = tuple(round(float(c), 2) for c in
+                   np.asarray(mean.colors_per_atom_override).ravel())
+    return colour, round(float(np.asarray(mean.all_atom_radii).ravel()[0]), 2)
+
+chosen = "119A"
+partners = sorted(panel.partners(chosen))
+other = [n for n in panel.model.positions
+         if n != chosen and n not in partners][0]
+emit("partners", ",".join(partners))
+emit("before", "%s|%s" % bead(chosen))
+
+panel.select(chosen)
+app.renderer._draw()
+emit("selected", "%s|%s" % bead(chosen))
+emit("partner", "%s|%s" % bead(partners[0]))
+emit("other", "%s|%s" % bead(other))
+
+widths = {}
+for name, fields in viewer.measurements.items():
+    pair = panel._pair_of(name, fields)
+    if chosen in pair:
+        widths.setdefault("mine", set()).add(round(float(fields.get("width", 0)), 1))
+    elif set(pair) & set(panel.model.positions):
+        widths.setdefault("theirs", set()).add(round(float(fields.get("width", 0)), 1))
+emit("width_mine", ",".join(str(w) for w in sorted(widths.get("mine", ()))))
+emit("width_theirs", ",".join(str(w) for w in sorted(widths.get("theirs", ()))))
+
+# ...and the scene really draws them that thick.
+drawn = {}
+for obj in (getattr(viewer._scene, "objects", None) or ()):
+    if "meas_line" in str(obj.id):
+        drawn.setdefault(round(float((obj.geometry.meta or {}).get("width", 0)), 1), 0)
+        drawn[round(float((obj.geometry.meta or {}).get("width", 0)), 1)] += 1
+emit("drawn_widths", ",".join(f"{w}x{n}" for w, n in sorted(drawn.items())))
+
+panel.select(None)
+app.renderer._draw()
+emit("after", "%s|%s" % bead(chosen))
+'''
+
+
+@pytest.fixture(scope="module")
+def picked():
+    return probe("import numpy as np\n" + PICK, timeout=900)
+
+
+def _colour_and_size(text: str):
+    colour, _, size = text.partition("|")
+    return eval(colour), float(size)          # noqa: S307 - our own emitted tuple
+
+
+def test_the_selected_position_is_magenta_and_bigger(picked):
+    from chimol.plugins.labelling.circle_window import SELECTED, _scene_colour
+
+    colour, size = _colour_and_size(picked["selected"])
+    _before, before_size = _colour_and_size(picked["before"])
+    assert colour[:3] == pytest.approx(_scene_colour(SELECTED)[:3], abs=0.01)
+    assert size > before_size, "the selected marker did not grow"
+
+
+def test_its_partners_are_cyan_and_the_rest_grey(picked):
+    from chimol.plugins.labelling.circle_window import MUTED, PARTNER, _scene_colour
+
+    partner, partner_size = _colour_and_size(picked["partner"])
+    other, other_size = _colour_and_size(picked["other"])
+    assert partner[:3] == pytest.approx(_scene_colour(PARTNER)[:3], abs=0.01)
+    assert other[:3] == pytest.approx(_scene_colour(MUTED)[:3], abs=0.01)
+    _selected, selected_size = _colour_and_size(picked["selected"])
+    assert selected_size > partner_size > other_size, (
+        "the three roles should be three sizes"
+    )
+
+
+def test_the_selected_positions_distances_are_the_thick_ones(picked):
+    mine = [float(w) for w in picked["width_mine"].split(",") if w]
+    theirs = [float(w) for w in picked["width_theirs"].split(",") if w]
+    assert mine and theirs
+    assert min(mine) > max(theirs) * 1.5
+
+
+def test_the_scene_draws_the_lines_that_thick(picked):
+    """A width on a measurement that the renderer ignores is a width nobody sees."""
+    drawn = dict(
+        (float(part.split("x")[0]), int(part.split("x")[1]))
+        for part in picked["drawn_widths"].split(",") if part
+    )
+    assert drawn, "no measurement lines were drawn at all"
+    assert max(drawn) > min(drawn), "every line was drawn the same width"
+
+
+def test_clearing_the_selection_puts_the_scene_back(picked):
+    assert picked["after"] == picked["before"]
