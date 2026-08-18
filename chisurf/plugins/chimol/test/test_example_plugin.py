@@ -36,7 +36,6 @@ def qapp():
 def test_the_example_plugin_does_everything_it_says(stars_module, qapp, tmp_path):
     from chimol.ui.input import keybindings
     from chimol.ui.menus import bar as menus
-    from chimol.ui.panels import PANELS
     from chimol.commands.command import Cmd
     from chimol.core.services.representations import REPRESENTATIONS
     from chimol.core.settings.registry import get_setting
@@ -59,7 +58,7 @@ def test_the_example_plugin_does_everything_it_says(stars_module, qapp, tmp_path
     loaded = load_plugins(cmd, [plugin])
     try:
         assert "stars" in loaded and loaded.failed == {}
-        assert "stars" in REPRESENTATIONS and "stars" in PANELS.keys()
+        assert "stars" in REPRESENTATIONS and "stars" in cmd.panels.keys()
         assert FORMATS.kind_of("a.xyzs") == "structure"
         assert get_setting("star_size") == 0.3
         assert keybindings.action_for_key("j") == "stars_toggle"

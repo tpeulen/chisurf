@@ -21,7 +21,6 @@ import pytest
 
 import chimol
 from chimol.ui.menus import bar as menus
-from chimol.ui.panels import PANELS
 from chimol.commands.command import Cmd, DEFAULT_GROUPS, compose
 from chimol.commands.registry import CommandGroup, command
 from chimol.plugins import BUILTIN, PluginAPI, load_plugins
@@ -116,31 +115,34 @@ def test_a_plugin_registers_and_unloads_cleanly():
     # the menu row and the panel are there
     tools = dict(menus.menu_bar())["Tools"]
     assert any(e.label == "Greet" and e.command == "greet" for e in tools)
-    assert "fake" in PANELS.keys()
+    assert "fake" in cmd.panels.keys()
     # unload reverses it
     loaded.unload("fake")
     assert cmd._registry.resolve("greet") is None
     assert cmd._registry.resolve("hello") is None
-    assert "fake" not in PANELS.keys()
+    assert "fake" not in cmd.panels.keys()
     assert not any(e.label == "Greet" for e in dict(menus.menu_bar())["Tools"])
     # a name resolves by unique prefix again once the plugin is gone
     assert "greet" not in cmd.command_names()
 
 
 def test_a_second_viewer_keeps_the_plugin_when_the_first_one_closes():
-    """The `density: no such panel` bug, and every command and menu row with it.
+    """The `density: no such panel` bug, and the shape that ended it.
 
-    A plugin registers **per viewer** while the registries it writes into are
-    process-wide, so two windows both register and the first one closing used
-    to call ``unregister_owner`` and take the second window's panels, menu rows,
-    formats and representations with it. The shared teardown is counted now:
-    it happens on the release that takes the count to zero, and not before.
+    A plugin registers **per viewer**. Its panels therefore belong to that
+    viewer -- `cmd.panels` -- and the first window closing cannot reach the
+    second window's, because it never shared a table with it. What is still
+    process-wide (menu rows, formats, representations) is counted instead, so
+    the same close does not retract those either.
     """
     plugin = _FakePlugin()
     first, second = _cmd(plugins=False), _cmd(plugins=False)
     loaded_first = load_plugins(first, [plugin])
     loaded_second = load_plugins(second, [plugin])
 
+    # Each viewer has its own panel, in its own registry.
+    assert "fake" in first.panels.keys() and "fake" in second.panels.keys()
+    assert first.panels is not second.panels
     # A second registration does not double the menu row (first owner wins).
     tools = dict(menus.menu_bar())["Tools"]
     assert sum(1 for e in tools if e.label == "Greet") == 1
@@ -148,31 +150,33 @@ def test_a_second_viewer_keeps_the_plugin_when_the_first_one_closes():
 
     loaded_first.unload("fake")                       # the window that closed
     assert holds("plugin:fake") == 1
-    assert "fake" in PANELS.keys(), "the surviving window lost its panel"
+    assert "fake" in second.panels.keys(), "the surviving window lost its panel"
+    assert "fake" not in first.panels.keys(), "the closed window kept its own"
     assert any(e.label == "Greet" for e in dict(menus.menu_bar())["Tools"])
-    # ...and the window that stayed still has the command, on its own registry
     assert second._registry.resolve("greet") is not None
-    assert first._registry.resolve("greet") is None   # the closed one does not
+    assert first._registry.resolve("greet") is None
 
     loaded_second.unload("fake")                      # now the last one goes
     assert holds("plugin:fake") == 0
-    assert "fake" not in PANELS.keys()
+    assert "fake" not in second.panels.keys()
     assert not any(e.label == "Greet" for e in dict(menus.menu_bar())["Tools"])
 
 
-def test_reload_replaces_the_shared_registrations_even_with_a_window_open():
+def test_reload_replaces_the_registrations_even_with_a_window_open():
     """`plugins reload` is for editing a plugin: the new code has to take effect."""
     from chimol.plugins import reload_plugins
 
-    other = _cmd()                                    # a second window holds them
+    other = _cmd()                                    # a second window
     cmd = _cmd()
-    before = PANELS.specs["density"]
+    before = cmd.panels.specs["density"]
 
     reload_plugins(cmd)
-    after = PANELS.specs.get("density")
+    after = cmd.panels.specs.get("density")
     assert after is not None, "reload dropped the panel it was meant to replace"
     assert after is not before, "reload kept the old factory"
-    # The other window's own commands are untouched by a reload next door.
+    # The other window is untouched by a reload next door -- its registry is
+    # its own, which is the whole point.
+    assert other.panels.specs["density"] is not after
     assert other._registry.resolve("density_panel") is not None
     assert cmd._registry.resolve("density_panel") is not None
 
