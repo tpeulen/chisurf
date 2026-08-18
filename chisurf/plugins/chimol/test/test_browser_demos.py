@@ -48,6 +48,7 @@ DEMOS = [
     ("trajectory", False),
     ("measure", False),
     ("labelling", False),
+    ("t4l_network", False),
     ("emdb_map", True),
     ("npc_integrative", True),
     ("biofilm", False),

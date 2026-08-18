@@ -215,3 +215,148 @@ def test_the_command_and_the_menu_row_are_registered():
 
     rows = [row for menu in menu_bar() for row in (menu[1] or ())]
     assert any("fps_circle" in str(row) for row in rows), "no menu row opens it"
+
+
+# --------------------------------------------------------------------------- #
+# Several datasets in one document
+# --------------------------------------------------------------------------- #
+class _Scene:
+    """The little of a viewer this panel touches: objects and measurements."""
+
+    def __init__(self, measurements=None):
+        self.objects = {}
+        self.measurements = dict(measurements or {})
+        self.updates = 0
+
+    def update_view(self, *args, **kwargs):
+        self.updates += 1
+
+
+def _network() -> FpsModel:
+    model = _model(
+        {
+            "a": {"chain_identifier": "E", "residue_seq_number": 10},
+            "b": {"chain_identifier": "E", "residue_seq_number": 50},
+            "c": {"chain_identifier": "E", "residue_seq_number": 90},
+        },
+        {
+            "a-b_C1": {"position1_name": "a", "position2_name": "b",
+                       "distance": 30.0, "Forster_radius": 52.0},
+            "a-c_C1": {"position1_name": "a", "position2_name": "c",
+                       "distance": 70.0, "Forster_radius": 52.0},
+            "b-c_C2": {"position1_name": "b", "position2_name": "c",
+                       "distance": 45.0, "Forster_radius": 52.0},
+        },
+    )
+    model.score_sets = {
+        "chi2_C1": {"distances": ["a-b_C1", "a-c_C1"]},
+        "chi2_C2": {"distances": ["b-c_C2"]},
+    }
+    return model
+
+
+def test_the_documents_score_sets_are_the_datasets():
+    """An fps.json's chi-squared sections are subsets of its distances."""
+    panel = _panel(_network())
+    assert [label for label, _keys in panel.datasets()] == [
+        "All distances", "chi2_C1 (2)", "chi2_C2 (1)",
+    ]
+
+
+def test_choosing_a_dataset_draws_only_its_chords():
+    panel = _panel(_network())
+    assert len(panel.build(0, 0, 400, 400)._links) == 3
+    assert panel.choose("chi2_C2")
+    assert len(panel.build(0, 0, 400, 400)._links) == 1
+
+
+def test_a_choice_survives_the_next_draw():
+    """The chooser is filled from the document; refilling it must not reset it."""
+    panel = _panel(_network())
+    panel.choose("chi2_C1")
+    panel.draw(RecordingPainter(), _Rect())
+    assert panel.dataset.startswith("chi2_C1")
+    assert panel.combo.value == panel.dataset
+
+
+def test_choosing_a_set_the_document_does_not_have_is_refused():
+    panel = _panel(_network())
+    assert not panel.choose("chi2_nope")
+
+
+def test_the_choice_governs_the_lines_in_the_scene_too():
+    """One switch, both pictures -- ninety-nine lines is a hairball either way."""
+    panel = _panel(_network())
+    panel.viewer = _Scene({
+        "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
+        "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1]},
+        "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1]},
+        "by_hand": {"kind": "distance", "color": [1, 1, 0, 1]},
+    })
+    panel.choose("chi2_C2")
+    visible = {n for n, f in panel.viewer.measurements.items() if f.get("visible", True)}
+    assert visible == {"b-c_C2", "by_hand"}, (
+        "a line drawn by hand is in no dataset and must not be hidden by one"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Hover: one act, two pictures
+# --------------------------------------------------------------------------- #
+def _hovering(panel, name):
+    """Put the pointer on *name*'s dot, as the chrome would."""
+    panel.build(0, 0, 400, 400)          # fills the dot table
+    x, y = panel._dots[name]
+    return panel.hover(x, y, _Rect())
+
+
+def test_hovering_a_dot_names_the_position_under_it():
+    panel = _panel(_network())
+    assert _hovering(panel, "b")
+    assert panel.hovered == "b"
+    assert not panel.hover(*panel._dots["b"], _Rect()), "no move, no repaint"
+
+
+def test_the_pointer_leaving_the_panel_clears_the_hover():
+    panel = _panel(_network())
+    _hovering(panel, "b")
+    assert panel.hover(-500.0, -500.0, _Rect())
+    assert panel.hovered is None
+
+
+def test_hovering_lights_the_positions_own_distances_in_the_scene():
+    panel = _panel(_network())
+    panel.viewer = _Scene({
+        "a-b_C1": {"kind": "distance", "color": [1, 1, 0, 1],
+                   "positions_named": ("a", "b")},
+        "b-c_C2": {"kind": "distance", "color": [1, 1, 0, 1],
+                   "positions_named": ("b", "c")},
+        "a-c_C1": {"kind": "distance", "color": [1, 1, 0, 1],
+                   "positions_named": ("a", "c")},
+    })
+    _hovering(panel, "b")
+    lit = {n for n, f in panel.viewer.measurements.items()
+           if tuple(f["color"]) != (1, 1, 0, 1)}
+    assert lit == {"a-b_C1", "b-c_C2"}
+
+    panel.hover(-500.0, -500.0, _Rect())
+    assert all(tuple(f["color"]) == (1, 1, 0, 1)
+               for f in panel.viewer.measurements.values()), (
+        "the highlight outlived the hover"
+    )
+
+
+def test_the_pair_comes_from_the_measurement_not_from_its_name():
+    """A real document names a distance after the experiment: `19-119_C1`."""
+    panel = _panel(_network())
+    assert panel._pair_of("19-119_C1", {"positions_named": ("19D", "119A")}) == ("19D", "119A")
+    # ...then the document, then the name -- in that order.
+    assert panel._pair_of("a-b_C1", {}) == ("a", "b")
+    assert panel._pair_of("x_y", {}) == ("x", "y")
+
+
+def test_the_hover_hook_is_wired_to_the_window():
+    """Without it the panel is told about presses and never about the pointer."""
+    panel = _panel(_network())
+    window = panel.window()
+    assert window.on_hover is not None and window.on_press is not None

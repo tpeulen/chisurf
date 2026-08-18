@@ -160,12 +160,24 @@ def test_the_stripped_pdb_strips_the_side_chain_not_the_backbone(position):
         strip_mask=f"chain E and resid {position['residue_seq_number']}",
     )
     assert _residue_atom_names(survives, position) == ["CB"]
-    # A mask PyMOL would reject is rejected here too, loudly.
+    # A mask in the *document's* dialect is translated rather than refused.
+    # fps.json files in the wild are written for MDAnalysis, where
+    # `name CA CB C N O` is a list of five; PyMOL -- and chimol's selector,
+    # which is PyMOL's -- reads that as a selection called "CB" and says so.
+    # The dialect is handled where the foreign documents are read, not by
+    # loosening the grammar: `av.translate_strip_mask`.
+    dialect = av._stripped_pdb_for(
+        str(PDB), position["chain_identifier"],
+        position["residue_seq_number"], position["atom_name"],
+        strip_mask="chain E and resid 119 and not name CA CB C N O",
+    )
+    assert _residue_atom_names(dialect, position) == ["N", "CA", "C", "O", "CB"]
+    # A mask that is nonsense in *either* dialect is still refused, loudly.
     with pytest.raises(ValueError):
         av._stripped_pdb_for(
             str(PDB), position["chain_identifier"],
             position["residue_seq_number"], position["atom_name"],
-            strip_mask="chain E and resid 119 and not name CA CB C N O",
+            strip_mask="chain E and resid 119 and not glorp CB",
         )
     # ... and the cache answers the same file for the same site.
     again = av._stripped_pdb_for(
@@ -214,3 +226,46 @@ def test_the_imp_bff_grid_is_in_world_axis_order(position):
         f"the grid does not sit on its own cloud (overlap {overlap:.2f}) "
         "-- the backend's axis layout changed again"
     )
+
+
+# --------------------------------------------------------------------------- #
+# The documents' dialect
+# --------------------------------------------------------------------------- #
+def test_a_documents_strip_mask_is_translated_not_the_grammar_loosened():
+    """fps.json masks are MDAnalysis's dialect; chimol's selector is PyMOL's.
+
+    PyMOL rejects `resname HOH SOL WAT` -- measured against PyMOL itself, which
+    answers ``Invalid selection name "SOL"`` -- and chimol reproduces that error
+    on purpose. So the shipped T4L network, whose masks are written that way,
+    is translated at the seam that reads it rather than by teaching the shared
+    grammar a second dialect it would then have to keep for ever.
+    """
+    from chimol.core.selection.parser import Parser, ParserError, tokenize
+    from chimol.plugins.labelling.av import translate_strip_mask
+
+    def parse(expression):
+        return Parser(tokenize(expression)).parse()
+
+    theirs = "(resid 5 and not name CA+CB+C+N+O) or resname HOH SOL WAT DU CL NA"
+    ours = translate_strip_mask(theirs)
+    assert "resname HOH+SOL+WAT+DU+CL+NA" in ours
+    parse(ours)                               # ...and it parses
+
+    parsed = parse("resname HOH SOL WAT")     # the grammar keeps its answer:
+    assert parsed is not None                 # it parses as "resname HOH" and
+    # a *name* SOL, which is what PyMOL then refuses when it evaluates it.
+
+
+def test_a_quoted_value_is_dropped_rather_than_breaking_the_mask():
+    """`'Na+'` cannot be written in a grammar with no quoting and a `+` list."""
+    from chimol.plugins.labelling.av import translate_strip_mask
+
+    translated = translate_strip_mask("resname NA 'Cl-' 'Na+'")
+    assert translated == "resname NA"
+
+
+def test_a_mask_already_in_pymols_spelling_is_left_alone():
+    from chimol.plugins.labelling.av import translate_strip_mask
+
+    mask = "chain E and resid 119 and not name N+CA+C+O+CB"
+    assert translate_strip_mask(mask) == mask
