@@ -115,10 +115,7 @@ ENGINE_MODULES = (
 #: no longer needs to be here, which is how it shrinks.
 HOSTS = frozenset({
     "hosts/qt/controls_panel.py",
-    "hosts/qt/demos.py",
     "hosts/qt/window.py",
-    "hosts/qt/rmf_panel.py",
-    "hosts/qt/settings_table.py",
     "hosts/qt/overlay.py",
     "hosts/qt/wgpu_view.py",
 })

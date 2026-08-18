@@ -18,12 +18,7 @@
 # to stay. `cmtk/qt_painter.py` and `hosts/qt/overlay.py` are the
 # two are a GLFW window and a browser canvas, and a module that imports Qt is a
 hosts/qt/controls_panel.py
-hosts/qt/demos.py
-hosts/qt/menu_bar.py
 hosts/qt/window.py
-hosts/qt/rmf_panel.py
-hosts/qt/settings_table.py
-commands/builtin/inspect.py
 cmtk/qt_host.py
 cmtk/qt_painter.py
 hosts/qt/overlay.py

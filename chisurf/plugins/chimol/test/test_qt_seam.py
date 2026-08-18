@@ -166,3 +166,62 @@ def test_the_toolkit_free_core_stays_toolkit_free(module):
     # pass silently for ever, and the file it names would be unguarded.
     assert path.is_file(), f"{module} does not exist -- update this list to the file's new path"
     assert not _imports_qt(path), f"{module} must not import Qt"
+
+
+#: Qt classes that *draw application content* -- a text editor, a table, a
+#: list, a file chooser, a message box that asks a question chimol has its own
+#: control for. The toolkit is allowed to house the application: a
+#: ``QMainWindow``, a dock, a menu bar, a status bar, the widget the renderer
+#: paints into. It is not allowed to draw the application, because everything
+#: it draws exists only in that one host -- the browser and the toolkit-free
+#: window get nothing, and the two implementations drift.
+#:
+#: Every one of these was here and has been removed: the script editor
+#: (``QDialog`` + ``QPlainTextEdit``), the settings table (a ChiSurf
+#: ``ChiTableWidget``), the RMF dock (combo boxes and a hand-painted plot), the
+#: sequence items (``QListWidgetItem``), and the file/text prompts
+#: (``QFileDialog``, ``QInputDialog``). What replaced them is chimol's own:
+#: the editor panel, the settings window, the `resolution` command, the
+#: sequence strip and the file dialog -- all drawn with quads, on every host.
+_CONTENT_WIDGETS = (
+    "QPlainTextEdit", "QTextEdit", "QTextBrowser",
+    "QTableWidget", "QTableView", "QTreeWidget", "QTreeView",
+    "QListWidget", "QListView", "QListWidgetItem",
+    "QFileDialog", "QInputDialog", "QColorDialog", "QFontDialog",
+    "QDialog",
+)
+
+
+def _drawn_names(path: pathlib.Path) -> set[str]:
+    """Qt content-widget names *used in code* -- not in a comment or docstring."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    docstrings = {
+        id(node.body[0].value)
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.body
+        and isinstance(node.body[0], ast.Expr)
+        and isinstance(node.body[0].value, ast.Constant)
+        and isinstance(node.body[0].value.value, str)
+    }
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute) and node.attr in _CONTENT_WIDGETS:
+            found.add(node.attr)
+        elif isinstance(node, ast.Name) and node.id in _CONTENT_WIDGETS:
+            found.add(node.id)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
+            continue
+    return found
+
+
+@pytest.mark.parametrize(
+    "module", sorted(str(p.relative_to(PACKAGE)) for p in (PACKAGE / "hosts" / "qt").glob("*.py"))
+)
+def test_the_qt_host_houses_the_app_and_draws_none_of_it(module):
+    """The toolkit is the window; the controls are chimol's own."""
+    found = _drawn_names(PACKAGE / module)
+    assert not found, (
+        f"{module} draws application content with Qt ({sorted(found)}). "
+        "chimol has its own: cmtk controls in a viewport window."
+    )

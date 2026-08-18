@@ -33,5 +33,3 @@
 analysis/ss.py
 cli.py
 hosts/qt/window.py
-hosts/qt/rmf_panel.py
-hosts/qt/settings_table.py
