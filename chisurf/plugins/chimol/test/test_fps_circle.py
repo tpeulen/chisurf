@@ -360,3 +360,116 @@ def test_the_hover_hook_is_wired_to_the_window():
     panel = _panel(_network())
     window = panel.window()
     assert window.on_hover is not None and window.on_press is not None
+
+
+# --------------------------------------------------------------------------- #
+# One window: the network, the records, and the document
+# --------------------------------------------------------------------------- #
+def test_the_panel_has_the_four_tabs():
+    """A plan is one thing, so it is one window."""
+    from chimol.plugins.labelling.circle_window import TABS
+
+    panel = _panel(_network())
+    assert [item.label for item in panel.tabs.items] == list(TABS)
+    assert TABS == ("Network", "Positions", "Distances", "JSON")
+
+
+def _open(panel, name: str):
+    panel.tabs.select([item.label for item in panel.tabs.items].index(name))
+    return panel
+
+
+def test_the_positions_tab_lists_them_and_edits_the_selected_one():
+    panel = _open(_panel(_network()), "Positions")
+    p = RecordingPainter()
+    panel.draw(p, _Rect())
+    assert panel._rows["Positions"].row_count() == 3
+    name, fields = panel._record("Positions")
+    assert name and fields is not None
+    editor = panel._editor("Positions")
+    assert editor is not None
+    keys = {row.key for row in editor.model.settings}
+    assert "field.chain_identifier" in keys and "field.residue_seq_number" in keys
+    editor.model.setter("field.residue_seq_number", 42)
+    assert fields["residue_seq_number"] == 42, "the form did not write to the document"
+
+
+def test_the_distances_tab_edits_a_distance():
+    panel = _open(_panel(_network()), "Distances")
+    panel.draw(RecordingPainter(), _Rect())
+    name, fields = panel._record("Distances")
+    assert name in panel.model.distances
+    panel._editor("Distances").model.setter("field.Forster_radius", 60.0)
+    assert fields["Forster_radius"] == 60.0
+
+
+def test_a_record_can_be_added_and_removed():
+    panel = _panel(_network())
+    before = len(panel.model.positions)
+    added = panel.add_record("Positions")
+    assert added and len(panel.model.positions) == before + 1
+    assert set(panel.model.positions[added]) >= {"chain_identifier", "residue_seq_number"}
+    panel._lists["Positions"].selection.set_count(panel._rows["Positions"].row_count())
+    panel.remove_record("Positions")
+    assert len(panel.model.positions) == before
+
+
+def test_removing_a_position_takes_its_distances_with_it():
+    """A distance to a position that is gone is not a distance."""
+    panel = _panel(_network())
+    panel.draw(RecordingPainter(), _Rect())
+    _open(panel, "Positions")
+    panel.draw(RecordingPainter(), _Rect())
+    name, _fields = panel._record("Positions")
+    panel.remove_record("Positions")
+    for fields in panel.model.distances.values():
+        assert name not in (fields["position1_name"], fields["position2_name"])
+
+
+def test_the_json_tab_shows_the_document_and_applies_it_back():
+    panel = _open(_panel(_network()), "JSON")
+    panel.draw(RecordingPainter(), _Rect())
+    text = panel._json_editor().text
+    assert '"Positions"' in text and '"Distances"' in text
+    panel._json.set_text(text.replace('"residue_seq_number": 10',
+                                      '"residue_seq_number": 11'))
+    assert panel.apply_json()
+    assert panel.model.positions["a"]["residue_seq_number"] == 11
+
+
+def test_invalid_json_is_refused_rather_than_swallowing_the_document():
+    panel = _open(_panel(_network()), "JSON")
+    panel.draw(RecordingPainter(), _Rect())
+    panel._json.set_text("{ this is not json")
+    assert not panel.apply_json()
+    assert len(panel.model.positions) == 3, "a typo emptied the document"
+
+
+def test_saving_needs_a_file_and_says_so():
+    panel = _panel(_network())
+    assert not panel.save()
+
+
+def test_the_tabs_can_be_opened_from_a_command():
+    """`fps_circle <plan>, , Positions`, and `fps_edit` on the JSON tab."""
+    import inspect
+
+    from chimol.plugins.labelling.commands import LabellingCommands
+
+    assert "tab" in inspect.signature(LabellingCommands.fps_circle).parameters
+    assert "JSON" in inspect.getsource(LabellingCommands.fps_edit)
+
+
+def test_labelling_has_its_own_submenu():
+    from chimol.ui.menus.bar import menu_bar
+
+    tools = dict(menu_bar()).get("Tools", ())
+    labelling = [row for row in tools if str(getattr(row, "label", "")) == "Labelling"]
+    assert labelling, "Tools has no Labelling submenu"
+    children = [child.command for child in (labelling[0].children or ())]
+    assert any("fps_circle" in str(c) for c in children)
+    assert any("fps_edit" in str(c) for c in children)
+    assert any("wizard labelling" in str(c) for c in children)
+    # ...and the rows are not also loose in Tools itself.
+    loose = [row for row in tools if "Labelling:" in str(getattr(row, "label", ""))]
+    assert not loose, loose
