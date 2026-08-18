@@ -181,3 +181,75 @@ def test_hovering_a_position_lights_its_distances_and_then_lets_go(ran):
     assert ran["hovered"] != "None"
     assert int(ran["lit"]) > 0, "hovering a position lit nothing in the scene"
     assert int(ran["lit_after_leaving"]) == 0, "the highlight outlived the hover"
+
+
+# --------------------------------------------------------------------------- #
+# What the demo *looks* like
+# --------------------------------------------------------------------------- #
+LOOK = '''
+app = open_app(size=(900, 600))
+cmd, gui, viewer = app.cmd, app.viewer.gui, app.viewer
+cmd.do("demo t4l_network")
+app.renderer._draw()
+
+groups = [row.name for row in gui.rows if getattr(row, "is_group", False)]
+emit("groups", ",".join(sorted(groups)))
+emit("rows", len(gui.rows))
+emit("closed", ",".join(sorted(
+    row.name for row in gui.rows
+    if getattr(row, "is_group", False) and not row.group_open
+)))
+clouds = [e for e in viewer.objects.values() if getattr(e.state, "av", None) is not None]
+emit("clouds", len(clouds))
+emit("clouds_visible", sum(1 for e in clouds if e.visible))
+styles = {str((e.state.volume_levels or [{}])[0].get("style", "")) for e in clouds}
+emit("cloud_style", ",".join(sorted(styles)))
+alphas = {round(float((e.state.av_color or (0, 0, 0, 1))[3]), 2) for e in clouds}
+emit("cloud_alpha", ",".join(str(a) for a in sorted(alphas)))
+'''
+
+
+@pytest.fixture(scope="module")
+def look():
+    return probe(LOOK, timeout=900)
+
+
+def test_the_clouds_and_the_means_are_two_rows_not_thirty_four(look):
+    """A network's clouds are wanted or not wanted as a set."""
+    assert set(look["groups"].split(",")) == {"av_clouds", "av_means"}
+    assert set(look["closed"].split(",")) == {"av_clouds", "av_means"}
+    assert int(look["rows"]) < 120, "the object list is still one row per object"
+
+
+def test_a_network_of_clouds_is_drawn_as_wireframe(look):
+    """Seventeen solid contours are a fog with a structure somewhere in it."""
+    assert int(look["clouds"]) == 17
+    assert look["cloud_style"] == "mesh"
+    assert float(look["cloud_alpha"]) > 0.3, (
+        "a wireframe faded like a surface disappears"
+    )
+
+
+def test_the_demo_starts_with_the_structure_visible(look):
+    """The clouds are there, switched off, one click from being back."""
+    assert int(look["clouds_visible"]) == 0
+
+
+def test_two_dyes_are_still_solid_clouds():
+    """The rule is about a *network*: `add_dye` on a pair keeps its surfaces."""
+    ran = probe('''
+app = open_app(size=(600, 400))
+cmd, viewer = app.cmd, app.viewer
+cmd.do("load 148l.pdb")
+cmd.do("add_dye resi 119 and name CB, AV1 20 4.5 3.5")
+cmd.do("add_dye resi 44 and name CB, AV1 20 4.5 3.5")
+clouds = [e for e in viewer.objects.values() if getattr(e.state, "av", None) is not None]
+emit("clouds", len(clouds))
+emit("style", ",".join(sorted({
+    str((e.state.volume_levels or [{}])[0].get("style", "")) for e in clouds
+})))
+emit("visible", sum(1 for e in clouds if e.visible))
+''', timeout=600)
+    assert int(ran["clouds"]) == 2
+    assert ran["style"] == "surface"
+    assert int(ran["visible"]) == 2
