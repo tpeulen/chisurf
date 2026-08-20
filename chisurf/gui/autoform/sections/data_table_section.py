@@ -25,10 +25,17 @@ Options
 ``editable``
     Allow cell edits (default ``false``).
 ``columns``
-    Optional list of ``{"key": str, "title": str, "units": str, "visible":
-    bool}`` column specs overriding auto-derivation for record sources.
+    Optional list of ``{"key": str, "title": str, "units": str, "visible": bool,
+    "width": int, "tooltip": str}`` column specs overriding auto-derivation for
+    record sources. ``width`` is a preferred pixel width (``0`` sizes to
+    contents); ``tooltip`` shows on the header.
 ``height``
     Minimum height in pixels (default 240).
+``selected_call``
+    Model method called with the selected **record** (a dict for record
+    sources, otherwise the source row index) whenever the selection moves, and
+    with ``None`` when the selection is cleared. This is what lets a table
+    drive a details pane.
 """
 
 from __future__ import annotations
@@ -58,6 +65,10 @@ class DataTableSectionWidget(QtWidgets.QWidget):
         self._source = str(options.get("source", "") or target or "")
         self._editable = bool(options.get("editable", False))
         self._column_specs_raw = options.get("columns") or None
+        self._selected_call = str(options.get("selected_call", "") or "")
+        #: Records as last bound, so a selection can be reported as the record
+        #: itself rather than a row number the model would have to resolve.
+        self._records: list[dict] = []
         self._token: object = object()
 
         self.table = ChiTableWidget()
@@ -72,7 +83,27 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Expanding,
         )
 
+        if self._selected_call:
+            self.table.rowSelected.connect(self._on_row_selected)
+
         self.refresh()
+
+    def _on_row_selected(self, row: int) -> None:
+        """Hand the selected record to the model's ``selected_call``."""
+        fn = getattr(self._model, self._selected_call, None)
+        if not callable(fn):
+            logger.warning("data_table: model has no %r", self._selected_call)
+            return
+        if row < 0:
+            payload = None
+        elif self._records and 0 <= row < len(self._records):
+            payload = self._records[row]
+        else:
+            payload = row
+        try:
+            fn(payload)
+        except Exception:
+            logger.debug("data_table: %s failed", self._selected_call, exc_info=True)
 
     def _call(self, name: str) -> Any:
         if not name:
@@ -125,6 +156,8 @@ class DataTableSectionWidget(QtWidgets.QWidget):
                     label=str(ov.get("title", ov.get("label", key))),
                     visible=bool(ov.get("visible", True)),
                     editable=bool(ov.get("editable", self._editable)),
+                    width=int(ov.get("width", 0) or 0),
+                    tooltip=str(ov.get("tooltip", "") or ""),
                 )
             )
         return specs
@@ -141,6 +174,7 @@ class DataTableSectionWidget(QtWidgets.QWidget):
         self._token = token
 
         if data is None:
+            self._records = []
             self.table.set_arrays({})
             return
 
@@ -152,7 +186,12 @@ class DataTableSectionWidget(QtWidgets.QWidget):
             not data or isinstance(data[0], dict)
         ):
             specs = self._make_column_specs(data)
-            self.table.set_records(data, specs, editable=self._editable)
+            self._records = data
+            # No ``editable=`` here: RecordSource does not take one, and
+            # per-column editability already rides on each ColumnSpec (set in
+            # _make_column_specs). Passing it raised TypeError, so a data_table
+            # bound to a list of records never rendered at all.
+            self.table.set_records(data, specs)
             return
 
         if self._is_named_arrays(data):

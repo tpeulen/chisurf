@@ -1,0 +1,188 @@
+{
+  "$schema": "../../../../core/dataspec/schemas/view.schema.json",
+  "_comment": "Plugin manager. Left: every plugin as a sortable, searchable table (chitable gives search/sort/column-picking/export for free, which is why there is no hand-rolled filter box). Right: what the selected plugin is, and the dependency edges in both directions.",
+  "title": "Plugins",
+  "sections": [
+    {
+      "type": "dock_area",
+      "split": "horizontal",
+      "sizes": [
+        62,
+        38
+      ],
+      "persist": "plugin_manager_split",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Installed plugins",
+          "description": "Every plugin ChiSurf discovered. Sort by any column, search with the box above the table, and use the column picker to show ids, versions or dependency columns.",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_table",
+              "title": "",
+              "description": "One row per plugin. 'Requires' is what must load first; 'Required by' is what breaks if you switch it off.",
+              "options": {
+                "source": "plugin_rows",
+                "selected_call": "select_row",
+                "editable": false,
+                "height": 380,
+                "columns": [
+                  {
+                    "key": "name",
+                    "title": "Plugin",
+                    "width": 210
+                  },
+                  {
+                    "key": "status",
+                    "title": "Status",
+                    "width": 90,
+                    "tooltip": "enabled, disabled, library, cli only, or a maturity flag."
+                  },
+                  {
+                    "key": "category",
+                    "title": "Category",
+                    "width": 110
+                  },
+                  {
+                    "key": "version",
+                    "title": "Version",
+                    "width": 70
+                  },
+                  {
+                    "key": "requires",
+                    "title": "Requires",
+                    "width": 190,
+                    "tooltip": "Loaded before this plugin — a module-level import."
+                  },
+                  {
+                    "key": "required_by",
+                    "title": "Required by",
+                    "width": 190,
+                    "tooltip": "These stop working if this plugin is switched off."
+                  },
+                  {
+                    "key": "optional",
+                    "title": "Optional",
+                    "visible": false,
+                    "width": 190,
+                    "tooltip": "Reached only after startup, from a button press or a guarded import."
+                  },
+                  {
+                    "key": "id",
+                    "title": "Id",
+                    "visible": false,
+                    "width": 150
+                  },
+                  {
+                    "key": "source",
+                    "title": "Source",
+                    "visible": false,
+                    "width": 80
+                  },
+                  {
+                    "key": "toolbar",
+                    "title": "Toolbar",
+                    "visible": false,
+                    "width": 70
+                  },
+                  {
+                    "key": "state",
+                    "title": "Window state",
+                    "visible": false,
+                    "width": 120
+                  }
+                ]
+              }
+            },
+            {
+              "type": "toggle",
+              "label": "Show disabled plugins",
+              "attr": "show_disabled",
+              "description": "Include switched-off plugins in the table. Off, they are hidden entirely."
+            },
+            {
+              "type": "info",
+              "source": "status_text",
+              "max_height": 40,
+              "description": "How many plugins were found, how many are off, and whether anything is unsaved."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Selected plugin",
+          "sections": [
+            {
+              "type": "info",
+              "source": "details_text",
+              "is_markdown": true,
+              "description": "What the selected plugin is, where it lives, and how it is wired to the others.",
+              "height": 300
+            },
+            {
+              "type": "toggle",
+              "label": "Disabled",
+              "attr": "selected_disabled",
+              "description": "Switch this plugin off. If other plugins require it, you are told which before the change sticks."
+            },
+            {
+              "type": "toggle",
+              "label": "Show in main toolbar",
+              "attr": "selected_in_toolbar",
+              "description": "Pin this plugin to the main window toolbar."
+            },
+            {
+              "type": "choice",
+              "label": "Remember window state",
+              "attr": "selected_statefulness",
+              "options_source": "selected_statefulness_labels",
+              "description": "Whether this one plugin's window reopens where you left it. 'Plugin default' defers to its manifest and the global setting below."
+            },
+            {
+              "type": "choice",
+              "label": "Window state (all plugins)",
+              "attr": "statefulness_mode",
+              "options_source": "statefulness_mode_labels",
+              "description": "Whether plugin windows remember their size and position. 'Plugin default' lets each manifest decide."
+            },
+            {
+              "type": "custom",
+              "key": "data_table",
+              "title": "Dependencies",
+              "description": "Every dependency edge touching this plugin, in both directions, with the state of the plugin at the other end.",
+              "options": {
+                "source": "dependency_rows",
+                "editable": false,
+                "height": 150,
+                "columns": [
+                  {
+                    "key": "plugin",
+                    "title": "Plugin"
+                  },
+                  {
+                    "key": "relation",
+                    "title": "Relation"
+                  },
+                  {
+                    "key": "bound",
+                    "title": "Bound"
+                  },
+                  {
+                    "key": "installed",
+                    "title": "Installed"
+                  },
+                  {
+                    "key": "status",
+                    "title": "Status"
+                  }
+                ]
+              }
+            }
+          ],
+          "n_col": 1
+        }
+      ]
+    }
+  ]
+}

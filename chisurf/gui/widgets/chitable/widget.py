@@ -98,6 +98,11 @@ class ChiTableWidget(QtWidgets.QWidget):
 
     #: Emitted after a cell edit reaches the model.
     valueEdited = QtCore.Signal(int, int)
+    #: Emitted with the **source** row index when the selection moves, or -1
+    #: when nothing is selected. Source-indexed, not view-indexed: sorting and
+    #: filtering reorder the view, so a view row number does not identify a
+    #: record.
+    rowSelected = QtCore.Signal(int)
     #: Emitted when the visible-row count changes.
     filterChanged = QtCore.Signal(int, int)
 
@@ -197,6 +202,9 @@ class ChiTableWidget(QtWidgets.QWidget):
         self._view = ChiTableView(self)
         apply_compact_table_style(self._view, sortable=bool(self._features & TableFeature.SORT))
         self._view.filterRequested.connect(self.open_column_filter)
+        selection = self._view.selectionModel()
+        if selection is not None:
+            selection.currentRowChanged.connect(self._on_current_row_changed)
         self._view.columnHidden.connect(lambda *_: self._update_status())
         layout.addWidget(self._view, 1)
 
@@ -226,6 +234,7 @@ class ChiTableWidget(QtWidgets.QWidget):
             )
             self._chi_model.dataChanged.connect(self._on_data_changed)
             self._view.setModel(self._chi_model)
+            self._connect_selection()
         else:
             self._chi_model.set_source(source)
         self._foreign_proxy = None
@@ -243,6 +252,7 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._chi_model = model
             self._foreign_proxy = None
             self._view.setModel(model)
+            self._connect_selection()
         else:
             proxy = ForeignTableProxy(self)
             proxy.setSourceModel(model)
@@ -250,6 +260,7 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._foreign_proxy = proxy
             self._chi_model = None
             self._view.setModel(proxy)
+            self._connect_selection()
             if self._features & TableFeature.SORT:
                 self._view.setSortingEnabled(True)
                 # setSortingEnabled() immediately sorts by the header's current
@@ -333,10 +344,13 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._view.setColumnHidden(col, False)
         if self._chi_model is not None:
             self._delegates = apply_column_delegates(self._view, self._chi_model)
-            apply_column_widths(self._view, self._chi_model.specs)
             for col, spec in enumerate(self._chi_model.specs):
                 self._view.setColumnHidden(col, not spec.visible)
+            # Auto-size first, then let declared widths win. The other order
+            # applied the widths and then had auto_resize_columns overwrite
+            # every one of them, which made ColumnSpec.width dead.
             self._view.auto_resize_columns()
+            apply_column_widths(self._view, self._chi_model.specs)
             affordable = self._chi_model.color_affordable()
             self._btn_color.setEnabled(affordable)
             if not affordable:
@@ -554,6 +568,35 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._status.setText(f"{shown:,} / {total:,} rows × {n_cols} columns")
         else:
             self._status.setText(f"{total:,} rows × {n_cols} columns")
+
+    def _connect_selection(self) -> None:
+        """(Re)connect the current selection model to :attr:`rowSelected`.
+
+        ``QAbstractItemView.setModel`` installs a *new* selection model and
+        discards the old one, so every rebind has to reconnect or selection
+        silently stops being reported.
+        """
+        selection = self._view.selectionModel()
+        if selection is None:
+            return
+        try:
+            selection.currentRowChanged.disconnect(self._on_current_row_changed)
+        except (TypeError, RuntimeError):
+            pass
+        selection.currentRowChanged.connect(self._on_current_row_changed)
+
+    def _on_current_row_changed(self, current, _previous=None) -> None:
+        """Map the view's current row back to a source row and announce it."""
+        if current is None or not current.isValid():
+            self.rowSelected.emit(-1)
+            return
+        model = self._view.model()
+        index = current
+        # Walk any chain of proxies (sort/filter) back to the source model.
+        while hasattr(model, "mapToSource") and hasattr(model, "sourceModel"):
+            index = model.mapToSource(index)
+            model = model.sourceModel()
+        self.rowSelected.emit(int(index.row()))
 
     def _on_rows_changed(self, *_args) -> None:
         """Refresh the status line after rows are added, removed or reset."""

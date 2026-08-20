@@ -63,10 +63,13 @@ class PluginCheckTool(QtWidgets.QWidget):
         )
 
         self.plugin_tree = QtWidgets.QTreeWidget()
-        self.plugin_tree.setHeaderLabels(["Plugin", "Status", "Source", "Error"])
+        self.plugin_tree.setHeaderLabels(
+            ["Plugin", "Status", "Source", "Depends on", "Error"]
+        )
         self.plugin_tree.setColumnWidth(0, 250)
         self.plugin_tree.setColumnWidth(1, 80)
         self.plugin_tree.setColumnWidth(2, 80)
+        self.plugin_tree.setColumnWidth(3, 160)
         self.plugin_tree.itemClicked.connect(self.on_plugin_selected)
         self.plugin_tree.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
@@ -211,19 +214,65 @@ class PluginCheckTool(QtWidgets.QWidget):
                 plugin_name = plugin_info.get("plugin_name", "Unknown")
                 source = plugin_info.get("source", "Unknown")
 
+                requires = plugin_info.get("requires") or {}
+                optional = plugin_info.get("optional_requires") or {}
+
                 item = QtWidgets.QTreeWidgetItem(self.plugin_tree)
                 item.setText(0, plugin_name)
                 item.setText(1, Glyphs.PENDING)
                 item.setText(2, source)
-                item.setText(3, "")
+                item.setText(3, self._dependency_summary(requires, optional))
+                item.setText(4, "")
                 item.setData(0, QtCore.Qt.UserRole, plugin_info)
 
                 if source == "user":
                     item.setForeground(2, QtGui.QColor("blue"))
 
-            self.status_label.setText(f"Ready ✨ {len(plugins)} plugin(s) found")
+            problems = self._dependency_problems(plugins)
+            if problems:
+                self.status_label.setText(
+                    f"{len(plugins)} plugin(s) found — "
+                    f"{len(problems)} dependency problem(s); select a plugin for details"
+                )
+            else:
+                self.status_label.setText(f"Ready ✨ {len(plugins)} plugin(s) found")
         except Exception as exc:
             self.status_label.setText(f"Error loading plugins: {exc}")
+
+    @staticmethod
+    def _dependency_summary(requires: dict, optional: dict) -> str:
+        """One cell describing what a plugin depends on.
+
+        Hard dependencies are named because they are few and they decide load
+        order; optional ones are counted because a hub can have a dozen and the
+        names would not fit.
+        """
+        parts = []
+        if requires:
+            parts.append(", ".join(sorted(requires)))
+        if optional:
+            parts.append(f"(+{len(optional)} optional)")
+        return " ".join(parts)
+
+    def _dependency_problems(self, plugins: list[dict[str, Any]]) -> list[str]:
+        """Resolve the discovered plugins and keep the problems for the details pane."""
+        try:
+            from chisurf.core.plugin.dependencies import resolve
+
+            report = resolve(
+                {
+                    "id": p.get("manifest_id") or "",
+                    "version": p.get("manifest_version") or "",
+                    "requires": p.get("requires") or {},
+                    "optional_requires": p.get("optional_requires") or {},
+                }
+                for p in plugins
+            )
+        except Exception:
+            self._dependency_report = None
+            return []
+        self._dependency_report = report
+        return report.problems()
 
     def start_safe_testing(self) -> None:
         """Start testing a few plugins with aggressive filtering and short timeouts."""
@@ -321,7 +370,8 @@ class PluginCheckTool(QtWidgets.QWidget):
                     item.setText(1, Glyphs.ERROR)
                     item.setForeground(1, QtGui.QColor("red"))
 
-                item.setText(3, error[:50] + "..." if len(error) > 50 else error)
+                # column 3 is "Depends on"; the error belongs in column 4
+                item.setText(4, error[:50] + "..." if len(error) > 50 else error)
 
                 self.plugin_results[plugin_name] = {
                     "success": success,
@@ -362,6 +412,31 @@ class PluginCheckTool(QtWidgets.QWidget):
             self.test_runner.blacklisted.clear()
         self.status_label.setText(f"Blacklist cleared {Glyphs.CLEAR}")
 
+    def _dependency_details(self, plugin_info: dict) -> list[str]:
+        """Detail rows describing this plugin's declared dependencies."""
+        def _render(mapping: dict) -> str:
+            # "*" means "any version, it just has to be there" -- printing it
+            # beside every name is noise that hides the real bounds.
+            return ", ".join(
+                name if str(bound).strip() in ("", "*") else f"{name} {bound}"
+                for name, bound in sorted(mapping.items())
+            )
+
+        rows = []
+        requires = plugin_info.get("requires") or {}
+        optional = plugin_info.get("optional_requires") or {}
+        if requires:
+            rows.append("<b>Requires (load order):</b> " + _render(requires))
+        if optional:
+            rows.append("<b>Optional:</b> " + _render(optional))
+        report = getattr(self, "_dependency_report", None)
+        plugin_id = plugin_info.get("manifest_id")
+        if report is not None and plugin_id:
+            mine = [line for line in report.problems() if line.startswith(f"{plugin_id}:")]
+            if mine:
+                rows.append("<b>Problems:</b><br>" + "<br>".join(mine))
+        return rows
+
     def on_plugin_selected(self, item: QtWidgets.QTreeWidgetItem, column: int) -> None:
         """Handle plugin selection to show details."""
         del column
@@ -377,6 +452,8 @@ class PluginCheckTool(QtWidgets.QWidget):
                 f"<b>Source:</b> {plugin_info.get('source', 'Unknown')}",
                 f"<b>Status:</b> {f'{Glyphs.SUCCESS} Success' if result['success'] else f'{Glyphs.ERROR} Failed'}",
             ]
+
+            details.extend(self._dependency_details(plugin_info))
 
             if plugin_info.get("description"):
                 description = plugin_info["description"]

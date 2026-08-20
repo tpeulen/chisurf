@@ -1,0 +1,50 @@
+{
+  "_comment": "Guided tour of the plugin manager. Every step points at a real control and waits for the user to press it -- watching a button being pressed does not teach anyone where it is.",
+  "steps": [
+    {
+      "title": "Everything ChiSurf found",
+      "text": "This table is one row per plugin. It is sorted and searchable: click a column header to sort, type in the search box to narrow it down, and right-click the header to show columns that start hidden — <b>Id</b>, <b>Source</b> and <b>Window state</b> among them.",
+      "target": {"key": "data_table"}
+    },
+    {
+      "title": "Pick one",
+      "text": "Select any row. The right-hand panel fills in with what that plugin is, which folder it lives in, and how it is wired to the rest.",
+      "target": {"key": "data_table"},
+      "await": {"hint": "Click any row in the table."}
+    },
+    {
+      "title": "What it needs, and what needs it",
+      "text": "The <b>Requires</b> column is what must load <i>before</i> this plugin — a module-level import. <b>Required by</b> is the reverse, and it is the one that matters before you switch anything off: those plugins stop working.<br><br>The <b>Dependencies</b> table lower down shows both directions at once, with the version bound and whether the plugin at the other end is actually installed.",
+      "target": {"title": "Dependencies"}
+    },
+    {
+      "title": "Switching a plugin off",
+      "text": "<b>Disabled</b> takes a plugin out of the menus without deleting anything. If other plugins require it, you are told which ones before the change sticks — that is what the reverse dependency index is for.",
+      "target": {"attr": "selected_disabled"}
+    },
+    {
+      "title": "Putting one to hand",
+      "text": "<b>Show in main toolbar</b> pins the selected plugin to the main window's toolbar, so you do not have to walk the menus to reach the tool you use every day.",
+      "target": {"attr": "selected_in_toolbar"}
+    },
+    {
+      "title": "Installing something new",
+      "text": "<b>📥 Install…</b> takes a plugin folder or a <code>.zip</code>. The manifest is validated first, so a broken plugin is refused with a reason instead of being copied in and silently ignored. It lands in your personal plugin directory (<code>~/.chisurf/plugins</code>), which needs no administrator rights.",
+      "target": {"action": "📥 Install…"}
+    },
+    {
+      "title": "Nothing is saved until you say so",
+      "text": "Changes here live in a working copy. Press <b>💾 Save</b> to write them, or <b>♻️ Revert</b> to throw them away. Menu changes appear the next time ChiSurf starts.<br><br>Try it now.",
+      "target": {"action": "💾 Save"},
+      "await": {"hint": "Press <b>💾 Save</b>."}
+    },
+    {
+      "title": "Where to read more",
+      "text": "The <b>?</b> button explains every control on this panel, and how plugin dependencies are declared in a manifest.",
+      "target": {"action": "?"},
+      "links": [
+        {"text": "Plugin architecture", "doc": "docs/development/plugin_architecture.md"}
+      ]
+    }
+  ]
+}
