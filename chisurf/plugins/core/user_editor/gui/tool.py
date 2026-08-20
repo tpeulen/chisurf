@@ -1,35 +1,45 @@
-import os
-import uuid
+"""User editor: the accounts registered in the MMFDB.
 
-import yaml
-from qtpy.QtCore import Qt
+The panel is built from ``users.view.json`` by AutoForm over
+:class:`~.view_model.UserEditorViewModel`; the client seam, the record shapes and
+the validation live in the Qt-free ``api`` package.
+
+This replaced an 861-line widget that fetched users from its own constructor
+(freezing the Settings dialog for the client timeout whenever no server was up),
+reported a refused call through a modal, and re-implemented the backend's
+password-strength rule and e-mail check line for line.
+
+:class:`PasswordChangeDialog` stays here and stays a dialog -- a password entry
+genuinely needs one, and ``chisurf/gui/__init__.py`` imports this class for the
+login flow.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from qtpy import QtCore, QtWidgets
 from qtpy.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QDialog,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
-    QMainWindow,
-    QMessageBox,
     QProgressBar,
     QPushButton,
-    QSizePolicy,
-    QStatusBar,
-    QTableWidget,
-    QTableWidgetItem,
-    QTextEdit,
     QVBoxLayout,
-    QWidget,
 )
 
-import chisurf.core.settings as cs_settings
 from chisurf import logging
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui import dialogs
+from chisurf.gui.autoform import AutoForm
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.plugins.core.user_editor.api.records import PROTECTED_USER_IDS
+from chisurf.plugins.core.user_editor.gui.view_model import UserEditorViewModel
+
+#: Legacy AST-discovery name.
+name = "Setup:User Editor"
 
 
 class PasswordChangeDialog(QDialog):
@@ -167,695 +177,189 @@ class PasswordChangeDialog(QDialog):
         self.accept()
 
 
-class UserEditorWidget(QWidget):
-    """
-    A GUI plugin for managing users in Chisurf coupled with MMFDB.
-    Communicates with the backend using the ZMQ JSON-RPC client,
-    ensuring conformance to the new plugin architecture.
-    """
+class UserEditorWidget(ChisurfDockTool):
+    """Browse and edit the MMFDB user accounts."""
 
-    def __init__(self, parent=None):
+    tool_settings_name = "UserEditorWidget"
+    modelEvent = QtCore.Signal(str)
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None, view_model=None, **kwargs: Any):
         super().__init__(parent)
         self.setWindowTitle("User Editor")
-        self.resize(980, 520)
-        self.setMinimumSize(760, 420)
+        self.model = view_model or UserEditorViewModel()
 
-        self.users = []
-        self.selected_user_id = None
-        self.is_creating_new = False
+        toolbar = QtWidgets.QToolBar()
+        toolbar.setObjectName("user_editor_toolbar")
+        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self._add_actions(toolbar)
+        self.add_toolbar_guide(toolbar, resource="guide.json")
+        self.add_toolbar_help(toolbar, resource="help.md", title="Users — help")
+        self.addToolBar(toolbar)
 
-        #: Users are fetched on first show, not here. Panels in the Settings
-        #: dialog are built when their row is clicked, and this constructor
-        #: opened a ZMQ socket and blocked for the full client timeout -- so
-        #: selecting "User Editor" froze the whole dialog for five seconds
-        #: whenever no MMFDB server was running.
-        self._loaded = False
-        #: Why the last load failed, shown in the status bar instead of a modal.
-        self._load_error = ""
+        self.auto_form = AutoForm(self.model)
+        self.setCentralWidget(self.auto_form)
 
-        self.setup_ui()
+        self.modelEvent.connect(self._on_model_event)
+        self.model.add_observer(self.modelEvent.emit)
+        self.restore_window_geometry()
 
-    def showEvent(self, event):  # noqa: N802 - Qt signature
-        """Load the user list the first time the panel is actually shown."""
+    def _add_actions(self, toolbar: QtWidgets.QToolBar) -> None:
+        """Build the toolbar; every action carries a tooltip."""
+        def add(label: str, tooltip: str, slot) -> None:
+            action = toolbar.addAction(label)
+            action.setToolTip(tooltip)
+            action.triggered.connect(slot)
+
+        add(f"{Glyphs.SAVE} Save",
+            "Write the edited account back to the database.",
+            self._save)
+        add(f"{Glyphs.RESET} Revert",
+            "Discard the edits to this account.",
+            self._revert)
+        toolbar.addSeparator()
+        add(f"{Glyphs.REFRESH} Reload",
+            "Fetch the user list again.",
+            self._reload)
+        toolbar.addSeparator()
+        add(f"{Glyphs.ADD} New",
+            "Create a new account.",
+            self._new)
+        add(f"{Glyphs.DELETE} Delete",
+            "Delete the selected account. Built-in accounts and the active "
+            "account cannot be deleted.",
+            self._delete)
+        add(f"{Glyphs.KEY} Password…",
+            "Set or change this account's password. It is applied when you Save.",
+            self._password)
+
+    # -- lifecycle -------------------------------------------------------
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt signature
+        """Fetch the accounts the first time the panel is shown."""
         super().showEvent(event)
-        if not self._loaded:
-            self._loaded = True
-            self.load_users()
+        self.model.ensure_loaded()
 
-    def setup_ui(self):
-        # Outer layout to support QHBoxLayout + Status Bar in a QWidget
-        outer_layout = QVBoxLayout(self)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.setSpacing(4)
+    def _on_model_event(self, _event: str) -> None:
+        self.auto_form.refresh_plots()
+        self.auto_form.sync_fields()
 
-        # Horizontal layout for left/right panels
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(6, 6, 6, 6)
-        main_layout.setSpacing(8)
-        outer_layout.addLayout(main_layout, stretch=1)
+    # -- actions ---------------------------------------------------------
 
-        # Left panel: user list
-        left_layout = QVBoxLayout()
-        left_layout.setSpacing(6)
-        
-        list_title = QLabel("Available Users")
-        font = list_title.font()
-        font.setBold(True)
-        list_title.setFont(font)
-        left_layout.addWidget(list_title)
+    def _reload(self) -> None:
+        self.model.reload()
 
-        # Users table
-        self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Active", "Display Name", "User ID"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setSelectionMode(QTableWidget.SingleSelection)
-        self.table.setMinimumHeight(160)
-        self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
-        self.table.itemSelectionChanged.connect(self.on_user_selection_changed)
-        left_layout.addWidget(self.table, stretch=1)
+    def _new(self) -> None:
+        self.model.new_user()
 
-        # Left panel buttons
-        left_buttons_layout = QHBoxLayout()
-        self.btn_new = QPushButton("New User")
-        self.btn_new.setToolTip(
-            "Create a new user account."
-        )
-        self.btn_new.clicked.connect(self.on_new_user_clicked)
-        self.btn_delete = QPushButton("Delete User")
-        self.btn_delete.setToolTip(
-            "Delete the selected user. Accounts with committed data are refused unless an administrator forces it."
-        )
-        self.btn_delete.clicked.connect(self.on_delete_user_clicked)
-        left_buttons_layout.addWidget(self.btn_new)
-        left_buttons_layout.addWidget(self.btn_delete)
-        left_layout.addLayout(left_buttons_layout)
+    def _revert(self) -> None:
+        if not self.model.dirty:
+            return
+        if dialogs.confirm(
+            self, "Discard changes",
+            "Discard the edits to this account?",
+        ):
+            self.model.revert()
 
-        main_layout.addLayout(left_layout, stretch=3)
+    def _save(self) -> None:
+        problem = self.model.save()
+        if problem.startswith("renamed:"):
+            old = problem.split(":", 1)[1]
+            self._carry_local_state(old, self.model.edited.user_id)
+            return
+        if problem:
+            dialogs.warning(self, "Cannot save", problem)
 
-        # Right panel: user details and actions
-        right_layout = QVBoxLayout()
-        right_layout.setSpacing(8)
-
-        details_group = QGroupBox("User Details")
-        form_layout = QFormLayout(details_group)
-        form_layout.setContentsMargins(6, 6, 6, 6)
-        form_layout.setSpacing(6)
-
-        self.edit_user_uuid = QLineEdit()
-        self.edit_user_uuid.setReadOnly(True)
-        self.edit_user_uuid.setStyleSheet("background-color: #e6e6e6; color: #555555;")
-        form_layout.addRow("User UUID:", self.edit_user_uuid)
-
-        self.edit_user_id = QLineEdit()
-        form_layout.addRow("Username *:", self.edit_user_id)
-
-        self.edit_display_name = QLineEdit()
-        form_layout.addRow("Display Name *:", self.edit_display_name)
-
-        self.edit_email = QLineEdit()
-        form_layout.addRow("Email:", self.edit_email)
-
-        self.edit_role = QComboBox()
-        # Editable, so a role the list does not know is shown as itself rather
-        # than silently displayed as "Other" and then *saved back* as the
-        # literal string "Other" -- data loss on a field the user never touched.
-        self.edit_role.setEditable(True)
-        self.edit_role.setToolTip(
-            "The user's role. Pick one, or type another; a role stored by "
-            "another tool is preserved as it is."
-        )
-        self.edit_role.addItems([
-            "Generic",
-            "Principal Investigator",
-            "Postdoc",
-            "PhD Student",
-            "Master Student",
-            "Bachelor Student",
-            "Technician",
-            "Industry Professional",
-            "Scientist",
-            "Manager",
-            "Other"
-        ])
-        form_layout.addRow("Role:", self.edit_role)
-
-        self.edit_affiliation = QLineEdit()
-        form_layout.addRow("Affiliation:", self.edit_affiliation)
-
-        self.edit_department = QLineEdit()
-        form_layout.addRow("Department:", self.edit_department)
-
-        self.edit_phone = QLineEdit()
-        form_layout.addRow("Phone:", self.edit_phone)
-
-        self.edit_website = QLineEdit()
-        form_layout.addRow("Website:", self.edit_website)
-
-        self.edit_is_admin = QCheckBox("Is Administrator")
-        self.edit_is_admin.toggled.connect(self._apply_admin_autologin_rule)
-        form_layout.addRow("", self.edit_is_admin)
-
-        self.edit_allow_autologin = QCheckBox("Allow autologin")
-        self.edit_allow_autologin.setToolTip(
-            "Allow this user to obtain a login session without entering a password."
-        )
-        form_layout.addRow("", self.edit_allow_autologin)
-
-        self.btn_change_password = QPushButton("Change Password...")
-        self.btn_change_password.setToolTip(
-            "Set or change this user's password."
-        )
-        self.btn_change_password.clicked.connect(self.on_change_password_clicked)
-        form_layout.addRow("Password:", self.btn_change_password)
-
-        self.edit_address = QTextEdit()
-        self.edit_address.setMaximumHeight(50)
-        form_layout.addRow("Address:", self.edit_address)
-
-        self.edit_details = QTextEdit()
-        self.edit_details.setMaximumHeight(50)
-        form_layout.addRow("Details:", self.edit_details)
-
-        right_layout.addWidget(details_group)
-
-        # Right panel actions
-        right_buttons_layout = QHBoxLayout()
-        self.btn_save = QPushButton("Save Changes")
-        self.btn_save.clicked.connect(self.on_save_clicked)
-        self.btn_set_active = QPushButton("Set as Active User")
-        self.btn_set_active.setToolTip(
-            "Use this account for ChiSurf's own MMFDB connections."
-        )
-        self.btn_set_active.clicked.connect(self.on_set_active_clicked)
-        right_buttons_layout.addWidget(self.btn_save)
-        right_buttons_layout.addWidget(self.btn_set_active)
-        right_layout.addLayout(right_buttons_layout)
-        right_layout.addStretch()
-
-        main_layout.addLayout(right_layout, stretch=2)
-
-        # Status Bar
-        self.status_bar = QStatusBar()
-        self.status_bar.setSizeGripEnabled(False)
-        outer_layout.addWidget(self.status_bar)
-        self.status_bar.showMessage("Ready")
-
-    def load_users(self, select_user_id: str | None = None):
-        """Fetch users from the database and populate the table.
-
-        Parameters
-        ----------
-        select_user_id : str, optional
-            Username to reselect after reloading.
-        """
-        self.table.blockSignals(True)
-        self.table.clearContents()
-        self.table.setRowCount(0)
-
-        self._load_error = ""
-        try:
-            client = self.make_mmfdb_client()
-            logging.info("User Editor: loading users via MMFDB RPC")
-            self.users = client.list_users()
-            logging.info("User Editor: loaded %d users", len(self.users))
-        except Exception as e:
-            # Reported in the panel, not through a modal. Listing users needs an
-            # administrator, and this panel is reachable by every user from the
-            # Settings dialog -- so the common case was a dialog interrupting
-            # someone who had done nothing wrong, leaving an empty table behind
-            # with no explanation and no way to retry.
-            logging.exception("User Editor: failed to load users via MMFDB RPC")
-            message = str(e)
-            if "Authentication required" in message or "admin" in message.lower():
-                message = (
-                    "Listing users requires an administrator account. "
-                    "Sign in as an administrator, then press Reload."
-                )
-            else:
-                message = f"Could not reach the MMFDB server: {message}"
-            self._load_error = message
-            self.users = []
-
-        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
-
-        self.table.setRowCount(len(self.users))
-        for i, user in enumerate(self.users):
-            is_active = user["user_id"] == active_id
-            active_text = Glyphs.STAR_ON if is_active else ""
-            
-            item_active = QTableWidgetItem(active_text)
-            item_active.setTextAlignment(Qt.AlignCenter)
-            item_active.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            
-            item_name = QTableWidgetItem(user["display_name"])
-            item_name.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-            
-            item_id = QTableWidgetItem(user["user_id"])
-            item_id.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-
-            self.table.setItem(i, 0, item_active)
-            self.table.setItem(i, 1, item_name)
-            self.table.setItem(i, 2, item_id)
-
-        self.is_creating_new = False
-        selected_row = None
-        if select_user_id:
-            for row, user in enumerate(self.users):
-                if user["user_id"] == select_user_id:
-                    selected_row = row
-                    break
-        if selected_row is None:
-            self.table.blockSignals(False)
-            self.clear_details()
-        else:
-            self.table.selectRow(selected_row)
-            self.table.blockSignals(False)
-            self.on_user_selection_changed()
-        # A failure reason outranks the count: "Loaded 0 users" on its own reads
-        # as an empty database rather than a call that was refused.
-        if self._load_error:
-            self.status_bar.showMessage(self._load_error)
-        else:
-            self.status_bar.showMessage(
-                f"Loaded {len(self.users)} users. Active user: {active_id}"
+    def _delete(self) -> None:
+        row = self.model.selected
+        if row is None:
+            dialogs.information(self, "No user selected", "Select an account first.")
+            return
+        if row.user_id in PROTECTED_USER_IDS:
+            dialogs.warning(
+                self, "Cannot delete",
+                f"{row.user_id!r} is a built-in account and cannot be deleted.",
             )
-
-    def clear_details(self):
-        self.edit_user_uuid.clear()
-        self.edit_user_id.clear()
-        self.edit_user_id.setReadOnly(True)
-        self.edit_user_id.setStyleSheet("background-color: #e6e6e6; color: #555555;")
-        self.edit_display_name.clear()
-        self.edit_email.clear()
-        self.edit_role.setCurrentIndex(0)
-        self.edit_affiliation.clear()
-        self.edit_department.clear()
-        self.edit_phone.clear()
-        self.edit_website.clear()
-        self.edit_is_admin.setChecked(False)
-        self.edit_is_admin.setEnabled(True)
-        self.edit_allow_autologin.setChecked(False)
-        self.edit_allow_autologin.setEnabled(True)
-        self.btn_change_password.setEnabled(True)
-        self.temp_password = None
-        self.edit_address.clear()
-        self.edit_details.clear()
-        self.selected_user_id = None
-        self.btn_set_active.setEnabled(False)
-
-    def on_user_selection_changed(self):
-        """Populate right panel fields when user is selected in table."""
-        selected_ranges = self.table.selectedRanges()
-        if not selected_ranges:
+            return
+        if row.is_active:
+            dialogs.warning(
+                self, "Cannot delete",
+                "This is the account ChiSurf is using. Switch to another account "
+                "first.",
+            )
+            return
+        if not dialogs.confirm(
+            self, "Delete user",
+            f"Permanently delete {row.display_name or row.user_id!r}?",
+        ):
             return
 
-        row = selected_ranges[0].topRow()
-        if row < 0 or row >= len(self.users):
+        problem = self.model.delete(row.user_id)
+        if not problem:
             return
-
-        self.is_creating_new = False
-        user = self.users[row]
-        self.selected_user_id = user["user_id"]
-        
-        self.edit_user_uuid.setText(user.get("user_uuid") or "")
-        self.edit_user_id.setText(user["user_id"])
-        can_rename = user["user_id"] not in ("user_default", "guest")
-        self.edit_user_id.setReadOnly(not can_rename)
-        self.edit_user_id.setStyleSheet("" if can_rename else "background-color: #e6e6e6; color: #555555;")
-        self.edit_display_name.setText(user["display_name"] or "")
-        self.edit_email.setText(user["email"] or "")
-        
-        role_val = user.get("role") or "Generic"
-        idx = self.edit_role.findText(role_val)
-        if idx >= 0:
-            self.edit_role.setCurrentIndex(idx)
+        # The backend refuses to delete an account that owns committed data.
+        # An administrator may override; anyone else just gets the reason.
+        if self._is_admin() and dialogs.confirm(
+            self, "Force delete",
+            f"Could not delete the account:\n{problem}\n\nForce the deletion? "
+            "The account goes, its committed data stays.",
+        ):
+            forced = self.model.delete(row.user_id, force=True)
+            if forced:
+                dialogs.error(self, "Force delete failed", forced)
         else:
-            # Keep the stored value verbatim instead of collapsing it to "Other".
-            self.edit_role.setEditText(role_val)
+            dialogs.warning(self, "Cannot delete", problem)
 
-        self.edit_affiliation.setText(user.get("affiliation") or "")
-        self.edit_department.setText(user.get("department") or "")
-        self.edit_phone.setText(user.get("phone") or "")
-        self.edit_website.setText(user.get("website") or "")
-        
-        # Admin flag
-        is_admin = user.get("is_admin") == 1
-        self.edit_is_admin.setChecked(is_admin)
-        self.edit_allow_autologin.setChecked(bool(user.get("allow_passwordless_login")))
-        
-        # Reset staged password
-        self.temp_password = None
-
-        # Permission checks for enabling fields
-        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
-        current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
-        is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
-        
-        has_any_admin = any(u.get("is_admin") == 1 for u in self.users)
-        
-        self.edit_is_admin.setEnabled(not has_any_admin or is_current_admin)
-        self._autologin_permitted = (
-            is_current_admin or self.selected_user_id == active_id or not has_any_admin
-        )
-        self._apply_admin_autologin_rule()
-
-        can_change_pw = is_current_admin or (self.selected_user_id == active_id)
-        self.btn_change_password.setEnabled(can_change_pw)
-
-        self.edit_address.setText(user.get("address") or "")
-        self.edit_details.setPlainText(user["details"] or "")
-
-        self.btn_set_active.setEnabled(True)
-
-    def _apply_admin_autologin_rule(self, *_):
-        """Keep the autologin checkbox consistent with the admin flag.
-
-        Admin accounts can never use passwordless login (enforced server-side),
-        so when "Is Administrator" is checked the autologin checkbox is forced
-        off and disabled. Otherwise it follows the per-user permission flag.
-        """
-        is_admin = self.edit_is_admin.isChecked()
-        if is_admin:
-            self.edit_allow_autologin.setChecked(False)
-            self.edit_allow_autologin.setEnabled(False)
-            self.edit_allow_autologin.setToolTip(
-                "Admin accounts cannot use passwordless login."
-            )
-        else:
-            self.edit_allow_autologin.setEnabled(getattr(self, "_autologin_permitted", True))
-            self.edit_allow_autologin.setToolTip(
-                "Allow this user to obtain a login session without entering a password."
-            )
-
-    def on_new_user_clicked(self):
-        """Prepare inputs for creating a new user with a generated UUID."""
-        self.table.clearSelection()
-        self.clear_details()
-        self.is_creating_new = True
-
-        new_uuid = str(uuid.uuid4())
-        self.edit_user_uuid.setText(new_uuid)
-        self.edit_user_id.setReadOnly(False)
-        self.edit_user_id.setStyleSheet("")
-        self.edit_user_id.setFocus()
-        self.btn_set_active.setEnabled(False)
-        
-        # Check permissions for is_admin for new user creation
-        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
-        current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
-        is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
-        has_any_admin = any(u.get("is_admin") == 1 for u in self.users)
-        
-        self.edit_is_admin.setEnabled(not has_any_admin or is_current_admin)
-        self.edit_allow_autologin.setChecked(False)
-        self._autologin_permitted = not has_any_admin or is_current_admin
-        self._apply_admin_autologin_rule()
-        self.btn_change_password.setEnabled(True)
-        self.temp_password = None
-        
-        self.status_bar.showMessage("Configuring new user. Complete fields and click 'Save Changes'.")
-
-    def on_change_password_clicked(self):
-        if not self.selected_user_id and not self.is_creating_new:
-            dialogs.warning(self, "Selection Required", "Please select or create a user first.")
-            return
-            
-        user_id = self.selected_user_id or self.edit_user_id.text().strip()
-        is_admin = self.edit_is_admin.isChecked()
-        
-        dlg = PasswordChangeDialog(user_id=user_id, is_admin=is_admin, parent=self)
-        if dlg.exec() == QDialog.Accepted:
-            self.temp_password = dlg.password
-            self.status_bar.showMessage("Password staged. Click 'Save Changes' to apply.")
-
-    def on_save_clicked(self):
-        """Save a new user or update an existing user in the database."""
-        user_uuid = self.edit_user_uuid.text().strip()
-        user_id = self.edit_user_id.text().strip()
-        display_name = self.edit_display_name.text().strip()
-        email = self.edit_email.text().strip()
-        role = self.edit_role.currentText()
-        affiliation = self.edit_affiliation.text().strip()
-        department = self.edit_department.text().strip()
-        phone = self.edit_phone.text().strip()
-        website = self.edit_website.text().strip()
-        address = self.edit_address.toPlainText().strip()
-        details = self.edit_details.toPlainText().strip()
-        is_admin = 1 if self.edit_is_admin.isChecked() else 0
-        allow_autologin = 1 if self.edit_allow_autologin.isChecked() else 0
-        
-        password = self.temp_password
-
+    def _password(self) -> None:
+        row = self.model.selected
+        user_id = self.model.edited.user_id or (row.user_id if row else "")
         if not user_id:
-            dialogs.warning(self, "Validation Error", "User ID is required.")
+            dialogs.information(self, "No user selected", "Select or create an account first.")
             return
-        if not display_name:
-            dialogs.warning(self, "Validation Error", "Display Name is required.")
-            return
-        if email:
-            if "@" not in email or "." not in email.split("@")[-1]:
-                dialogs.warning(self, "Validation Error", f"Invalid email format: '{email}'")
-                return
+        dialog = PasswordChangeDialog(
+            user_id=user_id, is_admin=self.model.edited.is_admin, parent=self
+        )
+        if dialog.exec() == QDialog.Accepted:
+            self.model.stage_password(getattr(dialog, "password", ""))
 
-        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
+    # -- helpers ---------------------------------------------------------
 
+    def _is_admin(self) -> bool:
+        """Whether the signed-in account is an administrator."""
+        from chisurf.plugins.core.user_editor.api.client import active_user_id
+
+        me = active_user_id()
+        return any(u.user_id == me and u.is_admin for u in self.model.users)
+
+    @staticmethod
+    def _carry_local_state(old_user_id: str, new_user_id: str) -> None:
+        """Move the stored session tokens after a rename."""
         try:
-            client = self.make_mmfdb_client()
-            has_token = bool(getattr(client, "token", None))
-            old_user_id = self.selected_user_id if not self.is_creating_new else None
-            logging.info(
-                "User Editor: saving user '%s' via MMFDB RPC (old_user_id=%s, auth_token=%s, allow_autologin=%s)",
-                user_id,
-                old_user_id,
-                has_token,
-                bool(allow_autologin),
+            from mmfdb.security.credentials import (
+                rename_runtime_session_token,
+                rename_session_token,
             )
-            user_data = {
-                "user_uuid": user_uuid or None,
-                "user_id": user_id,
-                "display_name": display_name,
-                "email": email or None,
-                "role": role,
-                "affiliation": affiliation or None,
-                "department": department or None,
-                "phone": phone or None,
-                "website": website or None,
-                "address": address or None,
-                "details": details or None,
-                "is_admin": is_admin,
-                "allow_passwordless_login": allow_autologin,
-                "requester_id": active_id
-            }
-            if old_user_id and old_user_id != user_id:
-                user_data["old_user_id"] = old_user_id
-            if password is not None:
-                user_data["password"] = password
+            from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
 
-            client.save_user(user_data)
-            if old_user_id and old_user_id != user_id:
-                self.rename_local_user_state(old_user_id, user_id)
-            logging.info("User Editor: saved user '%s'", user_id)
-            if allow_autologin == 0:
-                self.disable_local_autologin(user_id)
-            self.temp_password = None
-            self.status_bar.showMessage(f"Successfully saved user: {display_name}")
-            self.load_users(select_user_id=user_id)
-        except Exception as e:
-            logging.exception("User Editor: failed to save user '%s' via MMFDB RPC", user_id)
-            dialogs.error(self, "ZMQ RPC Error", f"Could not save user:\n{e}")
+            from chisurf.plugins.core.user_editor.api.client import server_address
 
-    def rename_local_user_state(self, old_user_id: str, new_user_id: str) -> None:
-        """Update local settings and stored tokens after a username rename.
+            host, port = server_address()
+            rename_runtime_session_token(host, port, old_user_id, new_user_id)
+            rename_session_token(host, port, old_user_id, new_user_id)
+            set_mmfdb_login_settings({"default_user_id": new_user_id})
+        except Exception:
+            logging.exception("User Editor: could not carry local state after a rename")
 
-        Parameters
-        ----------
-        old_user_id : str
-            Previous username.
-        new_user_id : str
-            New username.
-        """
-        from mmfdb.security.credentials import (
-            rename_runtime_session_token,
-            rename_session_token,
-        )
-
-        from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
-
-        mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
-        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mmfdb_settings.get("last_port", 8765))
-        rename_runtime_session_token(server_host, server_port, old_user_id, new_user_id)
-        rename_session_token(server_host, server_port, old_user_id, new_user_id)
-        if mmfdb_settings.get("default_user_id") == old_user_id:
-            mmfdb_settings["default_user_id"] = new_user_id
-            os.environ["MMFDB_DEFAULT_USER_ID"] = new_user_id
-            if hasattr(cs_settings, "mmfdb"):
-                cs_settings.mmfdb["default_user_id"] = new_user_id
-            set_mmfdb_login_settings(mmfdb_settings)
-        logging.info("User Editor: renamed local user state from '%s' to '%s'", old_user_id, new_user_id)
-
-    def make_mmfdb_client(self):
-        """Create an MMFDB client using the current session token when available.
-
-        Returns
-        -------
-        MMFDBClient
-            Client configured with the current user's runtime or stored token.
-        """
-        from mmfdb.security.credentials import (
-            load_runtime_session_token,
-            load_session_token,
-            store_runtime_session_token,
-        )
-
-        from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-
-        mmfdb_settings = cs_settings.cs_settings.get("mmfdb", {})
-        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mmfdb_settings.get("last_port", 8765))
-        user_id = mmfdb_settings.get("default_user_id", "user_default")
-        client = MMFDBClient(host=server_host, cmd_port=server_port, pub_port=server_port + 1)
-        token = load_runtime_session_token(server_host, server_port, user_id)
-        if token is None:
-            token = load_session_token(server_host, server_port, user_id)
-        if token:
-            client.token = token
-            store_runtime_session_token(server_host, server_port, user_id, token)
-        logging.info(
-            "User Editor: created MMFDB client for %s:%s as '%s' (auth_token=%s)",
-            server_host,
-            server_port,
-            user_id,
-            bool(token),
-        )
-        return client
-
-    def disable_local_autologin(self, user_id: str) -> None:
-        """Disable saved local autologin credentials for a user.
-
-        Parameters
-        ----------
-        user_id : str
-            MMFDB user whose local autologin state should be cleared.
-        """
-        from mmfdb.security.credentials import delete_runtime_session_token, delete_session_token
-
-        from chisurf.core.settings.settings_utils import set_mmfdb_login_settings
-
-        mmfdb_settings = cs_settings.cs_settings.setdefault("mmfdb", {})
-        server_host = mmfdb_settings.get("last_server", "127.0.0.1")
-        server_port = int(mmfdb_settings.get("last_port", 8765))
-        delete_session_token(server_host, server_port, user_id)
-        delete_runtime_session_token(server_host, server_port, user_id)
-        logging.info("User Editor: cleared local autologin tokens for user '%s'", user_id)
-
-        if mmfdb_settings.get("default_user_id") == user_id:
-            mmfdb_settings["autologin"] = False
-            if hasattr(cs_settings, "mmfdb"):
-                cs_settings.mmfdb["autologin"] = False
-            if not set_mmfdb_login_settings(mmfdb_settings):
-                self.status_bar.showMessage("Autologin disabled, but settings could not be written.")
-
-    def on_set_active_clicked(self):
-        """Set the selected user as the default active user in the settings."""
-        if not self.selected_user_id:
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt signature
+        """Warn before dropping unsaved edits."""
+        if self.model.dirty and not dialogs.confirm(
+            self, "Unsaved changes",
+            "This account has unsaved changes.\n\nClose anyway?",
+        ):
+            event.ignore()
             return
+        self.save_window_geometry()
+        super().closeEvent(event)
 
-        # Update in-memory settings
-        if "mmfdb" not in cs_settings.cs_settings:
-            cs_settings.cs_settings["mmfdb"] = {}
-        cs_settings.cs_settings["mmfdb"]["default_user_id"] = self.selected_user_id
-        os.environ["MMFDB_DEFAULT_USER_ID"] = self.selected_user_id
 
-        # Update the properties loaded in the package scope
-        if hasattr(cs_settings, "mmfdb"):
-            cs_settings.mmfdb["default_user_id"] = self.selected_user_id
-
-        # Write to settings_chisurf.yaml
-        try:
-            with open(cs_settings.chisurf_settings_file, "w", encoding="utf-8") as f:
-                yaml.dump(cs_settings.cs_settings, f, default_flow_style=False)
-            dialogs.information(
-                self, "Active User Changed",
-                f"Active user successfully changed to '{self.selected_user_id}'."
-            )
-            self.load_users()
-        except Exception as e:
-            dialogs.error(
-                self, "Settings Error",
-                f"Could not persist active user to configuration file:\n{e}"
-            )
-
-    def on_delete_user_clicked(self):
-        """Safely delete a user if they have not committed any data."""
-        if not self.selected_user_id:
-            dialogs.warning(self, "Selection Required", "Please select a user to delete.")
-            return
-
-        user_id = self.selected_user_id
-
-        # 1. user_default can never be deleted
-        if user_id == "user_default":
-            dialogs.warning(
-                self, "Action Prohibited",
-                "The default user ('user_default') is required by the system and cannot be deleted."
-            )
-            return
-
-        # 2. Currently active default user cannot be deleted
-        active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
-        if user_id == active_id:
-            dialogs.warning(
-                self, "Action Prohibited",
-                "The selected user is currently configured as the active user.\n"
-                "Please select and switch to another active user before deleting this one."
-            )
-            return
-
-        # Confirm deletion
-        reply = dialogs.question(
-            self, "Confirm Deletion",
-            f"Are you sure you want to delete user '{user_id}'?\nThis action cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            # Bound before the try: building the client can itself fail, and the
-            # handler below reaches for `client` -- which reported
-            # "name 'client' is not defined" instead of the real cause.
-            client = None
-            try:
-                client = self.make_mmfdb_client()
-                logging.info("User Editor: deleting user '%s' via MMFDB RPC", user_id)
-                client.delete_user(user_id, force=False)
-                logging.info("User Editor: deleted user '%s'", user_id)
-                self.status_bar.showMessage(f"Successfully deleted user: {user_id}")
-                self.load_users()
-            except Exception as e:
-                logging.exception("User Editor: failed to delete user '%s' via MMFDB RPC", user_id)
-                # The backend raises a ValueError if deletion is prohibited (e.g., committed data)
-                current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
-                is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
-                
-                if is_current_admin and client is not None:
-                    override_reply = dialogs.question(
-                        self, "Admin Override",
-                        f"Could not delete user: {e}\n\nDo you want to FORCE delete this user? This will delete the user but leave their committed data intact in the database.",
-                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-                    )
-                    if override_reply == QMessageBox.Yes:
-                        try:
-                            logging.warning("User Editor: force-deleting user '%s' via MMFDB RPC", user_id)
-                            client.delete_user(user_id, force=True, requester_id=active_id)
-                            logging.info("User Editor: force-deleted user '%s'", user_id)
-                            self.status_bar.showMessage(f"Successfully force-deleted user: {user_id}")
-                            self.load_users()
-                        except Exception as force_e:
-                            logging.exception("User Editor: force delete failed for user '%s'", user_id)
-                            dialogs.error(self, "Action Prohibited", f"Force deletion failed:\n{force_e}")
-                else:
-                    dialogs.error(self, "Action Prohibited", f"Could not delete user:\n{e}")
+#: Backwards-compatible alias.
+UserEditorTool = UserEditorWidget

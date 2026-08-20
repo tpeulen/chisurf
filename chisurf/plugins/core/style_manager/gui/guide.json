@@ -1,0 +1,27 @@
+{
+  "_comment": "Guided tour of the style manager.",
+  "steps": [
+    {
+      "title": "Styles are files you own",
+      "text": "The drop-down lists the <code>.qss</code> files in your ChiSurf settings directory. The shipped styles are copied there on first run, so editing one never touches the installation.",
+      "target": {"title": "Style File"}
+    },
+    {
+      "title": "What a style sheet says",
+      "text": "A Qt style sheet is CSS-like. A rule names a widget class (<code>QPushButton</code>), a state (<code>:hover</code>), a sub-control (<code>QMenuBar::item</code>) or one widget by object name, and sets colours, padding and borders.",
+      "target": {}
+    },
+    {
+      "title": "Apply, and it stays applied",
+      "text": "<b>✅ Apply</b> saves the file, restyles the running application at once, and records it as your style so it comes back next time you start.",
+      "target": {"action": "✅ Apply"},
+      "await": {"hint": "Press <b>✅ Apply</b> to see the style take effect."}
+    },
+    {
+      "title": "If you make a mess",
+      "text": "<b>🗑️ Clear All Styles</b> restores the shipped files. And if a style leaves the window unreadable, delete that <code>.qss</code> from your settings directory and restart — ChiSurf falls back to the default appearance.",
+      "target": {"action": "🗑️ Clear All Styles"},
+      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+    }
+  ]
+}

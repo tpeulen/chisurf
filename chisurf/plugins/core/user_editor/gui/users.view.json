@@ -1,0 +1,146 @@
+{
+  "$schema": "../../../../core/dataspec/schemas/view.schema.json",
+  "_comment": "User editor. Left: the accounts. Right: the selected account's details, one control per row.",
+  "title": "Users",
+  "sections": [
+    {
+      "type": "dock_area",
+      "split": "horizontal",
+      "sizes": [45, 55],
+      "persist": "user_editor_split",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Accounts",
+          "description": "Every user registered in the MMFDB. Listing them requires an administrator account.",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_table",
+              "title": "",
+              "description": "One row per account. ★ marks the account ChiSurf uses for its own database connections.",
+              "options": {
+                "source": "user_rows",
+                "selected_call": "select_row",
+                "editable": false,
+                "height": 320,
+                "columns": [
+                  {"key": "user", "title": "User", "width": 170},
+                  {"key": "username", "title": "Username", "width": 130},
+                  {"key": "role", "title": "Role", "width": 140},
+                  {"key": "admin", "title": "Admin", "width": 60, "tooltip": "Administrators can manage users and force deletions."},
+                  {"key": "autologin", "title": "Autologin", "width": 80, "tooltip": "The account may sign in without a password."},
+                  {"key": "active", "title": "Active", "width": 60, "tooltip": "The account ChiSurf uses for its own MMFDB connections."},
+                  {"key": "email", "title": "E-mail", "width": 200, "visible": false}
+                ]
+              }
+            },
+            {
+              "type": "info",
+              "source": "status_text",
+              "max_height": 56,
+              "description": "How many accounts were found, who you are signed in as, and whether anything is unsaved."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Account",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "info",
+              "source": "details_text",
+              "is_markdown": true,
+              "max_height": 150,
+              "description": "Context for the selected account, and any reason it cannot be saved yet."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Username",
+              "attr": "user_id",
+              "description": "How the account is addressed. Changing it renames the account; built-in accounts cannot be renamed."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Display name",
+              "attr": "display_name",
+              "description": "The name shown wherever the user appears."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "E-mail",
+              "attr": "email",
+              "description": "Optional contact address."
+            },
+            {
+              "type": "choice",
+              "label": "Role",
+              "attr": "role",
+              "options_source": "role_options",
+              "editable": true,
+              "description": "The user's role. Pick one or type another; a role set by a different tool is kept as it is."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Affiliation",
+              "attr": "affiliation",
+              "description": "Institution or company."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Department",
+              "attr": "department",
+              "description": "Department or group."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Phone",
+              "attr": "phone",
+              "description": "Optional contact number."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Website",
+              "attr": "website",
+              "description": "Optional URL; must start with http:// or https://."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Address",
+              "attr": "address",
+              "description": "Postal address."
+            },
+            {
+              "type": "value",
+              "kind": "str",
+              "label": "Notes",
+              "attr": "details",
+              "description": "Free-text notes about the account."
+            },
+            {
+              "type": "toggle",
+              "label": "Administrator",
+              "attr": "is_admin",
+              "description": "Administrators may list, edit and delete users. The server refuses to remove the last one."
+            },
+            {
+              "type": "toggle",
+              "label": "Allow sign-in without a password",
+              "attr": "allow_autologin",
+              "description": "Convenient on a single-user machine. Administrators may not use it."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "_comment": "Guided tour of the user editor. Steps point at real controls.",
+  "steps": [
+    {
+      "title": "Who is registered",
+      "text": "Every account in the MMFDB. Listing them is an <b>administrator</b> operation — if the table is empty and the status line says so, that is a permission, not a fault.<br><br>The <b>★</b> column marks the account ChiSurf uses for its own database connections.",
+      "target": {"key": "data_table"}
+    },
+    {
+      "title": "Pick one to edit",
+      "text": "Select a row and the fields on the right fill in. Everything you type stays local until you save, so you can look without changing anything.",
+      "target": {"key": "data_table"},
+      "await": {"hint": "Click any row in the table."}
+    },
+    {
+      "title": "You are told before the server is",
+      "text": "A missing display name, a malformed e-mail, a username already taken or one with spaces in it is reported above the fields as you type — not after a failed round trip.",
+      "target": {"attr": "display_name"}
+    },
+    {
+      "title": "Rights",
+      "text": "<b>Administrator</b> allows listing, editing and deleting users; the server refuses to remove the last one. <b>Allow sign-in without a password</b> is convenient on a single-user machine and is not offered to administrators.",
+      "target": {"attr": "is_admin"}
+    },
+    {
+      "title": "Passwords are staged, not sent immediately",
+      "text": "<b>🔑 Password…</b> checks the strength of what you type and holds the result until you press Save — the status line says one is waiting. Nothing is stored on this machine; the server keeps only a hash.",
+      "target": {"action": "🔑 Password…"}
+    },
+    {
+      "title": "Save, or throw it away",
+      "text": "<b>💾 Save</b> writes the account back. Renaming also carries your stored session token across, so you stay signed in. <b>♻️ Revert</b> discards the edits.",
+      "target": {"action": "💾 Save"},
+      "await": {"hint": "Press <b>💾 Save</b> when you are happy with the account."},
+      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+    }
+  ]
+}

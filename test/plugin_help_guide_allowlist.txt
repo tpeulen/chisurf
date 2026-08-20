@@ -25,10 +25,8 @@ chisurf/plugins/core/plugin_check/gui
 chisurf/plugins/core/project_browser/gui
 chisurf/plugins/core/setup/gui
 chisurf/plugins/core/setup_channel_definition/gui
-chisurf/plugins/core/style_manager/gui
 chisurf/plugins/core/switch_user
 chisurf/plugins/core/updater
-chisurf/plugins/core/user_editor/gui
 chisurf/plugins/core/wizards/gui
 chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/fluorescence_decay/lltf

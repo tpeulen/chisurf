@@ -315,8 +315,20 @@ class StyleManagerWidget(QWidget):
             # Update the current style sheet file name in settings
             file_name = os.path.basename(self.current_file)
             cs.core.settings.gui['style_sheet'] = file_name
-            
-            self.status_bar.showMessage(f"Applied style: {file_name}")
+
+            # ...and write it. Setting the in-memory value alone meant the
+            # style applied for this session and silently reverted on the next
+            # start, with the dialog reporting success either way.
+            from chisurf.core.settings.settings_utils import update_settings_section
+
+            gui_block = dict(cs.core.settings.cs_settings.get('gui') or {})
+            gui_block['style_sheet'] = file_name
+            if update_settings_section('gui', {'style_sheet': file_name}):
+                self.status_bar.showMessage(f"Applied and saved style: {file_name}")
+            else:
+                self.status_bar.showMessage(
+                    f"Applied {file_name} for this session, but it could not be saved."
+                )
         except Exception as e:
             self.status_bar.showMessage(f"Error applying style: {str(e)}")
             
