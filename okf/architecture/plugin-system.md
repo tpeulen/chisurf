@@ -46,12 +46,17 @@ timestamp: '2026-07-05T00:00:00Z'
    the user's file, after which `_deep_merge` is a no-op and that user stops
    receiving upstream default changes. They should all go through
    `update_settings_section`.
-7. **The user editor is still a 798-line monolith** with no tests, two
-   divergent copies of `PasswordChangeDialog` (its own and `mmfdb_admin`'s, and
-   `mmfdb_admin` calls its own with a `client=` kwarg it does not accept), and a
-   client-side permission model keyed on the `mmfdb.default_user_id` *setting*
-   rather than the bearer token that actually authorises the call.
-8. **The plugin manager's own leftovers.** Its `manifest.json` still has no
+7. **Two `PasswordChangeDialog` classes still exist** — the user editor's (now
+   the only one with tests) and `mmfdb_admin`'s, which duplicates the backend's
+   strength rule a second time and which `mmfdb_admin/gui/tool.py:1419` calls
+   with a `client=` kwarg its own signature does not accept, so that path raises
+   `TypeError` at runtime. `mmfdb_admin` also has a whole second Users tab
+   against the same three RPCs; one of the two should win.
+8. **Identity is still read from a setting, not the token.** The user editor's
+   client-side permission gating asks `mmfdb.default_user_id` who you are, while
+   the call is actually authorised by the bearer token attached to the client.
+   They can disagree, and the setting is trivially editable.
+9. **The plugin manager's own leftovers.** Its `manifest.json` still has no
    `docs/concepts` page or numbered `docs/guides/NN_*.md` (the house rule wants
    both for a substantially changed plugin); only `help.md` + `guide.json` +
    the reference page exist. And `read_module_docstring` is still defined three

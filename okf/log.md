@@ -37257,3 +37257,21 @@ front, not this).
   **User editor:** blocking RPC out of the constructor, an error modal on open
   turned into an in-panel reason, a `NameError` in the force-delete handler, and
   a Role box that silently rewrote unknown roles to "Other".
+
+- 2026-08-20 — **The user editor gets the AutoForm treatment; the style manager
+  stops forgetting.** 861 lines of hand-built Qt became a Qt-free `api/` (the
+  MMFDB client seam, record shapes, validation), a view model,
+  `users.view.json`, `help.md`, `guide.json`, and 26 tests where the plugin had
+  none. `api/client.py` is the one place host/port/`default_user_id` plus a
+  session-token lookup is written — it had been copied into four modules — and
+  a missing `mmfdb_admin` is now one sentence rather than an ImportError inside
+  a callback. The panel no longer fetches from its constructor (which froze the
+  Settings dialog for the client timeout), a refused listing is panel state
+  rather than a modal aimed at a user who did nothing wrong, validation reports
+  every problem as you type instead of one dialog per field after a round trip,
+  and edits are a working copy with Revert. `PasswordChangeDialog` stays put and
+  a test pins the import `chisurf/gui/__init__.py` relies on for the login flow.
+  The style manager kept its syntax-highlighted QSS editor — AutoForm is the
+  wrong shape for a text editor — but Apply now *writes* `gui.style_sheet`
+  instead of only setting it in memory, which is why a chosen theme silently
+  reverted on every restart. Help/guide allow-list down to 70.
