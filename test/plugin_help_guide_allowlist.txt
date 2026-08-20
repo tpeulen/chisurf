@@ -6,7 +6,6 @@
 #
 # This list only SHRINKS. Strike a line when the plugin ships both files;
 # adding a NEW line is a test failure, not a fix. Goal: empty.
-chisurf/plugins/ai_settings/gui
 chisurf/plugins/burst/burst_browser/gui
 chisurf/plugins/burst/burst_fcs_correlator/gui
 chisurf/plugins/burst/burst_mle_analysis

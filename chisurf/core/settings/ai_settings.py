@@ -135,8 +135,10 @@ def get_api_settings(provider: str | None = None) -> dict:
                 data = json.load(f)
                 if isinstance(data, dict):
                     all_settings = data
-        except Exception:
-            pass
+        except (OSError, json.JSONDecodeError):
+            # Fall back to defaults, but say so: silently reverting every
+            # provider to defaults looks to the user like their keys vanished.
+            _LOG.exception("Could not read AI settings from %s; using defaults", settings_path)
 
     if 'base_url' in all_settings and not any(
         key in all_settings for key in DEFAULT_PROVIDER_SETTINGS
@@ -174,6 +176,19 @@ def get_api_settings(provider: str | None = None) -> dict:
     # Ensure we have the provider field
     result['provider'] = provider
 
+    # The docstring has always promised "settings file > environment variables >
+    # defaults", but the environment step was never implemented -- so a user who
+    # exported MISTRAL_API_KEY saw an empty key box here, triage reported "no LLM
+    # configured", and the agent panel showed the provider as unset. Three call
+    # sites had each grown their own fallback to work around it
+    # (llm.LLMSettings.from_provider, plugin_manager icons.api_key_for_provider);
+    # doing it once, here, is what makes those agree.
+    if not str(result.get('api_key') or '').strip():
+        env_key = get_provider_api_key(provider)
+        if env_key:
+            result['api_key'] = env_key
+            result['api_key_source'] = 'environment'
+
     return result
 
 
@@ -190,8 +205,15 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
                 data = json.load(f)
                 if isinstance(data, dict):
                     all_settings = data
-        except Exception:
-            pass
+        except (OSError, json.JSONDecodeError):
+            # Refuse rather than overwrite. Carrying on with ``all_settings = {}``
+            # would rewrite the file with *only* this provider's block, deleting
+            # every other provider's key because the load failed.
+            _LOG.exception(
+                "Refusing to save AI settings: %s exists but could not be read. "
+                "Move it aside to start fresh.", settings_path,
+            )
+            return False
 
     # Determine which provider to save settings for
     if provider is None:
@@ -210,12 +232,39 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
     # Update selected provider
     all_settings['selected_provider'] = provider
 
+    return _write_settings_file(settings_path, all_settings)
+
+
+def _write_settings_file(settings_path, all_settings) -> bool:
+    """Write the settings JSON atomically, readable only by this user.
+
+    Two problems with the plain ``open(path, 'w')`` this replaces. It leaves
+    API keys world-readable under the default umask; and a crash part-way
+    through ``json.dump`` truncates the file, taking *every* provider's key with
+    it. Writing a private temporary file in the same directory and renaming it
+    over the target fixes both: the rename is atomic, so a reader sees either
+    the old file or the new one.
+    """
+    import os
+    import tempfile
+
+    handle, temporary = tempfile.mkstemp(
+        dir=str(settings_path.parent), prefix=".ai_api_settings-", suffix=".json"
+    )
     try:
-        with open(settings_path, 'w', encoding='utf-8') as f:
+        with os.fdopen(handle, "w", encoding="utf-8") as f:
             json.dump(all_settings, f, indent=2)
-        return True
-    except Exception:
+        # Before the rename, so the key is never briefly world-readable.
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, settings_path)
+    except OSError:
+        _LOG.exception("Could not write AI settings to %s", settings_path)
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
         return False
+    return True
 
 
 #: Suffixes people actually use when exporting a provider key. The table

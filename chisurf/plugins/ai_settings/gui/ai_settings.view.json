@@ -11,14 +11,8 @@
           "attr": "provider",
           "label": "Provider",
           "call": "set_provider",
-          "options": ["openai", "mistral", "local", "custom"],
-          "labels": [
-            "OpenAI (ChatGPT)",
-            "Mistral",
-            "Local (Ollama, LMStudio, ...)",
-            "Custom (OpenAI-compatible)"
-          ],
-          "description": "Configure one endpoint per provider. Switching reloads that provider's saved values."
+          "description": "Which AI provider to use. The list comes from the provider table in chisurf.core.settings.ai_settings, so it always matches what the rest of the app supports.",
+          "options_source": "available_providers"
         },
         {
           "type": "button_row",
@@ -145,7 +139,7 @@
     {
       "type": "info",
       "source": "status_source",
-      "height": 32
+      "max_height": 72
     }
   ]
 }

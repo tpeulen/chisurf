@@ -10,12 +10,23 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _isolated_settings(tmp_path, monkeypatch):
-    """Redirect the AI settings file to a tmp path so auto-save never touches ~/.chisurf."""
+    """Isolate the settings file **and** the environment.
+
+    The file redirect keeps auto-save away from ``~/.chisurf``. Clearing the
+    provider environment variables matters just as much now that
+    :func:`get_api_settings` honours them: without it, whether these tests pass
+    depends on whether the developer happens to have ``MISTRAL_API_KEY``
+    exported, which is exactly the kind of machine-dependent result a test must
+    not have.
+    """
     from chisurf.core.settings import ai_settings
 
     monkeypatch.setattr(
         ai_settings, "_get_settings_path", lambda: tmp_path / "ai_api_settings.json"
     )
+    for provider_key, *_rest in ai_settings.PROVIDERS.values():
+        for name in ai_settings.provider_key_env_names(provider_key):
+            monkeypatch.delenv(name, raising=False)
 
 
 # --- backing-model tests (no Qt) -----------------------------------------------
@@ -78,9 +89,13 @@ class TestAISettingsModel:
             def json(self):
                 return {"data": [{"id": "chat-model"}, {"id": "image-model"}]}
 
-        monkeypatch.setitem(
-            sys.modules, "requests", SimpleNamespace(get=lambda *a, **k: Response())
-        )
+        # Patch the seam the code actually uses. This stubbed ``sys.modules
+        # ["requests"]`` for years after the tree moved to chisurf.core.http, so
+        # the stub was inert and the test reached the network for
+        # example.invalid.
+        from chisurf.core import http
+
+        monkeypatch.setattr(http, "get", lambda *a, **k: Response())
 
         model = AISettingsModel()
         model.base_url = "https://example.invalid/v1"

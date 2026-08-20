@@ -430,17 +430,21 @@ class PluginManagerViewModel:
         return self.settings.dirty
 
     def save(self) -> None:
-        """Write the settings and ask the running app to pick them up."""
-        self.settings.apply(self._settings_block)
-        try:
-            import chisurf as cs
+        """Write the settings to the user's settings file.
 
-            cs.core.settings.write_settings()
-        except Exception:
-            # Older builds expose no writer; the in-memory block is still updated.
-            pass
+        This used to call a ``cs.core.settings.write_settings()`` that does not
+        exist anywhere in the tree, inside a bare ``except: pass`` -- so the
+        panel reported "saved" and nothing ever reached disk.
+        """
+        self.settings.apply(self._settings_block)
+        from chisurf.core.settings.settings_utils import update_settings_section
+
+        written = update_settings_section("plugins", dict(self._settings_block))
         self._refresh_host_toolbar()
-        self.set_status("Settings saved. Menu changes appear after a restart.")
+        if written:
+            self.set_status("Settings saved. Menu changes appear after a restart.")
+        else:
+            self.set_status("Could not write the settings file -- see the log for why.")
 
     def revert(self) -> None:
         """Discard unsaved changes."""

@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import pathlib
 import typing
+import html
 import webbrowser
 
 from chisurf.core.dataspec import load_view_spec
@@ -76,6 +77,18 @@ class AISettingsModel:
         return load_view_spec(_VIEW)
 
     # -- option sources (editable combos) -------------------------------------
+    def available_providers(self) -> list[tuple[str, str]]:
+        """The providers, as ``(key, label)`` pairs for the choice widget.
+
+        Read from :data:`~chisurf.core.settings.ai_settings.PROVIDERS` rather
+        than restated in the view spec. The spec used to hardcode four of the
+        five, so OpenRouter -- which has its own defaults, its own auth headers
+        in ``core/agent/llm.py`` and its own tests -- could not be selected in
+        the only UI that writes ``selected_provider``. Reading the table keeps
+        the labels and the deliberate EU-first ordering in one place.
+        """
+        return [(key, label) for label, (key, *_rest) in PROVIDERS.items()]
+
     def available_text_models(self) -> list[str]:
         """Return the fetched text-capable model ids for the text-model combo."""
         return list(self._text_models)
@@ -185,13 +198,20 @@ class AISettingsModel:
             return
 
     def reset(self) -> None:
-        """Reset the current provider's fields to their defaults (and persist)."""
-        defaults = DEFAULT_PROVIDER_SETTINGS.get(self.provider, DEFAULT_PROVIDER_SETTINGS["openai"])
+        """Reset the current provider's fields to their defaults, without saving."""
+        # Fall back to the default provider's block, not openai's: the tree's
+        # documented default is mistral (EU-first), and disagreeing here handed
+        # a user of an unknown provider a US endpoint.
+        defaults = DEFAULT_PROVIDER_SETTINGS.get(
+            self.provider, DEFAULT_PROVIDER_SETTINGS[ai_settings.DEFAULT_PROVIDER]
+        )
         self._apply_settings({**defaults, "provider": self.provider})
         self._text_models = []
         self._image_models = []
-        self._persist(silent=True)
-        self._set_status("Settings reset to defaults.", "blue")
+        # Deliberately *not* persisted: the button's own description says
+        # "not saved until you press Save", and this used to write immediately
+        # -- silently destroying a working API key with no undo.
+        self._set_status("Fields reset to defaults. Press Save to keep them.", "blue")
 
     def _persist(self, silent: bool = False) -> bool:
         """Write the current provider's fields to the settings JSON.
@@ -275,7 +295,10 @@ class AISettingsModel:
 
     def _set_status(self, message: str, color: str = "black") -> None:
         """Record an HTML status message and refresh the view."""
-        self.status_html = f"<span style='color: {color};'>{message}</span>"
+        # Escaped: ``message`` carries str(exc), which carries the provider's
+        # response body. A server answering with markup would otherwise have it
+        # rendered as rich text in the status label.
+        self.status_html = f"<span style='color: {color};'>{html.escape(str(message))}</span>"
         self._notify()
 
     def _notify(self) -> None:

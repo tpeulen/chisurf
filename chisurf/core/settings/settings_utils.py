@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pathlib
 import shutil
+import copy
+import logging
 import yaml
 import numpy as np
 
@@ -103,6 +105,67 @@ def copy_styles_to_user_folder():
                     pass
             else:
                 shutil.copyfile(file, destination_file)
+
+
+def update_settings_section(section: str, values: dict) -> bool:
+    """Merge *values* into one top-level section of the user's settings file.
+
+    The one place that writes ``settings_chisurf.yaml`` for a caller that owns a
+    single section. Three things it gets right that hand-rolled writers in the
+    tree did not:
+
+    **It writes the user's file**, ``get_path('settings')/settings_chisurf.yaml``
+    -- not the packaged defaults inside the installed package. Settings are
+    loaded as *packaged defaults deep-merged with the user file, user wins*, so
+    a write into the package directory is silently discarded on the next start
+    (and may not even be writable on a pip/conda install).
+
+    **It merges rather than dumps the whole tree.** Dumping the live
+    ``cs_settings`` bakes every merged default into the user file and destroys
+    the explanatory comments in it.
+
+    **It uses ``safe_dump``**, so a stray non-plain object cannot write
+    python-specific YAML tags that later fail to load.
+
+    Parameters
+    ----------
+    section : str
+        Top-level key, e.g. ``"plugins"``.
+    values : dict
+        Keys to set within that section. Keys absent here are left alone, so two
+        tools owning different keys of the same section do not clobber each
+        other.
+
+    Returns
+    -------
+    bool
+        True when the file was written.
+
+    """
+    settings_file = get_path('settings') / 'settings_chisurf.yaml'
+    try:
+        data = safe_open_file(
+            file_path=settings_file,
+            processor=yaml.safe_load,
+            default_value={},
+            error_message=f"Error opening settings file {settings_file}",
+        )
+        if not isinstance(data, dict):
+            data = {}
+        block = data.get(section)
+        if not isinstance(block, dict):
+            block = {}
+        block.update(copy.deepcopy(values))
+        data[section] = block
+        settings_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(settings_file, 'w', encoding='utf-8') as fh:
+            yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
+        return True
+    except Exception:
+        logging.getLogger(__name__).exception(
+            "Could not write section %r to %s", section, settings_file
+        )
+        return False
 
 
 def set_warn_missing_detector_setups(show_warning: bool) -> bool:

@@ -1,0 +1,38 @@
+{
+  "_comment": "Guided tour of AI Settings. Steps point at real controls and wait for the user to press them.",
+  "steps": [
+    {
+      "title": "Pick a provider",
+      "text": "Every provider keeps its <b>own</b> endpoint, key and models, so switching here never carries your key across. The list is ordered by where your data goes: <b>Mistral (EU)</b> first, then <b>Local</b> — Ollama or LM Studio on your own machine, where nothing leaves the computer at all.",
+      "target": {"attr": "provider"}
+    },
+    {
+      "title": "The key, and where it lives",
+      "text": "Paste a key and it is saved and tested immediately. It goes into <code>ai_api_settings.json</code> in your settings directory, written so only your account can read it.<br><br>If you already export <code>MISTRAL_API_KEY</code> or <code>OPENAI_API_KEY</code> in your shell, you can leave this empty — ChiSurf finds it.",
+      "target": {"attr": "api_key"}
+    },
+    {
+      "title": "Ask the provider what it has",
+      "text": "<b>Fetch models</b> reads the provider's model list and sorts it into text-capable and image-capable, filling both drop-downs below. Press it now.",
+      "target": {"action": "📥 Fetch models"},
+      "await": {"hint": "Press <b>📥 Fetch models</b>."}
+    },
+    {
+      "title": "Two models, two jobs",
+      "text": "The <b>text model</b> drives the code editor's agent panel and AI curve triage. The <b>image model</b> is used only to generate plugin icons. Both boxes are editable — type an id if the provider does not advertise one you know works.",
+      "target": {"attr": "text_model"}
+    },
+    {
+      "title": "Check it before you rely on it",
+      "text": "<b>Test connection</b> asks the endpoint for its model list, which tells you whether the URL is reachable and the key accepted. Note it does not verify the selected model itself can run.",
+      "target": {"action": "🔌 Test connection"},
+      "await": {"hint": "Press <b>🔌 Test connection</b> and watch the status line."}
+    },
+    {
+      "title": "Reset is safe",
+      "text": "<b>↺ Reset</b> puts this provider's fields back to their defaults but does <i>not</i> write anything — press <b>💾 Save</b> if you want to keep them, or switch providers to discard.",
+      "target": {"action": "↺ Reset"},
+      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+    }
+  ]
+}
