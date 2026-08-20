@@ -31,7 +31,27 @@ timestamp: '2026-07-05T00:00:00Z'
    through `chinet/__init__.py`, which drags in `base/node/port/schema/session`
    onto the `csc --help` path. Anyone consolidating must measure that import cost
    first.
-5. **The plugin manager's own leftovers.** Its `manifest.json` still has no
+5. **Settings still have no schema.** `settings_chisurf.yaml` is free-form: no
+   validation, no version key, no migration, and a removed key survives in a
+   user's file forever and is shown by the editor as real. The editor now saves
+   only overrides, which shrinks the problem, but nothing reports a key that no
+   longer exists. Roughly eight leaves are dead (`hidden_execute`,
+   `gui.mol_viewer`, `plugins.icons_enabled`, `gui.console_width/height`,
+   `fps.linknodes`, `fps.vdw_max`, `fitting_message`), and the whole
+   `gui.console.*` block is read from `chinsole/settings.py` defaults while
+   being absent from the YAML, so it cannot be discovered or edited at all.
+6. **Three settings writers still dump the whole merged tree** into the user's
+   file — `user_editor` (`on_set_active_clicked`), `updater`, and the settings
+   editor's non-chisurf path. Each one freezes today's packaged defaults into
+   the user's file, after which `_deep_merge` is a no-op and that user stops
+   receiving upstream default changes. They should all go through
+   `update_settings_section`.
+7. **The user editor is still a 798-line monolith** with no tests, two
+   divergent copies of `PasswordChangeDialog` (its own and `mmfdb_admin`'s, and
+   `mmfdb_admin` calls its own with a `client=` kwarg it does not accept), and a
+   client-side permission model keyed on the `mmfdb.default_user_id` *setting*
+   rather than the bearer token that actually authorises the call.
+8. **The plugin manager's own leftovers.** Its `manifest.json` still has no
    `docs/concepts` page or numbered `docs/guides/NN_*.md` (the house rule wants
    both for a substantially changed plugin); only `help.md` + `guide.json` +
    the reference page exist. And `read_module_docstring` is still defined three

@@ -37222,3 +37222,38 @@ front, not this).
   records had never rendered at all. Tests: 13-line smoke test → 29 behavioural
   tests, and the 8 icon tests now call module functions instead of binding
   unbound methods to a `SimpleNamespace`.
+
+- 2026-08-20 — **The settings tools stop lying: AI settings, the settings editor,
+  the model manager, the user editor.** A shared writer landed first —
+  `settings_utils.update_settings_section()` — because there was no
+  `write_settings()` anywhere in the tree, yet the plugin manager called one
+  inside a bare `except: pass`, so its Save reported success and never reached
+  disk. The helper writes the *user's* file rather than the packaged defaults
+  inside the install tree, merges one section instead of dumping the whole
+  merged tree over it, and uses `safe_dump`.
+  **AI settings:** OpenRouter was unreachable because the view spec restated the
+  provider table and listed four of five; it reads `PROVIDERS` now. API keys were
+  written world-readable and non-atomically (a crash mid-`json.dump` took every
+  other provider's key with it) — private temp file, `chmod 0600`, atomic
+  rename. `get_api_settings` had promised "file > environment > defaults" and
+  never implemented the middle term, so an exported `MISTRAL_API_KEY` read as
+  "not configured" in four places that had each grown their own workaround.
+  Status text is escaped (it carries the provider's response body) and Reset no
+  longer persists, which its own description already said.
+  **Settings editor:** the Help column had been blank since it was written —
+  `SETTINGS_DOC_REL_PATH` named a file that never existed and both readers
+  swallowed the error; 175 entries now load. It edited the *unmerged* user file,
+  hiding every key added since that file was created; it loads the merged view
+  and saves only genuine overrides. Two silent corruptions fixed: any string
+  containing `|` was converted to a list on save, and int/float editors clamped
+  to ±1e6, rewriting `read_file_size_limit` 104857600 → 1000000 on open.
+  **Model manager:** rebuilt on the plugin-manager pattern (Qt-free `api/`, view
+  model, view spec, help + guide). Its list was empty because nothing ensured
+  the models had been registered; Save wrote into the installed package via a
+  `use_source_folder` key that does not exist. Rows are keyed by
+  `module.qualname` (two models are both called `Parse-Model`), the shared name
+  is surfaced because the setting matches on it, and a Drop-stale action clears
+  the two dead names the shipped defaults have carried for years.
+  **User editor:** blocking RPC out of the constructor, an error modal on open
+  turned into an in-panel reason, a `NameError` in the force-delete handler, and
+  a Role box that silently rewrote unknown roles to "Other".
