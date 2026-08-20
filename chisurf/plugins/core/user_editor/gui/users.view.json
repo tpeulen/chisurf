@@ -5,9 +5,12 @@
   "sections": [
     {
       "type": "dock_area",
-      "split": "horizontal",
-      "sizes": [45, 55],
-      "persist": "user_editor_split",
+      "split": "vertical",
+      "sizes": [
+        40,
+        60
+      ],
+      "persist": "user_editor_split_v2",
       "sections": [
         {
           "type": "panel",
@@ -23,15 +26,47 @@
                 "source": "user_rows",
                 "selected_call": "select_row",
                 "editable": false,
-                "height": 320,
+                "height": 200,
                 "columns": [
-                  {"key": "user", "title": "User", "width": 170},
-                  {"key": "username", "title": "Username", "width": 130},
-                  {"key": "role", "title": "Role", "width": 140},
-                  {"key": "admin", "title": "Admin", "width": 60, "tooltip": "Administrators can manage users and force deletions."},
-                  {"key": "autologin", "title": "Autologin", "width": 80, "tooltip": "The account may sign in without a password."},
-                  {"key": "active", "title": "Active", "width": 60, "tooltip": "The account ChiSurf uses for its own MMFDB connections."},
-                  {"key": "email", "title": "E-mail", "width": 200, "visible": false}
+                  {
+                    "key": "user",
+                    "title": "User",
+                    "width": 170
+                  },
+                  {
+                    "key": "username",
+                    "title": "Username",
+                    "width": 130
+                  },
+                  {
+                    "key": "role",
+                    "title": "Role",
+                    "width": 140
+                  },
+                  {
+                    "key": "admin",
+                    "title": "Admin",
+                    "width": 60,
+                    "tooltip": "Administrators can manage users and force deletions."
+                  },
+                  {
+                    "key": "autologin",
+                    "title": "Autologin",
+                    "width": 80,
+                    "tooltip": "The account may sign in without a password."
+                  },
+                  {
+                    "key": "active",
+                    "title": "Active",
+                    "width": 60,
+                    "tooltip": "The account ChiSurf uses for its own MMFDB connections."
+                  },
+                  {
+                    "key": "email",
+                    "title": "E-mail",
+                    "width": 200,
+                    "visible": false
+                  }
                 ]
               }
             },
@@ -52,7 +87,7 @@
               "type": "info",
               "source": "details_text",
               "is_markdown": true,
-              "max_height": 150,
+              "max_height": 64,
               "description": "Context for the selected account, and any reason it cannot be saved yet."
             },
             {

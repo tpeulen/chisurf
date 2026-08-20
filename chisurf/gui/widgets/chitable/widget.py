@@ -351,6 +351,13 @@ class ChiTableWidget(QtWidgets.QWidget):
             # every one of them, which made ColumnSpec.width dead.
             self._view.auto_resize_columns()
             apply_column_widths(self._view, self._chi_model.specs)
+            # The compact style stretches the last section to fill the viewport,
+            # which is right for auto-sized tables and wrong the moment an author
+            # declares widths -- the final column swallows all the spare space
+            # however narrow it was asked to be. Declared widths mean the layout
+            # was decided; honour it and let the row end where it ends.
+            if any(getattr(spec, "width", 0) for spec in self._chi_model.specs):
+                self._view.horizontalHeader().setStretchLastSection(False)
             affordable = self._chi_model.color_affordable()
             self._btn_color.setEnabled(affordable)
             if not affordable:
