@@ -1,456 +1,117 @@
-"""Model Manager GUI tool."""
+"""Model manager: which fitting models the model drop-down offers.
 
-import importlib
-import pathlib
-import sys
-from typing import Dict, List, Optional, Type
+Built from ``models.view.json`` by AutoForm over
+:class:`~.view_model.ModelManagerViewModel`; the registry reading lives in the
+Qt-free ``api`` package.
+"""
 
-import yaml
-from qtpy.QtCore import QSize, Qt
-from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import (
-    QCheckBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QPushButton,
-    QSplitter,
-    QTabWidget,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
+from __future__ import annotations
 
-import chisurf as cs
-import chisurf.core.experiments
-import chisurf.core.models
-import chisurf.core.settings
-from chisurf.gui.glyphs import Glyphs
+from typing import Any
+
+from qtpy import QtCore, QtWidgets
+
 from chisurf.gui import dialogs
+from chisurf.gui.autoform import AutoForm
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
+from chisurf.plugins.core.model_manager.gui.view_model import ModelManagerViewModel
 
-try:
-    from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:
-    persist_plugin_state = lambda n: lambda c: c
+#: Legacy AST-discovery name.
+name = "Setup:Models"
 
 
-@persist_plugin_state("model_manager")
-class ModelManagerWidget(QWidget):
-    def __init__(self, parent=None):
+class ModelManagerWidget(ChisurfDockTool):
+    """Browse the registered fitting models and choose which are offered."""
+
+    tool_settings_name = "ModelManagerWidget"
+    modelEvent = QtCore.Signal(str)
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None, view_model=None, **kwargs: Any):
         super().__init__(parent)
         self.setWindowTitle("Model Manager")
-        self.resize(800, 500)
+        self.model = view_model or ModelManagerViewModel()
 
-        # Get settings
-        self.settings = cs.core.settings.cs_settings.get('plugins', {})
-        self.disabled_models = self.settings.get('disabled_models', [])
-        self.disabled_experiments = self.settings.get('disabled_experiments', [])
-        self.hide_disabled = self.settings.get('hide_disabled_models', False)  # Default to not hiding
+        toolbar = QtWidgets.QToolBar()
+        toolbar.setObjectName("model_manager_toolbar")
+        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self._add_actions(toolbar)
+        self.add_toolbar_guide(toolbar, resource="guide.json")
+        self.add_toolbar_help(toolbar, resource="help.md", title="Models — help")
+        self.addToolBar(toolbar)
 
-        # Create layout
-        main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        self.auto_form = AutoForm(self.model)
+        self.setCentralWidget(self.auto_form)
 
-        # Create top toolbar layout
-        toolbar_layout = QHBoxLayout()
-        toolbar_layout.setContentsMargins(0, 0, 0, 10)
-        
-        save_button = QPushButton(f"{Glyphs.SAVE} Save Settings")
-        save_button.setToolTip("Save all model settings to configuration file")
-        save_button.clicked.connect(self.save_settings)
-        toolbar_layout.addWidget(save_button)
+        self.modelEvent.connect(self._on_model_event)
+        self.model.add_observer(self.modelEvent.emit)
+        self.restore_window_geometry()
 
-        refresh_button = QPushButton(f"{Glyphs.REFRESH} Refresh Lists")
-        refresh_button.setToolTip("Reload the lists of models and experiments")
-        refresh_button.clicked.connect(self.load_all)
-        toolbar_layout.addWidget(refresh_button)
-        
-        toolbar_layout.addStretch()
-        main_layout.addLayout(toolbar_layout)
+    def _add_actions(self, toolbar: QtWidgets.QToolBar) -> None:
+        """Build the toolbar; every action carries a tooltip."""
+        def add(label: str, tooltip: str, slot) -> None:
+            action = toolbar.addAction(label)
+            action.setToolTip(tooltip)
+            action.triggered.connect(slot)
 
-        # Display settings file location
-        settings_file_group = QGroupBox("Settings File Location")
-        settings_file_layout = QVBoxLayout(settings_file_group)
-        self.settings_file_edit = QLineEdit()
-        self.settings_file_edit.setReadOnly(True)
-        self.settings_file_edit.setMaximumHeight(50)
+        add(f"{Glyphs.SAVE} Save",
+            "Write the disabled-model list to your settings file.",
+            self._save)
+        add(f"{Glyphs.RESET} Revert",
+            "Discard every change made since the last save.",
+            self._revert)
+        toolbar.addSeparator()
+        add(f"{Glyphs.REFRESH} Rescan",
+            "Read the experiment registry again.",
+            self._rescan)
+        add(f"{Glyphs.CLEAR} Drop stale",
+            "Remove disabled entries that match no registered model.",
+            self._drop_stale)
 
-        # Determine which settings file is being used
-        if cs.core.settings.cs_settings.get('use_source_folder', True):
-            settings_file = pathlib.Path(cs.core.settings.__file__).parent / 'settings_chisurf.yaml'
-        else:
-            settings_file = cs.core.settings.chisurf_settings_file
+    def _on_model_event(self, _event: str) -> None:
+        self.auto_form.refresh_plots()
+        self.auto_form.sync_fields()
 
-        self.settings_file_edit.setText(str(settings_file))
-        settings_file_layout.addWidget(self.settings_file_edit)
-        main_layout.addWidget(settings_file_group)
+    def _save(self) -> None:
+        self.model.save()
 
-        # Create tab widget
-        self.tab_widget = QTabWidget()
-        main_layout.addWidget(self.tab_widget)
-
-        # Create models tab
-        self.models_tab = QWidget()
-        self.tab_widget.addTab(self.models_tab, "Models")
-        self.setup_models_tab()
-
-        # Create experiments tab
-        self.experiments_tab = QWidget()
-        self.tab_widget.addTab(self.experiments_tab, "Experiments")
-        self.setup_experiments_tab()
-
-
-
-        # Load models and experiments
-        self.load_all()
-
-    def setup_models_tab(self):
-        """Set up the models tab with a splitter for list and details."""
-        layout = QVBoxLayout(self.models_tab)
-
-        # Create splitter for list and details
-        splitter = QSplitter(Qt.Horizontal)
-        layout.addWidget(splitter)
-
-        # Create list widget for models
-        list_group = QGroupBox("Available Models")
-        list_layout = QVBoxLayout(list_group)
-        self.model_list = QListWidget()
-        self.model_list.setMinimumWidth(300)
-        self.model_list.currentItemChanged.connect(self.on_model_selected)
-        list_layout.addWidget(self.model_list)
-        splitter.addWidget(list_group)
-
-        # Create details widget
-        details_group = QGroupBox("Model Details")
-        details_layout = QVBoxLayout(details_group)
-
-        # Model name and status
-        name_layout = QHBoxLayout()
-        self.model_name_label = QLabel("Select a model")
-        name_layout.addWidget(self.model_name_label)
-        name_layout.addStretch()
-        details_layout.addLayout(name_layout)
-
-        # Model status
-        status_layout = QHBoxLayout()
-        self.model_disabled_checkbox = QCheckBox("🚫 Disable model")
-        self.model_disabled_checkbox.stateChanged.connect(self.on_model_disabled_changed)
-        status_layout.addWidget(self.model_disabled_checkbox)
-        status_layout.addStretch()
-        details_layout.addLayout(status_layout)
-
-        # Model experiment
-        exp_layout = QHBoxLayout()
-        exp_label = QLabel("Experiment:")
-        exp_layout.addWidget(exp_label)
-        self.model_experiment_label = QLabel("Not available")
-        exp_layout.addWidget(self.model_experiment_label)
-        exp_layout.addStretch()
-        details_layout.addLayout(exp_layout)
-
-        # Model module path
-        module_layout = QHBoxLayout()
-        module_label = QLabel("Module Path:")
-        module_layout.addWidget(module_label)
-        self.model_module_edit = QTextEdit()
-        self.model_module_edit.setReadOnly(True)
-        self.model_module_edit.setMaximumHeight(50)
-        module_layout.addWidget(self.model_module_edit)
-        details_layout.addLayout(module_layout)
-
-        # Model description
-        self.model_description_edit = QTextEdit()
-        self.model_description_edit.setReadOnly(True)
-        details_layout.addWidget(self.model_description_edit)
-
-        splitter.addWidget(details_group)
-
-    def setup_experiments_tab(self):
-        """Set up the experiments tab with a splitter for list and details."""
-        layout = QVBoxLayout(self.experiments_tab)
-
-        # Create splitter for list and details
-        splitter = QSplitter(Qt.Horizontal)
-        layout.addWidget(splitter)
-
-        # Create list widget for experiments
-        list_group = QGroupBox("Available Experiments")
-        list_layout = QVBoxLayout(list_group)
-        self.experiment_list = QListWidget()
-        self.experiment_list.setMinimumWidth(300)
-        self.experiment_list.currentItemChanged.connect(self.on_experiment_selected)
-        list_layout.addWidget(self.experiment_list)
-        splitter.addWidget(list_group)
-
-        # Create details widget
-        details_group = QGroupBox("Experiment Details")
-        details_layout = QVBoxLayout(details_group)
-
-        # Experiment name and status
-        name_layout = QHBoxLayout()
-        self.experiment_name_label = QLabel("Select an experiment")
-        name_layout.addWidget(self.experiment_name_label)
-        name_layout.addStretch()
-        details_layout.addLayout(name_layout)
-
-        # Experiment status
-        status_layout = QHBoxLayout()
-        self.experiment_disabled_checkbox = QCheckBox("🚫 Disable experiment")
-        self.experiment_disabled_checkbox.stateChanged.connect(self.on_experiment_disabled_changed)
-        status_layout.addWidget(self.experiment_disabled_checkbox)
-        status_layout.addStretch()
-        details_layout.addLayout(status_layout)
-
-        # Experiment module path
-        module_layout = QHBoxLayout()
-        module_label = QLabel("Module Path:")
-        module_layout.addWidget(module_label)
-        details_layout.addLayout(module_layout)
-
-        # Experiment models
-        models_group = QGroupBox("Associated Models")
-        models_layout = QVBoxLayout(models_group)
-        self.experiment_models_list = QListWidget()
-        models_layout.addWidget(self.experiment_models_list)
-        details_layout.addWidget(models_group)
-
-        splitter.addWidget(details_group)
-
-    def load_all(self):
-        """Load all models and experiments."""
-        self.load_models()
-        self.load_experiments()
-
-    def load_models(self):
-        """Load all available models and display them in the list."""
-        self.model_list.clear()
-        self.models = {}
-
-        # Get all experiments
-        experiments = cs.core.experiments.types
-
-        # Collect all models from all experiments
-        for exp_name, experiment in experiments.items():
-            for model_class in experiment.model_classes:
-                model_name = model_class.name
-
-                # Format display name with experiment:model format
-                display_name = f"{experiment.name} - {model_name}"
-
-                # Check if this model is marked as disabled
-                is_disabled = model_name in self.disabled_models
-
-                # Create list item
-                item = QListWidgetItem(display_name)
-                item.setData(Qt.UserRole, model_name)  # Keep original model name as data
-
-                # Mark models based on status
-                if is_disabled:
-                    item.setForeground(Qt.gray)
-                    item.setText(f"{display_name} [DISABLED]")
-
-                # Add to list widget
-                self.model_list.addItem(item)
-
-                # Store model metadata
-                doc = model_class.__doc__
-                if doc is None:
-                    doc = "No description available."
-
-                # Get the full module path
-                module_path = f"{model_class.__module__}.{model_class.__name__}"
-
-                self.models[model_name] = {
-                    'name': model_name,
-                    'display_name': display_name,
-                    'class': model_class,
-                    'experiment': exp_name,
-                    'is_disabled': is_disabled,
-                    'doc': doc,
-                    'module_path': module_path
-                }
-
-    def load_experiments(self):
-        """Load all available experiments and display them in the list."""
-        self.experiment_list.clear()
-        self.experiments = {}
-
-        # Get all experiments
-        experiments = cs.core.experiments.types
-
-        for _, experiment in experiments.items():
-            # Check if this experiment is marked as disabled
-            exp_name = experiment.name
-            is_disabled = exp_name in self.disabled_experiments
-
-            # Create list item
-            item = QListWidgetItem(exp_name)
-            item.setData(Qt.UserRole, exp_name)
-
-            # Mark experiments based on status
-            if is_disabled:
-                item.setForeground(Qt.gray)
-                item.setText(f"{exp_name} [DISABLED]")
-
-            # Add to list widget
-            self.experiment_list.addItem(item)
-
-            # Store experiment metadata
-            doc = experiment.__doc__
-            if doc is None:
-                doc = "No description available."
-
-            self.experiments[exp_name] = {
-                'name': exp_name,
-                'experiment': experiment,
-                'is_disabled': is_disabled,
-                'doc': doc,
-                'models': [model.name for model in experiment.model_classes]
-            }
-
-    def on_model_selected(self, current, previous):
-        """Handle model selection in the list."""
-        if current is None:
-            self.model_name_label.setText("Select a model")
-            self.model_experiment_label.setText("Not available")
-            self.model_disabled_checkbox.setChecked(False)
-            self.model_module_edit.clear()
-            self.model_description_edit.clear()
+    def _revert(self) -> None:
+        if not self.model.dirty:
+            self.model.set_status("Nothing to revert.")
             return
+        if dialogs.confirm(
+            self, "Discard changes",
+            "Discard every model setting changed since the last save?",
+        ):
+            self.model.revert()
 
-        model_name = current.data(Qt.UserRole)
-        model_info = self.models[model_name]
+    def _rescan(self) -> None:
+        self.model.reload()
+        self.model.set_status("Model registry re-read.")
 
-        self.model_name_label.setText(model_info['name'])
-        self.model_disabled_checkbox.setChecked(model_info['is_disabled'])
-        self.model_experiment_label.setText(model_info['experiment'])
-        self.model_module_edit.setText(model_info['module_path'])
-        self.model_description_edit.setText(model_info['doc'])
-
-    def on_experiment_selected(self, current, previous):
-        """Handle experiment selection in the list."""
-        if current is None:
-            self.experiment_name_label.setText("Select an experiment")
-            self.experiment_disabled_checkbox.setChecked(False)
-            self.experiment_models_list.clear()
+    def _drop_stale(self) -> None:
+        stale = self.model.stale_entries()
+        if not stale:
+            self.model.set_status("No stale entries: every disabled name matches a model.")
             return
+        if dialogs.confirm(
+            self, "Drop stale entries",
+            "These disabled entries match no registered model and do nothing:\n  "
+            + "\n  ".join(stale) + "\n\nRemove them?",
+        ):
+            self.model.drop_stale()
 
-        exp_name = current.data(Qt.UserRole)
-        exp_info = self.experiments[exp_name]
-
-        self.experiment_name_label.setText(exp_info['name'])
-        self.experiment_disabled_checkbox.setChecked(exp_info['is_disabled'])
-
-        # Update models list
-        self.experiment_models_list.clear()
-        for model_name in exp_info['models']:
-            # Get the model info if available
-            if model_name in self.models:
-                model_info = self.models[model_name]
-                display_name = model_info.get('display_name', model_name)
-            else:
-                display_name = model_name
-
-            item = QListWidgetItem(display_name)
-            item.setData(Qt.UserRole, model_name)
-
-            # Check if model is disabled
-            if model_name in self.disabled_models:
-                item.setForeground(Qt.gray)
-                item.setText(f"{display_name} [DISABLED]")
-            self.experiment_models_list.addItem(item)
-
-    def on_model_disabled_changed(self, state):
-        """Handle model disabled checkbox state change."""
-        current = self.model_list.currentItem()
-        if current is None:
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt signature
+        """Warn before dropping unsaved changes."""
+        if self.model.dirty and not dialogs.confirm(
+            self, "Unsaved changes",
+            "The model settings have changed but have not been saved.\n\nClose anyway?",
+        ):
+            event.ignore()
             return
+        self.save_window_geometry()
+        super().closeEvent(event)
 
-        model_name = current.data(Qt.UserRole)
-        model_info = self.models[model_name]
-        display_name = model_info.get('display_name', model_name)
 
-        if state == Qt.Checked:
-            if model_name not in self.disabled_models:
-                self.disabled_models.append(model_name)
-            model_info['is_disabled'] = True
-        else:
-            if model_name in self.disabled_models:
-                self.disabled_models.remove(model_name)
-            model_info['is_disabled'] = False
-
-        # Update the list item
-        if model_info['is_disabled']:
-            current.setForeground(Qt.gray)
-            current.setText(f"{display_name} [DISABLED]")
-        else:
-            current.setForeground(Qt.black)
-            current.setText(display_name)
-
-        # Update the experiment models list if this model is in the current experiment
-        exp_item = self.experiment_list.currentItem()
-        if exp_item is not None:
-            exp_name = exp_item.data(Qt.UserRole)
-            exp_info = self.experiments[exp_name]
-            if model_name in exp_info['models']:
-                self.on_experiment_selected(exp_item, None)
-
-    def on_experiment_disabled_changed(self, state):
-        """Handle experiment disabled checkbox state change."""
-        current = self.experiment_list.currentItem()
-        if current is None:
-            return
-
-        exp_name = current.data(Qt.UserRole)
-        exp_info = self.experiments[exp_name]
-
-        if state == Qt.Checked:
-            if exp_name not in self.disabled_experiments:
-                self.disabled_experiments.append(exp_name)
-            exp_info['is_disabled'] = True
-        else:
-            if exp_name in self.disabled_experiments:
-                self.disabled_experiments.remove(exp_name)
-            exp_info['is_disabled'] = False
-
-        # Update the list item
-        if exp_info['is_disabled']:
-            current.setForeground(Qt.gray)
-            current.setText(f"{exp_name} [DISABLED]")
-        else:
-            current.setForeground(Qt.black)
-            current.setText(exp_name)
-
-    def save_settings(self):
-        """Save settings to the settings file."""
-        # Update settings
-        self.settings['disabled_models'] = self.disabled_models
-        self.settings['disabled_experiments'] = self.disabled_experiments
-        self.settings['hide_disabled_models'] = self.hide_disabled
-
-        # Update settings in cs
-        cs.core.settings.cs_settings['plugins'] = self.settings
-
-        # Determine which settings file to use
-        if cs.core.settings.cs_settings.get('use_source_folder', True):
-            settings_file = pathlib.Path(cs.core.settings.__file__).parent / 'settings_chisurf.yaml'
-        else:
-            settings_file = cs.core.settings.chisurf_settings_file
-
-        # Save settings to file
-        try:
-            with open(settings_file, 'w') as f:
-                yaml.dump(cs.core.settings.cs_settings, f, default_flow_style=False)
-            dialogs.information(
-                self,
-                "Settings Saved",
-                f"Model and experiment settings have been "
-                f"saved successfully to:\n{settings_file}\n\nA restart "
-                f"of the software is required for the changes to take effect."
-            )
-        except Exception as e:
-            dialogs.error(self, "Error", f"Could not save settings to {settings_file}: {e}")
+#: Backwards-compatible alias.
+ModelManagerTool = ModelManagerWidget

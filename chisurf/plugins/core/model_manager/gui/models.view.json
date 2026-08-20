@@ -1,0 +1,75 @@
+{
+  "$schema": "../../../../core/dataspec/schemas/view.schema.json",
+  "_comment": "Model manager. Left: every registered fitting model as a sortable table. Right: what the model is and how its parameter panel is described.",
+  "title": "Models",
+  "sections": [
+    {
+      "type": "dock_area",
+      "split": "horizontal",
+      "sizes": [60, 40],
+      "persist": "model_manager_split",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Registered models",
+          "description": "Every fitting model the experiments offer. Sort by any column and search with the box above the table.",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_table",
+              "title": "",
+              "description": "One row per model class. 'Spec' says whether its parameter panel is described by a view spec; 'Shared' names other experiments offering a model of the same name.",
+              "options": {
+                "source": "model_rows",
+                "selected_call": "select_row",
+                "editable": false,
+                "height": 380,
+                "columns": [
+                  {"key": "name", "title": "Model", "width": 190},
+                  {"key": "experiment", "title": "Experiment", "width": 110},
+                  {"key": "status", "title": "Status", "width": 90},
+                  {"key": "spec", "title": "Spec", "width": 90, "tooltip": "Whether the model declares a view spec and whether that file resolves."},
+                  {"key": "ui", "title": "Parameter UI", "width": 110, "tooltip": "spec-driven models are Qt-free; a Qt class is remaining migration debt."},
+                  {"key": "shared", "title": "Shared", "width": 150, "tooltip": "Disabling matches on the display name, so a shared name disables all of them."},
+                  {"key": "module", "title": "Module", "width": 260, "visible": false}
+                ]
+              }
+            },
+            {
+              "type": "toggle",
+              "label": "Show disabled models",
+              "attr": "show_disabled",
+              "description": "Include switched-off models in the table."
+            },
+            {
+              "type": "info",
+              "source": "status_text",
+              "max_height": 40,
+              "description": "How many models were found, how many are off, and whether anything is unsaved."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Selected model",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "info",
+              "source": "details_text",
+              "is_markdown": true,
+              "height": 320,
+              "description": "What the model computes, which class implements it, and how its parameter panel is described."
+            },
+            {
+              "type": "toggle",
+              "label": "Disabled",
+              "attr": "selected_disabled",
+              "description": "Keep this model out of the model drop-down. It is not removed; nothing else changes."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

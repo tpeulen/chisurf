@@ -21,7 +21,6 @@ chisurf/plugins/core/f_test/gui
 chisurf/plugins/core/help/gui
 chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
-chisurf/plugins/core/model_manager/gui
 chisurf/plugins/core/plugin_check/gui
 chisurf/plugins/core/project_browser/gui
 chisurf/plugins/core/setup/gui

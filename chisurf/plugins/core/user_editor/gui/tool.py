@@ -84,6 +84,9 @@ class PasswordChangeDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         self.btn_save = QPushButton("Save")
+        self.btn_save.setToolTip(
+            "Write the edited details back to the MMFDB."
+        )
         self.btn_save.clicked.connect(self.on_save_clicked)
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.clicked.connect(self.reject)
@@ -181,8 +184,23 @@ class UserEditorWidget(QWidget):
         self.selected_user_id = None
         self.is_creating_new = False
 
+        #: Users are fetched on first show, not here. Panels in the Settings
+        #: dialog are built when their row is clicked, and this constructor
+        #: opened a ZMQ socket and blocked for the full client timeout -- so
+        #: selecting "User Editor" froze the whole dialog for five seconds
+        #: whenever no MMFDB server was running.
+        self._loaded = False
+        #: Why the last load failed, shown in the status bar instead of a modal.
+        self._load_error = ""
+
         self.setup_ui()
-        self.load_users()
+
+    def showEvent(self, event):  # noqa: N802 - Qt signature
+        """Load the user list the first time the panel is actually shown."""
+        super().showEvent(event)
+        if not self._loaded:
+            self._loaded = True
+            self.load_users()
 
     def setup_ui(self):
         # Outer layout to support QHBoxLayout + Status Bar in a QWidget
@@ -223,8 +241,14 @@ class UserEditorWidget(QWidget):
         # Left panel buttons
         left_buttons_layout = QHBoxLayout()
         self.btn_new = QPushButton("New User")
+        self.btn_new.setToolTip(
+            "Create a new user account."
+        )
         self.btn_new.clicked.connect(self.on_new_user_clicked)
         self.btn_delete = QPushButton("Delete User")
+        self.btn_delete.setToolTip(
+            "Delete the selected user. Accounts with committed data are refused unless an administrator forces it."
+        )
         self.btn_delete.clicked.connect(self.on_delete_user_clicked)
         left_buttons_layout.addWidget(self.btn_new)
         left_buttons_layout.addWidget(self.btn_delete)
@@ -256,6 +280,14 @@ class UserEditorWidget(QWidget):
         form_layout.addRow("Email:", self.edit_email)
 
         self.edit_role = QComboBox()
+        # Editable, so a role the list does not know is shown as itself rather
+        # than silently displayed as "Other" and then *saved back* as the
+        # literal string "Other" -- data loss on a field the user never touched.
+        self.edit_role.setEditable(True)
+        self.edit_role.setToolTip(
+            "The user's role. Pick one, or type another; a role stored by "
+            "another tool is preserved as it is."
+        )
         self.edit_role.addItems([
             "Generic",
             "Principal Investigator",
@@ -294,6 +326,9 @@ class UserEditorWidget(QWidget):
         form_layout.addRow("", self.edit_allow_autologin)
 
         self.btn_change_password = QPushButton("Change Password...")
+        self.btn_change_password.setToolTip(
+            "Set or change this user's password."
+        )
         self.btn_change_password.clicked.connect(self.on_change_password_clicked)
         form_layout.addRow("Password:", self.btn_change_password)
 
@@ -312,6 +347,9 @@ class UserEditorWidget(QWidget):
         self.btn_save = QPushButton("Save Changes")
         self.btn_save.clicked.connect(self.on_save_clicked)
         self.btn_set_active = QPushButton("Set as Active User")
+        self.btn_set_active.setToolTip(
+            "Use this account for ChiSurf's own MMFDB connections."
+        )
         self.btn_set_active.clicked.connect(self.on_set_active_clicked)
         right_buttons_layout.addWidget(self.btn_save)
         right_buttons_layout.addWidget(self.btn_set_active)
@@ -338,14 +376,28 @@ class UserEditorWidget(QWidget):
         self.table.clearContents()
         self.table.setRowCount(0)
 
+        self._load_error = ""
         try:
             client = self.make_mmfdb_client()
             logging.info("User Editor: loading users via MMFDB RPC")
             self.users = client.list_users()
             logging.info("User Editor: loaded %d users", len(self.users))
         except Exception as e:
+            # Reported in the panel, not through a modal. Listing users needs an
+            # administrator, and this panel is reachable by every user from the
+            # Settings dialog -- so the common case was a dialog interrupting
+            # someone who had done nothing wrong, leaving an empty table behind
+            # with no explanation and no way to retry.
             logging.exception("User Editor: failed to load users via MMFDB RPC")
-            dialogs.error(self, "ZMQ RPC Error", f"Could not load users via JSON-RPC:\n{e}")
+            message = str(e)
+            if "Authentication required" in message or "admin" in message.lower():
+                message = (
+                    "Listing users requires an administrator account. "
+                    "Sign in as an administrator, then press Reload."
+                )
+            else:
+                message = f"Could not reach the MMFDB server: {message}"
+            self._load_error = message
             self.users = []
 
         active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
@@ -383,7 +435,14 @@ class UserEditorWidget(QWidget):
             self.table.selectRow(selected_row)
             self.table.blockSignals(False)
             self.on_user_selection_changed()
-        self.status_bar.showMessage(f"Loaded {len(self.users)} users. Active user: {active_id}")
+        # A failure reason outranks the count: "Loaded 0 users" on its own reads
+        # as an empty database rather than a call that was refused.
+        if self._load_error:
+            self.status_bar.showMessage(self._load_error)
+        else:
+            self.status_bar.showMessage(
+                f"Loaded {len(self.users)} users. Active user: {active_id}"
+            )
 
     def clear_details(self):
         self.edit_user_uuid.clear()
@@ -435,8 +494,8 @@ class UserEditorWidget(QWidget):
         if idx >= 0:
             self.edit_role.setCurrentIndex(idx)
         else:
-            idx_other = self.edit_role.findText("Other")
-            self.edit_role.setCurrentIndex(idx_other if idx_other >= 0 else 0)
+            # Keep the stored value verbatim instead of collapsing it to "Other".
+            self.edit_role.setEditText(role_val)
 
         self.edit_affiliation.setText(user.get("affiliation") or "")
         self.edit_department.setText(user.get("department") or "")
@@ -765,6 +824,10 @@ class UserEditorWidget(QWidget):
         )
 
         if reply == QMessageBox.Yes:
+            # Bound before the try: building the client can itself fail, and the
+            # handler below reaches for `client` -- which reported
+            # "name 'client' is not defined" instead of the real cause.
+            client = None
             try:
                 client = self.make_mmfdb_client()
                 logging.info("User Editor: deleting user '%s' via MMFDB RPC", user_id)
@@ -778,7 +841,7 @@ class UserEditorWidget(QWidget):
                 current_user_data = next((u for u in self.users if u["user_id"] == active_id), None)
                 is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
                 
-                if is_current_admin:
+                if is_current_admin and client is not None:
                     override_reply = dialogs.question(
                         self, "Admin Override",
                         f"Could not delete user: {e}\n\nDo you want to FORCE delete this user? This will delete the user but leave their committed data intact in the database.",

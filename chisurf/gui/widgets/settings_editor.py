@@ -16,9 +16,22 @@ from chisurf.gui import dialogs
 
 LIST_SEP = "|"
 
+#: Item role holding ``True`` when a row's value came from the file as a list.
+#: Saving used to decide by looking for :data:`LIST_SEP` anywhere in the text,
+#: so any *string* setting containing a ``|`` -- a stylesheet fragment, a
+#: regex -- was silently converted into a list on save.
+LIST_VALUE_ROLE = QtCore.Qt.UserRole + 32
 
-# Relative path (from project root) to the main settings documentation.
-SETTINGS_DOC_REL_PATH = "docs/chisurf_settings.md"
+
+#: Relative path (from the project root) to the settings documentation that
+#: fills the editor's Help column and every row tooltip.
+#:
+#: This pointed at ``docs/chisurf_settings.md``, which has never existed --
+#: the page is ``docs/reference/settings.md``. Both readers swallowed the
+#: resulting FileNotFoundError, so ``documentation_dict`` was always empty and
+#: the Help column, the tooltips and the doc links were all permanently blank
+#: with nothing to indicate why.
+SETTINGS_DOC_REL_PATH = "docs/reference/settings.md"
 
 
 # Cache for dynamically computed mapping from root setting keys to
@@ -379,7 +392,14 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             # For numbers, use a spin box or line edit depending on the value
             if data_type == int:
                 editor = QtWidgets.QSpinBox(parent)
-                editor.setRange(-1000000, 1000000)
+                # The range must contain the value, or Qt clamps it and the
+                # clamped number is what gets saved. A fixed +/-1e6 silently
+                # rewrote database.read_file_size_limit (104857600) and
+                # data_loading.probe_bytes (16777216) the moment either row was
+                # opened. Qt's own int range is the real ceiling here.
+                limit = 2 ** 31 - 1
+                span = max(abs(int(value)) * 2, 1_000_000)
+                editor.setRange(max(-span, -limit), min(span, limit))
                 editor.setValue(value)
             else:
                 # Check if the float is in scientific notation or has many decimal places
@@ -391,7 +411,8 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
                 else:
                     # For regular floats, use a double spin box
                     editor = QtWidgets.QDoubleSpinBox(parent)
-                    editor.setRange(-1000000.0, 1000000.0)
+                    span = max(abs(float(value)) * 2.0, 1_000_000.0)
+                    editor.setRange(-span, span)
                     editor.setDecimals(6)
                     editor.setValue(value)
             if tooltip:
@@ -831,6 +852,7 @@ class SettingsTreeModel(QtGui.QStandardItemModel):
                         else:
                             items_str.append(str(item))
                     value_item.setText(LIST_SEP.join(items_str))
+                    value_item.setData(True, LIST_VALUE_ROLE)
             elif isinstance(value, bool):
                 # For booleans, show "True" or "False"
                 value_item.setText(str(value))
@@ -965,8 +987,9 @@ class SettingsTreeModel(QtGui.QStandardItemModel):
                                 pass
                         return t
 
-                    # Detect list encoded as a string via LIST_SEP and convert items
-                    is_list = LIST_SEP in value_str
+                    # Was this row a list in the file? Ask, rather than guess
+                    # from the presence of a separator character.
+                    is_list = bool(value_item.data(LIST_VALUE_ROLE))
                     if is_list:
                         parts = value_str.split(LIST_SEP)
                         value = [_parse_scalar(p) for p in parts]
@@ -983,6 +1006,76 @@ class SettingsTreeModel(QtGui.QStandardItemModel):
             result_dict[key] = value
 
         return result_dict
+
+
+def _overrides_only(filename, settings: dict) -> dict:
+    """Strip values that equal the packaged default.
+
+    Keeps the user's settings file a record of *their* choices. Sections are
+    pruned recursively and an empty section is dropped entirely; a file with no
+    packaged counterpart is returned unchanged.
+    """
+    path = pathlib.Path(filename)
+    packaged = pathlib.Path(_settings_package_dir()) / path.name
+    if path.name != "settings_chisurf.yaml" or not packaged.is_file():
+        return settings
+    try:
+        with open(packaged, encoding="utf-8") as handle:
+            defaults = yaml.safe_load(handle) or {}
+    except (OSError, yaml.YAMLError):
+        return settings
+    pruned = _prune_defaults(settings, defaults)
+    return pruned if isinstance(pruned, dict) else settings
+
+
+def _prune_defaults(values, defaults):
+    """Recursively drop entries of *values* that match *defaults*."""
+    if not isinstance(values, dict) or not isinstance(defaults, dict):
+        return values
+    out = {}
+    for key, value in values.items():
+        if key not in defaults:
+            out[key] = value
+            continue
+        default = defaults[key]
+        if isinstance(value, dict) and isinstance(default, dict):
+            nested = _prune_defaults(value, default)
+            if nested:
+                out[key] = nested
+        elif value != default:
+            out[key] = value
+    return out
+
+
+def _load_settings_for_editing(filename) -> dict:
+    """Load *filename* the way the application loads it.
+
+    The editor used to ``yaml.safe_load`` the user's file directly. Settings are
+    actually *packaged defaults deep-merged with the user file, user wins*, so
+    reading the user file alone showed only the keys that happened to be in it:
+    every setting added to ChiSurf since that file was first written was
+    invisible here and could not be edited, while the running application was
+    quite happily using it.
+
+    For the main settings file this returns the merged view. Any other file
+    (the LLTF device config, say) is read as-is, because it has no packaged
+    counterpart.
+    """
+    path = pathlib.Path(filename)
+    packaged = pathlib.Path(_settings_package_dir()) / path.name
+    if path.name == "settings_chisurf.yaml" and packaged.is_file():
+        from chisurf.core.settings.settings_utils import get_chisurf_settings
+
+        return get_chisurf_settings(path, use_source_folder=False)
+    with open(path, encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
+def _settings_package_dir() -> str:
+    """Directory holding the packaged default settings files."""
+    import chisurf.core.settings as _settings
+
+    return str(pathlib.Path(_settings.__file__).parent)
 
 
 class SettingsEditor(QtWidgets.QWidget):
@@ -1171,8 +1264,7 @@ class SettingsEditor(QtWidgets.QWidget):
 
         try:
             logging.log(0, f"Loading settings file: {filename}")
-            with open(filename, encoding="utf-8") as file:
-                self.settings_dict = yaml.safe_load(file)
+            self.settings_dict = _load_settings_for_editing(filename)
 
             self.path_label.setText(str(filename))
             self.filename = filename
@@ -1310,6 +1402,12 @@ class SettingsEditor(QtWidgets.QWidget):
         try:
             # Get settings from model
             settings_dict = self.model.get_settings_dict()
+
+            # Write only what the user actually changed. The editor now shows
+            # the merged view (defaults + user file), so writing it back whole
+            # would freeze today's defaults into the user's file and stop them
+            # ever receiving an upstream default change again.
+            settings_dict = _overrides_only(self.filename, settings_dict)
 
             # Save to file
             with open(self.filename, 'w', encoding="utf-8") as file:

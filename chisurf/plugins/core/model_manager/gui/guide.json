@@ -1,0 +1,38 @@
+{
+  "_comment": "Guided tour of the model manager. Steps point at real controls.",
+  "steps": [
+    {
+      "title": "Every model, and who offers it",
+      "text": "One row per registered fitting model. The <b>Experiment</b> column says which experiment offers it — the same model name can appear under more than one.",
+      "target": {"key": "data_table"}
+    },
+    {
+      "title": "Pick one",
+      "text": "Select a row. The right-hand pane shows what the model computes, the class that implements it, and how its parameter panel is described.",
+      "target": {"key": "data_table"},
+      "await": {"hint": "Click any row in the table."}
+    },
+    {
+      "title": "How the parameter panel is built",
+      "text": "<b>Spec</b> and <b>Parameter UI</b> together say whether a model's parameter panel comes from a declarative view spec — the direction the codebase is moving — or from Qt code the model still carries. A row reading <code>missing file</code> declares a spec that is not on disk, which is a real defect worth reporting.",
+      "target": {"key": "data_table"}
+    },
+    {
+      "title": "Switching a model off",
+      "text": "<b>Disabled</b> takes a model out of the drop-down without removing it. Watch the <b>Shared</b> column first: disabling matches on the <i>name</i>, so a name used by several experiments disables all of them at once.",
+      "target": {"attr": "selected_disabled"}
+    },
+    {
+      "title": "Entries that do nothing",
+      "text": "A disabled entry naming a model that no longer exists just sits there. The status line counts them, and <b>🧹 Drop stale</b> clears them out.",
+      "target": {"action": "🧹 Drop stale"}
+    },
+    {
+      "title": "Nothing is saved until you say so",
+      "text": "<b>💾 Save</b> writes to your settings file; <b>♻️ Revert</b> throws the changes away. The drop-down picks up a save the next time you select a dataset.",
+      "target": {"action": "💾 Save"},
+      "await": {"hint": "Press <b>💾 Save</b>."},
+      "links": [{"text": "Settings reference", "doc": "docs/reference/settings.md"}]
+    }
+  ]
+}
