@@ -9,6 +9,7 @@
   "categories": [
     "Spectroscopy"
   ],
+  "icon": "🔦",
   "state_namespace": "lightpath_simulator",
   "statefulness": {
     "enabled": true,
@@ -47,5 +48,7 @@
       "summary": "Return the light-path simulator workflow contract."
     }
   ],
-  "icon": "🔦"
+  "optional_requires": {
+    "mmfdb_admin": "*"
+  }
 }

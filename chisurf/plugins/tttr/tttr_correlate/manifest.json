@@ -1,0 +1,15 @@
+{
+  "id": "tttr_correlate",
+  "version": "1.0.0",
+  "display_name": "TTTR:Correlate",
+  "description": "TTTR Correlate\n\nThis plugin provides a graphical interface for calculating correlation functions\nfrom Time-Tagged Time-Resolved (TTTR) data.\n\nFeatures:\n- Support for various correlation types (auto, cross)\n- Configurable correlation parameters\n- Interactive visualization of correlation curves\n- Export of correlation results\n\nThe correlator is essential for analyzing dynamic processes in fluorescence\ncorrelation spectroscopy (FCS) and related techniques.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "TTTR"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  }
+}

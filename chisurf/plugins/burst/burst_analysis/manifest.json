@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Burst Analysis",
   "description": "Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
   "state_namespace": "burst_analysis",
   "statefulness": {
     "enabled": true,
@@ -15,6 +20,21 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.burst.burst_analysis.gui.tool:BurstAnalysisTool"
+  },
+  "optional_requires": {
+    "accurate_fret": "*",
+    "burst_2cde": "*",
+    "burst_background": "*",
+    "burst_browser": "*",
+    "burst_bva": "*",
+    "burst_fcs_correlator": "*",
+    "burst_fusion": "*",
+    "burst_gs": "*",
+    "burst_h2mm": "*",
+    "burst_irf_bg": "*",
+    "burst_mle_analysis": "*",
+    "burst_selection": "*",
+    "mmfdb_admin": "*"
   },
   "menu_hidden": false
 }

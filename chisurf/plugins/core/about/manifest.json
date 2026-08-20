@@ -1,0 +1,15 @@
+{
+  "id": "about",
+  "version": "1.0.0",
+  "display_name": "Help:About ChiSurf",
+  "description": "ChiSurf About Plugin\n\nThis plugin provides information about ChiSurf, including version, developer,\nand contact information.\n\nFeatures:\n- Display ChiSurf logo\n- Show version information\n- Display developer contact details",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Help"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  }
+}

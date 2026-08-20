@@ -29,12 +29,12 @@ _FEATURE_COLUMNS = [
 
 
 def _names(table) -> tuple[str, ...]:
-    """Return a table's column names. \see chisurf.core.datastore.column_names."""
+    """Return a table's column names -- see :func:`chisurf.core.datastore.column_names`."""
     return tuple(column_names(table))
 
 
 def _rows(table) -> int:
-    """Return a table's row count. \see chisurf.core.datastore.row_count."""
+    """Return a table's row count -- see :func:`chisurf.core.datastore.row_count`."""
     return row_count(table)
 
 

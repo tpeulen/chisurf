@@ -1,0 +1,16 @@
+{
+  "id": "proteinmc",
+  "version": "1.0.0",
+  "display_name": "Structure:Computation:Protein Monte Carlo",
+  "description": "Protein Monte Carlo CLI plugin.\n\nExpose the ProteinMC cmd tool via the unified ChiSurf CLI.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Structure",
+    "Computation"
+  ],
+  "entrypoints": {
+    "cli": "proteinmc=chisurf.plugins.modelling.proteinmc.cli:cli"
+  }
+}

@@ -854,5 +854,9 @@
     {
       "name": "provenance.graph.export"
     }
-  ]
+  ],
+  "optional_requires": {
+    "burst_selection": "*",
+    "project_browser": "*"
+  }
 }

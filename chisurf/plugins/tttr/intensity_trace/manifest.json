@@ -1,0 +1,19 @@
+{
+  "id": "intensity_trace",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:Intensity trace",
+  "description": "Intensity Trace Analysis for Single-Molecule Data\n\nThis plugin provides tools for analyzing fluorescence intensity time traces from \nsingle-molecule experiments. It enables researchers to extract dynamic information \nfrom photon counting data, particularly for studying conformational changes, \nmolecular interactions, and reaction kinetics at the single-molecule level.\n\nFeatures:\n- Loading and displaying Time-Tagged Time-Resolved (TTTR) data as intensity traces\n- Histogram analysis of photon counts with customizable binning\n- Hidden Markov Model (HMM) analysis for state detection and classification\n- Bayesian Information Criterion (BIC) calculation for optimal state number determination\n- Dwell time analysis for extracting kinetic information and rate constants\n- FRET efficiency calculation and state-specific distribution analysis\n- Transition probability matrix visualization and analysis\n- Exponential fitting of dwell time distributions\n- Interactive visualization with adjustable parameters\n- Support for multi-channel data analysis (donor/acceptor channels)\n\nThe plugin implements a comprehensive workflow for single-molecule state analysis:\n1. Load TTTR data and convert to binned intensity traces\n2. Visualize traces and photon count distributions\n3. Apply HMM to identify discrete states in noisy data\n4. Analyze state transitions and dwell times to extract kinetic information\n5. For FRET data, calculate efficiency distributions for each state\n\nIdeal for analyzing single-molecule FRET, protein folding/unfolding, enzyme dynamics,\nligand binding, blinking behavior, or any other dynamic processes that can be \nobserved in fluorescence intensity traces. The HMM approach is particularly powerful\nfor detecting states in noisy data with overlapping distributions.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  },
+  "optional_requires": {
+    "hmm": "*"
+  }
+}

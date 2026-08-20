@@ -3,12 +3,20 @@
   "version": "0.2.0",
   "display_name": "Spectroscopy:Spectra Downloader",
   "description": "Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Spectra"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Spectra"
+  ],
   "icon": "🌈",
   "entrypoints": {
     "gui": "chisurf.plugins.spectra_downloader:get_db",
     "cli": "spectra-download=chisurf.plugins.spectra_downloader.cli:cli"
+  },
+  "requires": {
+    "mmfdb_admin": "*"
   },
   "experimental": true
 }

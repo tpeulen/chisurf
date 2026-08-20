@@ -1,0 +1,17 @@
+{
+  "id": "bid_to_analysis",
+  "version": "1.0.0",
+  "display_name": "Tools:Converter:BID→Analysis",
+  "description": "BID → Analysis Converter\n\nThis plugin reads burst ID (BID) files containing start/stop photon indices\nand generates a burstwise analysis folder next to the corresponding TTTR data.\n\nWorkflow per BID file:\n- Infer the TTTR file from the BID file name (same stem, common TTTR extensions)\n- Load TTTR via tttrlib\n- Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe\n- Write a BUR file to analysis/bi4_bur/<stem>.bur\n- Update/create analysis/Info/*.mti with total measurement time\n\nThe plugin exposes a simple GUI file dialog when launched from the Plugins menu.\nIt can also be called programmatically via convert_bid_file(pathlike).",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "Converter"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  },
+  "menu_hidden": true
+}

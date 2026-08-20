@@ -5,6 +5,11 @@ import logging
 import pathlib
 from typing import Any, Protocol
 
+from chisurf.core.plugin.dependencies import (
+    DependencyReport,
+    log_problems,
+    ordered_manifests,
+)
 from chisurf.core.plugin.manifest import (
     PluginManifest,
     load_manifest,
@@ -44,6 +49,7 @@ class PluginRegistry:
         self._loader = loader or _DefaultLoader()
         self._manifests: dict[str, PluginManifest] = {}
         self._legacy_plugins: list[dict[str, Any]] = []
+        self._dependency_report: DependencyReport | None = None
 
     # ── discovery ──────────────────────────────────────────────────
 
@@ -111,7 +117,20 @@ class PluginRegistry:
                     if legacy is not None:
                         self._legacy_plugins.append(legacy)
 
+        # Ordering happens once, here: ``_manifests`` is what register_services,
+        # register_cli, register_gui and the operation index all iterate, so
+        # sorting the dict is what gives every one of them dependency order
+        # instead of the filesystem order rglob happened to produce.
+        manifests, report = ordered_manifests(manifests)
+        log_problems(report)
+        self._dependency_report = report
+        self._manifests = {m.id: m for m in manifests}
         return manifests
+
+    @property
+    def dependency_report(self) -> DependencyReport | None:
+        """The resolution produced by the last :meth:`discover` call."""
+        return self._dependency_report
 
     def get_manifest(self, plugin_id: str) -> PluginManifest | None:
         """Return the manifest for a given plugin ID."""
@@ -139,6 +158,11 @@ class PluginRegistry:
             Entrypoints already registered through central startup config.
 
         """
+        # ``_manifests`` is in dependency order (see discover), so a plugin whose
+        # services build on a sibling's finds them already registered. An
+        # entrypoint in ``excluded`` is owned by the central startup config and
+        # counts as satisfied for its dependants -- it is registered there, not
+        # missing.
         excluded = exclude_entrypoints or set()
         for manifest in self._manifests.values():
             entrypoint = manifest.entrypoints.services

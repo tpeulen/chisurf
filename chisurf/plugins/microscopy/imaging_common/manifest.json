@@ -1,0 +1,16 @@
+{
+  "id": "imaging_common",
+  "version": "1.0.0",
+  "display_name": "Imaging Common",
+  "description": "Shared base classes for the per-pixel imaging tools: the common tool shell, the image/frame plumbing and the MMFDB bridge they all reuse.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [],
+  "entrypoints": {},
+  "optional_requires": {
+    "ndxplorer": "*"
+  },
+  "library": true,
+  "menu_hidden": true
+}

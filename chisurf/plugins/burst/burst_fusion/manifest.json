@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:Burst Fusion",
   "description": "Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
   "icon": "🔗",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
   "state_namespace": "burst_fusion",
   "statefulness": {
     "enabled": true,
@@ -19,7 +24,6 @@
     "cli": "chisurf.plugins.burst.burst_fusion.cli.main:cli",
     "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services"
   },
-  "operation_types": ["burst_fusion"],
   "rpc_methods": [
     {
       "name": "burst_fusion.jobs.analyze",
@@ -36,7 +40,9 @@
             "description": "FusionSettings payload: threshold, lag range, bins, max group size."
           }
         },
-        "required": ["analysis_folder"]
+        "required": [
+          "analysis_folder"
+        ]
       },
       "long_running": true
     },
@@ -67,7 +73,9 @@
             "description": "PIE/micro-time windows used to regenerate the burst columns."
           }
         },
-        "required": ["analysis_folder"]
+        "required": [
+          "analysis_folder"
+        ]
       },
       "long_running": true
     },
@@ -82,5 +90,11 @@
       "long_running": false
     }
   ],
+  "operation_types": [
+    "burst_fusion"
+  ],
+  "optional_requires": {
+    "burst_selection": "*"
+  },
   "menu_hidden": true
 }

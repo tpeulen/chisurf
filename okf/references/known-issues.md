@@ -4803,3 +4803,54 @@ instead. Fails identically on the pre-move disk state — carried verbatim to
 `~/dev/chimol` — so it is that ticket's to finish, not relocation fallout.
 Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one
 failure.
+
+## Six plugin-suite failures that predate the dependency work (open)
+
+**Found 2026-08-20, during the plugin-dependency change's `pytest test/plugins`
+run.** All six reproduce on HEAD content and are unrelated to manifests,
+discovery or load order; verified by checking the relevant files with
+`git show HEAD:<path>` rather than by assuming.
+
+- `test_all_plugins.py::test_plugin_entrypoints_import[fps_json_editor]` and
+  `[fret]` — `ModuleNotFoundError: No module named 'IMP.bff.fret'`. An
+  environment/migration gap in the imp-tricks split, not a manifest one.
+- `test_plugin_demo_gating.py::test_every_game_declares_itself_a_demo` and
+  `::test_opting_in_brings_the_demo_hub_back` — `misc/games`,
+  `misc/games/lumis_quest` and `misc/games/ninja_adventure` all carry
+  `"demo": false` at HEAD while the test requires `true`. **Not fixed here on
+  purpose**: flipping the flag hides the Games entry from the default menu
+  (demo plugins are gated behind `plugins.show_demo_plugins`), which is a
+  user-visible change inside an area another instance is actively editing
+  (`chisurf/gui/chigame/` is modified in the shared tree). It belongs to
+  whoever owns the chigame work.
+- `burst/test_mmfdb_h2mm_simulation.py::test_model_selection_scan_is_exposed` —
+  `ValueError: The truth value of an array with more than one element is
+  ambiguous`, i.e. a bare truth-test on a numpy array in the scan path.
+- `burst_selection/test_export_guards.py::test_export_bur_writes_non_empty_frame`
+  — `bursts.bur` is never written.
+
+Tally at the end of that change: 6 failed, 319 passed, 1 skipped (down from 18
+failed, since 12 of the original failures *were* caused by the change or by
+manifest-scanning tests that mistook chimol render baselines for plugin
+manifests, and were fixed).
+
+## Pre-existing failures found during the plugin-manager rebuild (open)
+
+**Found 2026-08-20.** None are caused by that change; each was checked against
+the working tree's own state before the rewrite began.
+
+- `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
+  `chisurf/core/dataspec/schema.py` (+154 lines) and the two written schemas
+  under `chisurf/core/dataspec/schemas/` are all **uncommitted work belonging to
+  another instance**, and the generator and the written files currently
+  disagree. Regenerating would fold that unfinished change into someone else's
+  commit, so it was left alone. Whoever owns that work: run
+  `python -c "from chisurf.core.dataspec.schema import write_view_schema, write_guide_schema; write_view_schema(); write_guide_schema()"`.
+- `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
+  — six GUI plugins still ship neither file and are not allow-listed:
+  `mfd_prepare`, `plot_settings`, `tttr_to_pto`, `filetools` (no `help.md` and
+  no `guide.json`), `lumis_quest` (no `help.md`), `ninja_adventure` (neither).
+  Writing the two files needs no code change. Two *stale* entries were struck
+  from `test/plugin_help_guide_allowlist.txt` in passing: `plugin_manager/gui`
+  (now ships both) and `tttr/converter/gui` (the plugin was renamed away in
+  `7f63edb4e` and no longer exists).

@@ -10,7 +10,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "🔬",
   "state_namespace": "img_pixel_mle",
   "statefulness": {
     "enabled": true,
@@ -70,5 +70,8 @@
       "description": "State patch events"
     }
   ],
+  "requires": {
+    "mle_common": "*"
+  },
   "menu_hidden": true
 }

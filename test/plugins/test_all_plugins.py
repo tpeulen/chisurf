@@ -52,6 +52,10 @@ def _entrypoint_targets(manifest: dict) -> list[tuple[str, str, str]]:
     for kind, spec in (manifest.get("entrypoints") or {}).items():
         if not isinstance(spec, str) or not spec:
             continue
+        if kind == "script":
+            # ``script`` names a file the menu *executes*, not a module it
+            # imports. Checked as a file below, not resolved through importlib.
+            continue
         target = spec.split("=", 1)[1] if "=" in spec else spec
         module, _, obj = target.partition(":")
         out.append((kind, module.strip(), obj.strip()))
@@ -77,6 +81,10 @@ def test_plugin_entrypoints_import(manifest_path: pathlib.Path):
             continue
         if obj and not hasattr(mod, obj):
             problems.append(f"{kind}: {module} has no {obj!r}")
+
+    script = (manifest.get("entrypoints") or {}).get("script")
+    if script and not (manifest_path.parent / script).is_file():
+        problems.append(f"script: {script} is not a file in the plugin directory")
 
     assert not problems, (
         f"{plugin_id} declares entrypoints that do not resolve, so the plugin "

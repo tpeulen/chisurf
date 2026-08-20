@@ -3,11 +3,29 @@
   "version": "1.1.0",
   "display_name": "Tools:File tools",
   "description": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools"
+  ],
   "icon": "🗂️",
-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.filetools.gui.tool:FileToolsTool"
+  },
+  "optional_requires": {
+    "bid_to_analysis": "*",
+    "pto_inspector": "*",
+    "tttr_header_edit": "*",
+    "tttr_splitter": "*",
+    "tttr_time_windows": "*",
+    "tttr_to_pto": "*"
   }
 }

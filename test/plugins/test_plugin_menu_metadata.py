@@ -29,7 +29,14 @@ def _builtin_manifests() -> list[pathlib.Path]:
         discovery skips it on the same grounds).
     """
     root = pathlib.Path(chisurf.plugins.__file__).parent
-    return [mf for mf in sorted(root.rglob("manifest.json")) if "cookiecutter" not in str(mf)]
+    return [
+        mf
+        for mf in sorted(root.rglob("manifest.json"))
+        if "cookiecutter" not in str(mf)
+        # ``manifest.json`` is not a reserved name: chimol's render baselines
+        # under ``chimol/test/renders/`` use it for a different document.
+        and not any(part in ("test", "tests") for part in mf.parts)
+    ]
 
 
 def test_manifests_exist():
@@ -46,11 +53,16 @@ def test_builtin_manifests_declare_a_menu_path():
     row on its own docs page contradicts its ``Menu path`` row.
     """
     root = pathlib.Path(chisurf.plugins.__file__).parent
-    pathless = [
-        str(mf.relative_to(root))
-        for mf in _builtin_manifests()
-        if ":" not in (json.loads(mf.read_text()).get("display_name") or "")
-    ]
+    pathless = []
+    for mf in _builtin_manifests():
+        data = json.loads(mf.read_text())
+        # The fallback bucket only exists for things that reach a menu. A shared
+        # library and a tool launched from its own hub never do, so a menu path
+        # would describe a location that does not exist.
+        if data.get("menu_hidden") or data.get("library"):
+            continue
+        if ":" not in (data.get("display_name") or ""):
+            pathless.append(str(mf.relative_to(root)))
     assert not pathless, (
         "manifests whose display_name declares no menu path (they fall back to "
         f"Main/Uncategorized): {pathless}"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import pathlib
 from dataclasses import dataclass, field
@@ -30,11 +31,21 @@ class RPCMethodSpec:
 
 @dataclass
 class PluginEntrypoints:
-    """Plugin entrypoint strings."""
+    """Plugin entrypoint strings.
+
+    ``gui``, ``cli`` and ``services`` are ``module:attr`` (or ``cmd=module:attr``)
+    strings resolved by :mod:`importlib`. ``script`` is different in kind: it
+    names a file inside the plugin directory that the menu *executes* rather
+    than imports, which is how the older tools are entered. Declaring it is what
+    distinguishes "has no GUI" from "has a GUI the manifest cannot name" -- the
+    two used to be indistinguishable, so a script-launched tool that gained a
+    manifest silently became ``cli_only`` and vanished from every menu.
+    """
 
     gui: str | None = None
     cli: str | None = None
     services: str | None = None
+    script: str | None = None
 
 
 @dataclass
@@ -85,7 +96,28 @@ class PluginManifest:
     #: a result and continuing the analysis.
     operation_types: list[str] = field(default_factory=list)
 
+    #: External distributions this plugin needs (``{"ruff": ">=0.4"}``) -- PyPI /
+    #: conda names, **not** plugin ids. Plugin-to-plugin edges live in
+    #: :attr:`requires` and :attr:`optional_requires`.
     dependencies: dict[str, str] = field(default_factory=dict)
+
+    #: Sibling plugins this one imports at **module import time**, as
+    #: ``{plugin_id: specifier}``. These are the edges that constrain boot order:
+    #: a hard top-level import means the target's package must already be
+    #: importable, so the resolver emits the target first.
+    requires: dict[str, str] = field(default_factory=dict)
+
+    #: Sibling plugins this one reaches only *after* boot -- a function-local
+    #: import, a ``try``-guarded import, or a ``"chisurf.plugins.x:Class"`` string
+    #: resolved when the user clicks something. Real dependencies, but they impose
+    #: no ordering, so declaring them here keeps the ordering graph acyclic while
+    #: still recording the coupling. Bounds are checked only if the target exists.
+    optional_requires: dict[str, str] = field(default_factory=dict)
+
+    #: This package is shared code other plugins import, not a tool a user runs
+    #: (``imaging_common``, ``mle_common``). It carries an id so edges can name
+    #: it, but it offers no entrypoint and never reaches a menu.
+    library: bool = False
 
     #: Mark a tool as experimental / not yet validated. Hosts (e.g. the meta-tool shell)
     #: surface this with a warning banner and a flagged navigation entry.
@@ -153,6 +185,7 @@ class PluginManifest:
             gui=entrypoints_data.get("gui"),
             cli=entrypoints_data.get("cli"),
             services=entrypoints_data.get("services"),
+            script=entrypoints_data.get("script"),
         )
 
         methods = [
@@ -188,6 +221,9 @@ class PluginManifest:
             events=data.get("events", []),
             operation_types=data.get("operation_types", []),
             dependencies=data.get("dependencies", {}),
+            requires=data.get("requires", {}),
+            optional_requires=data.get("optional_requires", {}),
+            library=data.get("library", False),
             experimental=data.get("experimental", False),
             experimental_message=tr(data.get("experimental_message", "")),
             menu_hidden=data.get("menu_hidden", False),
@@ -227,6 +263,7 @@ class PluginManifest:
                 "gui": self.entrypoints.gui,
                 "cli": self.entrypoints.cli,
                 "services": self.entrypoints.services,
+                "script": self.entrypoints.script,
             },
             "rpc_methods": [
                 {
@@ -244,6 +281,9 @@ class PluginManifest:
             "events": list(self.events),
             "operation_types": list(self.operation_types),
             "dependencies": dict(self.dependencies),
+            "requires": dict(self.requires),
+            "optional_requires": dict(self.optional_requires),
+            "library": self.library,
             "experimental": self.experimental,
             "experimental_message": self.experimental_message,
             "menu_hidden": self.menu_hidden,
@@ -295,105 +335,171 @@ def load_manifest(path: pathlib.Path | str) -> PluginManifest | None:
         return None
 
 
-# Minimal JSON Schema draft-07 for validation. ``properties`` is the **closed**
-# set of manifest keys: ``_validate_known_keys`` rejects anything else, and a
-# guardrail test pins it against the ``PluginManifest`` fields, so a key cannot
-# be declared without a parser or parsed without being declared.
-_MANIFEST_SCHEMA = {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "required": ["id", "version"],
-    "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "version": {"type": "string", "minLength": 1},
-        "display_name": {"type": "string"},
-        "description": {"type": "string"},
-        "authors": {"type": "array", "items": {"type": "string"}},
-        "categories": {
-            "type": "array",
-            "items": {"type": "string", "minLength": 1},
-            "uniqueItems": True,
+#: Where the written manifest schema file lives.
+MANIFEST_SCHEMA_DIR = pathlib.Path(__file__).resolve().parent / "schemas"
+MANIFEST_SCHEMA_PATH = MANIFEST_SCHEMA_DIR / "manifest.schema.json"
+
+
+def _type_fragment(annotation) -> dict:
+    """A JSON Schema fragment for a manifest dataclass field's annotation."""
+    text = str(annotation)
+    if "list" in text or "List" in text:
+        return {"type": "array"}
+    if "dict" in text or "Dict" in text or "Mapping" in text:
+        return {"type": "object"}
+    optional = "None" in text or "Optional" in text
+    for needle, kind in (("bool", "boolean"), ("int", "integer"),
+                         ("float", "number"), ("str", "string")):
+        if needle in text:
+            return {"type": [kind, "null"]} if optional else {"type": kind}
+    return {}
+
+
+def build_manifest_schema() -> dict:
+    """The manifest scheme, derived from the manifest dataclasses.
+
+    Every field :class:`PluginManifest` declares contributes one property, so
+    a field added to the dataclass is legal the moment it exists and a key the
+    loader would ignore is not.  Nested dataclasses (:class:`PluginEntrypoints`,
+    :class:`PluginStatefulness`, :class:`PluginWindowState`,
+    :class:`RPCMethodSpec`) contribute ``$defs`` the top level references.
+
+    ``statefulness`` accepts either a boolean or an object because
+    :meth:`PluginManifest._parse_statefulness` handles both.
+    """
+    def _props(cls) -> dict:
+        return {
+            f.name: _type_fragment(f.type)
+            for f in dataclasses.fields(cls)
+        }
+
+    entrypoints_def = {
+        "type": "object",
+        "properties": _props(PluginEntrypoints),
+        "additionalProperties": False,
+    }
+    window_state_def = {
+        "type": "object",
+        "properties": _props(PluginWindowState),
+        "additionalProperties": False,
+    }
+    rpc_method_def = {
+        "type": "object",
+        "properties": {
+            **_props(RPCMethodSpec),
+            # params_schema / result_schema can be inline objects *or* JSON
+            # reference strings (``api.contract#/inputs/Foo``) resolved later.
+            "params_schema": {"type": ["object", "string", "null"]},
+            "result_schema": {"type": ["object", "string", "null"]},
         },
-        "icon": {"type": "string"},
-        "state_namespace": {"type": "string"},
-        "state_schema": {"type": "object"},
-        "statefulness": {
-            "oneOf": [
-                {"type": "boolean"},
-                {
-                    "type": "object",
-                    "properties": {
-                        "enabled": {"type": "boolean"},
-                        "window": {
-                            "oneOf": [
-                                {"type": "boolean"},
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "enabled": {"type": "boolean"},
-                                        "settings_key": {
-                                            "type": ["string", "null"],
-                                        },
-                                    },
-                                },
-                            ]
-                        },
+        "required": ["name"],
+        "additionalProperties": False,
+    }
+
+    #: ``_type_fragment`` reduces ``dict[str, str]`` to a bare ``{"type": "object"}``,
+    #: which would accept ``{"burst_bva": 3}`` or a key that is not an id shape. The
+    #: dependency maps are the one place a wrong *value* silently means "no bound",
+    #: so they get spelled out rather than inferred.
+    requirement_map_def = {
+        "type": "object",
+        "additionalProperties": {"type": "string"},
+        "propertyNames": {"pattern": r"^[a-z0-9][a-z0-9_-]*$"},
+    }
+
+    top_props = {
+        **_props(PluginManifest),
+        "_comment": {"type": "string"},
+        "$schema": {"type": "string"},
+    }
+    top_props["requires"] = dict(requirement_map_def)
+    top_props["optional_requires"] = dict(requirement_map_def)
+    # entrypoints is a nested object, not a scalar
+    top_props["entrypoints"] = {"$ref": "#/$defs/entrypoints"}
+    # rpc_methods items are RPCMethodSpec objects
+    top_props["rpc_methods"] = {
+        "type": "array",
+        "items": {"$ref": "#/$defs/rpc_method"},
+    }
+    # statefulness: bool or object
+    top_props["statefulness"] = {
+        "oneOf": [
+            {"type": "boolean"},
+            {
+                "type": "object",
+                "properties": {
+                    "enabled": {"type": "boolean"},
+                    "window": {
+                        "oneOf": [
+                            {"type": "boolean"},
+                            {"$ref": "#/$defs/window_state"},
+                        ],
                     },
                 },
-            ]
-        },
-        "entrypoints": {
-            "type": "object",
-            "properties": {
-                "gui": {"type": "string"},
-                "cli": {"type": "string"},
-                "services": {"type": "string"},
+                "additionalProperties": False,
             },
+        ],
+    }
+
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://chisurf.org/schemas/manifest.schema.json",
+        "title": "ChiSurf plugin manifest",
+        "description": (
+            "Plugin metadata and contract. Generated from the PluginManifest "
+            "dataclass by chisurf.core.plugin.manifest -- edit that, not this."
+        ),
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": top_props,
+        "additionalProperties": False,
+        "$defs": {
+            "entrypoints": entrypoints_def,
+            "window_state": window_state_def,
+            "rpc_method": rpc_method_def,
         },
-        "rpc_methods": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["name"],
-                "properties": {
-                    "name": {"type": "string", "minLength": 1},
-                    "summary": {"type": "string"},
-                    "description": {"type": "string"},
-                    "params_schema": {"type": "object"},
-                    "result_schema": {"type": "object"},
-                    "long_running": {"type": "boolean"},
-                    "cancelable": {"type": "boolean"},
-                    "events": {"type": "array", "items": {"type": "string"}},
-                },
-            },
-        },
-        "events": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "topic": {"type": "string"},
-                    "description": {"type": "string"},
-                },
-            },
-        },
-        "operation_types": {
-            "type": "array",
-            "items": {"type": "string", "minLength": 1},
-            "uniqueItems": True,
-        },
-        "dependencies": {
-            "type": "object",
-            "additionalProperties": {"type": "string"},
-        },
-        "experimental": {"type": "boolean"},
-        "experimental_message": {"type": "string"},
-        "menu_hidden": {"type": "boolean"},
-        "deprecated": {"type": "boolean"},
-        "deprecation_message": {"type": "string"},
-        "demo": {"type": "boolean"},
-    },
-}
+    }
+
+
+def validate_manifest_schema(data) -> list[str]:
+    """Check a parsed manifest against the generated scheme.
+
+    Returns
+    -------
+    list of str
+        Empty when valid.  One line per problem, naming the path into the
+        document.
+
+    """
+    try:
+        import jsonschema  # noqa: PLC0415
+    except ImportError:  # pragma: no cover
+        return []
+
+    schema = build_manifest_schema()
+    validator = jsonschema.Draft202012Validator(schema)
+    messages = []
+    for error in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
+        where = "/".join(str(p) for p in error.path) or "manifest"
+        cause = min(error.context, key=lambda e: len(list(e.path)), default=None) \
+            if error.context else None
+        messages.append(f"{where}: {(cause or error).message}")
+    return messages
+
+
+def write_manifest_schema() -> pathlib.Path:
+    """Write the generated manifest schema to :data:`MANIFEST_SCHEMA_PATH`."""
+    MANIFEST_SCHEMA_DIR.mkdir(parents=True, exist_ok=True)
+    MANIFEST_SCHEMA_PATH.write_text(
+        json.dumps(build_manifest_schema(), indent=2) + "\n", encoding="utf-8"
+    )
+    return MANIFEST_SCHEMA_PATH
+
+
+# The manifest schema, generated from :class:`PluginManifest`.  ``properties``
+# is the **closed** set of manifest keys: ``_validate_known_keys`` rejects
+# anything else, and a guardrail test pins it against the dataclass fields, so
+# a key cannot be declared without a parser or parsed without being declared.
+_MANIFEST_SCHEMA = build_manifest_schema()
 
 
 def _validate_statefulness(data: dict[str, Any]) -> list[str]:
@@ -468,6 +574,115 @@ def _validate_categories(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+#: Value meaning "any version, the plugin merely has to be there". Every seeded
+#: edge uses this: a bound invented without evidence is maintenance on every
+#: version bump and asserts nothing.
+ANY_VERSION = "*"
+
+
+def is_satisfied_by(specifier: str, version: str) -> bool:
+    """Whether *version* satisfies *specifier*.
+
+    Parameters
+    ----------
+    specifier : str
+        :data:`ANY_VERSION` or a PEP 440 specifier such as ``">=2.0,<3"``.
+    version : str
+        The candidate plugin's ``version`` string.
+
+    Returns
+    -------
+    bool
+        True when the bound holds. An unparseable *version* satisfies only
+        :data:`ANY_VERSION` -- a plugin whose version is not PEP 440 cannot be
+        compared, and silently passing the bound would be worse than failing it.
+
+    """
+    if specifier.strip() in ("", ANY_VERSION):
+        return True
+    try:
+        from packaging.specifiers import SpecifierSet  # noqa: PLC0415
+        from packaging.version import InvalidVersion, Version  # noqa: PLC0415
+    except ImportError:  # pragma: no cover - packaging is a declared dependency
+        return True
+    from packaging.specifiers import InvalidSpecifier  # noqa: PLC0415
+
+    try:
+        return Version(version) in SpecifierSet(specifier)
+    except (InvalidVersion, InvalidSpecifier):
+        return False
+
+
+def _validate_requirement_map(data: dict[str, Any], key: str) -> list[str]:
+    """Validate one of the plugin-to-plugin requirement maps."""
+    errors: list[str] = []
+    raw = data.get(key)
+    if raw is None:
+        return errors
+    if not isinstance(raw, dict):
+        return [f"field {key!r} must be an object mapping plugin id to a version specifier"]
+
+    own_id = data.get("id")
+    for plugin_id, specifier in raw.items():
+        if not isinstance(plugin_id, str) or not plugin_id:
+            errors.append(f"each {key!r} key must be a non-empty plugin id")
+            continue
+        if plugin_id == own_id:
+            errors.append(f"{key}[{plugin_id!r}] declares the plugin as its own dependency")
+        if not isinstance(specifier, str) or not specifier:
+            errors.append(
+                f"{key}[{plugin_id!r}] must be a non-empty string "
+                f"({ANY_VERSION!r} or a PEP 440 specifier)"
+            )
+            continue
+        if specifier.strip() == ANY_VERSION:
+            continue
+        try:
+            from packaging.specifiers import InvalidSpecifier, SpecifierSet  # noqa: PLC0415
+
+            SpecifierSet(specifier)
+        except ImportError:  # pragma: no cover - packaging is a declared dependency
+            continue
+        except InvalidSpecifier:
+            errors.append(
+                f"{key}[{plugin_id!r}] is not a PEP 440 specifier: {specifier!r} "
+                f"(use {ANY_VERSION!r} for 'any version')"
+            )
+    return errors
+
+
+def _validate_dependencies(data: dict[str, Any]) -> list[str]:
+    """Validate ``requires`` / ``optional_requires``.
+
+    Beyond each map's own shape, the two must be disjoint: an id in both would
+    be simultaneously boot-ordering and not, and the resolver would have to pick
+    one silently.
+
+    Parameters
+    ----------
+    data : dict
+        Parsed manifest JSON data.
+
+    Returns
+    -------
+    list of str
+        Validation errors. Empty list means valid.
+
+    """
+    errors = _validate_requirement_map(data, "requires")
+    errors.extend(_validate_requirement_map(data, "optional_requires"))
+
+    hard = data.get("requires")
+    soft = data.get("optional_requires")
+    if isinstance(hard, dict) and isinstance(soft, dict):
+        for plugin_id in sorted(set(hard) & set(soft)):
+            errors.append(
+                f"{plugin_id!r} is in both 'requires' and 'optional_requires' -- "
+                "a dependency either constrains boot order or it does not"
+            )
+    return errors
+
+
 def _validate_known_keys(data: dict[str, Any]) -> list[str]:
     """Report top-level manifest keys that the schema does not declare.
 
@@ -529,4 +744,5 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
     errors.extend(_validate_known_keys(data))
     errors.extend(_validate_categories(data))
     errors.extend(_validate_statefulness(data))
+    errors.extend(_validate_dependencies(data))
     return errors

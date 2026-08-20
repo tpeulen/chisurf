@@ -1,0 +1,25 @@
+{
+  "id": "fcs_toolbox",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:FCS",
+  "description": "Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector → files → filter → correlate →\nmerge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,\ndiffusion/volume calculator, fFCS filter calculator, correlation-channel\npresets) into a single left-navigation tool. Built on the reusable\n``NavigationPanelTool`` shell. The ribbon execs this file with\n``__name__ == \"plugin\"``.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  },
+  "requires": {
+    "fcs_correlator": "*"
+  },
+  "optional_requires": {
+    "burst_fcs_correlator": "*",
+    "fcs-lfcs-sim": "*",
+    "fcs_calculator": "*",
+    "fcs_filter_calculator": "*",
+    "flc-2d": "*"
+  }
+}

@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "display_name": "Setup:User Editor",
   "description": "User editor plugin for Chisurf to manage users registered in the MMFDB.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Setup"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup"
+  ],
+  "icon": "👥",
   "state_namespace": "user_editor",
   "statefulness": {
     "enabled": false,
@@ -15,6 +20,8 @@
   "entrypoints": {
     "gui": "chisurf.plugins.core.user_editor.gui.tool:UserEditorWidget"
   },
-  "icon": "👥",
+  "optional_requires": {
+    "mmfdb_admin": "*"
+  },
   "menu_hidden": true
 }

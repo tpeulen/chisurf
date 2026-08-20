@@ -3,9 +3,15 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:Photon-by-photon kinetics",
   "description": "Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule",
+    "FRET"
+  ],
   "icon": "⏱️",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule", "FRET"],
   "state_namespace": "burst_gs",
   "statefulness": {
     "enabled": true,
@@ -19,7 +25,6 @@
     "cli": "burst-gs=chisurf.plugins.burst.burst_gs.cli:cli",
     "services": "chisurf.plugins.burst.burst_gs.backend.services:register_services"
   },
-  "operation_types": ["model_fitting"],
   "rpc_methods": [
     {
       "name": "burst_gs.jobs.fit",
@@ -37,5 +42,11 @@
       "long_running": true
     }
   ],
+  "operation_types": [
+    "model_fitting"
+  ],
+  "optional_requires": {
+    "burst_h2mm": "*"
+  },
   "menu_hidden": false
 }

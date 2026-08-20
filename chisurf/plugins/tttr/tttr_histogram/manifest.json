@@ -1,0 +1,15 @@
+{
+  "id": "tttr_histogram",
+  "version": "1.0.0",
+  "display_name": "TTTR:Generate Decay",
+  "description": "TTTR Histogram (Generate Decay)\n\nThis plugin provides a graphical interface for generating fluorescence decay histograms\nfrom Time-Tagged Time-Resolved (TTTR) data.\n\nFeatures:\n- Configurable histogram parameters (binning, time range)\n- Channel selection for multi-channel TTTR data\n- Interactive visualization of decay curves\n- Export of histogram data for further analysis\n\nThe histogram generator is useful for time-resolved fluorescence spectroscopy and\nlifetime analysis.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "TTTR"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  }
+}

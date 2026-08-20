@@ -1,0 +1,17 @@
+{
+  "id": "tttr_header_edit",
+  "version": "1.0.0",
+  "display_name": "TTTR:Editor:TTTR Header editor",
+  "description": "TTTR Header Editor plugin.\n\nThis plugin provides a tool for viewing and editing header tags of any\ntime-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant\nPTU and HT3, Becker&Hickl SPC, and Photon-HDF5. ``tttrlib`` normalises every\ncontainer into the same tag list, so the editor is format-agnostic on read. It\nallows users to:\n1. Open and inspect any supported TTTR file (auto-detected container)\n2. View all header tags and their values in a tabular format\n3. Edit existing tag values\n4. Add new custom tags to the header\n5. Remove unwanted tags\n6. Save the edited header to a new PTU file\n\nThe plugin features an intuitive table-based interface that displays tag names,\ntypes, values, and indices. Users can modify any field and see the changes in\nreal-time. A JSON view is also available to see the complete header structure.\n\nThis tool is particularly useful for:\n- Correcting metadata in experimental TTTR files\n- Adding missing information to headers\n- Preparing files for specialized analysis\n- Troubleshooting issues with file metadata\n- Educational purposes to understand TTTR file structure\n\nThe photon events of the source file are copied verbatim into the saved file.\nOutput is always a PTU container, because it is the only ``tttrlib`` container\nthat persists arbitrary edited header tags without loss.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "TTTR",
+    "Editor"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  },
+  "menu_hidden": true
+}

@@ -3,16 +3,34 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:FRET:Accurate FRET",
   "description": "Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "FRET", "Single-Molecule"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "FRET",
+    "Single-Molecule"
+  ],
   "icon": "🎯",
   "state_namespace": "accurate_fret",
-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
   "entrypoints": {
     "gui": "chisurf.plugins.burst.accurate_fret.gui.tool:AccurateFretTool",
     "cli": "accurate-fret=chisurf.plugins.burst.accurate_fret.cli:cli",
     "services": "chisurf.plugins.burst.accurate_fret.backend.services:register_services"
   },
-  "operation_types": ["calibration"],
+  "operation_types": [
+    "calibration"
+  ],
+  "optional_requires": {
+    "lightpath_simulator": "*",
+    "ndxplorer": "*"
+  },
   "menu_hidden": false
 }

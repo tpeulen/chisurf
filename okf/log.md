@@ -1,6 +1,29 @@
 # Update Log
 
 ## 2026-08-17
+* **chigame/lumis: cloud zoom artifacts fixed** (night pass). Cloud respawn
+  margin is now each cloud's own width (a fixed 60 units popped zoomed clouds
+  on-screen), and the zoom box reflow is a conditional single fold rather
+  than a rescale (teleported every cloud) or a modulo (mapped entry-drift
+  negatives on-screen). 6000-frame zoom tour: 0 visible teleports; 542
+  tests green.
+* **chigame/lumis: HUD keeps its own 330 zoom reference; weather is
+  screen-space** (same evening, third pass). Root cause of "text no fit
+  after 4:3": HUD/menu text authored against the old 330-tall view while
+  its scale divided by the new `VIEW_HEIGHT=176`. Added `HUD_REFERENCE`
+  (330), repointed the seven HUD scale sites, wrapped bottom-band lines to
+  the view width, culled village labels on the label position, and scaled
+  weather sprite sizes with `camera.height / VIEW_HEIGHT`. Glyph-extent
+  probe: 0 clipped texts at 176/330/700 across walk/battle/menu/options;
+  542 tests green.
+* **chigame/lumis: weather tracks the zoom; 4:3 default windows** (same
+  session, continuation). `Weather.view` is now sized from the live camera in
+  `_update_weather` (aspect from the canvas, 4:3 fallback, MAP_THRESHOLD
+  clamp, particles rescaled on >25% box jumps) with a horizontal wrap added
+  to `Weather.update` for falling kinds; the lumis/ninja windows and the
+  lumis capture gallery default to 4:3 (800x600). Guarded by
+  `test_weather_covers_the_view_at_every_zoom`. 542 games+chigame tests
+  green.
 * **`chisurf/core/structure/av/` no longer implements accessible volumes
   (PRD-109).** The AV computation, the dye-diffusion field model and the
   distance metrics moved to `IMP.bff`
@@ -37151,3 +37174,51 @@ front, not this).
   rebuilds the mixer live and resumes the tracked music context. Drive-by:
   `test_chigame_audio.py` still used the pre-rename `game.iris`, repointed
   at `player_pos`. 558 tests green.
+
+- 2026-08-20 — **Plugins declare their cross-plugin dependencies, and a resolver
+  turns them into a boot order.** `manifest.json` gains `requires` (imported at
+  module import time -- constrains load order) and `optional_requires` (lazy,
+  `try`-guarded, or resolved from a `"chisurf.plugins.x:Class"` string --
+  records coupling without constraining order), plus `library` for shared
+  packages that are not tools and `entrypoints.script` for the older
+  exec-launched ones. `dependencies` keeps its existing meaning: external
+  distributions, not plugin ids. New `chisurf/core/plugin/edges.py` derives the
+  real graph from the tree (AST imports, AST string constants, JSON entrypoint
+  strings) and new `chisurf/core/plugin/dependencies.py` resolves it -- Kahn,
+  id-tiebroken, and **never raising**: missing targets, unsatisfied bounds and
+  cycles each become one warning and boot continues. Order is applied where
+  `_PLUGIN_CACHE` is filled, in `PluginRegistry.discover()`, and via a sorted
+  CLI scan (which also removes an `os.scandir`-order dependency in the
+  first-wins command-name tiebreak); menus still sort by name. All 193 edges
+  were seeded into the manifests, so `test/test_plugin_dependencies.py` ships
+  with an empty allow-list except two genuine RPC-namespace squats. 15 packages
+  that never had a manifest got one, including `imaging_common`/`mle_common`
+  which 7 microscopy plugins hard-import. Drive-by fixes: a doxygen `\see` in
+  `burst_selection/api/features.py` was an invalid escape sequence (SyntaxWarning
+  today, SyntaxError later); three manifest-scanning tests treated chimol's
+  render-baseline `manifest.json` as a plugin manifest; and the menu-path guard
+  now exempts manifests that never reach a menu.
+
+- 2026-08-20 — **The plugin manager is rebuilt around the dependency graph.**
+  1856 lines of one widget became `api/` (Qt-free records, settings, install,
+  icons) + `gui/` (view model + `plugins.view.json` + toolbar + `guide.json` +
+  `help.md`). The flat 134-row list is now a sortable, searchable table with
+  **Requires** and **Required by** columns, and the details pane carries a
+  Dependencies table showing every edge in both directions with the bound and
+  whether the far end is installed. Disabling or uninstalling now names the
+  plugins that will break. Defects fixed on the way, all found by reading the
+  code or the screenshot: the `..icon_utils` import had never resolved (wrong
+  relative depth), so every manifest-emoji plugin drew a blank icon; `rename`
+  ran an unanchored regex that rewrote `display_name = "X"` into `display_` +
+  `name = "New"` and never touched the manifest discovery actually reads;
+  "Hide Disabled" set a flag nothing read; edits mutated the live settings by
+  reference before Save; `Save` rewrote the entire settings file; install
+  shelled out with `subprocess.Popen(shell=True)` and an interpolated
+  user-chosen path; and icon generation blocked the GUI thread through its
+  retries and `Retry-After` sleeps. Three shared-code fixes fell out: chitable
+  gained a `rowSelected` signal, `ColumnSpec.width` was dead because
+  `auto_resize_columns` overwrote it, and the `data_table` section passed an
+  `editable=` kwarg `RecordSource` does not accept — so a `data_table` bound to
+  records had never rendered at all. Tests: 13-line smoke test → 29 behavioural
+  tests, and the 8 icon tests now call module functions instead of binding
+  unbound methods to a `SimpleNamespace`.

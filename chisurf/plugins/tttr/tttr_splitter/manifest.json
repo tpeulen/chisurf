@@ -1,0 +1,17 @@
+{
+  "id": "tttr_splitter",
+  "version": "1.0.0",
+  "display_name": "TTTR:Editor:Split/Convert",
+  "description": "TTTR Split / Convert plugin.\n\nThis plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved)\nfiles, particularly those in the PicoQuant PTU format, into smaller segments. This is\nuseful for:\n\n1. Breaking down large datasets into manageable chunks\n2. Extracting specific time segments from long measurements\n3. Creating subsets of data for parallel processing\n4. Reducing memory requirements for analysis\n\nThe plugin features:\n- Support for various TTTR file formats\n- Configurable splitting parameters (photons per file, time segments)\n- Options for micro-time binning to reduce file size\n- Ability to reset macro-times in the output files\n- Selection of output container formats (file format conversion)\n\nThis tool is particularly valuable for handling large datasets from long-duration\nsingle-molecule or imaging experiments, making them more manageable for subsequent analysis.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "TTTR",
+    "Editor"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  },
+  "menu_hidden": true
+}

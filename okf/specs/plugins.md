@@ -50,7 +50,11 @@ manifest (declaration)  ─▶  host discovery  ─▶  registry  ─▶  activa
 - **Manifest.** The single declaration of a plugin: its identity, human-readable
   name and category, entry points (GUI / CLI / services), any operations it
   exposes to the RPC layer with their input/output shapes, the events it emits,
-  its dependencies, its state-persistence needs, and status flags. Required
+  its dependencies, its state-persistence needs, and status flags. Plugin-to-plugin
+  dependencies are declared separately from external distributions, and split by
+  when they fire: those that bind at import time constrain load order, those
+  reached later do not. A resolver turns the first kind into a boot order and
+  reports -- never raises on -- anything that does not add up. Required
   identity fields are always present; the manifest validates against a known
   schema.
 - **Discovery & registry.** The host scans the built-in and user plugin

@@ -287,6 +287,60 @@ filter on `menu_hidden`, so a demo stays inspectable and installable there.
 Discovery is cached, so flipping the setting takes effect after
 `chisurf.plugins.invalidate_plugin_cache()` or a restart.
 
+### 3.1.3 Declaring what a plugin depends on
+
+Plugins depend on each other, and the manifest is where that is written down.
+Three fields, easily confused:
+
+| field | means | affects load order |
+|---|---|---|
+| `dependencies` | **external** distributions — PyPI/conda names, e.g. `{"ruff": ">=0.4"}` | no |
+| `requires` | **sibling plugins imported at module import time**, `{plugin_id: specifier}` | **yes** |
+| `optional_requires` | sibling plugins reached only after boot — a function-local import, a `try`-guarded import, or a `"chisurf.plugins.x:Class"` string resolved on click | no |
+
+A specifier is either `"*"` (any version — it just has to be installed) or a
+PEP 440 bound such as `">=2.0"`. Write `"*"` unless the plugin genuinely needs a
+newer sibling: a bound invented without a reason is maintenance on every version
+bump and asserts nothing.
+
+```json
+{
+  "requires": {"mle_common": "*"},
+  "optional_requires": {"ndxplorer": "*", "spot_finder": "*"}
+}
+```
+
+Put an edge in `requires` only if the import runs when the module is imported.
+If it runs inside a function, or inside `try`/`except`, it belongs in
+`optional_requires` — that distinction is what keeps the dependency graph
+acyclic, since several plugin pairs reference each other in opposite directions.
+
+Two more fields exist for packages that are not ordinary tools:
+
+- `"library": true` — shared code other plugins import, not something a user
+  runs (`imaging_common`, `mle_common`). It carries an id so edges can name it,
+  offers no entrypoint, and never reaches a menu.
+- `"entrypoints": {"script": "wizard.py"}` — for the older tools the menu
+  *executes* rather than imports. Without it such a plugin is treated as
+  CLI-only and disappears from every menu.
+
+You do not have to work the edges out by hand:
+
+```bash
+python -c "from chisurf.core.plugin.edges import collect_edges; \
+  [print(e.source, '->', e.target, e.kind, e.where) for e in collect_edges()]"
+```
+
+`test/test_plugin_dependencies.py` compares that derived graph against the
+manifests and fails on any disagreement, in either direction — an undeclared
+coupling *or* a declaration the code no longer backs up.
+
+At startup `chisurf/core/plugin/dependencies.py` resolves `requires` into a load
+order so a dependency is registered before its dependants. It never raises: a
+missing target, an unsatisfied bound or a cycle each produce a warning and the
+application still starts. Problems are listed per plugin in the **Plugin Check**
+tool.
+
 ### 3.2 Schema files
 
 Plugin schemas live under `schemas/` and are JSON Schema draft-07 files referenced from the manifest:

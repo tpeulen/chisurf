@@ -10,7 +10,7 @@
     "Imaging",
     "Lifetime"
   ],
-  "icon": "\ud83d\udd2c",
+  "icon": "🔬",
   "state_namespace": "region_mle",
   "statefulness": {
     "enabled": true,
@@ -24,7 +24,6 @@
     "cli": "region-mle=chisurf.plugins.microscopy.region_mle.cli:cli",
     "services": "chisurf.plugins.microscopy.region_mle.backend.services:register_services"
   },
-  "operation_types": ["molecule_localization"],
   "rpc_methods": [
     {
       "name": "region_mle.analyze.run",
@@ -74,5 +73,14 @@
       "description": "State patch events"
     }
   ],
+  "operation_types": [
+    "molecule_localization"
+  ],
+  "requires": {
+    "mle_common": "*"
+  },
+  "optional_requires": {
+    "spot_finder": "*"
+  },
   "menu_hidden": true
 }

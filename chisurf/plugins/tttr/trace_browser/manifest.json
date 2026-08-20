@@ -3,18 +3,46 @@
   "version": "2.0.0",
   "display_name": "Spectroscopy:Single-Molecule:Trace Browser",
   "description": "Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Single-Molecule"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule"
+  ],
   "icon": "🗂️",
   "state_namespace": "trace_browser",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "selected_files": {"type": "array", "items": {"type": "string"}},
-      "current_folder": {"type": ["string", "null"]},
-      "setup_settings": {"type": ["object", "null"]},
-      "selected_channels": {"type": ["array", "null"], "items": {"type": "integer"}}
+      "selected_files": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "current_folder": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "setup_settings": {
+        "type": [
+          "object",
+          "null"
+        ]
+      },
+      "selected_channels": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "integer"
+        }
+      }
     }
   },
   "statefulness": {
@@ -35,47 +63,164 @@
       "summary": "List TTTR trace files and metadata for a folder.",
       "params_schema": {
         "type": "object",
-        "required": ["folder"],
+        "required": [
+          "folder"
+        ],
         "properties": {
-          "folder": {"type": "string"},
-          "recursive": {"type": "boolean"},
-          "setup_settings": {"type": ["object", "null"]},
-          "selected_channels": {"type": ["array", "null"], "items": {"type": "integer"}}
+          "folder": {
+            "type": "string"
+          },
+          "recursive": {
+            "type": "boolean"
+          },
+          "setup_settings": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "selected_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          }
         }
       },
-      "result_schema": {"type": "object"},
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": false,
       "cancelable": false
     },
     {
       "name": "trace_browser.metadata.get",
       "summary": "Load Trace Browser ratings and annotations.",
-      "params_schema": {"type": "object", "required": ["folder"], "properties": {"folder": {"type": "string"}}},
-      "result_schema": {"type": "object"},
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "folder"
+        ],
+        "properties": {
+          "folder": {
+            "type": "string"
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": false,
       "cancelable": false
     },
     {
       "name": "trace_browser.metadata.set",
       "summary": "Save Trace Browser ratings and annotations.",
-      "params_schema": {"type": "object", "required": ["folder", "metadata"], "properties": {"folder": {"type": "string"}, "metadata": {"type": "object"}}},
-      "result_schema": {"type": "object"},
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "folder",
+          "metadata"
+        ],
+        "properties": {
+          "folder": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": false,
       "cancelable": false
     },
     {
       "name": "trace_browser.traces.load",
       "summary": "Load binned trace data for preview.",
-      "params_schema": {"type": "object", "required": ["path", "time_window_ms"], "properties": {"path": {"type": "string"}, "time_window_ms": {"type": "number"}, "setup_settings": {"type": ["object", "null"]}, "selected_channels": {"type": ["array", "null"], "items": {"type": "integer"}}}},
-      "result_schema": {"type": "object"},
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "path",
+          "time_window_ms"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "time_window_ms": {
+            "type": "number"
+          },
+          "setup_settings": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "selected_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": false,
       "cancelable": false
     },
     {
       "name": "trace_browser.export.csv",
       "summary": "Export selected traces as CSV files.",
-      "params_schema": {"type": "object", "required": ["paths", "output_dir"], "properties": {"paths": {"type": "array", "items": {"type": "string"}}, "output_dir": {"type": "string"}, "time_window_ms": {"type": "number"}, "setup_settings": {"type": ["object", "null"]}, "selected_channels": {"type": ["array", "null"], "items": {"type": "integer"}}}},
-      "result_schema": {"type": "object"},
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "paths",
+          "output_dir"
+        ],
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_dir": {
+            "type": "string"
+          },
+          "time_window_ms": {
+            "type": "number"
+          },
+          "setup_settings": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "selected_channels": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
       "long_running": true,
       "cancelable": false
     },
@@ -93,5 +238,12 @@
       "topic": "trace_browser.state.*",
       "description": "State patch events for trace browser plugin"
     }
-  ]
+  ],
+  "requires": {
+    "intensity_trace": "*"
+  },
+  "optional_requires": {
+    "ndxplorer": "*",
+    "tttr_time_windows": "*"
+  }
 }

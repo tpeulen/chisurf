@@ -232,7 +232,12 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
 
         # Each __init__.py below the root corresponds to a candidate plugin
         # package under the chisurf.plugins.* namespace.
-        for init_py in root_resolved.rglob("__init__.py"):
+        #
+        # Sorted, because ``_register_plugin_clis`` resolves a duplicate command
+        # name by keeping the first one it sees. Bare ``rglob`` yields in
+        # ``os.scandir`` order, which made that tiebreak depend on the filesystem
+        # -- the same two plugins could win on one machine and lose on another.
+        for init_py in sorted(root_resolved.rglob("__init__.py")):
             try:
                 rel_dir = init_py.parent.relative_to(root_resolved)
             except Exception:

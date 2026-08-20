@@ -3,11 +3,30 @@
   "version": "1.0.0",
   "display_name": "Tools:TTTR Tools",
   "description": "Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "TTTR"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Tools",
+    "TTTR"
+  ],
   "icon": "🧰",
-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
   "entrypoints": {
     "gui": "chisurf.plugins.tttr.tttr_toolbox.gui.tool:TttrToolboxTool"
+  },
+  "optional_requires": {
+    "microtime_shifter": "*",
+    "ptu_alex_creator": "*",
+    "tttr_audifier": "*",
+    "tttr_count_rate_analysis": "*",
+    "tttr_header_edit": "*",
+    "tttr_splitter": "*"
   }
 }

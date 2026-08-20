@@ -199,11 +199,19 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         "plugin_name": manifest.display_name or manifest.id,
         "description": manifest.description or legacy_description or "No description available.",
         "cli_entrypoint": cli_entrypoint,
-        "cli_only": bool(not manifest.entrypoints.gui),
+        # A tool is CLI-only when it offers no way in from a menu. That is *not*
+        # the same as having no ``gui`` entrypoint: the older tools are entered by
+        # executing ``wizard.py``/``__init__.py``, which ``entrypoints.script``
+        # names. Deriving this from ``gui`` alone dropped every script-launched
+        # tool out of the menus the moment it gained a manifest.
+        "cli_only": not (manifest.entrypoints.gui or manifest.entrypoints.script),
         "menu_hidden": bool(manifest.menu_hidden),
         "manifest_id": manifest.id,
         "manifest_version": manifest.version,
         "state_namespace": manifest.state_namespace,
+        "requires": dict(manifest.requires),
+        "optional_requires": dict(manifest.optional_requires),
+        "library": bool(manifest.library),
         # Maturity travels with the record every menu is built from. Without it a
         # host could only mark a tool it happens to embed as a navigation panel,
         # so a menu-launched experimental tool carried no warning anywhere.
@@ -267,8 +275,41 @@ def iter_plugins():
     """
     global _PLUGIN_CACHE
     if _PLUGIN_CACHE is None:
-        _PLUGIN_CACHE = list(_iter_plugins_uncached())
+        _PLUGIN_CACHE = _in_dependency_order(_iter_plugins_uncached())
     return iter(_PLUGIN_CACHE)
+
+
+def _in_dependency_order(records) -> list[dict]:
+    """Order discovery records so a dependency precedes its dependants.
+
+    Applied once, where the cache is filled, because every host -- the plugin
+    menu, the three ribbon categories, the help index, the doc generator --
+    reads this one list. Deciding it here is the only way they all agree, the
+    same reasoning that puts the demo gate in ``_iter_plugins_uncached``.
+
+    Menus re-sort by name for display; this order matters to whoever *imports*
+    in iteration order.
+    """
+    from chisurf.core.plugin.dependencies import log_problems, resolve  # noqa: PLC0415
+
+    items = list(records)
+    try:
+        report = resolve(
+            {
+                "id": r.get("manifest_id") or "",
+                "version": r.get("manifest_version") or "",
+                "requires": r.get("requires") or {},
+                "optional_requires": r.get("optional_requires") or {},
+            }
+            for r in items
+        )
+    except Exception:  # pragma: no cover - resolution must never break discovery
+        return items
+    log_problems(report)
+    rank = {plugin_id: index for index, plugin_id in enumerate(report.order)}
+    # A legacy plugin with no manifest id has no place in the graph; keep those
+    # in discovery order after the ranked ones rather than dropping them.
+    return sorted(items, key=lambda r: rank.get(r.get("manifest_id") or "", len(rank)))
 
 
 def _iter_plugins_uncached():
@@ -331,6 +372,9 @@ def _iter_plugins_uncached():
                     manifest_version = manifest_metadata["manifest_version"]
                     state_namespace = manifest_metadata["state_namespace"]
                     demo = manifest_metadata["demo"]
+                    requires = manifest_metadata["requires"]
+                    optional_requires = manifest_metadata["optional_requires"]
+                    library = manifest_metadata["library"]
                     maturity.update({k: manifest_metadata[k] for k in _MATURITY_DEFAULTS})
                 else:
                     (
@@ -343,6 +387,12 @@ def _iter_plugins_uncached():
                     manifest_id = None
                     manifest_version = None
                     state_namespace = None
+                    # The AST fallback cannot see dependency maps: they are
+                    # manifest-only, so a manifest-less plugin declares nothing
+                    # and takes no part in the ordering graph.
+                    requires = {}
+                    optional_requires = {}
+                    library = False
                 if not plugin_name:
                     continue
                 module_path = base_prefix + ".".join(parts)
@@ -381,6 +431,9 @@ def _iter_plugins_uncached():
                     "manifest_id": manifest_id,
                     "manifest_version": manifest_version,
                     "state_namespace": state_namespace,
+                    "requires": requires,
+                    "optional_requires": optional_requires,
+                    "library": bool(library),
                     "demo": bool(demo),
                     **maturity,
                 }

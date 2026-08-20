@@ -1,0 +1,13 @@
+{
+  "id": "mle_common",
+  "version": "1.0.0",
+  "display_name": "Mle Common",
+  "description": "Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the estimator contract, the fitting base class and its tool shell.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [],
+  "entrypoints": {},
+  "library": true,
+  "menu_hidden": true
+}

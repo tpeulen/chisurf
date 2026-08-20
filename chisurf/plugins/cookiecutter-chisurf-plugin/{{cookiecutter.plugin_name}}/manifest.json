@@ -27,6 +27,8 @@
   "rpc_methods": [],
   "events": [],
   "dependencies": {},
+  "requires": {},
+  "optional_requires": {},
   "menu_hidden": false,
   "deprecated": false
 }

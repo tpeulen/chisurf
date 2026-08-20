@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "display_name": "Setup:Settings",
   "description": "Unified Settings for ChiSurf",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Setup"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup"
+  ],
   "icon": "⚙️",
   "statefulness": {
     "enabled": true,
@@ -15,5 +19,20 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.core.setup.gui.tool:UnifiedSettingsTool"
+  },
+  "optional_requires": {
+    "acq": "*",
+    "ai_settings": "*",
+    "boarding": "*",
+    "fcs_channel_preset": "*",
+    "model_manager": "*",
+    "plot_settings": "*",
+    "plugin_check": "*",
+    "plugin_manager": "*",
+    "setup_channel_definition": "*",
+    "style_manager": "*",
+    "tttr_lut_tools": "*",
+    "updater": "*",
+    "user_editor": "*"
   }
 }

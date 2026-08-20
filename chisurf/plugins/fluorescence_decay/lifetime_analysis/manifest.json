@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Decay Analysis",
   "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Fluorescence decay"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence decay"
+  ],
   "state_namespace": "lifetime_analysis",
   "statefulness": {
     "enabled": true,
@@ -15,6 +20,13 @@
   },
   "entrypoints": {
     "gui": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool:LifetimeAnalysisTool"
+  },
+  "optional_requires": {
+    "irf_estimator": "*",
+    "lltf": "*",
+    "maxent_decay": "*",
+    "microtime_histogram": "*",
+    "vv_vh_g_factor": "*"
   },
   "experimental": true,
   "experimental_message": "Decay Analysis is experimental and not yet validated",

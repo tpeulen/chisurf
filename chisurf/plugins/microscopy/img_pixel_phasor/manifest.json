@@ -3,17 +3,27 @@
   "version": "1.0.0",
   "display_name": "Imaging:Phasor-FLIM",
   "description": "Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Imaging", "Phasor-FLIM"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Imaging",
+    "Phasor-FLIM"
+  ],
   "icon": "◐",
   "state_namespace": "img_pixel_phasor",
-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.img_pixel_phasor.gui.tool:ImgPixelPhasorTool",
     "cli": "img-pixel-phasor=chisurf.plugins.microscopy.img_pixel_phasor.cli:cli",
     "services": "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services"
   },
-  "operation_types": ["phasor_analysis"],
   "rpc_methods": [
     {
       "name": "phasor.describe",
@@ -25,15 +35,31 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "g": {"type": "array"},
-          "s": {"type": "array"},
-          "frequency_mhz": {"type": "number"}
+          "g": {
+            "type": "array"
+          },
+          "s": {
+            "type": "array"
+          },
+          "frequency_mhz": {
+            "type": "number"
+          }
         },
-        "required": ["g", "s"]
+        "required": [
+          "g",
+          "s"
+        ]
       },
       "result_schema": {
         "type": "object",
-        "properties": {"tau_phi": {"type": "array"}, "tau_m": {"type": "array"}}
+        "properties": {
+          "tau_phi": {
+            "type": "array"
+          },
+          "tau_m": {
+            "type": "array"
+          }
+        }
       }
     },
     {
@@ -42,14 +68,33 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "g": {"type": "array"},
-          "s": {"type": "array"},
-          "kind": {"type": "string", "enum": ["median", "gaussian"]},
-          "size": {"type": "integer"},
-          "repeat": {"type": "integer"},
-          "sigma": {"type": "number"}
+          "g": {
+            "type": "array"
+          },
+          "s": {
+            "type": "array"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "median",
+              "gaussian"
+            ]
+          },
+          "size": {
+            "type": "integer"
+          },
+          "repeat": {
+            "type": "integer"
+          },
+          "sigma": {
+            "type": "number"
+          }
         },
-        "required": ["g", "s"]
+        "required": [
+          "g",
+          "s"
+        ]
       }
     },
     {
@@ -58,12 +103,25 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "g": {"type": "array"},
-          "s": {"type": "array"},
-          "c1": {"type": "array"},
-          "c2": {"type": "array"}
+          "g": {
+            "type": "array"
+          },
+          "s": {
+            "type": "array"
+          },
+          "c1": {
+            "type": "array"
+          },
+          "c2": {
+            "type": "array"
+          }
         },
-        "required": ["g", "s", "c1", "c2"]
+        "required": [
+          "g",
+          "s",
+          "c1",
+          "c2"
+        ]
       }
     },
     {
@@ -72,11 +130,21 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "g": {"type": "array"},
-          "s": {"type": "array"},
-          "components": {"type": "array"}
+          "g": {
+            "type": "array"
+          },
+          "s": {
+            "type": "array"
+          },
+          "components": {
+            "type": "array"
+          }
         },
-        "required": ["g", "s", "components"]
+        "required": [
+          "g",
+          "s",
+          "components"
+        ]
       }
     },
     {
@@ -85,16 +153,44 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "g": {"type": "array"},
-          "s": {"type": "array"},
-          "center": {"type": "array", "description": "Cursor centre (g, s)."},
-          "kind": {"type": "string", "enum": ["circular", "elliptic"]},
-          "radius": {"type": "number", "description": "Radius of a circular cursor."},
-          "radii": {"type": "array", "description": "Semi-axes (rg, rs) of an elliptic cursor."},
-          "angle": {"type": "number", "description": "Rotation of an elliptic cursor, in radians."},
-          "roi": {"type": "object", "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."}
+          "g": {
+            "type": "array"
+          },
+          "s": {
+            "type": "array"
+          },
+          "center": {
+            "type": "array",
+            "description": "Cursor centre (g, s)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "circular",
+              "elliptic"
+            ]
+          },
+          "radius": {
+            "type": "number",
+            "description": "Radius of a circular cursor."
+          },
+          "radii": {
+            "type": "array",
+            "description": "Semi-axes (rg, rs) of an elliptic cursor."
+          },
+          "angle": {
+            "type": "number",
+            "description": "Rotation of an elliptic cursor, in radians."
+          },
+          "roi": {
+            "type": "object",
+            "description": "A serialised region gating the phasor plane — a polygon round a cluster, or a combination of cursors. Replaces center/kind."
+          }
         },
-        "required": ["g", "s"]
+        "required": [
+          "g",
+          "s"
+        ]
       }
     },
     {
@@ -103,11 +199,19 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "masks": {"type": "array"},
-          "colors": {"type": "array"},
-          "intensity": {"type": "array"}
+          "masks": {
+            "type": "array"
+          },
+          "colors": {
+            "type": "array"
+          },
+          "intensity": {
+            "type": "array"
+          }
         },
-        "required": ["masks"]
+        "required": [
+          "masks"
+        ]
       }
     },
     {
@@ -116,17 +220,45 @@
       "params_schema": {
         "type": "object",
         "properties": {
-          "frequency_mhz": {"type": "number"},
-          "harmonic": {"type": "integer"},
-          "sets": {"type": "array", "items": {"type": "string"}},
-          "taus": {"type": "array", "items": {"type": "number"}},
-          "c1": {"type": "array"},
-          "c2": {"type": "array"},
-          "tau_d0": {"type": "number"},
-          "e_range": {"type": "array"}
+          "frequency_mhz": {
+            "type": "number"
+          },
+          "harmonic": {
+            "type": "integer"
+          },
+          "sets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "taus": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "c1": {
+            "type": "array"
+          },
+          "c2": {
+            "type": "array"
+          },
+          "tau_d0": {
+            "type": "number"
+          },
+          "e_range": {
+            "type": "array"
+          }
         }
       }
     }
   ],
+  "operation_types": [
+    "phasor_analysis"
+  ],
+  "requires": {
+    "imaging_common": "*"
+  },
   "menu_hidden": true
 }

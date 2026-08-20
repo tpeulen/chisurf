@@ -1,0 +1,17 @@
+# Plugins that declare RPC methods under another plugin's id.
+#
+# A namespace that is a sibling's id belongs to that sibling: it reads as the
+# sibling's API, and it collides the moment that sibling registers its own
+# methods. Domain namespaces (mmfdb.*, phasor.*, editor.*) are fine and are not
+# listed here -- only genuine squatting is.
+#
+# This list is a **shrinking** record of what is still wrong. It is never
+# somewhere to add yourself to make test/test_plugin_dependencies.py pass: fix
+# the manifest instead, by moving the method to the plugin that owns the
+# namespace or renaming it into a domain namespace. The end state is an empty
+# list.
+#
+# One `plugin_id:rpc.method.name` per line.
+
+mmfdb_admin:ndxplorer.load_burst_product
+mmfdb_admin:ndxplorer.record_analysis

@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chisurf.org/schemas/manifest.schema.json",
+  "title": "ChiSurf plugin manifest",
+  "description": "Plugin metadata and contract. Generated from the PluginManifest dataclass by chisurf.core.plugin.manifest -- edit that, not this.",
+  "type": "object",
+  "required": [
+    "id",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "authors": {
+      "type": "array"
+    },
+    "categories": {
+      "type": "array"
+    },
+    "icon": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state_namespace": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state_schema": {
+      "type": "object"
+    },
+    "statefulness": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "window": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "$ref": "#/$defs/window_state"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "entrypoints": {
+      "$ref": "#/$defs/entrypoints"
+    },
+    "rpc_methods": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rpc_method"
+      }
+    },
+    "events": {
+      "type": "array"
+    },
+    "operation_types": {
+      "type": "array"
+    },
+    "dependencies": {
+      "type": "object"
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      }
+    },
+    "optional_requires": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9_-]*$"
+      }
+    },
+    "library": {
+      "type": "boolean"
+    },
+    "experimental": {
+      "type": "boolean"
+    },
+    "experimental_message": {
+      "type": "string"
+    },
+    "menu_hidden": {
+      "type": "boolean"
+    },
+    "deprecated": {
+      "type": "boolean"
+    },
+    "deprecation_message": {
+      "type": "string"
+    },
+    "demo": {
+      "type": "boolean"
+    },
+    "_comment": {
+      "type": "string"
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "entrypoints": {
+      "type": "object",
+      "properties": {
+        "gui": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cli": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "services": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "script": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "window_state": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "settings_key": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "rpc_method": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "params_schema": {
+          "type": [
+            "object",
+            "string",
+            "null"
+          ]
+        },
+        "result_schema": {
+          "type": [
+            "object",
+            "string",
+            "null"
+          ]
+        },
+        "long_running": {
+          "type": "boolean"
+        },
+        "cancelable": {
+          "type": "boolean"
+        },
+        "events": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

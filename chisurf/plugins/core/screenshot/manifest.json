@@ -1,0 +1,16 @@
+{
+  "id": "screenshot",
+  "version": "1.0.0",
+  "display_name": "Main:Tools:Screenshot",
+  "description": "Screenshot\n\nA minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.\n\nBehavior:\n- It captures the current main window and copies the image to the clipboard.\n- It displays a temporary message box confirming the action.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Main",
+    "Tools"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  }
+}

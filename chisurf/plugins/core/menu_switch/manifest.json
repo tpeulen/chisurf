@@ -1,0 +1,15 @@
+{
+  "id": "menu_switch",
+  "version": "1.0.0",
+  "display_name": "Setup:Menu Switch",
+  "description": "Menu Switch\n\nThis plugin provides a simple toggle to switch between the traditional menu bar \nand the modern ribbon interface in ChiSurf.\n\nFeatures:\n- One-click switching between menu and ribbon interfaces\n- Automatic state detection and switching\n- Persistent preference saving\n- Seamless transition without requiring restart\n\nThe Menu Switch plugin allows users to easily toggle between the traditional\nmenu bar interface and the modern ribbon interface based on their preference\nor workflow requirements. The current interface state is automatically saved\nand restored on application startup.\n\nThis plugin is particularly useful for users who want to quickly switch between\ninterfaces for different tasks or for those who are evaluating which interface\nworks best for their workflow.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup"
+  ],
+  "entrypoints": {
+    "script": "__init__.py"
+  }
+}

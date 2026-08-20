@@ -230,6 +230,24 @@ class _FakeWindow:
         self.state = state
 
 
+def _shipped_manifest_paths(plugins_root):
+    """Every real plugin manifest under *plugins_root*.
+
+    ``manifest.json`` is not a reserved name: chimol's render baselines use it
+    for a completely different document (``chimol/test/renders/gl_baseline/``),
+    and the cookiecutter template's is full of placeholders. Both live under a
+    ``test``/template directory, so skipping those is what separates a plugin
+    manifest from a file that merely shares its name.
+    """
+    for manifest_path in sorted(plugins_root.rglob("manifest.json")):
+        parts = manifest_path.parts
+        if any(part in ("test", "tests") for part in parts):
+            continue
+        if "cookiecutter" in str(manifest_path) or any("{{" in part for part in parts):
+            continue
+        yield manifest_path
+
+
 class TestPluginRegistryStatefulness:
     """PluginRegistry manifest-driven window statefulness."""
 
@@ -348,7 +366,7 @@ class TestPluginRegistryState:
 
         plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
         bad: list[str] = []
-        for mf in sorted(plugins_root.rglob("manifest.json")):
+        for mf in _shipped_manifest_paths(plugins_root):
             try:
                 data = json.loads(mf.read_text())
             except json.JSONDecodeError:
@@ -374,9 +392,7 @@ class TestPluginRegistryState:
 
         plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
         spellings: dict[str, set[str]] = collections.defaultdict(set)
-        for mf in sorted(plugins_root.rglob("manifest.json")):
-            if "cookiecutter" in str(mf):  # template placeholders, not real labels
-                continue
+        for mf in _shipped_manifest_paths(plugins_root):
             data = json.loads(mf.read_text())
             for category in data.get("categories") or []:
                 spellings[category.casefold()].add(category)
@@ -433,9 +449,7 @@ class TestPluginRegistryState:
 
         plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
         bad: list[str] = []
-        for mf in sorted(plugins_root.rglob("manifest.json")):
-            if "cookiecutter" in str(mf):  # template placeholders, not real labels
-                continue
+        for mf in _shipped_manifest_paths(plugins_root):
             data = json.loads(mf.read_text())
             categories = data.get("categories") or []
             display_name = data.get("display_name") or ""

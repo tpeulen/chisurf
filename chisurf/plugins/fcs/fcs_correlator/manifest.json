@@ -1,0 +1,21 @@
+{
+  "id": "fcs_correlator",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:Correlator",
+  "description": "FCS Correlator\n\nThis plugin provides a two-pane navigation-based correlator tool for computing\nand merging fluorescence correlation spectroscopy (FCS) data. Features include:\n\n- Detector and PIE window definition\n- TTTR file selection with drag-and-drop\n- Optional photon/burst filtering\n- Multi-tau correlation with configurable parameters (bins, cascades, fine grid)\n- FCS curve merging and export\n\nThe tool replaces the legacy QWizard with a modern navigation panel layout\n(left step list, right view/display), built using the AutoForm declarative\nUI framework for the correlator settings panel.\n\nThe correlator workflow is no longer a standalone menu entry: it is hosted as\nthe first section of the unified **FCS** tool (``fcs_toolbox``), which merges the\ncorrelator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim,\nBurst-wise FCS, calculators). This module remains the reusable building block\n(``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is\ntherefore hidden from the plugin menu.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence Correlation Spectroscopy"
+  ],
+  "entrypoints": {
+    "script": "wizard.py"
+  },
+  "optional_requires": {
+    "fcs_channel_preset": "*",
+    "fcs_filter_calculator": "*"
+  },
+  "menu_hidden": true
+}

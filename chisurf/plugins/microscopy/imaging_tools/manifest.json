@@ -3,11 +3,39 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Image Tools",
   "description": "Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy"
+  ],
   "icon": "🔬",
-  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
   "entrypoints": {
     "gui": "chisurf.plugins.microscopy.imaging_tools.gui.tool:ImagingToolsTool"
+  },
+  "optional_requires": {
+    "clsm": "*",
+    "img_calibration": "*",
+    "img_drift": "*",
+    "img_flow": "*",
+    "img_frc": "*",
+    "img_pixel_intensity": "*",
+    "img_pixel_micro_time": "*",
+    "img_pixel_mle": "*",
+    "img_pixel_nb": "*",
+    "img_pixel_phasor": "*",
+    "img_tracking": "*",
+    "psf_determination": "*",
+    "region_mle": "*",
+    "setup_channel_definition": "*",
+    "spot_finder": "*",
+    "tttr_image_browser": "*"
   }
 }

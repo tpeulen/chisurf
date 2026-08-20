@@ -1,0 +1,16 @@
+{
+  "id": "fcs_convert",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Fluorescence Correlation Spectroscopy:FCS Converter",
+  "description": "FCS conversion plugin.\n\nConvert fluorescence correlation spectroscopy files between supported\nformats directly from the ChiSurf CLI.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Fluorescence Correlation Spectroscopy"
+  ],
+  "entrypoints": {
+    "cli": "fcs-convert=chisurf.plugins.fcs.fcs_convert.cli:cli"
+  }
+}
