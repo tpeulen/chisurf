@@ -920,7 +920,7 @@ class _WgpuCanvas(base.Canvas):
                 return
         if not self._interactive_mouse:
             return
-        if self._left_button_pans():
+        if event.button() == QtCore.Qt.MiddleButton or self._left_button_pans():
             self._panning = True
             self._pan_start = (px, py)
             self._pan_range_start = (list(self._view.x_range), list(self._view.y_range))

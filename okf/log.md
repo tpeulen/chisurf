@@ -1,5 +1,19 @@
 # Update Log
 
+## 2026-08-20
+* **chiplot WGPU backend: middle-drag pans even when left is bound to a zoom
+  rectangle**. `_mouse_press` (`chisurf/gui/chiplot/backends/wgpu/_canvas.py:923`)
+  branched pan-vs-rubber-band only on the `leftButtonPan` preference, so with
+  it off a middle-button drag fell into the same rubber-band-select path as a
+  left click — invisible when the preference is on (the default), which is
+  why it went uncaught. Fixed by also panning on
+  `event.button() == QtCore.Qt.MiddleButton`, matching pyqtgraph's
+  `ViewBox`/`GraphicsView` semantics the surrounding docstrings already
+  describe. New regression test
+  `test_a_middle_drag_still_pans_when_left_draws_a_zoom_rectangle`; recorded
+  and closed in
+  [known-issues.md](references/known-issues.md#-fixed--chiplots-wgpu-backend-middle-drag-opens-a-selection-rectangle-instead-of-panning).
+
 ## 2026-08-17
 * **chigame/lumis: cloud zoom artifacts fixed** (night pass). Cloud respawn
   margin is now each cloud's own width (a fixed 60 units popped zoomed clouds

@@ -4854,3 +4854,51 @@ the working tree's own state before the rewrite began.
   from `test/plugin_help_guide_allowlist.txt` in passing: `plugin_manager/gui`
   (now ships both) and `tttr/converter/gui` (the plugin was renamed away in
   `7f63edb4e` and no longer exists).
+
+## ✅ FIXED — chiplot's WGPU backend: middle-drag opens a selection rectangle instead of panning
+
+**Found 2026-08-20** (user report). In the `wgpu` native chiplot backend
+(`chisurf/gui/chiplot/backends/wgpu/_canvas.py`), a middle-button drag does not
+pan the view the way it does in pyqtgraph — instead it opens a rubber-band
+selection rectangle, whenever the "left button pans" preference
+(`gui.plot.pyqtgraph_config.leftButtonPan`) is off, i.e. the panel is in
+left-drag-zooms mode.
+
+The docstring on `_mouse_press` already states the intended pyqtgraph
+semantics: "Only the *left* button grabs a region, a marker or the corner
+button — pyqtgraph's items ignore the middle one, so a middle drag pans across
+a fit range instead of moving it." `_is_view_drag_button` correctly admits both
+`QtCore.Qt.LeftButton` and `QtCore.Qt.MiddleButton` into the drag path
+(`_canvas.py:856-864`). But the branch that decides pan-vs-rubber-band
+(`_canvas.py:920-927`) only inspects `self._left_button_pans()` — it never
+checks *which* button is down:
+
+```python
+if self._left_button_pans():
+    self._panning = True
+    ...
+else:
+    self._rubber = (px, py, px, py)
+```
+
+So with `leftButtonPan=False`, a middle-button press falls into the `else`
+branch and starts a rubber-band drag exactly like a left click would, even
+though the middle button is supposed to always pan regardless of that
+preference. With `leftButtonPan=True` (the default) the bug is invisible,
+because both buttons pan anyway — that is likely why it was not caught by the
+existing tests.
+
+**Fixed 2026-08-20**: the pan branch now also fires on a middle-button press
+regardless of the preference (`_canvas.py:923`,
+`if event.button() == QtCore.Qt.MiddleButton or self._left_button_pans():`).
+Covered by
+`test/gui/test_chiplot_wgpu.py::test_a_middle_drag_still_pans_when_left_draws_a_zoom_rectangle`,
+which sets `leftButtonPan=False` via `set_left_button_pans(False)` and asserts
+a middle drag still pans (`_panning is True`, `_rubber is None`, range
+changes). Full file: 57 passed.
+
+The legacy `opengl` backend (`chisurf/gui/chiplot/backends/opengl/_canvas.py`)
+has no equivalent pan/rubber-band logic at all, so this is specific to the
+WGPU backend, which is the one under active migration
+([chiplot](../subsystems/chiplot.md)).
+

@@ -741,6 +741,26 @@ def test_a_middle_drag_does_not_grab_a_region(qapp):
     assert tuple(region.bounds) == before
 
 
+def test_a_middle_drag_still_pans_when_left_draws_a_zoom_rectangle(qapp):
+    """The middle button pans regardless of the ``leftButtonPan`` setting.
+
+    With the setting off, a *left* drag draws a rubber-band zoom rectangle
+    instead of panning — but pyqtgraph's middle button always pans, since it
+    exists precisely so a user can pan without giving up a left drag that has
+    been rebound to a zoom rectangle. A prior bug branched only on the
+    setting, so a middle drag fell into the rubber-band path too.
+    """
+    canvas = _interactive_canvas()
+    canvas.set_left_button_pans(False)
+    before = canvas.get_range()[0]
+    canvas._mouse_press(_FakeMouse((200, 150), QtCore.Qt.MiddleButton))
+    assert canvas._panning is True
+    assert canvas._rubber is None
+    canvas._mouse_move(_FakeMouse((240, 150), buttons=QtCore.Qt.MiddleButton))
+    canvas._mouse_release(_FakeMouse((240, 150), QtCore.Qt.MiddleButton))
+    assert canvas.get_range()[0] != before
+
+
 def test_the_pointer_leaving_cancels_a_drag(qapp):
     """A press whose release happens elsewhere must not persist."""
     canvas = _interactive_canvas()
