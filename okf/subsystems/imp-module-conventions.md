@@ -70,6 +70,34 @@ are consumed by typemaps, so both present as `(value_type, bounds,
 feature_name)` to Python; the module `%ignore`s the vector one so the array
 version is the one wrapped.
 
+# Wrapping numpy arrays: use the stock suites, never a hand-written typemap
+
+A kernel that takes or returns numpy arrays should expose a C++ signature that
+matches one of the suites in the vendored `pyext/numpy.i` — `IN_ARRAY2/3`,
+`ARGOUTVIEWM_ARRAY2/3`, and friends — bound with `%apply(...)`, never a custom
+`%typemap(in, ...)`. Learned from `IMP_bff.avdistance.i` on 2026-08-21:
+
+* **A hand-written `%typemap(in)` on a multi-arg group breaks in three ways.**
+  `PyArray_SIZE($input)` fails because `$input` is a `PyObject *`, not a
+  `PyArrayObject *`, so the `PyArray_DIMS`/`PyArray_NDIM` macros inside it have
+  no viable call — you must cast. The dims are by-value `int` parameters, so
+  `$2 = &local` assigns an `int *` to an `int`. And the lifetime of any
+  converted array is yours to free, which the stock `freearg` suite does for
+  you. All three were hit in one afternoon; each cost a build cycle.
+* **When no stock suite matches, reshape the C++ signature, not the binding.**
+  `random_distances` took what the old Python `.ravel()`'d — which admitted the
+  empty 1-D `np.zeros(0)` as an input. The clean contract is a `(n, 4)` point
+  cloud, which is exactly `IN_ARRAY2`; the empty cloud is then `np.zeros((0,4))`,
+  and the test that passed a 1-D empty array was updated to the 2-D shape. The
+  rule that fell out of the port: **state the shape once, on the kernel; if a
+  Python caller's ravel/reshape disagrees with it, fix the caller, not the
+  typemap.**
+* **The stock suite only works when the header's dim parameters come after the
+  pointer, in the order `(DATA_TYPE* ptr, DIM_TYPE dim1, DIM_TYPE dim2, ...)`.**
+  numpy.i also has the reversed order `(DIM1, DIM2, ptr)`; both exist because
+  IMP headers historically used both. Pick the matching one — do not reorder a
+  signature mid-contract to force a suite.
+
 # cereal conventions
 
 IMP core's pattern is `friend class cereal::access;` plus a

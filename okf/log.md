@@ -1,5 +1,15 @@
 # Update Log
 
+## 2026-08-21
+* **imp-module-conventions.md: "Wrapping numpy arrays" section**. After two
+  build cycles in `IMP_bff.avdistance.i`, added the rule to
+  [imp-module-conventions.md](subsystems/imp-module-conventions.md): use stock
+  numpy.i suites via `%apply`, never a hand-written `%typemap(in, ...)` — the
+  custom typemap failed three ways (`PyArray_SIZE` on a `PyObject *`,
+  `$2 = &local` into a by-value `int`, and a leak responsibility the stock
+  `freearg` owns). When no suite matches, reshape the C++ signature (state the
+  shape once, on the kernel) and fix the Python caller, not the binding.
+
 ## 2026-08-20
 * **chiplot WGPU backend: middle-drag pans even when left is bound to a zoom
   rectangle**. `_mouse_press` (`chisurf/gui/chiplot/backends/wgpu/_canvas.py:923`)
