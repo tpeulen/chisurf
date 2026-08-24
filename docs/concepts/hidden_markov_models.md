@@ -46,7 +46,8 @@ detection channels are correlated, as green and red are under FRET.
 ## Fitting: Baum-Welch
 
 The parameters $(\pi, A, \mu, \Sigma)$ are estimated by maximum likelihood with
-the **Baum-Welch** algorithm [^rabiner], an expectation-maximisation scheme:
+the **Baum-Welch** algorithm [^baum][^rabiner], an expectation-maximisation
+scheme:
 
 * **E-step** — the forward-backward recursions give the probability of being in
   each state at each time, and the expected number of $i \to j$ transitions,
@@ -97,7 +98,19 @@ of the likelihood curve. BIC's penalty grows with the amount of data and
 generally returns the smaller model, which is usually the one a kinetic
 interpretation can carry. If the criterion keeps falling to the edge of the
 range, suspect an assumption rather than a rich state structure: bleaching,
-drift, or a continuum.
+drift, or a continuum. The opposite error is just as common: a two-state fit
+applied to a molecule that genuinely visits many states returns two clean states
+and two confident rates, none of them real. Where the photon budget allows the
+question to be asked properly, folding landscapes have turned out to be
+networks rather than pairs [^stigler].
+
+Be modest about what the answer is worth. A blind benchmark of the kinetic
+inference tools in this field — the same simulated trajectories analysed by many
+groups, each with their own method and their own hands — found rate constants
+agreeing to roughly a factor of two, and the *number of states* recovered
+correctly far less often than the rates [^goetz]. The spread came from analyst
+choices as much as from algorithms. Report a rate as an order of magnitude with a
+model attached, not as a number with three digits.
 
 ## Reading the result
 
@@ -106,6 +119,13 @@ exponential, $p(t) = k_i e^{-k_i t}$ — a straight line on a logarithmic
 count axis. Curvature means the state is not one state: what is drawn as a
 single level hides two with similar brightness. The mean dwell is
 $\langle t \rangle = 1/k_i$.
+
+The converse does not hold. Exponential dwell times are consistent with a
+Markov model but do not establish one, and dwell-time histograms alone cannot
+distinguish connectivities that predict the same dwells — a linear three-state
+chain and a triangle among the same three states can be indistinguishable this
+way. Separating them needs the *order* of transitions, which the decoded path
+carries and the histogram throws away [^schmid].
 
 **Rates.** Over a bin of width $\Delta t$ short compared with the dwelling,
 
@@ -130,6 +150,7 @@ trade-off in this analysis.
 | Photons are sparse; you want rates faster than any sensible bin | **H2MM** — photon-by-photon, no binning ({ref}`concept-photon-by-photon-kinetics`) |
 | Many short traces, each too short to fit alone | **ebFRET** — empirical Bayes shares a prior across traces ({ref}`concept-ebfret`) |
 | States interconvert *within* a burst of a freely diffusing molecule | Gopich-Szabo photon-by-photon likelihood, or dynamic PDA |
+| Two processes run independently behind one signal (binding *and* folding, dye blinking *and* conformation) | A **factorial** HMM: separate chains multiplying into one observation, rather than one chain with $n_1 n_2$ states [^factorial] |
 
 ## In ChiSurf
 
@@ -145,12 +166,27 @@ trace with known rates: choosing the state count by BIC, decoding, dwell-time
 exponentials, the short-bin rate approximation and where it breaks, and what
 too many states looks like.
 
+[^baum]: {cite}`baum1970` — the maximization technique itself, before it was
+    called Baum-Welch.
+
 [^rabiner]: {cite}`rabiner1989` — the tutorial every HMM implementation is
     written against: forward-backward, Viterbi and Baum-Welch in one place.
 [^huang]: {cite}`huang2001` — the scaled recursions in the form used here
     (pp. 443-445).
 [^squarem]: {cite}`varadhan2008` — SQUAREM, the acceleration applied to the EM
     iteration.
+
+[^stigler]: {cite}`stigler2011` — a folding network resolved into many more
+    states than a two-state fit would have reported.
+
+[^schmid]: {cite}`schmid2016` — what a dwell-time histogram cannot decide, and
+    what to ask the trajectory instead.
+
+[^factorial]: {cite}`ghahramani1997` — factorial hidden Markov models: several
+    chains behind one observation.
+
+[^goetz]: {cite}`goetz2022` — the blind benchmark of kinetic-inference tools on
+    single-molecule FRET trajectories.
 
 ## See also
 

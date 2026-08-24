@@ -142,15 +142,55 @@ the fitting code ({ref}`concept-parameter-uncertainty`).
 
 ## Quantum yield in practice
 
-$Q$ is measured comparatively against a standard of known yield, correcting for
-the refractive indices of the two solvents and for absorbance at the excitation
-wavelength.
+$Q$ is almost always measured *comparatively*, against a standard whose yield is
+already known. Record the integrated emission $F$ and the absorbance $A$ at the
+excitation wavelength for sample and standard, and
+
+$$
+Q = Q_{\mathrm{std}}\,
+    \frac{F}{F_{\mathrm{std}}}\,
+    \frac{A_{\mathrm{std}}}{A}\,
+    \frac{n^{2}}{n_{\mathrm{std}}^{2}} ,
+$$
+
+where $n$ is the refractive index of each solvent. The $n^2$ factor is not a
+small correction — water against ethanol is already 7% — and it is the term most
+often dropped. In practice the ratio $F/A$ is better taken as the slope of $F$
+against $A$ over a dilution series than from a single pair of numbers, because
+the slope exposes curvature that a single point hides.
+
+Three things go wrong often enough to be worth naming:
+
+- **Inner-filter absorption.** Above about $A = 0.05$ in a 1 cm cuvette the
+  excitation is measurably attenuated across the cell and re-absorption removes
+  emission, both of which bend the $F$-vs-$A$ line toward the axis and bias $Q$
+  low. Dilute rather than correct.
+- **The standard itself.** Quinine sulfate in sulfuric acid is the traditional
+  reference and a poor one: its yield depends on the acid concentration, on
+  excitation wavelength, and on halide contamination, so quoted values disagree
+  by more than the precision anyone claims for the measurement
+  {cite}`nawara2019`. Prefer a standard characterised against the IUPAC
+  procedure {cite}`brouwer2011`, and always record which value you used —
+  $Q$ is only ever as good as $Q_{\mathrm{std}}$.
+- **Spectral correction.** $F$ is the integral of the *corrected* emission
+  spectrum. An uncorrected spectrometer response distorts the integral by tens of
+  percent when sample and standard emit in different regions, which is exactly
+  when a standard is least like the sample.
+
+An absolute measurement with an integrating sphere avoids the standard
+altogether and is the better route for scattering or solid samples, at the cost
+of a harder geometry. {cite}`levitus2020` is a practical walk-through of the
+relative method and its corrections; {cite}`braslavsky2007` is the authority for
+the terms and symbols.
 
 Its main role here is that the donor quantum yield $Q_D$ enters the Förster
 radius as $Q_D^{1/6}$. A factor-of-two error in $Q_D$ moves $R_0$ by about 12%,
 so the sixth root is forgiving — but $Q_D$ is environment-dependent, so a
 tabulated $R_0$ measured for free dye is not the $R_0$ of the same dye conjugated
-to your protein ({ref}`fundamentals-energy-transfer`).
+to your protein ({ref}`fundamentals-energy-transfer`). The ratio $Q_A/Q_D$ is
+treated far less forgivingly: it enters the detection-correction factor $\gamma$
+linearly, so the same factor-of-two error moves every corrected efficiency
+({ref}`concept-accurate-fret`).
 
 ## See also
 
@@ -163,4 +203,7 @@ to your protein ({ref}`fundamentals-energy-transfer`).
   {src}`chisurf/core/fluorescence/general.py#fluorescence_averaged_lifetime` ·
   {src}`chisurf/core/fluorescence/general.py#rate_constant_to_lifetime`.
 - Literature: {cite}`lakowicz2006` for the rate picture and the averages;
-  {cite}`oconnor1984` for what multi-exponential analysis can resolve.
+  {cite}`oconnor1984` for what multi-exponential analysis can resolve;
+  {cite}`brouwer2011` and {cite}`levitus2020` for measuring $Q$ against a
+  standard, and {cite}`nawara2019` for why the traditional standard is a bad
+  one.

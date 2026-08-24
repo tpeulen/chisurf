@@ -196,5 +196,11 @@ fit the pixels that matter.
 - Key literature: {cite}`digman2008` is the phasor approach to FLIM itself;
   {cite}`colyer2012` the polar plot as the visual basis of it;
   {cite}`malacrida2021` a review of the universal circle and how to read a
-  phasor plot without fitting.
+  phasor plot without fitting. For the origins: {cite}`lakowicz1992b` is the
+  method paper for lifetime imaging, and {cite}`lakowicz1992` the measurement
+  that made it worth doing — free and protein-bound NADH separated by lifetime
+  alone, which is still the basis of label-free metabolic imaging.
+  {cite}`verveer2000` is the global alternative to per-pixel fitting: hold one
+  lifetime pair fixed across the whole stack and fit only the fraction per pixel,
+  which is what makes a two-state FRET map tractable at realistic photon counts.
 - Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.

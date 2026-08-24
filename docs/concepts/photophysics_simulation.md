@@ -182,5 +182,8 @@ they don't, the simulator has isolated the bias before it reaches real data.
 - Literature: {cite}`wohland2001` is the standard treatment of noise in FCS by
   Brownian-dynamics simulation; {cite}`ingargiola2016` the open burst toolkit and
   the PyBroMo confocal smFRET diffusion simulator beside it; {cite}`gopich2009`
-  the photon-by-photon FRET-trajectory theory underlying H2MM.
+  the photon-by-photon FRET-trajectory theory underlying H2MM;
+  {cite}`borner2018` the camera-based counterpart, which a photon-counting
+  simulation does not reproduce — integration over a frame, readout noise and
+  motion blur change what a trajectory looks like before any analysis touches it.
 - Tools in ChiSurf: the **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) simulates a scanned image with a known lifetime map, and the **Light Path Simulator** (`chisurf/plugins/core/lightpath_simulator/`) models the optics the photons pass through.

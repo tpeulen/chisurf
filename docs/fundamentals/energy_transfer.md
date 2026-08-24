@@ -48,7 +48,11 @@ millisecond lifetimes, work over ordinary FRET distances.
 
 Two mechanisms are sometimes confused with Förster transfer and are not it.
 **Dexter exchange** requires wavefunction overlap, falls off exponentially, and
-is only relevant at van der Waals contact. **Trivial reabsorption** — the donor
+is only relevant at van der Waals contact {cite}`dexter1953`; because it moves
+electrons rather than excitation energy it also transfers triplets, which
+Förster transfer cannot. The two are separated experimentally by their distance
+and spectral-overlap dependence rather than by the rate alone
+{cite}`murphy2004`. **Trivial reabsorption** — the donor
 emits a photon and the acceptor absorbs it — depends on sample geometry and
 concentration rather than on the donor–acceptor distance, and it is suppressed
 by working optically dilute.

@@ -37299,3 +37299,22 @@ front, not this).
   wrong shape for a text editor — but Apply now *writes* `gui.style_sheet`
   instead of only setting it in memory, which is why a chosen theme silently
   reverted on every restart. Help/guide allow-list down to 70.
+
+- 2026-08-24 — **A local English Wikipedia becomes a citation index for the
+  docs.** The `enwiki-20260801` multistream dump (26.67 GB) plus its 25.8 M-entry
+  index now live on external media, and because multistream blocks are
+  independently addressable, articles were range-read out of the file *while it
+  was still downloading* rather than after. 99 seeded fluorescence articles gave
+  2,120 cited works, of which **41 were added to `bibliography.yaml`** — every
+  DOI verified against Crossref, every key cited by a page. Wikipedia prose was
+  not used: it is CC BY-SA and ChiSurf is GPL-3.0, so the dump is a bibliographic
+  index and the pages were written here, against the primary papers it surfaced
+  ([wikipedia-mining.md](references/wikipedia-mining.md)). The harvest was mostly
+  useful for what it exposed: `image_correlation.md` cited **nothing at all** and
+  now carries the ICS→RICS→N&B lineage; quantum yield was one thin paragraph
+  despite $Q_A/Q_D$ entering $\gamma$ linearly; `anisotropy.md` assumed a sphere
+  end-to-end, so it invited reading a multi-exponential decay as two populations
+  when a single ellipsoid produces one; the FCS pages never stated the
+  two-component resolution limit (~1.6 in $\tau_D$, ≈ 4 in mass). Also fixed on
+  the way past: `chimol_widget_toolkit.md` and `ui_data_scheme.md` had no front
+  matter at all, failing two `test_docs_okf.py` assertions in committed code.

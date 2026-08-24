@@ -216,6 +216,60 @@ hoffmann2011:
   doi: 10.1039/c0cp01911a
   topics: [dynamics, smfret]
 
+baum1970:
+  authors: L. E. Baum, T. Petrie, G. Soules, N. Weiss
+  title: A Maximization Technique Occurring in the Statistical Analysis of Probabilistic Functions of Markov Chains
+  journal: The Annals of Mathematical Statistics
+  year: 1970
+  volume: 41
+  pages: 164-171
+  doi: 10.1214/aoms/1177697196
+  note: The Baum-Welch expectation-maximization recursion that every hidden-Markov fit in ChiSurf descends from.
+  topics: [hmm]
+
+ghahramani1997:
+  authors: Z. Ghahramani, M. I. Jordan
+  title: Factorial Hidden Markov Models
+  journal: Machine Learning
+  year: 1997
+  volume: 29
+  pages: 245-273
+  doi: 10.1023/a:1007425814087
+  note: "Factorial HMMs: several independent chains behind one observation, the structure a multi-colour or multi-parameter trace needs."
+  topics: [hmm]
+
+stigler2011:
+  authors: J. Stigler, F. Ziegler, A. Gieseke, J. C. M. Gebhardt, M. Rief
+  title: The Complex Folding Network of Single Calmodulin Molecules
+  journal: Science
+  year: 2011
+  volume: 334
+  pages: 512-516
+  doi: 10.1126/science.1207598
+  note: A hidden-Markov network with more states than a two-state fit admits; the cautionary example for model selection.
+  topics: [hmm, dynamics]
+
+schmid2016:
+  authors: S. Schmid, M. Götz, T. Hugel
+  title: "Single-Molecule Analysis beyond Dwell Times: Demonstration and Assessment in and out of Equilibrium"
+  journal: Biophysical Journal
+  year: 2016
+  volume: 111
+  pages: 1375-1384
+  doi: 10.1016/j.bpj.2016.08.023
+  note: Dwell-time histograms alone do not identify a kinetic scheme; what else a trajectory has to be asked.
+  topics: [hmm, dynamics]
+
+goetz2022:
+  authors: M. Götz, A. Barth, S. S. Bohr, R. Börner, J. Chen, et al.
+  title: A blind benchmark of analysis tools to infer kinetic rate constants from single-molecule FRET trajectories
+  journal: Nature Communications
+  year: 2022
+  volume: 13
+  doi: 10.1038/s41467-022-33023-3
+  note: The blind benchmark of kinetic-inference tools on single-molecule FRET trajectories - the accuracy a rate constant can claim.
+  topics: [hmm, dynamics, smfret]
+
 # ── Fluorescence correlation spectroscopy ───────────────────────────
 magde1972:
   authors: D. Magde, E. L. Elson, W. W. Webb
@@ -333,6 +387,171 @@ sanguigno2010:
   doi: 10.1021/ac102084m
   topics: [fcs, imaging]
 
+magde1974:
+  authors: D. Magde, E. L. Elson, W. W. Webb
+  title: Fluorescence correlation spectroscopy. II. An experimental realization
+  journal: Biopolymers
+  year: 1974
+  volume: 13
+  pages: 29-61
+  doi: 10.1002/bip.1974.360130103
+  note: "The companion to the 1972 letter: the correlator, the focal geometry and the diffusion fit that FCS still uses."
+  topics: [fcs]
+
+ehrenberg1974:
+  authors: M. Ehrenberg, R. Rigler
+  title: Rotational brownian motion and fluorescence intensify fluctuations
+  journal: Chemical Physics
+  year: 1974
+  volume: 4
+  pages: 390-401
+  doi: 10.1016/0301-0104(74)85005-6
+  note: Rotational diffusion as a fluctuation term - why fast anisotropy decay shows up in the correlation function.
+  topics: [fcs, anisotropy]
+
+palmer1989:
+  authors: A. G. Palmer, N. L. Thompson
+  title: High-order fluorescence fluctuation analysis of model protein clusters.
+  journal: Proceedings of the National Academy of Sciences
+  year: 1989
+  volume: 86
+  pages: 6148-6152
+  doi: 10.1073/pnas.86.16.6148
+  note: Higher moments of the fluctuation distribution separate aggregation from concentration; the ancestor of PCH.
+  topics: [fcs, pch]
+
+qian1990b:
+  authors: H. Qian, E. Elson
+  title: On the analysis of high order moments of fluorescence fluctuations
+  journal: Biophysical Journal
+  year: 1990
+  volume: 57
+  pages: 375-380
+  doi: 10.1016/s0006-3495(90)82539-x
+  note: How far the moment expansion can be pushed before shot noise dominates - the practical limit on brightness analysis.
+  topics: [fcs, pch]
+
+qian1991:
+  authors: H. Qian, E. L. Elson
+  title: Analysis of confocal laser-microscope optics for 3-D fluorescence correlation spectroscopy
+  journal: Applied Optics
+  year: 1991
+  volume: 30
+  pages: 1185
+  doi: 10.1364/ao.30.001185
+  note: The confocal detection volume treated optically rather than as a Gaussian - where the 3D Gaussian approximation breaks.
+  topics: [fcs]
+
+meseth1999:
+  authors: U. Meseth, T. Wohland, R. Rigler, H. Vogel
+  title: Resolution of Fluorescence Correlation Measurements
+  journal: Biophysical Journal
+  year: 1999
+  volume: 76
+  pages: 1619-1631
+  doi: 10.1016/s0006-3495(99)77321-2
+  note: Two diffusing species need roughly a factor 1.6 in diffusion time before a fit can resolve them; the resolution limit ChiSurf's two-component fits inherit.
+  topics: [fcs]
+
+hess2002:
+  authors: S. T. Hess, W. W. Webb
+  title: Focal Volume Optics and Experimental Artifacts in Confocal Fluorescence Correlation Spectroscopy
+  journal: Biophysical Journal
+  year: 2002
+  volume: 83
+  pages: 2300-2317
+  doi: 10.1016/s0006-3495(02)73990-8
+  note: Focal-volume aberration, cover-glass mismatch and saturation as systematic errors in G(0) and the diffusion time.
+  topics: [fcs]
+
+krichevsky2002:
+  authors: O. Krichevsky, G. Bonnet
+  title: "Fluorescence correlation spectroscopy: the technique and its applications"
+  journal: Reports on Progress in Physics
+  year: 2002
+  volume: 65
+  pages: 251-297
+  doi: 10.1088/0034-4885/65/2/203
+  note: A thorough review of the method and its models; useful as the cross-check on a correlation-curve fit.
+  topics: [fcs]
+
+muellerjd2004:
+  authors: J. D. Müller
+  title: Cumulant Analysis in Fluorescence Fluctuation Spectroscopy
+  journal: Biophysical Journal
+  year: 2004
+  volume: 86
+  pages: 3981-3992
+  doi: 10.1529/biophysj.103.037887
+  note: Cumulants rather than the full histogram - the cheap route to brightness that FIDA and PCH refine.
+  topics: [fcs, pch]
+
+loman2008:
+  authors: A. Loman, T. Dertinger, F. Koberling, J. Enderlein
+  title: Comparison of optical saturation effects in conventional and dual-focus fluorescence correlation spectroscopy
+  journal: Chemical Physics Letters
+  year: 2008
+  volume: 459
+  pages: 18-21
+  doi: 10.1016/j.cplett.2008.05.018
+  note: Optical saturation compared between one- and two-focus FCS; the measurement behind the saturation corrections.
+  topics: [fcs, photophysics]
+
+muellercb2008:
+  authors: C. B. Müller, A. Loman, V. Pacheco, F. Koberling, D. Willbold, et al.
+  title: Precise measurement of diffusion by multi-color dual-focus fluorescence correlation spectroscopy
+  journal: EPL (Europhysics Letters)
+  year: 2008
+  volume: 83
+  pages: 46001
+  doi: 10.1209/0295-5075/83/46001
+  note: Two-focus FCS fixes the calibration-free diffusion coefficient by imposing a known distance on the focal geometry.
+  topics: [fcs]
+
+ruan2004:
+  authors: Q. Ruan, M. A. Cheng, M. Levi, E. Gratton, W. W. Mantulin
+  title: "Spatial-Temporal Studies of Membrane Dynamics: Scanning Fluorescence Correlation Spectroscopy (SFCS)"
+  journal: Biophysical Journal
+  year: 2004
+  volume: 87
+  pages: 1260-1267
+  doi: 10.1529/biophysj.103.036483
+  note: Scanning the beam decouples the observation time from diffusion - the step from point FCS to the scanning methods.
+  topics: [fcs, imaging]
+
+banks2005:
+  authors: D. S. Banks, C. Fradin
+  title: Anomalous Diffusion of Proteins Due to Molecular Crowding
+  journal: Biophysical Journal
+  year: 2005
+  volume: 89
+  pages: 2960-2971
+  doi: 10.1529/biophysj.104.051078
+  note: Crowding turns normal diffusion anomalous; why a single-component fit to a cellular correlation curve is usually wrong.
+  topics: [fcs]
+
+hofling2011:
+  authors: F. Höfling, K. Bamberg, T. Franosch
+  title: Anomalous transport resolved in space and time by fluorescence correlation spectroscopy
+  journal: Soft Matter
+  year: 2011
+  volume: 7
+  pages: 1358-1363
+  doi: 10.1039/c0sm00718h
+  note: Anomalous transport read directly off the correlation function, resolved in both space and time.
+  topics: [fcs]
+
+sisan2006:
+  authors: D. R. Sisan, R. Arevalo, C. Graves, R. McAllister, J. S. Urbach
+  title: Spatially Resolved Fluorescence Correlation Spectroscopy Using a Spinning Disk Confocal Microscope
+  journal: Biophysical Journal
+  year: 2006
+  volume: 91
+  pages: 4241-4252
+  doi: 10.1529/biophysj.106.084251
+  note: A spinning disk turns FCS into a parallel, spatially resolved measurement.
+  topics: [fcs, imaging]
+
 # ── Image correlation and imaging ───────────────────────────────────
 digman2005:
   authors: M. A. Digman, C. M. Brown, P. Sengupta, P. W. Wiseman, A. R. Horwitz, E. Gratton
@@ -383,6 +602,94 @@ cardarelli2010:
   pages: e10475
   doi: 10.1016/j.bpj.2009.12.4114
   topics: [imaging]
+
+petersen1993:
+  authors: N. Petersen, P. Höddelius, P. Wiseman, O. Seger, K. Magnusson
+  title: "Quantitation of membrane receptor distributions by image correlation spectroscopy: concept and application"
+  journal: Biophysical Journal
+  year: 1993
+  volume: 65
+  pages: 1135-1146
+  doi: 10.1016/s0006-3495(93)81173-1
+  note: "Image correlation spectroscopy: the spatial autocorrelation of one frame gives cluster density and aggregation state."
+  topics: [imaging]
+
+wiseman2000:
+  authors: P. W. Wiseman, J. A. Squier, M. H. Ellisman, K. R. Wilson
+  title: Two‐photon image correlation spectroscopy and image cross‐correlation spectroscopy
+  journal: Journal of Microscopy
+  year: 2000
+  volume: 200
+  pages: 14-25
+  doi: 10.1046/j.1365-2818.2000.00736.x
+  note: ICS and its two-colour cross-correlation form at video rate; the basis of the image cross-correlation ChiSurf runs.
+  topics: [imaging, colocalisation]
+
+digman2005b:
+  authors: M. A. Digman, P. Sengupta, P. W. Wiseman, C. M. Brown, A. R. Horwitz, E. Gratton
+  title: "Fluctuation Correlation Spectroscopy with a Laser-Scanning Microscope: Exploiting the Hidden Time Structure"
+  journal: Biophysical Journal
+  year: 2005
+  volume: 88
+  pages: L33-L36
+  doi: 10.1529/biophysj.105.061788
+  note: "RICS: the raster scan's own pixel and line dwell times encode a range of lag times, so a normal image stack yields diffusion."
+  topics: [imaging, fcs]
+
+kolin2006:
+  authors: D. L. Kolin, D. Ronis, P. W. Wiseman
+  title: "k-Space Image Correlation Spectroscopy: A Method for Accurate Transport Measurements Independent of Fluorophore Photophysics"
+  journal: Biophysical Journal
+  year: 2006
+  volume: 91
+  pages: 3061-3075
+  doi: 10.1529/biophysj.106.082768
+  note: k-space ICS separates flow from diffusion by correlating in the spatial-frequency domain instead of real space.
+  topics: [imaging]
+
+digman2008b:
+  authors: M. A. Digman, R. Dalal, A. F. Horwitz, E. Gratton
+  title: Mapping the Number of Molecules and Brightness in the Laser Scanning Microscope
+  journal: Biophysical Journal
+  year: 2008
+  volume: 94
+  pages: 2320-2332
+  doi: 10.1529/biophysj.107.114645
+  note: "Number & Brightness: per-pixel mean and variance map oligomeric state across an image."
+  topics: [imaging, pch]
+
+lakowicz1992:
+  authors: J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, M. L. Johnson
+  title: Fluorescence lifetime imaging of free and protein-bound NADH.
+  journal: Proceedings of the National Academy of Sciences
+  year: 1992
+  volume: 89
+  pages: 1271-1275
+  doi: 10.1073/pnas.89.4.1271
+  note: The first lifetime images of free and bound NADH - the endogenous contrast that metabolic FLIM still reads.
+  topics: [flim, imaging]
+
+lakowicz1992b:
+  authors: J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, K. W. Berndt, M. Johnson
+  title: Fluorescence lifetime imaging
+  journal: Analytical Biochemistry
+  year: 1992
+  volume: 202
+  pages: 316-330
+  doi: 10.1016/0003-2697(92)90112-k
+  note: "The method paper for lifetime imaging: contrast from tau rather than from intensity."
+  topics: [flim, imaging]
+
+verveer2000:
+  authors: P. J. Verveer, F. S. Wouters, A. R. Reynolds, P. I. H. Bastiaens
+  title: Quantitative Imaging of Lateral ErbB1 Receptor Signal Propagation in the Plasma Membrane
+  journal: Science
+  year: 2000
+  volume: 290
+  pages: 1567-1570
+  doi: 10.1126/science.290.5496.1567
+  note: Global analysis of a FLIM stack - one shared lifetime pair across all pixels, fitting only the fraction per pixel.
+  topics: [flim, imaging, global]
 
 # ── Resolution, tracking, colocalisation ────────────────────────────
 nieuwenhuizen2013:
@@ -1170,6 +1477,139 @@ chen2012:
   note: Alexa 488 quenching by tryptophan changes between folded, molten-globule and unfolded states - the donor quantum yield is a property of the conformation.
   topics: [photophysics, fret]
 
+perrin1934:
+  authors: F. Perrin
+  title: Mouvement brownien d'un ellipsoide - I. Dispersion diélectrique pour des molécules ellipsoidales
+  journal: Journal de Physique et le Radium
+  year: 1934
+  volume: 5
+  pages: 497-511
+  doi: 10.1051/jphysrad:01934005010049700
+  note: "Rotation of an ellipsoid: the three rotational correlation times a non-spherical body has."
+  topics: [anisotropy]
+
+perrin1936:
+  authors: F. Perrin
+  title: Mouvement Brownien d'un ellipsoide (II). Rotation libre et dépolarisation des fluorescences. Translation et diffusion de molécules ellipsoidales
+  journal: Journal de Physique et le Radium
+  year: 1936
+  volume: 7
+  pages: 1-11
+  doi: 10.1051/jphysrad:01936007010100
+  note: Free rotation and fluorescence depolarization for the ellipsoid - the shape dependence behind the Perrin equation.
+  topics: [anisotropy]
+
+dexter1953:
+  authors: D. L. Dexter
+  title: A Theory of Sensitized Luminescence in Solids
+  journal: The Journal of Chemical Physics
+  year: 1953
+  volume: 21
+  pages: 836-850
+  doi: 10.1063/1.1699044
+  note: "Exchange-mediated transfer: the short-range, exponentially decaying counterpart to Foerster's 1/R^6."
+  topics: [fret, photophysics]
+
+murphy2004:
+  authors: C. B. Murphy, Y. Zhang, T. Troxler, V. Ferry, J. J. Martin, W. E. Jones
+  title: Probing Förster and Dexter Energy-Transfer Mechanisms in Fluorescent Conjugated Polymer Chemosensors
+  journal: The Journal of Physical Chemistry B
+  year: 2004
+  volume: 108
+  pages: 1537-1543
+  doi: 10.1021/jp0301406
+  note: Foerster and Dexter transfer separated experimentally in one system - how the two mechanisms are told apart.
+  topics: [fret, photophysics]
+
+braslavsky2007:
+  authors: S. E. Braslavsky
+  title: Glossary of terms used in photochemistry, 3rd edition (IUPAC Recommendations 2006)
+  journal: Pure and Applied Chemistry
+  year: 2007
+  volume: 79
+  pages: 293-465
+  doi: 10.1351/pac200779030293
+  note: The IUPAC glossary; the authority for the photochemical terms and symbols these pages use.
+  topics: [photophysics, conventions]
+
+brouwer2011:
+  authors: A. M. Brouwer
+  title: Standards for photoluminescence quantum yield measurements in solution (IUPAC Technical Report)
+  journal: Pure and Applied Chemistry
+  year: 2011
+  volume: 83
+  pages: 2213-2228
+  doi: 10.1351/pac-rep-10-09-31
+  note: The IUPAC procedure for a relative quantum-yield measurement, including the standards and their pitfalls.
+  topics: [photophysics]
+
+nawara2019:
+  authors: K. Nawara, J. Waluk
+  title: Goodbye to Quinine in Sulfuric Acid Solutions as a Fluorescence Quantum Yield Standard
+  journal: Analytical Chemistry
+  year: 2019
+  volume: 91
+  pages: 5389-5394
+  doi: 10.1021/acs.analchem.9b00583
+  note: Quinine sulfate is a poor quantum-yield standard - its yield depends on acid concentration and excitation wavelength.
+  topics: [photophysics]
+
+levitus2020:
+  authors: M. Levitus
+  title: "Tutorial: measurement of fluorescence spectra and determination of relative fluorescence quantum yields of transparent samples"
+  journal: Methods and Applications in Fluorescence
+  year: 2020
+  volume: 8
+  pages: 033001
+  doi: 10.1088/2050-6120/ab7e10
+  note: "A working tutorial for relative quantum yields: inner filter, refractive index and the corrections that get skipped."
+  topics: [photophysics]
+
+demchenko2020:
+  authors: A. P. Demchenko
+  title: "Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection
+                    <sup>*</sup>"
+  journal: Methods and Applications in Fluorescence
+  year: 2020
+  volume: 8
+  pages: 022001
+  doi: 10.1088/2050-6120/ab7365
+  note: Photobleaching mechanisms and their rates - what sets the photon budget of a single-molecule measurement.
+  topics: [photophysics]
+
+paul1982:
+  authors: H. Paul
+  title: Photon antibunching
+  journal: Reviews of Modern Physics
+  year: 1982
+  volume: 54
+  pages: 1061-1102
+  doi: 10.1103/revmodphys.54.1061
+  note: Antibunching as the signature of a single emitter, and what the second-order correlation actually measures.
+  topics: [photophysics, fcs]
+
+zou1990:
+  authors: X. T. Zou, L. Mandel
+  title: Photon-antibunching and sub-Poissonian photon statistics
+  journal: Physical Review A
+  year: 1990
+  volume: 41
+  pages: 475-476
+  doi: 10.1103/physreva.41.475
+  note: Antibunching and sub-Poissonian statistics are distinct properties; conflating them misreads g2(0).
+  topics: [photophysics, fcs]
+
+moerner2003:
+  authors: W. E. Moerner, D. P. Fromm
+  title: Methods of single-molecule fluorescence spectroscopy and microscopy
+  journal: Review of Scientific Instruments
+  year: 2003
+  volume: 74
+  pages: 3597-3619
+  doi: 10.1063/1.1589587
+  note: "The instrument review for single-molecule detection: collection efficiency, background and the detectors."
+  topics: [smfret, instrumentation]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:
@@ -1314,6 +1754,17 @@ ingargiola2016:
   doi: 10.1371/journal.pone.0160716
   note: The open burst-analysis toolkit, and the PyBroMo diffusion simulator beside it.
   topics: [smfret, simulation]
+
+borner2018:
+  authors: R. Börner, D. Kowerko, M. C. A. S. Hadzic, S. L. B. König, M. Ritter, R. K. O. Sigel
+  title: Simulations of camera-based single-molecule fluorescence experiments
+  journal: PLOS ONE
+  year: 2018
+  volume: 13
+  pages: e0195277
+  doi: 10.1371/journal.pone.0195277
+  note: Simulated camera-based single-molecule experiments, including the noise and blur a photon-counting simulation does not have.
+  topics: [simulation, smfret]
 
 # ── Lifetime-resolved correlation ───────────────────────────────────
 

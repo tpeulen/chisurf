@@ -92,6 +92,13 @@ measuring the response on a short-lifetime reference dye emitting in the same
 band, or by fitting a sub-channel time shift; getting it wrong biases short
 lifetimes most ({ref}`fundamentals-photon-counting`).
 
+Everything on this page is in service of one number: how many of the photons a
+molecule emits are actually counted. For a good confocal instrument that is a
+few percent, and it is the product of collection solid angle, filter and
+dichroic transmission, and detector efficiency — so a factor lost anywhere is
+lost outright. {cite}`moerner2003` works the budget through for
+single-molecule detection and is the reference to check an instrument against.
+
 ## Sample geometry and the inner filter effect
 
 Beer's law is linear only in a dilute sample. Above an absorbance of about 0.1

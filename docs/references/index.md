@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*139 works.*
+*180 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -43,6 +43,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Dale et al. (1979)](https://doi.org/10.1016/S0006-3495(79)85271-6)** — R. E. Dale, J. Eisinger, W. E. Blumberg. *The orientational freedom of molecular probes - the orientation factor in intramolecular energy transfer*. Biophysical Journal **26**, 161-193. (1979).  
 *How measured depolarization bounds kappa-squared, and hence the systematic distance error.*
+
+(dexter1953)=
+
+**[Dexter (1953)](https://doi.org/10.1063/1.1699044)** — D. L. Dexter. *A Theory of Sensitized Luminescence in Solids*. The Journal of Chemical Physics **21**, 836-850. (1953).  
+*Exchange-mediated transfer: the short-range, exponentially decaying counterpart to Foerster's 1/R^6.*
 
 (dimura2016)=
 
@@ -89,6 +94,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lerner et al. (2018)](https://doi.org/10.1126/science.aan1133)** — E. Lerner, T. Cordes, A. Ingargiola, Y. Alhadid, S. Chung, X. Michalet, S. Weiss. *Toward dynamic structural biology - two decades of single-molecule Förster resonance energy transfer*. Science **359**, eaan1133. (2018).  
 *A review of the field, including the model-selection criteria used with H2MM.*
 
+(murphy2004)=
+
+**[Murphy et al. (2004)](https://doi.org/10.1021/jp0301406)** — C. B. Murphy, Y. Zhang, T. Troxler, V. Ferry, J. J. Martin, W. E. Jones. *Probing Förster and Dexter Energy-Transfer Mechanisms in Fluorescent Conjugated Polymer Chemosensors*. The Journal of Physical Chemistry B **108**, 1537-1543. (2004).  
+*Foerster and Dexter transfer separated experimentally in one system - how the two mechanisms are told apart.*
+
 (peulen2017)=
 
 **[Peulen et al. (2017)](https://doi.org/10.1021/acs.jpcb.7b03441)** — T. O. Peulen, O. Opanasyuk, C. A. M. Seidel. *Combining graphical and analytical methods with molecular simulations to analyze time-resolved FRET measurements of labeled macromolecules accurately*. Journal of Physical Chemistry B **121**, 8211-8241. (2017).  
@@ -112,10 +122,20 @@ and the citation renders as a link to the paper. The source of truth is
 **[Bronson et al. (2009)](https://doi.org/10.1016/j.bpj.2009.09.031)** — J. E. Bronson, J. Fei, J. M. Hofman, R. L. Gonzalez Jr., C. H. Wiggins. *Learning rates and states from biophysical time series - a Bayesian approach to model selection and single-molecule FRET data*. Biophysical Journal **97**, 3196-3205. (2009).  
 *vbFRET - variational Bayes per trace, and how the evidence picks the state count.*
 
+(borner2018)=
+
+**[Börner et al. (2018)](https://doi.org/10.1371/journal.pone.0195277)** — R. Börner, D. Kowerko, M. C. A. S. Hadzic, S. L. B. König, M. Ritter, R. K. O. Sigel. *Simulations of camera-based single-molecule fluorescence experiments*. PLOS ONE **13**, e0195277. (2018).  
+*Simulated camera-based single-molecule experiments, including the noise and blur a photon-counting simulation does not have.*
+
 (eggeling2001)=
 
 **[Eggeling et al. (2001)](https://doi.org/10.1016/s0168-1656(00)00412-0)** — C. Eggeling, S. Berger, L. Brand, J. R. Fries, J. Schaffer, A. Volkmer, C. A. M. Seidel. *Data registration and selective single-molecule analysis using multi-parameter fluorescence detection*. Journal of Biotechnology **86**, 163-180. (2001).  
 *Burst selection and multi-parameter detection.*
+
+(goetz2022)=
+
+**[Götz et al. (2022)](https://doi.org/10.1038/s41467-022-33023-3)** — M. Götz, A. Barth, S. S. Bohr, R. Börner, J. Chen, et al. *A blind benchmark of analysis tools to infer kinetic rate constants from single-molecule FRET trajectories*. Nature Communications **13**. (2022).  
+*The blind benchmark of kinetic-inference tools on single-molecule FRET trajectories - the accuracy a rate constant can claim.*
 
 (ha2012)=
 
@@ -145,6 +165,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Meent et al. (2014)](https://doi.org/10.1016/j.bpj.2013.12.055)** — J.-W. van de Meent, J. E. Bronson, C. H. Wiggins, R. L. Gonzalez Jr. *Empirical Bayes methods enable advanced population-level analyses of single-molecule FRET experiments*. Biophysical Journal **106**, 1327-1337. (2014).  
 *ebFRET - the empirical-Bayes variational HMM shared across traces.*
+
+(moerner2003)=
+
+**[Moerner & Fromm (2003)](https://doi.org/10.1063/1.1589587)** — W. E. Moerner, D. P. Fromm. *Methods of single-molecule fluorescence spectroscopy and microscopy*. Review of Scientific Instruments **74**, 3597-3619. (2003).  
+*The instrument review for single-molecule detection: collection efficiency, background and the detectors.*
 
 (nir2006)=
 
@@ -227,8 +252,28 @@ and the citation renders as a link to the paper. The source of truth is
 **[Pirchi et al. (2016)](https://doi.org/10.1021/acs.jpcb.6b10726)** — M. Pirchi, R. Tsukanov, R. Khamis, et al. *Photon-by-photon hidden Markov model analysis for microsecond single-molecule FRET kinetics*. Journal of Physical Chemistry B **120**, 13065-13075. (2016).  
 *H2MM.*
 
+(schmid2016)=
+
+**[Schmid et al. (2016)](https://doi.org/10.1016/j.bpj.2016.08.023)** — S. Schmid, M. Götz, T. Hugel. *Single-Molecule Analysis beyond Dwell Times: Demonstration and Assessment in and out of Equilibrium*. Biophysical Journal **111**, 1375-1384. (2016).  
+*Dwell-time histograms alone do not identify a kinetic scheme; what else a trajectory has to be asked.*
+
+(stigler2011)=
+
+**[Stigler et al. (2011)](https://doi.org/10.1126/science.1207598)** — J. Stigler, F. Ziegler, A. Gieseke, J. C. M. Gebhardt, M. Rief. *The Complex Folding Network of Single Calmodulin Molecules*. Science **334**, 512-516. (2011).  
+*A hidden-Markov network with more states than a two-state fit admits; the cautionary example for model selection.*
+
 
 ## Hidden Markov models
+
+(baum1970)=
+
+**[Baum et al. (1970)](https://doi.org/10.1214/aoms/1177697196)** — L. E. Baum, T. Petrie, G. Soules, N. Weiss. *A Maximization Technique Occurring in the Statistical Analysis of Probabilistic Functions of Markov Chains*. The Annals of Mathematical Statistics **41**, 164-171. (1970).  
+*The Baum-Welch expectation-maximization recursion that every hidden-Markov fit in ChiSurf descends from.*
+
+(ghahramani1997)=
+
+**[Ghahramani & Jordan (1997)](https://doi.org/10.1023/a:1007425814087)** — Z. Ghahramani, M. I. Jordan. *Factorial Hidden Markov Models*. Machine Learning **29**, 245-273. (1997).  
+*Factorial HMMs: several independent chains behind one observation, the structure a multi-colour or multi-parameter trace needs.*
 
 (rabiner1989)=
 
@@ -242,6 +287,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 
 ## Fluorescence correlation spectroscopy
+
+(banks2005)=
+
+**[Banks & Fradin (2005)](https://doi.org/10.1529/biophysj.104.051078)** — D. S. Banks, C. Fradin. *Anomalous Diffusion of Proteins Due to Molecular Crowding*. Biophysical Journal **89**, 2960-2971. (2005).  
+*Crowding turns normal diffusion anomalous; why a single-component fit to a cellular correlation curve is usually wrong.*
 
 (boehmer2002)=
 
@@ -257,10 +307,20 @@ and the citation renders as a link to the paper. The source of truth is
 **[Dertinger et al. (2007)](https://doi.org/10.1002/cphc.200600638)** — Thomas Dertinger, Victor Pacheco, Iris von der Hocht, Rudolf Hartmann, Ingo Gregor, Jörg Enderlein. *Two‐Focus Fluorescence Correlation Spectroscopy: A New Tool for Accurate and Absolute Diffusion Measurements*. ChemPhysChem **8**, 433-443. (2007).  
 *Two-focus FCS: an external length scale, so a diffusion coefficient needs no calibration dye.*
 
+(digman2005b)=
+
+**[Digman et al. (2005)](https://doi.org/10.1529/biophysj.105.061788)** — M. A. Digman, P. Sengupta, P. W. Wiseman, C. M. Brown, A. R. Horwitz, E. Gratton. *Fluctuation Correlation Spectroscopy with a Laser-Scanning Microscope: Exploiting the Hidden Time Structure*. Biophysical Journal **88**, L33-L36. (2005).  
+*RICS: the raster scan's own pixel and line dwell times encode a range of lag times, so a normal image stack yields diffusion.*
+
 (doose2009)=
 
 **[Doose et al. (2009)](https://doi.org/10.1002/cphc.200900238)** — S. Doose, H. Neuweiler, M. Sauer. *Fluorescence quenching by photoinduced electron transfer - a reporter for conformational dynamics of macromolecules*. ChemPhysChem **10**, 1389-1398. (2009).  
 *Contact quenching used deliberately; the basis of PET-FCS.*
+
+(ehrenberg1974)=
+
+**[Ehrenberg & Rigler (1974)](https://doi.org/10.1016/0301-0104(74)85005-6)** — M. Ehrenberg, R. Rigler. *Rotational brownian motion and fluorescence intensify fluctuations*. Chemical Physics **4**, 390-401. (1974).  
+*Rotational diffusion as a fluctuation term - why fast anisotropy decay shows up in the correlation function.*
 
 (elson1974)=
 
@@ -286,6 +346,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Haustein & Schwille (2007)](https://doi.org/10.1146/annurev.biophys.36.040306.132612)** — E. Haustein, P. Schwille. *Fluorescence correlation spectroscopy: novel variations of an established technique*. Annual Review of Biophysics and Biomolecular Structure **36**, 151-169. (2007).  
 *A readable survey of the model variants.*
 
+(hess2002)=
+
+**[Hess & Webb (2002)](https://doi.org/10.1016/s0006-3495(02)73990-8)** — S. T. Hess, W. W. Webb. *Focal Volume Optics and Experimental Artifacts in Confocal Fluorescence Correlation Spectroscopy*. Biophysical Journal **83**, 2300-2317. (2002).  
+*Focal-volume aberration, cover-glass mismatch and saturation as systematic errors in G(0) and the diffusion time.*
+
+(hofling2011)=
+
+**[Höfling et al. (2011)](https://doi.org/10.1039/c0sm00718h)** — F. Höfling, K. Bamberg, T. Franosch. *Anomalous transport resolved in space and time by fluorescence correlation spectroscopy*. Soft Matter **7**, 1358-1363. (2011).  
+*Anomalous transport read directly off the correlation function, resolved in both space and time.*
+
 (ishii2013)=
 
 **[Ishii & Tahara (2013)](https://doi.org/10.1021/jp406861u)** — Kunihiko Ishii, Tahei Tahara. *Two-Dimensional Fluorescence Lifetime Correlation Spectroscopy. 1. Principle*. The Journal of Physical Chemistry B **117**, 11414-11422. (2013).  
@@ -306,29 +376,84 @@ and the citation renders as a link to the paper. The source of truth is
 **[Kask et al. (1999)](https://doi.org/10.1073/pnas.96.24.13756)** — P. Kask, K. Palo, D. Ullmann, K. Gall. *Fluorescence-intensity distribution analysis and its application in biomolecular detection technology*. Proceedings of the National Academy of Sciences **96**, 13756-13761. (1999).  
 *FIDA - the generating-function route to the same histogram.*
 
+(krichevsky2002)=
+
+**[Krichevsky & Bonnet (2002)](https://doi.org/10.1088/0034-4885/65/2/203)** — O. Krichevsky, G. Bonnet. *Fluorescence correlation spectroscopy: the technique and its applications*. Reports on Progress in Physics **65**, 251-297. (2002).  
+*A thorough review of the method and its models; useful as the cross-check on a correlation-curve fit.*
+
+(loman2008)=
+
+**[Loman et al. (2008)](https://doi.org/10.1016/j.cplett.2008.05.018)** — A. Loman, T. Dertinger, F. Koberling, J. Enderlein. *Comparison of optical saturation effects in conventional and dual-focus fluorescence correlation spectroscopy*. Chemical Physics Letters **459**, 18-21. (2008).  
+*Optical saturation compared between one- and two-focus FCS; the measurement behind the saturation corrections.*
+
 (magde1972)=
 
 **[Magde et al. (1972)](https://doi.org/10.1103/PhysRevLett.29.705)** — D. Magde, E. L. Elson, W. W. Webb. *Thermodynamic fluctuations in a reacting system — measurement by fluorescence correlation spectroscopy*. Physical Review Letters **29**, 705-708. (1972).  
 *The original FCS experiment.*
+
+(magde1974)=
+
+**[Magde et al. (1974)](https://doi.org/10.1002/bip.1974.360130103)** — D. Magde, E. L. Elson, W. W. Webb. *Fluorescence correlation spectroscopy. II. An experimental realization*. Biopolymers **13**, 29-61. (1974).  
+*The companion to the 1972 letter: the correlator, the focal geometry and the diffusion fit that FCS still uses.*
+
+(meseth1999)=
+
+**[Meseth et al. (1999)](https://doi.org/10.1016/s0006-3495(99)77321-2)** — U. Meseth, T. Wohland, R. Rigler, H. Vogel. *Resolution of Fluorescence Correlation Measurements*. Biophysical Journal **76**, 1619-1631. (1999).  
+*Two diffusing species need roughly a factor 1.6 in diffusion time before a fit can resolve them; the resolution limit ChiSurf's two-component fits inherit.*
+
+(muellerjd2004)=
+
+**[Müller (2004)](https://doi.org/10.1529/biophysj.103.037887)** — J. D. Müller. *Cumulant Analysis in Fluorescence Fluctuation Spectroscopy*. Biophysical Journal **86**, 3981-3992. (2004).  
+*Cumulants rather than the full histogram - the cheap route to brightness that FIDA and PCH refine.*
+
+(muellercb2008)=
+
+**[Müller et al. (2008)](https://doi.org/10.1209/0295-5075/83/46001)** — C. B. Müller, A. Loman, V. Pacheco, F. Koberling, D. Willbold, et al. *Precise measurement of diffusion by multi-color dual-focus fluorescence correlation spectroscopy*. EPL (Europhysics Letters) **83**, 46001. (2008).  
+*Two-focus FCS fixes the calibration-free diffusion coefficient by imposing a known distance on the focal geometry.*
 
 (nagy2005)=
 
 **[Nagy et al. (2005)](https://doi.org/10.1529/biophysj.104.052779)** — Attila Nagy, Jianrong Wu, Keith M. Berland. *Observation Volumes and γ-Factors in Two-Photon Fluorescence Fluctuation Spectroscopy*. Biophysical Journal **89**, 2077-2090. (2005).  
 *Observation volumes and gamma-factors in fluorescence fluctuation experiments.*
 
+(palmer1989)=
+
+**[Palmer & Thompson (1989)](https://doi.org/10.1073/pnas.86.16.6148)** — A. G. Palmer, N. L. Thompson. *High-order fluorescence fluctuation analysis of model protein clusters*. Proceedings of the National Academy of Sciences **86**, 6148-6152. (1989).  
+*Higher moments of the fluctuation distribution separate aggregation from concentration; the ancestor of PCH.*
+
+(paul1982)=
+
+**[Paul (1982)](https://doi.org/10.1103/revmodphys.54.1061)** — H. Paul. *Photon antibunching*. Reviews of Modern Physics **54**, 1061-1102. (1982).  
+*Antibunching as the signature of a single emitter, and what the second-order correlation actually measures.*
+
 (petrasek2008)=
 
 **[Petrášek & Schwille (2008)](https://doi.org/10.1529/biophysj.107.108811)** — Z. Petrášek, P. Schwille. *Precise measurement of diffusion coefficients using scanning fluorescence correlation spectroscopy*. Biophysical Journal **94**, 1437-1448. (2008).
+
+(qian1990b)=
+
+**[Qian & Elson (1990)](https://doi.org/10.1016/s0006-3495(90)82539-x)** — H. Qian, E. Elson. *On the analysis of high order moments of fluorescence fluctuations*. Biophysical Journal **57**, 375-380. (1990).  
+*How far the moment expansion can be pushed before shot noise dominates - the practical limit on brightness analysis.*
 
 (qian1990)=
 
 **[Qian & Elson (1990)](https://doi.org/10.1073/pnas.87.14.5479)** — H. Qian, E. L. Elson. *Distribution of molecular aggregation by analysis of fluctuation moments*. Proceedings of the National Academy of Sciences **87**, 5479-5483. (1990).  
 *The moment analysis behind Number & Brightness.*
 
+(qian1991)=
+
+**[Qian & Elson (1991)](https://doi.org/10.1364/ao.30.001185)** — H. Qian, E. L. Elson. *Analysis of confocal laser-microscope optics for 3-D fluorescence correlation spectroscopy*. Applied Optics **30**, 1185. (1991).  
+*The confocal detection volume treated optically rather than as a Gaussian - where the 3D Gaussian approximation breaks.*
+
 (rigler1993)=
 
 **[Rigler et al. (1993)](https://doi.org/10.1007/BF00185777)** — R. Rigler, Ü. Mets, J. Widengren, P. Kask. *Fluorescence correlation spectroscopy with high count rate and low background: analysis of translational diffusion*. European Biophysics Journal **22**, 169-175. (1993).  
 *The confocal, single-molecule sensitive form of the experiment.*
+
+(ruan2004)=
+
+**[Ruan et al. (2004)](https://doi.org/10.1529/biophysj.103.036483)** — Q. Ruan, M. A. Cheng, M. Levi, E. Gratton, W. W. Mantulin. *Spatial-Temporal Studies of Membrane Dynamics: Scanning Fluorescence Correlation Spectroscopy (SFCS)*. Biophysical Journal **87**, 1260-1267. (2004).  
+*Scanning the beam decouples the observation time from diffusion - the step from point FCS to the scanning methods.*
 
 (sanguigno2010)=
 
@@ -342,6 +467,11 @@ and the citation renders as a link to the paper. The source of truth is
 (siegel2013)=
 
 **[Siegel et al. (2013)](https://doi.org/10.3390/ijms141020340)** — A. P. Siegel, M. A. Baird, M. W. Davidson, R. N. Day. *Strengths and weaknesses of recently engineered red fluorescent proteins evaluated in live cells using fluorescence correlation spectroscopy*. International Journal of Molecular Sciences **14**, 20340-20358. (2013).
+
+(sisan2006)=
+
+**[Sisan et al. (2006)](https://doi.org/10.1529/biophysj.106.084251)** — D. R. Sisan, R. Arevalo, C. Graves, R. McAllister, J. S. Urbach. *Spatially Resolved Fluorescence Correlation Spectroscopy Using a Spinning Disk Confocal Microscope*. Biophysical Journal **91**, 4241-4252. (2006).  
+*A spinning disk turns FCS into a parallel, spatially resolved measurement.*
 
 (tittel2015)=
 
@@ -363,6 +493,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Wohland et al. (2001)](https://doi.org/10.1016/S0006-3495(01)76264-9)** — T. Wohland, R. Rigler, H. Vogel. *The standard deviation in fluorescence correlation spectroscopy*. Biophysical Journal **80**, 2987-2999. (2001).  
 *Noise in FCS derived from Brownian-dynamics simulation.*
 
+(zou1990)=
+
+**[Zou & Mandel (1990)](https://doi.org/10.1103/physreva.41.475)** — X. T. Zou, L. Mandel. *Photon-antibunching and sub-Poissonian photon statistics*. Physical Review A **41**, 475-476. (1990).  
+*Antibunching and sub-Poissonian statistics are distinct properties; conflating them misreads g2(0).*
+
 
 ## Image correlation and scanning microscopy
 
@@ -382,6 +517,11 @@ and the citation renders as a link to the paper. The source of truth is
 (digman2005)=
 
 **[Digman et al. (2005)](https://doi.org/10.1529/biophysj.105.062836)** — M. A. Digman, C. M. Brown, P. Sengupta, P. W. Wiseman, A. R. Horwitz, E. Gratton. *Measuring fast dynamics in solutions and cells with a laser scanning microscope*. Biophysical Journal **89**, 1317-1327. (2005).
+
+(digman2008b)=
+
+**[Digman et al. (2008)](https://doi.org/10.1529/biophysj.107.114645)** — M. A. Digman, R. Dalal, A. F. Horwitz, E. Gratton. *Mapping the Number of Molecules and Brightness in the Laser Scanning Microscope*. Biophysical Journal **94**, 2320-2332. (2008).  
+*Number & Brightness: per-pixel mean and variance map oligomeric state across an image.*
 
 (digman2008)=
 
@@ -404,6 +544,21 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Heel & Schatz (2005)](https://doi.org/10.1016/j.jsb.2005.05.009)** — M. van Heel, M. Schatz. *Fourier shell correlation threshold criteria*. Journal of Structural Biology **151**, 250-262. (2005).
 
+(kolin2006)=
+
+**[Kolin et al. (2006)](https://doi.org/10.1529/biophysj.106.082768)** — D. L. Kolin, D. Ronis, P. W. Wiseman. *k-Space Image Correlation Spectroscopy: A Method for Accurate Transport Measurements Independent of Fluorophore Photophysics*. Biophysical Journal **91**, 3061-3075. (2006).  
+*k-space ICS separates flow from diffusion by correlating in the spatial-frequency domain instead of real space.*
+
+(lakowicz1992)=
+
+**[Lakowicz et al. (1992)](https://doi.org/10.1073/pnas.89.4.1271)** — J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, M. L. Johnson. *Fluorescence lifetime imaging of free and protein-bound NADH*. Proceedings of the National Academy of Sciences **89**, 1271-1275. (1992).  
+*The first lifetime images of free and bound NADH - the endogenous contrast that metabolic FLIM still reads.*
+
+(lakowicz1992b)=
+
+**[Lakowicz et al. (1992)](https://doi.org/10.1016/0003-2697(92)90112-k)** — J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, K. W. Berndt, M. Johnson. *Fluorescence lifetime imaging*. Analytical Biochemistry **202**, 316-330. (1992).  
+*The method paper for lifetime imaging: contrast from tau rather than from intensity.*
+
 (malacrida2021)=
 
 **[Malacrida et al. (2021)](https://doi.org/10.1146/annurev-biophys-062920-063631)** — L. Malacrida, S. Ranjit, D. M. Jameson, E. Gratton. *The phasor plot - a universal circle to advance fluorescence lifetime analysis and interpretation*. Annual Review of Biophysics **50**, 575-593. (2021).  
@@ -418,6 +573,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Pawley (2006)](https://doi.org/10.1007/978-0-387-45524-2)** — J. B. Pawley. *Handbook of Biological Confocal Microscopy*. Springer US. (2006).  
 *The reference work on confocal imaging, including PSF characterisation.*
 
+(petersen1993)=
+
+**[Petersen et al. (1993)](https://doi.org/10.1016/s0006-3495(93)81173-1)** — N. Petersen, P. Höddelius, P. Wiseman, O. Seger, K. Magnusson. *Quantitation of membrane receptor distributions by image correlation spectroscopy: concept and application*. Biophysical Journal **65**, 1135-1146. (1993).  
+*Image correlation spectroscopy: the spatial autocorrelation of one frame gives cluster density and aggregation state.*
+
 (richards1959)=
 
 **[Richards & Wolf (1959)](https://doi.org/10.1098/rspa.1959.0200)** — B. Richards, E. Wolf. *Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system*. Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences **253**, 358-379. (1959).  
@@ -427,6 +587,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Sroda et al. (2020)](https://doi.org/10.1364/optica.399600)** — Aleksandra Sroda, Adrian Makowski, Ron Tenne, Uri Rossman, Gur Lubin, Dan Oron, Radek Lapkiewicz. *SOFISM: Super-resolution optical fluctuation image scanning microscopy*. Optica **7**, 1308. (2020).  
 *Super-resolution optical fluctuation image scanning microscopy.*
+
+(verveer2000)=
+
+**[Verveer et al. (2000)](https://doi.org/10.1126/science.290.5496.1567)** — P. J. Verveer, F. S. Wouters, A. R. Reynolds, P. I. H. Bastiaens. *Quantitative Imaging of Lateral ErbB1 Receptor Signal Propagation in the Plasma Membrane*. Science **290**, 1567-1570. (2000).  
+*Global analysis of a FLIM stack - one shared lifetime pair across all pixels, fitting only the fraction per pixel.*
+
+(wiseman2000)=
+
+**[Wiseman et al. (2000)](https://doi.org/10.1046/j.1365-2818.2000.00736.x)** — P. W. Wiseman, J. A. Squier, M. H. Ellisman, K. R. Wilson. *Two‐photon image correlation spectroscopy and image cross‐correlation spectroscopy*. Journal of Microscopy **200**, 14-25. (2000).  
+*ICS and its two-colour cross-correlation form at video rate; the basis of the image cross-correlation ChiSurf runs.*
 
 (zunino2025)=
 
@@ -567,8 +737,33 @@ and the citation renders as a link to the paper. The source of truth is
 **[Perrin (1926)](https://search.crossref.org/search/works?q=Polarisation+de+la+lumi%C3%A8re+de+fluorescence.+Vie+moyenne+des+mol%C3%A9cules+dans+l%27%C3%A9tat+excit%C3%A9+Journal+de+Physique+et+le+Radium+1926&from_ui=yes)** — F. Perrin. *Polarisation de la lumière de fluorescence. Vie moyenne des molécules dans l'état excité*. Journal de Physique et le Radium **7**, 390-401. (1926).  
 *Depolarization by rotational diffusion; the equation relating anisotropy, lifetime and correlation time.*
 
+(perrin1934)=
+
+**[Perrin (1934)](https://doi.org/10.1051/jphysrad:01934005010049700)** — F. Perrin. *Mouvement brownien d'un ellipsoide - I. Dispersion diélectrique pour des molécules ellipsoidales*. Journal de Physique et le Radium **5**, 497-511. (1934).  
+*Rotation of an ellipsoid: the three rotational correlation times a non-spherical body has.*
+
+(perrin1936)=
+
+**[Perrin (1936)](https://doi.org/10.1051/jphysrad:01936007010100)** — F. Perrin. *Mouvement Brownien d'un ellipsoide (II). Rotation libre et dépolarisation des fluorescences. Translation et diffusion de molécules ellipsoidales*. Journal de Physique et le Radium **7**, 1-11. (1936).  
+*Free rotation and fluorescence depolarization for the ellipsoid - the shape dependence behind the Perrin equation.*
+
 
 ## Photophysics
+
+(braslavsky2007)=
+
+**[Braslavsky (2007)](https://doi.org/10.1351/pac200779030293)** — S. E. Braslavsky. *Glossary of terms used in photochemistry, 3rd edition (IUPAC Recommendations 2006)*. Pure and Applied Chemistry **79**, 293-465. (2007).  
+*The IUPAC glossary; the authority for the photochemical terms and symbols these pages use.*
+
+(brouwer2011)=
+
+**[Brouwer (2011)](https://doi.org/10.1351/pac-rep-10-09-31)** — A. M. Brouwer. *Standards for photoluminescence quantum yield measurements in solution (IUPAC Technical Report)*. Pure and Applied Chemistry **83**, 2213-2228. (2011).  
+*The IUPAC procedure for a relative quantum-yield measurement, including the standards and their pitfalls.*
+
+(demchenko2020)=
+
+**[Demchenko (2020)](https://doi.org/10.1088/2050-6120/ab7365)** — A. P. Demchenko. *Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection <sup>*</sup>*. Methods and Applications in Fluorescence **8**, 9217. (2020).  
+*Photobleaching mechanisms and their rates - what sets the photon budget of a single-molecule measurement.*
 
 (doose2005)=
 
@@ -590,6 +785,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lehrer (1971)](https://doi.org/10.1021/bi00793a015)** — S. S. Lehrer. *Solute perturbation of protein fluorescence - quenching of the tryptophyl fluorescence of model compounds and of lysozyme by iodide ion*. Biochemistry **10**, 3254-3263. (1971).  
 *The modified Stern-Volmer plot, and the fractional accessibility read from its intercept.*
 
+(levitus2020)=
+
+**[Levitus (2020)](https://doi.org/10.1088/2050-6120/ab7e10)** — M. Levitus. *Tutorial: measurement of fluorescence spectra and determination of relative fluorescence quantum yields of transparent samples*. Methods and Applications in Fluorescence **8**, 13825. (2020).  
+*A working tutorial for relative quantum yields: inner filter, refractive index and the corrections that get skipped.*
+
 (vandeLinde2018)=
 
 **[Linde (2017)](https://search.crossref.org/search/works?q=Photon+antibunching+reveals+static+and+dynamic+quenching+interaction+of+tryptophan+with+Atto-655+Journal+of+Physical+Chemistry+Letters+2017&from_ui=yes)** — S. van de Linde, et al. *Photon antibunching reveals static and dynamic quenching interaction of tryptophan with Atto-655*. Journal of Physical Chemistry Letters **8**, 5821-5826. (2017).  
@@ -604,6 +804,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Mataga et al. (1956)](https://search.crossref.org/search/works?q=Solvent+effects+upon+fluorescence+spectra+and+the+dipole+moments+of+excited+molecules+Bulletin+of+the+Chemical+Society+of+Japan+1956&from_ui=yes)** — N. Mataga, Y. Kaifu, M. Koizumi. *Solvent effects upon fluorescence spectra and the dipole moments of excited molecules*. Bulletin of the Chemical Society of Japan **29**, 465-470. (1956).  
 *The independent derivation usually cited together with Lippert.*
+
+(nawara2019)=
+
+**[Nawara & Waluk (2019)](https://doi.org/10.1021/acs.analchem.9b00583)** — K. Nawara, J. Waluk. *Goodbye to Quinine in Sulfuric Acid Solutions as a Fluorescence Quantum Yield Standard*. Analytical Chemistry **91**, 5389-5394. (2019).  
+*Quinine sulfate is a poor quantum-yield standard - its yield depends on acid concentration and excitation wavelength.*
 
 (rehm1970)=
 
@@ -650,26 +855,6 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Braak & Vrugt (2008)](https://doi.org/10.1007/s11222-008-9104-9)** — Cajo J. F. ter Braak, Jasper A. Vrugt. *Differential Evolution Markov Chain with snooker updater and fewer chains*. Statistics and Computing **18**, 435-446. (2008).  
 *DE-MC with a snooker update and fewer chains.*
-
-(richardson1972)=
-
-**[Richardson (1972)](https://doi.org/10.1364/JOSA.62.000055)** — W. H. Richardson. *Bayesian-based iterative method of image restoration*. Journal of the Optical Society of America **62**, 55-59. (1972).  
-*The iterative Poisson-likelihood restoration, derived from Bayes' theorem.*
-
-(lucy1974)=
-
-**[Lucy (1974)](https://doi.org/10.1086/111605)** — L. B. Lucy. *An iterative technique for the rectification of observed distributions*. The Astronomical Journal **79**, 745. (1974).  
-*The same iteration, arrived at independently.*
-
-(biggs1997)=
-
-**[Biggs & Andrews (1997)](https://doi.org/10.1364/AO.36.001766)** — D. S. C. Biggs, M. Andrews. *Acceleration of iterative image restoration algorithms*. Applied Optics **36**, 1766-1775. (1997).  
-*Vector extrapolation for Richardson-Lucy: the same path, larger steps.*
-
-(zhang2007)=
-
-**[Zhang et al. (2007)](https://doi.org/10.1364/AO.46.001819)** — B. Zhang, J. Zerubia, J.-C. Olivo-Marin. *Gaussian approximations of fluorescence microscope point-spread function models*. Applied Optics **46**, 1819-1829. (2007).  
-*Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.*
 
 (campello2013)=
 

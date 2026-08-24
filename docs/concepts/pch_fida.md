@@ -155,6 +155,15 @@ concentration, at different levels of detail:
 - **N&B** uses only the first two moments (mean and variance) of $P(k)$;
   it is the low-order truncation of PCH/FIDA and maps to it via
   $\epsilon T = B-1$, $N=\langle k\rangle/(\epsilon T)$.
+- **Cumulants** sit between the two. Taking moments beyond the second — the
+  route that historically came first {cite}`palmer1989` — recovers brightness
+  without ever building the full histogram, and the cumulant form makes the
+  species contributions additive, which is what makes it cheap
+  {cite}`muellerjd2004`. The catch is noise: each higher cumulant is estimated
+  from the tail of $P(k)$, so the usable order is set by how many bins were
+  collected, and in practice stops at the third or fourth
+  {cite}`qian1990b`. PCH and FIDA avoid that ceiling by fitting the whole
+  histogram at once.
 - **FCS** reads brightness through the **zero-lag amplitude**: the ACF
   extrapolates to $G(0)\propto 1/N$, so FCS gives $N$ (hence concentration) and,
   combined with the mean intensity, the counts-per-molecule
@@ -223,3 +232,9 @@ rather than assuming the ideal profile.
   with an adjustable description of the optics.
 - {cite}`qian1990` — the moment analysis that Number & Brightness is, and the
   low-order truncation of both.
+- {cite}`palmer1989` — higher moments used to separate aggregation from
+  concentration, before the full histogram was fitted.
+- {cite}`qian1990b` — how far the moment expansion can be pushed before shot
+  noise dominates: the practical ceiling on cumulant order.
+- {cite}`muellerjd2004` — cumulant analysis as the cheap route to brightness,
+  and how species combine in it.

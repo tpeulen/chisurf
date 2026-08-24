@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: "The UI data scheme: view specs and guided tours"
+description: The two hand-written UI formats - the view spec that declares a panel and the guide that tours it.
+tags: [development, autoform, view-spec, guided-tour]
+audience: developer
+---
+
 # The UI data scheme: view specs and guided tours
 
 Two of ChiSurf's file formats are written by hand, by everyone, in every plugin:

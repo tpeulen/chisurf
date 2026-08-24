@@ -89,6 +89,17 @@ Reading that table the other way round is more useful: **TICS is one column of
 STICS**, throwing away all spatial information. **RICS is one slice of STICS**,
 the one at zero frame lag. **iMSD is a two-step summary** of the same slices.
 
+The family grew in that order historically too. Correlating a *single* frame
+against itself came first and gave densities and aggregation states but no
+dynamics {cite}`petersen1993`; adding a second colour turned it into a
+colocalisation measurement {cite}`wiseman2000`. The step that produced RICS was
+the realisation that a raster scan is not one instant — the pixel and line dwell
+times already stamp a range of lag times onto a perfectly ordinary image stack,
+so the dynamics were in data everyone was already collecting
+{cite}`digman2005b`. Correlating in the spatial-frequency domain instead of real
+space separates directed flow from diffusion more cleanly than fitting a
+drifting peak {cite}`kolin2006`.
+
 ## What the model says
 
 One function covers all of it. A mobile species with $N$ particles in the
@@ -194,6 +205,19 @@ included.
   degeneracy, finds the slow end of the working range, and demonstrates the
   three ways to produce a scan that looks healthy and carries no diffusion
   information at all.
+
+## References
+
+- {cite}`petersen1993` — image correlation spectroscopy: the spatial
+  autocorrelation of one frame, read as cluster density and aggregation state.
+- {cite}`wiseman2000` — ICS at video rate and its two-colour cross-correlation
+  form, the basis of image cross-correlation.
+- {cite}`digman2005b` — RICS: the scan's own pixel and line clocks as the lag
+  axis, which is what makes a normal image stack yield $D$.
+- {cite}`kolin2006` — k-space ICS, separating flow from diffusion in the
+  spatial-frequency domain.
+- {cite}`digman2008b` — Number & Brightness: per-pixel mean and variance mapped
+  to oligomeric state, the imaging counterpart of {ref}`concept-pch-fida`.
 
 ## See also
 

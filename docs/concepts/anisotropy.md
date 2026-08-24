@@ -175,6 +175,35 @@ sensitivity limit — once $\rho \gg \tau$ the anisotropy saturates near $r_0$ a
 becomes nearly independent of size, so a 4 ns dye cannot distinguish a 100 kDa
 from a 300 kDa assembly. Measuring large complexes needs a longer-lived probe.
 
+### When the rotor is not a sphere
+
+Everything above assumes one rotational diffusion coefficient, which is true only
+for a sphere. A general rigid body has three principal axes and three diffusion
+coefficients, and the anisotropy decay it produces is a sum of **five**
+exponentials in general — reducing to three for a body with an axis of symmetry,
+and to one only in the spherical limit {cite}`perrin1934,perrin1936`. Their
+amplitudes depend on where the absorption and emission dipoles sit relative to
+those axes, so two dyes on the same protein can report visibly different decays
+without either being wrong.
+
+Two consequences matter in practice:
+
+- **A multi-exponential anisotropy decay is not evidence of two populations.**
+  A single rigid ellipsoid produces one. Before reading a second correlation time
+  as a second species or a segmental motion, check whether the shape alone
+  accounts for it — a 2:1 axial ratio already spreads the correlation times by
+  roughly a factor of two, which is the same separation a fit can just barely
+  resolve.
+- **The volume from a Perrin fit is a sphere-equivalent volume.** For an
+  elongated body it overestimates the true volume, because the slowest of the
+  three motions dominates the observable decay. Quote it as a hydrodynamic
+  volume, not a molecular one.
+
+ChiSurf fits the rotation spectrum as a sum of exponentials without assuming a
+shape, which is the honest thing to do: the decay constrains the correlation
+times, and mapping those onto an axial ratio needs a model the data cannot
+supply on its own.
+
 ## Practical notes and pitfalls
 
 **Calibration first.** The $G$ factor is not optional. It corrects the unequal
@@ -257,5 +286,6 @@ difference between the channels. ChiSurf supports both a single stacked
 - Key literature: {cite}`lakowicz2006` (anisotropy chapters) covers
   steady-state and time-resolved anisotropy, the Perrin equation and hindered
   rotors; {cite}`schaffer1999` is the $G = S_\parallel/S_\perp$ convention and
-  the $l_1, l_2$ correction used throughout.
+  the $l_1, l_2$ correction used throughout; {cite}`perrin1934` and
+  {cite}`perrin1936` are the ellipsoid papers behind the non-spherical case.
 - Tools in ChiSurf: the **Anisotropy Wizard** (`chisurf/plugins/fluorescence_decay/tr_anisotropy/`) sets up the linked VV/VH fit, **VV/VH Anisotropy Decay** (`chisurf/plugins/vv_vh_anisotropy/`) computes $r(t)$ from a stacked file, and **VV/VH G-Factor** (`chisurf/plugins/vv_vh_g_factor/`) measures $G$ by tail matching.

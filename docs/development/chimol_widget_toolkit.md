@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: cmtk — the in-viewport toolkit
+description: How to write a panel or add a control with cmtk, the canvas toolkit ChiMOL draws inside the 3-D viewport.
+tags: [development, chimol, cmtk, gui]
+audience: developer
+---
+
 # cmtk — the in-viewport toolkit
 
 ChiMOL draws its own interface inside the 3-D viewport rather than around it,

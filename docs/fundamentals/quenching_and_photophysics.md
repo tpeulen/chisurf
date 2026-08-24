@@ -335,7 +335,11 @@ more opportunity to react than one in $S_1$ for nanoseconds.
 
 ## Photobleaching
 
-Photobleaching is irreversible loss of the fluorophore. Two routes matter and
+Photobleaching is irreversible loss of the fluorophore. It is usefully quoted
+as a **photon budget** — the number of photons a dye emits before it dies,
+typically $10^5$-$10^6$ for a good organic dye — because that number, not the
+brightness, sets how long a single molecule can be watched
+{cite}`demchenko2020`. Two routes matter and
 they respond oppositely to the obvious remedy: a **triplet- and radical-mediated**
 route, in which the long-lived dark states react (usually with oxygen), and a
 **higher-excited-state** route, in which a molecule already in $T_1$ or a radical

@@ -131,12 +131,21 @@ $w_{xy}=\sqrt{4D\,\tau_D}$.
 
 - **Anomalous** (`… anomalous`, `Abnormal diffusion`) replace $\tau/\tau_D$ with
   $(\tau/\tau_D)^{\alpha}$; $\alpha<1$ is sub-diffusion (crowding), $\alpha>1$
-  super-diffusion. *Caveat:* one anomalous component often fits as well as two
-  normal components — distinguish them with orthogonal evidence, not $\chi^2$.
+  super-diffusion. Inside a cell $\alpha<1$ is the rule rather than the
+  exception — macromolecular crowding alone produces it {cite}`banks2005` — and
+  $\alpha$ is not a constant of the sample: it depends on the length scale the
+  measurement probes, so a single $\alpha$ fitted over one focal volume is a
+  summary, not a transport coefficient {cite}`hofling2011`. *Caveat:* one
+  anomalous component often fits as well as two normal components — distinguish
+  them with orthogonal evidence, not $\chi^2$.
 - **2-D membrane** models drop the axial factor.
 - **Flow / two-focus / scanning** multiply in a transit-time, a known-distance
   cross-term (an internal ruler for absolute $D$; see
   {doc}`/guides/05_enderlein_mdf_two_focus_fcs`), or a periodic scan term.
+  Moving the beam decouples the observation time from diffusion, which is what
+  makes slow membrane dynamics measurable at all — a stationary focus would
+  bleach the molecule before it left {cite}`ruan2004`. Scanning many foci in
+  parallel turns the same idea into a spatial map {cite}`sisan2006`.
 
 ## The photodynamics factor
 
@@ -145,8 +154,17 @@ $w_{xy}=\sqrt{4D\,\tau_D}$.
   $\big(1+\tfrac{\Theta}{1-\Theta}e^{-\tau/\tau_\text{trip}}\big)$.
 - **Anti-correlation** — a short-lag *dip* from reversible reaction/conformational
   exchange, relaxation time $\tau_R=(k_\text{on}+k_\text{off})^{-1}$.
+- **Rotational depolarization** also fluctuates the detected signal, on the
+  correlation time $\rho$ rather than $\tau_D$ {cite}`ehrenberg1974`. In a
+  polarized ns-FCS measurement it appears as a further short-lag term, which is
+  why an ns-FCS curve is read together with the anisotropy
+  ({ref}`concept-anisotropy`) rather than alone.
 - **Photon antibunching** (`ns-FCS`) — the quantum dip at ns lag; a single emitter
-  cannot emit two photons at once. See {doc}`/guides/06_nsfcs_second_order`.
+  cannot emit two photons at once {cite}`paul1982`. The depth of the dip counts
+  emitters: $g^{(2)}(0) \approx 1 - 1/n$. Note that a dip at zero lag and
+  sub-Poissonian counting statistics are related but not the same property, and
+  a measurement of one is not a measurement of the other
+  {cite}`zou1990`. See {doc}`/guides/06_nsfcs_second_order`.
 - **Afterpulsing** — a detector artifact, modeled as an additive
   (stretched-)exponential; better removed upstream with an FLCS filter
   ({doc}`/guides/17_filtered_fcs`).
@@ -205,7 +223,9 @@ viscosity rather than reusing the tabulated number directly.
 ## Assumptions, and when they break
 
 The 3-D Gaussian model is a convenient approximation, not the true confocal
-detection profile. Watch for:
+detection profile — the real one follows from the excitation point-spread
+function and the pinhole, and departs from a Gaussian most where it matters
+least for $G(0)$ and most for $\tau_D$ {cite}`qian1991`. Watch for:
 
 - **Wrong structure parameter.** $\gamma$ is strongly correlated with $\tau_D$
   and is poorly determined by the fit itself. Fix it from a dye calibration
@@ -216,7 +236,18 @@ detection profile. Watch for:
 - **Optical saturation and aberrations** distort the volume away from Gaussian;
   the fitted $N$ then no longer converts to a true concentration. Refractive-index
   mismatch (a coverslip-corrected objective used dry, or deep imaging) is the
-  usual cause.
+  usual cause {cite}`hess2002`. Saturation acts in the same direction as
+  bleaching — it flattens the centre of the profile, widening the effective
+  volume and lengthening the apparent $\tau_D$ — so a power series is the test
+  for both {cite}`loman2008`. Two-focus FCS is comparatively robust here, because
+  the known separation of the two volumes fixes the length scale even when their
+  shape is wrong {cite}`muellercb2008`.
+- **Two components need to be well separated before a fit can see them.** Two
+  species resolve only when their diffusion times differ by roughly a factor of
+  1.6, and even then only at high signal — which, since $\tau_D \propto D^{-1}$
+  and $D \propto M^{-1/3}$, means a mass ratio of about four. A fit that
+  cheerfully returns two components from a monomer/dimer mixture is reporting the
+  starting values, not the sample {cite}`meseth1999`.
 - **Too few molecules is also a failure mode.** At very low $N$, rare bright
   events dominate and the curve needs impractically long acquisition to converge.
 - **A slowly drifting baseline** (aggregates, focus drift, evaporation) adds
@@ -236,6 +267,8 @@ $\chi^2$.
 
 - {cite}`magde1972` — the original FCS experiment, a chemical relaxation read
   out of intensity fluctuations.
+- {cite}`magde1974` — its experimental companion: the correlator, the focal
+  geometry and the diffusion fit in the form still used.
 - {cite}`elson1974` — the theory: what $G(\tau)$ is and why its amplitude
   counts molecules.
 - {cite}`rigler1993` — confocal FCS as it is practised now, and the diffusion
@@ -246,6 +279,12 @@ $\chi^2$.
   binding.
 - {cite}`haustein2007` — a review to read before choosing a model: the
   variations, and what each assumes.
+- {cite}`krichevsky2002` — a longer review of the same ground, with the model
+  derivations written out.
+- {cite}`meseth1999` — how far apart two components must be before a fit can
+  resolve them.
+- {cite}`hess2002` — the focal volume treated as an optical system: which
+  aberrations bias $G(0)$ and which bias $\tau_D$.
 
 ## See also
 
