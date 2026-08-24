@@ -12,22 +12,37 @@ A full English Wikipedia dump is kept on external media and used as a **citation
 index** for ChiSurf's documentation. It is not a prose source. This concept
 records the licence boundary, what the first pass took, and how to re-run it.
 
-## The licence boundary — read this before copying anything
+## The licence boundary — settled 2026-08-24
 
-Wikipedia text is **CC BY-SA 4.0**; ChiSurf is **GPL-3.0-or-later**. Folding
-Wikipedia prose into `docs/` would drag an attribution-and-share-alike
-obligation onto the documentation and force a per-page provenance trail that
-nobody will maintain. So the rule is the same one
-[quickfit3-mining.md](quickfit3-mining.md) already sets for GPL sources:
+**`docs/` is now CC BY-SA 4.0** (the code stays GPL-3.0-or-later; see
+`docs/licensing.md`). That was done *because* of this mining effort, and it
+changes the answer this concept originally gave.
 
-- **Bibliographic data is fact and is freely harvestable** — authors, title,
-  journal, year, volume, pages, DOI. This is what the dump is *for*.
-- **Prose, figures and tables are not taken.** Every sentence added to `docs/`
-  in this pass was written for ChiSurf, in ChiSurf's voice, against the primary
-  papers the citation harvest surfaced.
-- **A harvested DOI is verified against Crossref before it lands.** Wikipedia
-  citation templates carry typos and mismatched identifiers, and
-  `bibliography.yaml` says outright that a wrong DOI is worse than no DOI.
+- **Wikipedia prose may now be used**, with attribution and a note of changes,
+  because CC BY-SA 4.0 into CC BY-SA 4.0 is exactly what share-alike is for. The
+  page records the source in a `sources:` front-matter block — per page, since a
+  blanket note in `licensing.md` does not discharge attribution.
+- **Bibliographic data was never the problem.** Authors, title, journal, year,
+  DOI are facts; harvesting them needed no licence change and remains the main
+  use of the dump.
+- **A harvested DOI is still verified against Crossref before it lands.**
+  Wikipedia citation templates carry typos and mismatched identifiers, and
+  `bibliography.yaml` says outright that a wrong DOI is worse than no DOI. This
+  has nothing to do with licensing and did not change.
+- **What is still forbidden** is unchanged and worth restating, because the
+  relicence makes it easy to assume everything is now open: CC NC/ND material,
+  GPL-only prose, and copyrighted journal text are all still out. A compatible
+  *code* licence does not make prose usable here.
+
+**The editorial rule outlived the legal one.** Importing is now permitted and is
+still usually wrong. These pages are terse, use the symbols the code uses, carry
+no glossaries, and tie each claim to something ChiSurf computes; Wikipedia's
+prose has none of those properties, and a page assembled from it reads like it.
+The first pass wrote everything fresh while believing it had to, and the result
+was better than an import would have been — the gaps it found (see below) were
+found precisely because writing a section forces you to notice what is missing
+from it. Treat the licence as removing an obstacle to *derivation*, not as an
+invitation to paste.
 
 ## The corpus
 
@@ -109,9 +124,16 @@ widening the regex.
    core-method citer.** That filter is deliberately harsh and the discarded set
    was never read. Re-ranking with a lower threshold is cheap — `works.json`
    is on disk — and is the fastest route to a second tranche.
-3. **Nothing checks that a `{cite}` key resolves.** The dangling-citation and
+3. **The `sources:` front-matter block is a convention with nothing behind it.**
+   `docs/licensing.md` defines it and no page uses it yet, because the first
+   pass imported nothing. The moment a page does derive from a CC BY-SA source,
+   attribution becomes a legal obligation carried by a field no test checks and
+   no generator renders — so it will silently rot. Either render it (a
+   per-page "Sources" footer, next to where `{cite}` already renders) or assert
+   on it in `test_docs_okf.py`; a convention that is neither is worse than none.
+4. **Nothing checks that a `{cite}` key resolves.** The dangling-citation and
    footnote-definition audits in this pass were ad-hoc scripts, not tests. A
    guardrail in `test/` would stop a stale key reaching the built docs; today
    the only signal is a broken link in the rendered HTML.
-4. **The dump is a general resource, not a bibliography tool.** It is equally
+5. **The dump is a general resource, not a bibliography tool.** It is equally
    the way to check a claim in a concept page without a network round-trip.

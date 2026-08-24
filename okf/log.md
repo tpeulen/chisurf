@@ -37318,3 +37318,24 @@ front, not this).
   two-component resolution limit (~1.6 in $\tau_D$, ≈ 4 in mass). Also fixed on
   the way past: `chimol_widget_toolkit.md` and `ui_data_scheme.md` had no front
   matter at all, failing two `test_docs_okf.py` assertions in committed code.
+
+- 2026-08-24 — **The documentation is relicensed CC BY-SA 4.0; the code stays
+  GPL-3.0-or-later.** Prompted by the Wikipedia mining above, which had to write
+  every sentence fresh because CC BY-SA prose cannot enter a GPL-only corpus.
+  `docs/LICENSE` carries the licence text, `docs/licensing.md` explains the
+  split and — the half that actually gets used — **what may be brought in**:
+  CC BY-SA/CC BY/CC0 yes, NC and ND no, GPL-only prose and journal text no,
+  because a compatible *code* licence never made prose usable. Compatibility
+  with the code runs one way: CC BY-SA 4.0 is an approved one-way source for
+  GPLv3, so a page's prose can become a tooltip or a `help.md`, never the
+  reverse. This is not cosmetic packaging — `docs/` is *installed into the
+  package* and read by the help browser at runtime, so an install ships both
+  licences: `pyproject` now declares `GPL-3.0-or-later AND CC-BY-SA-4.0` with
+  both `license-files`, and `MANIFEST.in` needed an explicit `include
+  docs/LICENSE` because its `recursive-include docs` is extension-matched and
+  skips an extensionless file. Verified through the PEP 517 hook rather than
+  assumed: the built METADATA carries the expression and both License-File
+  entries. Attribution is per page via a `sources:` front-matter block, which is
+  so far a convention with no renderer and no test — logged as the next thing to
+  fix. The editorial rule is unchanged and now the binding one: importing is
+  permitted, writing is still better.

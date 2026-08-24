@@ -153,6 +153,22 @@ Please submit feature requests, questions, and bugs as GitHub issues. General qu
 
 ---
 
+## License
+
+ChiSurf is distributed under two licences:
+
+- **Source code** — GNU General Public License v3.0 or later (`LICENSE`).
+- **Documentation** — everything under `docs/` is Creative Commons
+  Attribution-ShareAlike 4.0 International (`docs/LICENSE`).
+
+`SPDX-License-Identifier: GPL-3.0-or-later AND CC-BY-SA-4.0`
+
+The documentation is installed into the package and read by the built-in help
+browser, so an install carries both licences. Reuse the pages freely, including
+commercially, provided you credit ChiSurf, note any changes, and release
+adaptations under CC BY-SA 4.0. See `docs/licensing.md` for what may be brought
+*into* the documentation from elsewhere.
+
 ## References
 
 1. Peulen T, Opanasyuk O, Seidel C. Combining Graphical and Analytical Methods with Molecular Simulations To Analyze Time-Resolved FRET Measurements of Labeled Macromolecules Accurately. *J Phys Chem B*. 2017;121(35):8211-8241.

@@ -14,6 +14,9 @@ recursive-include modules/chinet/chinet *.py
 # The documentation an sdist carries is the documentation the *build* installs
 # into the package (see _shipped_docs.py) -- the browser reads these at runtime.
 recursive-include docs *.md *.rst *.png *.svg *.jpg *.jpeg *.gif *.json *.yaml *.bib
+# The docs carry their own licence (CC BY-SA 4.0); the pattern above is
+# extension-matched and would not pick up an extensionless file.
+include docs/LICENSE
 # Sphinx output, the retired Word original and its 103 MB of EMF figures: none
 # of it is read by the application, and it dwarfs everything else in the tree.
 prune docs/_build

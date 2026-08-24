@@ -86,6 +86,13 @@ references/index
 development/index
 ```
 
+```{toctree}
+:maxdepth: 1
+:caption: Licensing
+
+licensing
+```
+
 ## Indices and tables
 
 * {ref}`genindex`
