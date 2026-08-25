@@ -51,7 +51,7 @@ invitation to paste.
 | Dump | `enwiki-20260801-pages-articles-multistream.xml.bz2` (26.67 GB) |
 | Index | `…-multistream-index.txt.bz2` (284 MB) → 25,792,234 articles |
 | Location | `/Volumes/SD1TB/wikipedia/enwiki-20260801/` |
-| State | **partial — 22.5 GB of 26.67 GB (84%)**, byte-exact and resumable |
+| State | **complete** — 26,668,484,995 bytes, size-exact; tail and mid-file extraction verified |
 | Tools | `/Volumes/SD1TB/wikipedia/tools/` |
 
 **Multistream is the format that matters.** The dump is a concatenation of
@@ -61,12 +61,24 @@ range read plus one small decompression — and because the offsets are absolute
 `extract.py` serves them over HTTP `Range` when the local file is still
 downloading. The extraction did not wait for the 26.67 GB to land.
 
-**The dump is incomplete, and finishing it is not a free action.** Downloading
-it saturated a domestic uplink for twelve hours and contributed to the machine
-becoming unusable for its owner — another session swept the tree and asked for
-it to stop, correctly. `fetch_dump.sh` resumes at the byte offset, so nothing is
-lost by leaving it, but **ask before restarting it**, and not while anyone is
-working on the machine.
+**The dump is complete, and acquiring it was not a free action.** It took
+about fourteen hours across nine interrupted runs, saturated a domestic uplink,
+and contributed to the machine becoming unusable for its owner — another session
+swept the tree and asked for it to stop, correctly. It was finished only after
+being throttled to `--limit-rate=1m` at `nice -n 19`, which cost little in wall
+time and should be the default for any future bulk fetch here. **Do not
+re-download it to get a newer dump while anyone is working on the machine**, and
+prefer a targeted range-read over a full refresh: `extract.py` can pull single
+articles from a *remote* dump without downloading it at all.
+
+Verified on completion by size (exact) plus decompression of the **final block
+in the file** — bz2 blocks are CRC-checked, so extracting the last article
+(`Draft:Gertrude Massey`, offset 26668473302) proves the tail survived the
+interruptions. A full SHA-1 over 26.67 GB was deliberately *not* run: it is
+~26 GB of reads on a machine that had just been complained about, and the size
+match plus a tail CRC is strong evidence for a `wget -c` resume. Run
+`shasum -a 1` against the published checksum in `dumpstatus.json` if certainty
+is ever needed.
 
 `fetch_dump.sh` was rewritten after that incident and is now safe for anyone to
 stop: it runs `nice -n 19` under `--limit-rate=1m` (about a quarter of the
