@@ -51,6 +51,7 @@ invitation to paste.
 | Dump | `enwiki-20260801-pages-articles-multistream.xml.bz2` (26.67 GB) |
 | Index | `…-multistream-index.txt.bz2` (284 MB) → 25,792,234 articles |
 | Location | `/Volumes/SD1TB/wikipedia/enwiki-20260801/` |
+| State | **partial — 22.5 GB of 26.67 GB (84%)**, byte-exact and resumable |
 | Tools | `/Volumes/SD1TB/wikipedia/tools/` |
 
 **Multistream is the format that matters.** The dump is a concatenation of
@@ -59,6 +60,23 @@ byte offset of the block holding any page. One article therefore costs one
 range read plus one small decompression — and because the offsets are absolute,
 `extract.py` serves them over HTTP `Range` when the local file is still
 downloading. The extraction did not wait for the 26.67 GB to land.
+
+**The dump is incomplete, and finishing it is not a free action.** Downloading
+it saturated a domestic uplink for twelve hours and contributed to the machine
+becoming unusable for its owner — another session swept the tree and asked for
+it to stop, correctly. `fetch_dump.sh` resumes at the byte offset, so nothing is
+lost by leaving it, but **ask before restarting it**, and not while anyone is
+working on the machine. Note the shape that made it hard to kill: a supervisor
+shell with a retry loop *plus* the `wget` it owns, so killing the visible `wget`
+looks like a stalled mirror and gets a fresh one started. Kill the supervisor
+first:
+
+```bash
+pkill -f fetch_dump.sh && pkill -f enwiki-20260801-pages-articles-multistream
+```
+
+This does not block mining: `extract.py` range-reads any article whose bytes
+have not landed, which is how the first pass ran with 4 GB on disk.
 
 **Do not fuzzy-grep the index.** Substring matching over 25.8 M titles is
 useless — `kasha` matches *Kashani*, `palm` matches *Palm Sunday*, `fcs` matches
