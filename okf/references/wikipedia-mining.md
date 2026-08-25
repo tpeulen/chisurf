@@ -66,14 +66,20 @@ it saturated a domestic uplink for twelve hours and contributed to the machine
 becoming unusable for its owner — another session swept the tree and asked for
 it to stop, correctly. `fetch_dump.sh` resumes at the byte offset, so nothing is
 lost by leaving it, but **ask before restarting it**, and not while anyone is
-working on the machine. Note the shape that made it hard to kill: a supervisor
-shell with a retry loop *plus* the `wget` it owns, so killing the visible `wget`
-looks like a stalled mirror and gets a fresh one started. Kill the supervisor
-first:
+working on the machine.
 
-```bash
-pkill -f fetch_dump.sh && pkill -f enwiki-20260801-pages-articles-multistream
-```
+`fetch_dump.sh` was rewritten after that incident and is now safe for anyone to
+stop: it runs `nice -n 19` under `--limit-rate=1m` (about a quarter of the
+uplink), writes its pid to `fetch.pid`, and logs `stop me with: kill <pid>` as
+its first line. Killing *either* process ends the run.
+
+The bug worth remembering, because it is easy to write again in any supervisor
+loop: the original could not distinguish **"the mirror stalled"** from **"a
+human killed my child"**, and restarted `wget` in both cases — so sweeping the
+machine could not put it down, and it looked like it was evading the sweep. The
+discriminator is the exit status: `wget` exits `>=128` only when a signal killed
+it, so signal means stop and an error code means retry. Traps on TERM/INT/HUP
+kill the child and exit.
 
 This does not block mining: `extract.py` range-reads any article whose bytes
 have not landed, which is how the first pass ran with 4 GB on disk.
