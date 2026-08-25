@@ -47,10 +47,17 @@ extensions = [
     # `{src}`path#symbol`` -- the code editor in the app, the repository
     # browser on the website. Addressed by symbol, never by line number.
     'src_role',
+    # Renders the `sources:` front-matter block as a visible Sources section.
+    # The docs are CC BY-SA 4.0, so a page adapting outside material owes
+    # attribution -- and attribution nobody can see discharges nothing.
+    'source_attribution',
 ]
 
 # Set to False to build the manual without human-review banners.
 review_banner_enabled = True
+
+# Set to False to build without the per-page Sources sections.
+source_attribution_enabled = True
 
 autosummary_generate = False
 numpydoc_show_class_members = False
