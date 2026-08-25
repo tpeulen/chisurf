@@ -1610,6 +1610,28 @@ moerner2003:
   note: "The instrument review for single-molecule detection: collection efficiency, background and the detectors."
   topics: [smfret, instrumentation]
 
+kamlet1983:
+  authors: M. J. Kamlet, J.-L. M. Abboud, M. H. Abraham, R. W. Taft
+  title: "Linear solvation energy relationships. 23. A comprehensive collection of the solvatochromic parameters pi*, alpha and beta, and some methods for simplifying the generalized solvatochromic equation"
+  journal: The Journal of Organic Chemistry
+  year: 1983
+  volume: 48
+  pages: 2877-2887
+  doi: 10.1021/jo00165a018
+  note: The three-parameter decomposition of solvent effects, and the tabulated values.
+  topics: [photophysics]
+
+reichardt1994:
+  authors: C. Reichardt
+  title: Solvatochromic Dyes as Solvent Polarity Indicators
+  journal: Chemical Reviews
+  year: 1994
+  volume: 94
+  pages: 2319-2358
+  doi: 10.1021/cr00032a005
+  note: "The E_T(30) scale: solvent polarity read off one betaine dye's transition energy."
+  topics: [photophysics]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:

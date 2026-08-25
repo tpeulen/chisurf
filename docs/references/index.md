@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*180 works.*
+*182 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -775,6 +775,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Gehlen (2020)](https://doi.org/10.1016/j.jphotochemrev.2019.100338)** — M. H. Gehlen. *The centenary of the Stern-Volmer equation of fluorescence quenching - from the single line plot to the SV quenching map*. Journal of Photochemistry and Photobiology C **42**, 100338. (2020).  
 *What every deviation from a straight Stern-Volmer line can mean, and why more than one mechanism fits each.*
 
+(kamlet1983)=
+
+**[Kamlet et al. (1983)](https://doi.org/10.1021/jo00165a018)** — M. J. Kamlet, J.-L. M. Abboud, M. H. Abraham, R. W. Taft. *Linear solvation energy relationships. 23. A comprehensive collection of the solvatochromic parameters pi*, alpha and beta, and some methods for simplifying the generalized solvatochromic equation*. The Journal of Organic Chemistry **48**, 2877-2887. (1983).  
+*The three-parameter decomposition of solvent effects, and the tabulated values.*
+
 (kasha1950)=
 
 **[Kasha (1950)](https://doi.org/10.1039/df9500900014)** — M. Kasha. *Characterization of electronic transitions in complex molecules*. Discussions of the Faraday Society **9**, 14-19. (1950).  
@@ -814,6 +819,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Rehm & Weller (1970)](https://search.crossref.org/search/works?q=Kinetics+of+fluorescence+quenching+by+electron+and+H-atom+transfer+Israel+Journal+of+Chemistry+1970&from_ui=yes)** — D. Rehm, A. Weller. *Kinetics of fluorescence quenching by electron and H-atom transfer*. Israel Journal of Chemistry **8**, 259-271. (1970).  
 *The free-energy expression, and the measurement showing the rate plateaus at the diffusion limit instead of turning over.*
+
+(reichardt1994)=
+
+**[Reichardt (1994)](https://doi.org/10.1021/cr00032a005)** — C. Reichardt. *Solvatochromic Dyes as Solvent Polarity Indicators*. Chemical Reviews **94**, 2319-2358. (1994).  
+*The E_T(30) scale: solvent polarity read off one betaine dye's transition energy.*
 
 (seidel1996)=
 

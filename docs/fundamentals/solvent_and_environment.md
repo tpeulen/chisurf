@@ -70,6 +70,51 @@ $\mathrm{p}K_a$ changes on excitation can lose or gain a proton within the
 excited-state lifetime and emit as a chemically different species
 ({ref}`fundamentals-absorption-emission`).
 
+### Empirical scales, when one axis is not enough
+
+The continuum model has exactly one knob, $\Delta f$, so it can only say that a
+solvent is more or less polarizing. Real fluorophores respond to several
+distinct properties that $\Delta f$ blends together, which is why the
+alcohols-and-water points fall off the line rather than scattering about it.
+The empirical scales exist to separate those properties, by measuring them with
+probe molecules instead of deriving them from bulk constants.
+
+The **Kamlet-Taft** decomposition uses three {cite}`kamlet1983`:
+
+- $\pi^*$ — dipolarity/polarizability, the part the continuum model already
+  approximates;
+- $\alpha$ — the solvent's hydrogen-bond *donor* strength, which is what makes
+  water and the alcohols special;
+- $\beta$ — its hydrogen-bond *acceptor* strength.
+
+Any solvent-dependent quantity is then fitted as a linear combination,
+
+$$
+XYZ = XYZ_0 + s\,\pi^{*} + a\,\alpha + b\,\beta ,
+$$
+
+and the useful output is not the fit quality but the *coefficients*: a dye whose
+emission maximum has a large $a$ and a small $s$ is telling you it is
+hydrogen-bonded in the excited state, not merely sitting in a polar medium. That
+is a mechanistic statement the Lippert-Mataga plot cannot make.
+
+**Reichardt's $E_\mathrm{T}(30)$** goes the other way and compresses everything
+into one number, the transition energy of a betaine dye chosen because its
+charge-transfer band is unusually sensitive {cite}`reichardt1994`. It is
+convenient, widely tabulated, and — being one number — reintroduces exactly the
+blending Kamlet-Taft separates. Use it to *rank* environments, not to explain
+one.
+
+Two cautions before applying either to a labelled biomolecule. Both scales are
+calibrated on small probes in bulk solvents, and a dye tethered to a protein is
+in none: its environment is heterogeneous over the linker's reach, partly
+ordered, and may not have relaxed at all ({ref}`fundamentals-lifetime-quantum-yield`).
+And a fitted coefficient is a correlation over a solvent series, so reading one
+off a *single* measured environment is not something the framework supports.
+What the scales are good for here is comparative — the same construct in two
+buffers, or a dye before and after a conformational change — where the axis that
+moved is the result.
+
 ## Relaxation on the lifetime timescale
 
 The treatment above assumes solvent relaxation is complete before emission. That
@@ -131,4 +176,6 @@ the probe in the actual construct rather than trusting a table.
   {ref}`concept-imaging-flim-phasor`.
 - Literature: {cite}`lippert1955` · {cite}`mataga1956` ·
   {cite}`lakowicz2006`, solvent-effects and spectral-relaxation
-  chapters.
+  chapters. For the empirical scales, {cite}`kamlet1983` is the
+  three-parameter decomposition and its tabulated values;
+  {cite}`reichardt1994` the single-parameter $E_\mathrm{T}(30)$ alternative.
