@@ -832,6 +832,182 @@ vansteensel1996:
   doi: 10.1242/jcs.109.4.787
   topics: [colocalisation]
 
+abbe1873:
+  authors: E. Abbe
+  title: Beiträge zur Theorie des Mikroskops und der mikroskopischen Wahrnehmung
+  journal: Archiv für Mikroskopische Anatomie
+  year: 1873
+  volume: 9
+  pages: 413-468
+  doi: 10.1007/bf02956173
+  note: The diffraction limit itself - why an objective cannot resolve below about half a wavelength.
+  topics: [resolution]
+
+hell1994:
+  authors: S. W. Hell, J. Wichmann
+  title: "Breaking the diffraction resolution limit by stimulated emission: stimulated-emission-depletion fluorescence microscopy"
+  journal: Optics Letters
+  year: 1994
+  volume: 19
+  pages: 780
+  doi: 10.1364/ol.19.000780
+  note: "STED: depleting the periphery of the excitation spot with a second beam, so the emitting region is smaller than the diffraction limit."
+  topics: [resolution]
+
+klar1999:
+  authors: T. A. Klar, S. W. Hell
+  title: Subdiffraction resolution in far-field fluorescence microscopy
+  journal: Optics Letters
+  year: 1999
+  volume: 24
+  pages: 954
+  doi: 10.1364/ol.24.000954
+  note: The first far-field fluorescence images below the diffraction barrier.
+  topics: [resolution]
+
+klar2000:
+  authors: T. A. Klar, S. Jakobs, M. Dyba, A. Egner, S. W. Hell
+  title: Fluorescence microscopy with diffraction resolution barrier broken by stimulated emission
+  journal: Proceedings of the National Academy of Sciences
+  year: 2000
+  volume: 97
+  pages: 8206-8210
+  doi: 10.1073/pnas.97.15.8206
+  note: "STED characterised: how the resolution scales with depletion intensity."
+  topics: [resolution]
+
+betzig1995:
+  authors: E. Betzig
+  title: Proposed method for molecular optical imaging
+  journal: Optics Letters
+  year: 1995
+  volume: 20
+  pages: 237
+  doi: 10.1364/ol.20.000237
+  note: The proposal that isolating emitters in some distinguishable property, then localising each, breaks the limit - a decade before the chemistry existed.
+  topics: [resolution]
+
+betzig2006:
+  authors: E. Betzig, G. H. Patterson, R. Sougrat, O. W. Lindwasser, S. Olenych, et al.
+  title: Imaging Intracellular Fluorescent Proteins at Nanometer Resolution
+  journal: Science
+  year: 2006
+  volume: 313
+  pages: 1642-1645
+  doi: 10.1126/science.1127344
+  note: "PALM: photoactivatable proteins switched on a few at a time, localised, and accumulated into an image."
+  topics: [resolution]
+
+rust2006:
+  authors: M. J. Rust, M. Bates, X. Zhuang
+  title: Sub-diffraction-limit imaging by stochastic optical reconstruction microscopy (STORM)
+  journal: Nature Methods
+  year: 2006
+  volume: 3
+  pages: 793-796
+  doi: 10.1038/nmeth929
+  note: "STORM: the same construction driven by switchable organic dyes."
+  topics: [resolution]
+
+bates2007:
+  authors: M. Bates, B. Huang, G. T. Dempsey, X. Zhuang
+  title: Multicolor Super-Resolution Imaging with Photo-Switchable Fluorescent Probes
+  journal: Science
+  year: 2007
+  volume: 317
+  pages: 1749-1753
+  doi: 10.1126/science.1146598
+  note: Multicolour switching, and the photoswitching pairs that make it work.
+  topics: [resolution]
+
+sharonov2006:
+  authors: A. Sharonov, R. M. Hochstrasser
+  title: Wide-field subdiffraction imaging by accumulated binding of diffusing probes
+  journal: Proceedings of the National Academy of Sciences
+  year: 2006
+  volume: 103
+  pages: 18911-18916
+  doi: 10.1073/pnas.0609643104
+  note: "PAINT: transient binding from solution supplies the blinking, so the label need not photoswitch at all."
+  topics: [resolution]
+
+jungmann2014:
+  authors: R. Jungmann, M. S. Avendaño, J. B. Woehrstein, M. Dai, W. M. Shih, et al.
+  title: Multiplexed 3D cellular super-resolution imaging with DNA-PAINT and Exchange-PAINT
+  journal: Nature Methods
+  year: 2014
+  volume: 11
+  pages: 313-318
+  doi: 10.1038/nmeth.2835
+  note: "DNA-PAINT: binding kinetics set by a DNA duplex, which makes the blink rate a design parameter."
+  topics: [resolution]
+
+gustafsson2000:
+  authors: M. G. L. Gustafsson
+  title: Surpassing the lateral resolution limit by a factor of two using structured illumination microscopy
+  journal: Journal of Microscopy
+  year: 2000
+  volume: 198
+  pages: 82-87
+  doi: 10.1046/j.1365-2818.2000.00710.x
+  note: "Structured illumination: patterned excitation moves high spatial frequencies into the passband, doubling resolution without switching anything."
+  topics: [resolution]
+
+balzarotti2017:
+  authors: F. Balzarotti, Y. Eilers, K. C. Gwosch, A. H. Gynnå, V. Westphal, et al.
+  title: Nanometer resolution imaging and tracking of fluorescent molecules with minimal photon fluxes
+  journal: Science
+  year: 2017
+  volume: 355
+  pages: 606-612
+  doi: 10.1126/science.aak9913
+  note: "MINFLUX: probing with a zero-intensity point rather than a maximum, so few photons localise very precisely."
+  topics: [resolution]
+
+thompson2002:
+  authors: R. E. Thompson, D. R. Larson, W. W. Webb
+  title: Precise Nanometer Localization Analysis for Individual Fluorescent Probes
+  journal: Biophysical Journal
+  year: 2002
+  volume: 82
+  pages: 2775-2783
+  doi: 10.1016/s0006-3495(02)75618-x
+  note: "The localisation-precision expression: how centroid uncertainty falls with photon count and rises with background."
+  topics: [resolution, tracking]
+
+mortensen2010:
+  authors: K. I. Mortensen, L. S. Churchman, J. A. Spudich, H. Flyvbjerg
+  title: Optimized localization analysis for single-molecule tracking and super-resolution microscopy
+  journal: Nature Methods
+  year: 2010
+  volume: 7
+  pages: 377-381
+  doi: 10.1038/nmeth.1447
+  note: The maximum-likelihood treatment and its Cramer-Rao bound - what a localisation can achieve rather than what a centroid does.
+  topics: [resolution, tracking]
+
+huang2009:
+  authors: B. Huang, M. Bates, X. Zhuang
+  title: Super-Resolution Fluorescence Microscopy
+  journal: Annual Review of Biochemistry
+  year: 2009
+  volume: 78
+  pages: 993-1016
+  doi: 10.1146/annurev.biochem.77.061906.092014
+  note: A review of the families and what each costs in photons, time and labelling.
+  topics: [resolution]
+
+westphal2008:
+  authors: V. Westphal, S. O. Rizzoli, M. A. Lauterbach, D. Kamin, R. Jahn, et al.
+  title: Video-Rate Far-Field Optical Nanoscopy Dissects Synaptic Vesicle Movement
+  journal: Science
+  year: 2008
+  volume: 320
+  pages: 246-249
+  doi: 10.1126/science.1154228
+  note: STED at video rate, which is the property the stochastic methods cannot match.
+  topics: [resolution]
+
 # ── Structure: surfaces and accessibility ───────────────────────────
 lee1971:
   authors: B. Lee, F. M. Richards

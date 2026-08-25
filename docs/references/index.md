@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*182 works.*
+*198 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -602,6 +602,89 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Zunino et al. (2025)](https://doi.org/10.1038/s41566-025-01695-0)** — Alessandro Zunino, Giacomo Garrè, Eleonora Perego, Sabrina Zappone, Mattia Donato, Nadine Vastenhouw, Giuseppe Vicidomini. *Structured detection for simultaneous super-resolution and optical sectioning in laser scanning microscopy*. Nature Photonics **19**, 888-897. (2025).  
 *Structured detection for simultaneous super-resolution and optical sectioning.*
+
+
+## Image resolution
+
+(abbe1873)=
+
+**[Abbe (1873)](https://doi.org/10.1007/bf02956173)** — E. Abbe. *Beiträge zur Theorie des Mikroskops und der mikroskopischen Wahrnehmung*. Archiv für Mikroskopische Anatomie **9**, 413-468. (1873).  
+*The diffraction limit itself - why an objective cannot resolve below about half a wavelength.*
+
+(balzarotti2017)=
+
+**[Balzarotti et al. (2017)](https://doi.org/10.1126/science.aak9913)** — F. Balzarotti, Y. Eilers, K. C. Gwosch, A. H. Gynnå, V. Westphal, et al. *Nanometer resolution imaging and tracking of fluorescent molecules with minimal photon fluxes*. Science **355**, 606-612. (2017).  
+*MINFLUX: probing with a zero-intensity point rather than a maximum, so few photons localise very precisely.*
+
+(bates2007)=
+
+**[Bates et al. (2007)](https://doi.org/10.1126/science.1146598)** — M. Bates, B. Huang, G. T. Dempsey, X. Zhuang. *Multicolor Super-Resolution Imaging with Photo-Switchable Fluorescent Probes*. Science **317**, 1749-1753. (2007).  
+*Multicolour switching, and the photoswitching pairs that make it work.*
+
+(betzig1995)=
+
+**[Betzig (1995)](https://doi.org/10.1364/ol.20.000237)** — E. Betzig. *Proposed method for molecular optical imaging*. Optics Letters **20**, 237. (1995).  
+*The proposal that isolating emitters in some distinguishable property, then localising each, breaks the limit - a decade before the chemistry existed.*
+
+(betzig2006)=
+
+**[Betzig et al. (2006)](https://doi.org/10.1126/science.1127344)** — E. Betzig, G. H. Patterson, R. Sougrat, O. W. Lindwasser, S. Olenych, et al. *Imaging Intracellular Fluorescent Proteins at Nanometer Resolution*. Science **313**, 1642-1645. (2006).  
+*PALM: photoactivatable proteins switched on a few at a time, localised, and accumulated into an image.*
+
+(gustafsson2000)=
+
+**[Gustafsson (2000)](https://doi.org/10.1046/j.1365-2818.2000.00710.x)** — M. G. L. Gustafsson. *Surpassing the lateral resolution limit by a factor of two using structured illumination microscopy*. Journal of Microscopy **198**, 82-87. (2000).  
+*Structured illumination: patterned excitation moves high spatial frequencies into the passband, doubling resolution without switching anything.*
+
+(hell1994)=
+
+**[Hell & Wichmann (1994)](https://doi.org/10.1364/ol.19.000780)** — S. W. Hell, J. Wichmann. *Breaking the diffraction resolution limit by stimulated emission: stimulated-emission-depletion fluorescence microscopy*. Optics Letters **19**, 780. (1994).  
+*STED: depleting the periphery of the excitation spot with a second beam, so the emitting region is smaller than the diffraction limit.*
+
+(huang2009)=
+
+**[Huang et al. (2009)](https://doi.org/10.1146/annurev.biochem.77.061906.092014)** — B. Huang, M. Bates, X. Zhuang. *Super-Resolution Fluorescence Microscopy*. Annual Review of Biochemistry **78**, 993-1016. (2009).  
+*A review of the families and what each costs in photons, time and labelling.*
+
+(jungmann2014)=
+
+**[Jungmann et al. (2014)](https://doi.org/10.1038/nmeth.2835)** — R. Jungmann, M. S. Avendaño, J. B. Woehrstein, M. Dai, W. M. Shih, et al. *Multiplexed 3D cellular super-resolution imaging with DNA-PAINT and Exchange-PAINT*. Nature Methods **11**, 313-318. (2014).  
+*DNA-PAINT: binding kinetics set by a DNA duplex, which makes the blink rate a design parameter.*
+
+(klar1999)=
+
+**[Klar & Hell (1999)](https://doi.org/10.1364/ol.24.000954)** — T. A. Klar, S. W. Hell. *Subdiffraction resolution in far-field fluorescence microscopy*. Optics Letters **24**, 954. (1999).  
+*The first far-field fluorescence images below the diffraction barrier.*
+
+(klar2000)=
+
+**[Klar et al. (2000)](https://doi.org/10.1073/pnas.97.15.8206)** — T. A. Klar, S. Jakobs, M. Dyba, A. Egner, S. W. Hell. *Fluorescence microscopy with diffraction resolution barrier broken by stimulated emission*. Proceedings of the National Academy of Sciences **97**, 8206-8210. (2000).  
+*STED characterised: how the resolution scales with depletion intensity.*
+
+(mortensen2010)=
+
+**[Mortensen et al. (2010)](https://doi.org/10.1038/nmeth.1447)** — K. I. Mortensen, L. S. Churchman, J. A. Spudich, H. Flyvbjerg. *Optimized localization analysis for single-molecule tracking and super-resolution microscopy*. Nature Methods **7**, 377-381. (2010).  
+*The maximum-likelihood treatment and its Cramer-Rao bound - what a localisation can achieve rather than what a centroid does.*
+
+(rust2006)=
+
+**[Rust et al. (2006)](https://doi.org/10.1038/nmeth929)** — M. J. Rust, M. Bates, X. Zhuang. *Sub-diffraction-limit imaging by stochastic optical reconstruction microscopy (STORM)*. Nature Methods **3**, 793-796. (2006).  
+*STORM: the same construction driven by switchable organic dyes.*
+
+(sharonov2006)=
+
+**[Sharonov & Hochstrasser (2006)](https://doi.org/10.1073/pnas.0609643104)** — A. Sharonov, R. M. Hochstrasser. *Wide-field subdiffraction imaging by accumulated binding of diffusing probes*. Proceedings of the National Academy of Sciences **103**, 18911-18916. (2006).  
+*PAINT: transient binding from solution supplies the blinking, so the label need not photoswitch at all.*
+
+(thompson2002)=
+
+**[Thompson et al. (2002)](https://doi.org/10.1016/s0006-3495(02)75618-x)** — R. E. Thompson, D. R. Larson, W. W. Webb. *Precise Nanometer Localization Analysis for Individual Fluorescent Probes*. Biophysical Journal **82**, 2775-2783. (2002).  
+*The localisation-precision expression: how centroid uncertainty falls with photon count and rises with background.*
+
+(westphal2008)=
+
+**[Westphal et al. (2008)](https://doi.org/10.1126/science.1154228)** — V. Westphal, S. O. Rizzoli, M. A. Lauterbach, D. Kamin, R. Jahn, et al. *Video-Rate Far-Field Optical Nanoscopy Dissects Synaptic Vesicle Movement*. Science **320**, 246-249. (2008).  
+*STED at video rate, which is the property the stochastic methods cannot match.*
 
 
 ## Particle tracking

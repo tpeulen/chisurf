@@ -72,6 +72,13 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    mfd_fitting
    ebfret
 
+.. rubric:: Imaging and resolution
+
+.. toctree::
+   :maxdepth: 1
+
+   super_resolution
+
 .. rubric:: Exploration & selection
 
 .. toctree::
