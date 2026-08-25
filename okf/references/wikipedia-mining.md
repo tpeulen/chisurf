@@ -136,6 +136,43 @@ Content gaps the harvest exposed, and which were filled in the same change:
 - **PCH had no cumulant route**; HMM had no warning that dwell-time histograms
   cannot fix a connectivity.
 
+## Second pass (2026-08-25) — what folding prose in is actually worth
+
+The relicence made importing legal, so the obvious next step was to fold
+Wikipedia's fluorescence content into the pages. **The yield is much lower than
+that premise assumes, and the reason is worth recording so nobody repeats the
+exercise hoping for more.**
+
+On the topics ChiSurf documents, *these pages are already deeper than the
+articles*. Measured, not guessed:
+
+- `Solvatochromism` has **no section headings at all** — no structure to derive
+  from — while `solvent_and_environment.md` already derives Lippert-Mataga,
+  treats specific effects, and handles relaxation on the lifetime timescale.
+- `Excimer` is mostly excimer *lasers* and arene photochemistry; one short
+  section touches fluorescence.
+- `Fluorescence anisotropy` has four sections against a page here with nine.
+
+Two traps in judging a gap:
+
+1. **A vocabulary miss is not a content gap.** Grepping the docs for "exciplex"
+   returned zero and looked like a hole. The physics was fully covered under
+   *stacking* and *excimer* — static quenching from ground-state stacking,
+   intermittent stacking blinks, NADH and FAD — and `absorption_and_emission.md`
+   already names excimer emission as a cause of a broad structureless shifted
+   band. Adding an "exciplex" section would have been a glossary entry, which
+   the docs' style rejects. Check the *phenomenon*, not the word.
+2. **The article's citations outvalue its prose.** The one genuine gap found
+   this pass came from a reference list, not from body text: the empirical
+   polarity scales. The page taught the continuum model and called its
+   deviations "the interesting part" without giving the framework that
+   quantifies them — Kamlet-Taft's pi*/alpha/beta and Reichardt's E_T(30).
+
+So the working method is unchanged from the first pass and is not a licence
+question at all: **mine the citations, follow them to the primary literature,
+write the page here.** Import prose only where an article is genuinely stronger
+than what exists, which on this subject matter has not yet happened once.
+
 ## Re-running it
 
 ```bash
