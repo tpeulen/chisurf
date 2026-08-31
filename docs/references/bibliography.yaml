@@ -2330,3 +2330,49 @@ kabsch1978:
   doi: 10.1107/s0567739478001680
   note: Extends the 1976 solution to the general case with reflections, with the handedness correction.
   topics: [structure]
+
+# ── Global and target analysis ──────────────────────────────────────
+
+knutson1983:
+  authors: J. R. Knutson, J. M. Beechem, L. Brand
+  title: 'Simultaneous analysis of multiple fluorescence decay curves: a global approach'
+  journal: Chemical Physics Letters
+  year: 1983
+  volume: 102
+  pages: 501-507
+  doi: 10.1016/0009-2614(83)87454-5
+  note: The original global fit - one lifetime fitted against a whole decay surface at once.
+  topics: [statistics, tcspc]
+
+beechem1985:
+  authors: J. M. Beechem, M. Ameloot, L. Brand
+  title: Global and target analysis of complex decay phenomena
+  journal: Instrumentation Science and Technology
+  year: 1985
+  volume: 14
+  pages: 379-402
+  doi: 10.1080/10739148508543585
+  note: Distinguishes global analysis (share a parameter) from target analysis (fit the underlying model directly).
+  topics: [statistics, tcspc]
+
+ameloot1986:
+  authors: M. Ameloot, J. M. Beechem, L. Brand
+  title: 'Compartmental modeling of excited-state reactions: identifiability of the rate constants from fluorescence decay surfaces'
+  journal: Chemical Physics Letters
+  year: 1986
+  volume: 129
+  pages: 211-219
+  doi: 10.1016/0009-2614(86)80199-3
+  note: Which rate constants a decay surface can determine at all - the identifiability question behind linking.
+  topics: [statistics, tcspc]
+
+beechem1992:
+  authors: J. M. Beechem
+  title: Global analysis of biochemical and biophysical data
+  journal: Methods in Enzymology
+  year: 1992
+  volume: 210
+  pages: 37-54
+  doi: 10.1016/0076-6879(92)10004-W
+  note: The method review - what to link, what not to, and how to test whether a link is justified.
+  topics: [statistics]

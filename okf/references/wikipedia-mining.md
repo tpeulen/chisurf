@@ -308,3 +308,57 @@ algorithm variants, Fisher/Schottky historical, quantum-well physics), and
 checked whether general-statistics pages (least squares, bootstrap, MLE)
 have uncited mentions in docs — they don't, or the mentions are in pages that
 already carry citations. The dump has nothing left to give. No commit.
+
+**Seventh tranche (2026-08-31) — page-driven: global analysis had a
+hand-rolled reference list and one wrong DOI.**
+
+Saturation of the *dump* does not mean saturation of the *docs*. The lead came
+from counting `{cite}` roles per page: seven concept pages have none, and
+`docs/concepts/global_analysis.md` — the page for what ChiSurf is actually
+built around — had a plain `## References` list of three works that the
+bibliography had never heard of. A reference list a page keeps to itself is
+invisible to the Literature index, to the help browser, and to the guardrail
+that checks whether a cited work exists.
+
+Crossref-verifying those three caught a defect: the page gave
+`10.1080/10739148508543581` for Beechem, Ameloot & Brand (1985), which resolves
+to *Time Correlated Single-Photon Counting Using Laser Excitation* by Phillips
+et al. — a different paper in the same journal. The correct DOI is
+`10.1080/10739148508543585` (last digit 5). This is the "the DOI is bad, not
+the paper" case, found in our own prose rather than in Wikipedia's.
+
+Four entries landed, all Crossref-verified, under a new
+`# ── Global and target analysis ──` section:
+
+| Entry | Verified | Cited from |
+|---|---|---|
+| knutson1983 (the original global fit of a decay surface) | Crossref | global_analysis.md |
+| beechem1985 (global *vs* target analysis; DOI corrected) | Crossref | global_analysis.md |
+| ameloot1986 (identifiability of rate constants from a decay surface) | Crossref | global_analysis.md |
+| beechem1992 (the method review — what to link and what not to) | Crossref | global_analysis.md |
+
+The page also gained a *Linking is not target analysis either* subsection —
+linking shares a fitted number, target analysis fits the mechanism that
+produces it — and a house-style **See also** block (concepts, guide,
+`{src}` implementation links, literature) replacing the hand-rolled list.
+
+Also repaired here: `docs/references/index.md` was stale. The fifth tranche
+committed `kabsch1976`/`kabsch1978` into `bibliography.yaml` without
+regenerating the index, so those two works existed in the source of truth and
+appeared nowhere in the Literature page. The regeneration in this tranche went
+212 → 218 works: four mine, two owed.
+
+**Where to pick this up.** The dump is still saturated; the *pages* are not.
+The lead that worked here generalises and is cheap to re-run:
+
+    for f in docs/concepts/*.md docs/fundamentals/*.md; do
+      echo "$(grep -o '{cite}' "$f" | wc -l) $f"; done | sort -n
+
+Six uncited concept pages remain: `drift_correction`, `live_streaming_analysis`
+(which has its own hand-rolled *Further reading* with two DOIs — the same
+pattern, ready to wire up), `mfd_fitting`, `pda2c`, `photon_container`,
+`region_properties`. Take `live_streaming_analysis` next: its two DOIs are
+already written down, so the tranche is verify-and-wire rather than hunt. Note
+that some of the six are genuinely citation-free by nature (`photon_container`
+describes a file format, `region_properties` a geometry API) — check that a
+page *wants* literature before manufacturing some for it.

@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*212 works.*
+*218 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -805,6 +805,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Connolly (1983)](https://doi.org/10.1107/S0021889883010985)** — M. L. Connolly. *Analytical molecular surface calculation*. Journal of Applied Crystallography **16**, 548-558. (1983).  
 *The molecular surface, for contrast.*
 
+(kabsch1976)=
+
+**[Kabsch (1976)](https://doi.org/10.1107/s0567739476001873)** — W. Kabsch. *A solution for the best rotation to relate two sets of vectors*. Acta Crystallographica Section A **32**, 922-923. (1976).  
+*The SVD-based rigid superposition that ChiSurf's trajectory alignment uses.*
+
+(kabsch1978)=
+
+**[Kabsch (1978)](https://doi.org/10.1107/s0567739478001680)** — W. Kabsch. *A discussion of the solution for the best rotation to relate two sets of vectors*. Acta Crystallographica Section A **34**, 827-828. (1978).  
+*Extends the 1976 solution to the general case with reflections, with the handedness correction.*
+
 (lee1971)=
 
 **[Lee & Richards (1971)](https://doi.org/10.1016/0022-2836(71)90324-X)** — B. Lee, F. M. Richards. *The interpretation of protein structures: estimation of static accessibility*. Journal of Molecular Biology **55**, 379-400. (1971).  
@@ -823,10 +833,20 @@ and the citation renders as a link to the paper. The source of truth is
 
 ## Time-resolved fluorescence
 
+(ameloot1986)=
+
+**[Ameloot et al. (1986)](https://doi.org/10.1016/0009-2614(86)80199-3)** — M. Ameloot, J. M. Beechem, L. Brand. *Compartmental modeling of excited-state reactions: identifiability of the rate constants from fluorescence decay surfaces*. Chemical Physics Letters **129**, 211-219. (1986).  
+*Which rate constants a decay surface can determine at all - the identifiability question behind linking.*
+
 (becker2005)=
 
 **[Becker (2005)](https://doi.org/10.1007/3-540-28882-1)** — W. Becker. *Advanced Time-Correlated Single Photon Counting Techniques*. Springer Series in Chemical Physics. (2005).  
 *Instrumentation, pile-up and differential non-linearity.*
+
+(beechem1985)=
+
+**[Beechem et al. (1985)](https://doi.org/10.1080/10739148508543585)** — J. M. Beechem, M. Ameloot, L. Brand. *Global and target analysis of complex decay phenomena*. Instrumentation Science and Technology **14**, 379-402. (1985).  
+*Distinguishes global analysis (share a parameter) from target analysis (fit the underlying model directly).*
 
 (coates1968)=
 
@@ -837,6 +857,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Gómez-Sánchez et al. (2024)](https://doi.org/10.1016/j.bpr.2024.100155)** — Adrián Gómez-Sánchez, Olivier Devos, Raffaele Vitale, Michel Sliwa, Damir Sakhapov, Jörg Enderlein, Anna de Juan, Cyril Ruckebusch. *Blind instrument response function identification from fluorescence decays*. Biophysical Reports **4**, 100155. (2024).  
 *Recovering an instrument response function from the decay itself.*
+
+(knutson1983)=
+
+**[Knutson et al. (1983)](https://doi.org/10.1016/0009-2614(83)87454-5)** — J. R. Knutson, J. M. Beechem, L. Brand. *Simultaneous analysis of multiple fluorescence decay curves: a global approach*. Chemical Physics Letters **102**, 501-507. (1983).  
+*The original global fit - one lifetime fitted against a whole decay surface at once.*
 
 (maus2001)=
 
@@ -993,6 +1018,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 
 ## Statistics, sampling and convergence
+
+(beechem1992)=
+
+**[Beechem (1992)](https://doi.org/10.1016/0076-6879(92)10004-W)** — J. M. Beechem. *Global analysis of biochemical and biophysical data*. Methods in Enzymology **210**, 37-54. (1992).  
+*The method review - what to link, what not to, and how to test whether a link is justified.*
 
 (terbraak2006)=
 

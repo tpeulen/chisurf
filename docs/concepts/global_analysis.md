@@ -12,8 +12,8 @@ anchor: concept-global-analysis
 Fitting measurements one at a time lets every fit invent its own value for every
 parameter — including quantities that are physically the same in all of them.
 Global analysis ties those together: **one value, determined by all the data at
-once**. It is often the only way to pin a parameter that no single dataset can
-constrain, and it is what ChiSurf is built around.
+once** ({cite}`knutson1983`). It is often the only way to pin a parameter that no
+single dataset can constrain, and it is what ChiSurf is built around.
 
 This page explains what linking does to the estimation problem and how to read
 the result. The [global-analysis guide](../guides/60_global_analysis.md) shows
@@ -53,7 +53,9 @@ Two consequences follow immediately, and they are the whole point:
   across measurements whose local blocks differ turns a valley in one
   $\chi^2$ surface into a minimum in the sum. This is why a donor lifetime
   shared across a FRET series is identifiable when neither dataset alone
-  determines it.
+  determines it. Which parameters a whole surface can determine — and which
+  stay unidentifiable no matter how many measurements are added — is a property
+  of the model, answerable before any data are fitted ({cite}`ameloot1986`).
 
 In ChiSurf a link is directional: the **follower** is removed from the free
 parameter vector and evaluates to its **master**'s value. A chain of links
@@ -80,7 +82,7 @@ computed.
 ## What to link, and what not to
 
 Link a parameter when it is a property of the *system or the instrument* rather
-than of the individual measurement:
+than of the individual measurement ({cite}`beechem1992`):
 
 - donor lifetimes across a FRET series measured with the same dye,
 - an instrument response shift or colour shift within one session,
@@ -107,6 +109,21 @@ fix: fixing discards the reference's own uncertainty and reports intervals that
 are too narrow. A **prior** is the third option — "approximately known, with a
 stated spread" — and is described in
 [parameter uncertainty](parameter_uncertainty.md).
+
+### Linking is not target analysis either
+
+Linking says two numbers are the same number. It says nothing about *why*.
+**Target analysis** goes one step further: instead of sharing fitted
+phenomenological quantities, it fits the underlying physical model — a kinetic
+scheme, a set of rate constants — and lets the decay parameters of every
+measurement be *computed* from it ({cite}`beechem1985`). The amplitudes and
+lifetimes then stop being free parameters at all.
+
+That is a stronger claim and a much stronger constraint, and ChiSurf supports
+it wherever a model exposes its underlying rates rather than its observables —
+see {ref}`concept-photon-by-photon-kinetics` for the rate-matrix form. Reach
+for linking when you know a quantity is shared; reach for target analysis when
+you know the mechanism that produces it.
 
 ## Reading the result
 
@@ -137,15 +154,16 @@ For the posterior's structure — which parameters the data actually constrains
 *jointly*, whether or not they were linked — see
 [parameter uncertainty](parameter_uncertainty.md).
 
-## References
+## See also
 
-- Beechem, J. M. (1992) Global analysis of biochemical and biophysical data.
-  *Methods in Enzymology* **210**, 37–54.
-  [10.1016/0076-6879(92)10004-W](https://doi.org/10.1016/0076-6879(92)10004-W)
-- Knutson, J. R., Beechem, J. M., Brand, L. (1983) Simultaneous analysis of
-  multiple fluorescence decay curves: a global approach. *Chemical Physics
-  Letters* **102**, 501–507.
-  [10.1016/0009-2614(83)87454-5](https://doi.org/10.1016/0009-2614(83)87454-5)
-- Beechem, J. M., Ameloot, M., Brand, L. (1985) Global and target analysis of
-  complex decay phenomena. *Analytical Instrumentation* **14**, 379–402.
-  [10.1080/10739148508543581](https://doi.org/10.1080/10739148508543581)
+- Concepts: {ref}`concept-parameter-uncertainty` (what the joint interval
+  means) · {ref}`concept-photon-by-photon-kinetics` (fitting the mechanism
+  rather than the observables) · {ref}`concept-mfd-fitting`.
+- Guide: [global analysis](../guides/60_global_analysis.md) — the Global View,
+  the link table, and the headless equivalent.
+- Implementation: {src}`chisurf/core/models/global_model/globalfit.py#GlobalFitModel` ·
+  {src}`chisurf/core/fitting/factorgraph.py`.
+- Literature: {cite}`knutson1983` the original global fit of a decay surface;
+  {cite}`beechem1985` global versus target analysis; {cite}`ameloot1986` which
+  rate constants a decay surface can determine at all; {cite}`beechem1992` the
+  method review — what to link, what not to, and how to test a link.
