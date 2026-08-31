@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*203 works.*
+*207 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -883,6 +883,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Gehlen (2020)](https://doi.org/10.1016/j.jphotochemrev.2019.100338)** — M. H. Gehlen. *The centenary of the Stern-Volmer equation of fluorescence quenching - from the single line plot to the SV quenching map*. Journal of Photochemistry and Photobiology C **42**, 100338. (2020).  
 *What every deviation from a straight Stern-Volmer line can mean, and why more than one mechanism fits each.*
 
+(goeppertmayer1931)=
+
+**[Göppert-Mayer (1931)](https://doi.org/10.1002/andp.19314010303)** — M. Göppert-Mayer. *Über Elementarakte mit zwei Quantensprüngen*. Annalen der Physik **401**, 273-294. (1931).  
+*The prediction of two-quantum absorption, in her dissertation. The unit of a two-photon cross-section is named for her.*
+
 (kamlet1983)=
 
 **[Kamlet et al. (1983)](https://doi.org/10.1021/jo00165a018)** — M. J. Kamlet, J.-L. M. Abboud, M. H. Abraham, R. W. Taft. *Linear solvation energy relationships. 23. A comprehensive collection of the solvatochromic parameters pi*, alpha and beta, and some methods for simplifying the generalized solvatochromic equation*. The Journal of Organic Chemistry **48**, 2877-2887. (1983).  
@@ -1030,6 +1035,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Beer et al. (1994)](https://doi.org/10.1002/bit.260431118)** — D. de Beer, P. Stoodley, F. Roe, Z. Lewandowski. *Effects of biofilm structures on oxygen distribution and mass transport*. Biotechnology and Bioengineering **43**, 1131-1138. (1994).  
 *Oxygen microelectrode profiles through a biofilm.*
 
+(denk1990)=
+
+**[Denk et al. (1990)](https://doi.org/10.1126/science.2321027)** — W. Denk, J. H. Strickler, W. W. Webb. *Two-photon laser scanning fluorescence microscopy*. Science **248**, 73-76. (1990).  
+*The instrument: two-photon absorption combined with laser scanning, and the sectioning argument — excitation where the flux is squared.*
+
+(helmchen2005)=
+
+**[Helmchen & Denk (2005)](https://doi.org/10.1038/nmeth818)** — F. Helmchen, W. Denk. *Deep tissue two-photon microscopy*. Nature Methods **2**, 932-940. (2005).  
+*Penetration depth as a scattering budget, and where the budget runs out.*
+
 (lardon2011)=
 
 **[Lardon et al. (2011)](https://doi.org/10.1111/j.1462-2920.2011.02414.x)** — L. A. Lardon, B. V. Merkey, S. Martins, A. Dötsch, C. Picioreanu, J.-U. Kreft, B. F. Smets. *iDynoMiCS - next-generation individual-based modelling of biofilms*. Environmental Microbiology **13**, 2416-2434. (2011).  
@@ -1044,6 +1059,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Stewart & Franklin (2008)](https://doi.org/10.1038/nrmicro1838)** — P. S. Stewart, M. J. Franklin. *Physiological heterogeneity in biofilms*. Nature Reviews Microbiology **6**, 199-210. (2008).  
 *Why a biofilm is not one population.*
+
+(xu1996)=
+
+**[Xu et al. (1996)](https://doi.org/10.1364/JOSAB.13.000481)** — C. Xu, W. Zipfel, J. B. Shear, R. M. Williams, W. W. Webb. *Measurement of two-photon excitation cross sections of molecular fluorophores with data from 690 to 1050 nm*. Journal of the Optical Society of America B **13**, 481-491. (1996).  
+*The cross-section tables in GM units that power budgets are built from, and the $\delta\cdot\Phi$ action cross-section convention.*
 
 
 ---

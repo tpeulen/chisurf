@@ -1819,6 +1819,52 @@ reichardt1994:
   note: "The E_T(30) scale: solvent polarity read off one betaine dye's transition energy."
   topics: [photophysics]
 
+# ── Two-photon excitation ───────────────────────────────────────────
+
+goeppertmayer1931:
+  authors: M. Göppert-Mayer
+  title: Über Elementarakte mit zwei Quantensprüngen
+  journal: Annalen der Physik
+  year: 1931
+  volume: 401
+  pages: 273-294
+  doi: 10.1002/andp.19314010303
+  note: The prediction of two-quantum absorption, in her dissertation. The unit of a two-photon cross-section is named for her.
+  topics: [photophysics, two-photon]
+
+denk1990:
+  authors: W. Denk, J. H. Strickler, W. W. Webb
+  title: Two-photon laser scanning fluorescence microscopy
+  journal: Science
+  year: 1990
+  volume: 248
+  pages: 73-76
+  doi: 10.1126/science.2321027
+  note: "The instrument: two-photon absorption combined with laser scanning, and the sectioning argument — excitation where the flux is squared."
+  topics: [two-photon, microscopy]
+
+xu1996:
+  authors: C. Xu, W. Zipfel, J. B. Shear, R. M. Williams, W. W. Webb
+  title: Measurement of two-photon excitation cross sections of molecular fluorophores with data from 690 to 1050 nm
+  journal: Journal of the Optical Society of America B
+  year: 1996
+  volume: 13
+  pages: 481-491
+  doi: 10.1364/JOSAB.13.000481
+  note: The cross-section tables in GM units that power budgets are built from, and the $\delta\cdot\Phi$ action cross-section convention.
+  topics: [two-photon, fluorophores]
+
+helmchen2005:
+  authors: F. Helmchen, W. Denk
+  title: Deep tissue two-photon microscopy
+  journal: Nature Methods
+  year: 2005
+  volume: 2
+  pages: 932-940
+  doi: 10.1038/nmeth818
+  note: Penetration depth as a scattering budget, and where the budget runs out.
+  topics: [two-photon, microscopy]
+
 # ── Reference works, textbooks and monographs ───────────────────────
 
 lakowicz2006:

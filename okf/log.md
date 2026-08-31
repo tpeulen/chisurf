@@ -1,5 +1,50 @@
 # Update Log
 
+## 2026-08-23
+* **Lumis Quest follow-up 3: the dark manifold has a loop** (open front 1).
+  Ferals — beasts that crossed with their labels still burning — hunt the
+  ash: five per region, one tier hotter than the lit land's licence allows,
+  fought as the animal standing there with a label rolled once from its own
+  name. Unbinding down there pays through the normal spoils flow, and the
+  beaten feral leaves the ash. The dark now bleeds photons
+  (`gamelogic.dark_drain`, then vitality floored at one) so a dive is a
+  resource decision with no recovery station at the bottom. 4 new tests; the
+  four menu-row tests moved a slot for the new setting; guide says "three
+  things to do" now. 439 tests green.
+* **Lumis Quest follow-up 2: towns stop being wallpaper** (open front 3).
+  The village floor and plaza each stamped one medallion cell everywhere —
+  both now carry tone-matched three-cell variant families; new CRATE/POT
+  clutter tiles cut from the in-tree engine pack (padded, with string-art
+  fallbacks after the shipped-art guardrail caught their absence) scatter
+  against walls on made ground, bottom-half solid so they never narrow a
+  street; flowers no longer transplant grass squares onto tan floors; and a
+  recorded design call keeps crates from becoming dark-manifold ruins, so
+  the salvage economy stays "every ruin was a premises". Gallery re-shot;
+  435 tests green.
+* **Lumis Quest follow-up: interiors render, and Iris and Lumi are themselves
+  again** (user crash report + second taste reversal). `_draw_interior` built
+  the indoor cast from pack-sheet-stem names nothing answers — the first
+  frame inside a populated building KeyError'd; no test had ever *drawn*
+  indoors, and the new one does. Iris and Lumi leave the pack sheets for the
+  second and user-initiated time: the walk clock is back to the string art's
+  two frames, the swing pose aliases the stride frame, the grass-hound NPC
+  steps `%2`, and the string-art pin now guards the resolver layer too.
+  Gallery re-shot; 435 lumis + games tests green. Details in
+  [prd-91.md](prds/prd-91.md).
+* **Lumis Quest: the bestiary is animals again, the manifold is ash, and the
+  sky is sky** (T-20260823-01, "make lumis quest a good game"). Read the
+  gallery first; four fixes: `sheetart.resolve` had flattened all twelve
+  creature families into the pack's one pig — now only `body_boar` wears it;
+  the country rock re-cut from an orange bun to a grey boulder
+  (`objects/09.png`); the dark manifold's ground re-cut from a repeated
+  interior-floor cell to a three-variant trodden-earth family with a
+  `_tile_uv_dark` table so grass-backed rocks stop glowing green out of the
+  ash (`rock_ash` composite); clouds dropped from 36 world units at α0.5 to
+  13 at α0.32, and the HUD weapon/magic labels sit on flat chips. Gallery
+  re-shot and read; 434 lumis + games tests green; the healed npcs
+  hitch-frame known-issue marked FIXED. Pickup in
+  [prd-91.md](prds/prd-91.md).
+
 ## 2026-08-21
 * **imp-module-conventions.md: "Wrapping numpy arrays" section**. After two
   build cycles in `IMP_bff.avdistance.i`, added the rule to
@@ -37339,3 +37384,37 @@ front, not this).
   so far a convention with no renderer and no test — logged as the next thing to
   fix. The editorial rule is unchanged and now the binding one: importing is
   permitted, writing is still better.
+
+### The section panel was closing itself
+
+Reported that the slice window vanishes on a click. It was built with
+`transient=True`, and `GuiWindow.transient` is documented for exactly this
+distinction: Escape and a click *anywhere else* put a transient window away,
+which is right for something consulted and closed like Settings and wrong for a
+tool held open while working.
+
+Positioning a cut means clicking in the viewport between every adjustment --
+orbit, look, nudge, look again -- so every one of those clicks was dismissing
+the panel that was being used. Now `transient=False`. It keeps its title-bar
+`x` (`closable` is a separate flag), so it still closes when asked.
+
+Checked the rest: Settings, the form panel and the file dialog are all
+"consulted and closed" and correctly transient; the density and hierarchy
+panels were already persistent. The section panel was the only one on the wrong
+side of the line.
+
+- 2026-08-31 — **The Wikipedia citation harvest saturates; two-photon excitation
+  was the last content it carried.** Reading the 97 verified works the
+  resolution tranche left behind: one family still had something to teach these
+  docs — two-photon excitation, previously one sentence — now a subsection in
+  `docs/fundamentals/instrumentation.md` with four Crossref-verified entries
+  (Göppert-Mayer 1931, Denk 1990, Xu 1996, Helmchen & Denk 2005). That page is
+  also the first to carry a `sources:` block, so the attribution convention from
+  the relicence finally has a user, a renderer and a passing test. The remaining
+  verified pool is statistics history and condensate physics no page here needs;
+  future bibliography growth is page-driven, not dump-driven. Also landed: five
+  bibliography entries found uncommitted in the tree (four already cited by
+  `deconvolution.md`; `kondo2019` now cited from the 2D-FLCS page as the
+  application the `flc_2d` plugin's MATLAB code was written for), and the
+  generator note that `pixi run -e docs --frozen` is what works while the
+  `build` env fails to solve on `wgpu`.

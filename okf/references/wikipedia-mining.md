@@ -184,29 +184,50 @@ python3 tools/harvest_cites.py          # articles/*.wiki -> tools/works.json
 regenerates it. The seed list is `tools/seeds.txt` — extend it rather than
 widening the regex.
 
+## Second tranche (2026-08-25) — recorded late, third pass (2026-08-31) — the harvest saturates
+
+The seeds went from 107 to 143 titles (super-resolution, microscopy, detector
+and statistics families), 33 more articles were extracted (128 on disk; the
+misses are redirects), and the harvest was re-run at the lower threshold:
+347 candidates → **113 Crossref-verified works**. Sixteen resolution-family
+entries landed with a super-resolution concept page the same morning, and with
+them the two guardrails items 3 and 4 below asked for: a renderer for the
+`sources:` front-matter block (`docs/_ext/source_attribution.py`, tested in
+`test/test_docs_sources.py`) and `test/test_docs_links.py`, which fails on any
+`{cite}` key that does not resolve. None of that was written down here until
+now — the session that did it stopped before updating this page, which is the
+same failure mode the fetch incident above records: **the state file is not
+optional**.
+
+The third pass read the 97 verified works the resolution tranche had left, and
+the finding is the headline: **the fluorescence-adjacent harvest is
+saturated.** One family still carried content value — two-photon excitation,
+which these docs covered in exactly one sentence — and it is now a subsection
+of `docs/fundamentals/instrumentation.md` (Göppert-Mayer's prediction, the
+Denk/Strickler/Webb instrument, Xu's 690–1050 nm cross-section tables in GM
+units, Helmchen–Denk on penetration as a scattering budget), citing four newly
+landed entries. It is also the **first page to carry a `sources:` block**,
+crediting the two Wikipedia articles it derives from — the convention from the
+relicence now has a user, a renderer, and a passing test. Separately,
+`kondo2019` landed (verified outside the dump pool): the LHCSR1 single-molecule
+application the `flc_2d` plugin's original MATLAB code was written for, cited
+from the 2D-FLCS page.
+
+The rest of the 97 is real bibliography for some other project: the EM
+algorithm's variants, Fisher 1922 and Schottky 1918, condensate and quantum-well
+physics, speech-recognition HMM engineering. No page here needs them. Future
+bibliography growth should be **page-driven** — a page needs a source, the dump
+fetches it — not dump-driven: re-running the ranker again would not find
+anything a page wants. The dump's standing use is the last item below.
+
 ## Where to pick this up
 
-1. **The seed list is 107 titles and the fluorescence corpus is larger.** The
-   obvious next tranche is the super-resolution and instrumentation families
-   (STED/PALM/STORM, SPAD arrays, TIRF, light-sheet), none of which were seeded,
-   plus the FCS variants ChiSurf lacks pages for — svFCS, TIR-FCS, SPIM-FCS.
-   [quickfit3-mining.md](quickfit3-mining.md) already flags TIR-FCS and SPIM-FCS
-   as clear gaps with ~70 models between them, so the two mining efforts point
-   at the same hole from different sides.
-2. **1,751 harvested DOIs were reduced to 138 candidates by requiring a
-   core-method citer.** That filter is deliberately harsh and the discarded set
-   was never read. Re-ranking with a lower threshold is cheap — `works.json`
-   is on disk — and is the fastest route to a second tranche.
-3. **The `sources:` front-matter block is a convention with nothing behind it.**
-   `docs/licensing.md` defines it and no page uses it yet, because the first
-   pass imported nothing. The moment a page does derive from a CC BY-SA source,
-   attribution becomes a legal obligation carried by a field no test checks and
-   no generator renders — so it will silently rot. Either render it (a
-   per-page "Sources" footer, next to where `{cite}` already renders) or assert
-   on it in `test_docs_okf.py`; a convention that is neither is worse than none.
-4. **Nothing checks that a `{cite}` key resolves.** The dangling-citation and
-   footnote-definition audits in this pass were ad-hoc scripts, not tests. A
-   guardrail in `test/` would stop a stale key reaching the built docs; today
-   the only signal is a broken link in the rendered HTML.
-5. **The dump is a general resource, not a bibliography tool.** It is equally
+Done since this page was written, in order: the seed extension and second
+harvest (item 1, item 2), the `sources:` renderer and its test (item 3), the
+cross-reference guardrail (item 4). What remains:
+
+1. **The dump is a general resource, not a bibliography tool.** It is equally
    the way to check a claim in a concept page without a network round-trip.
+   `extract.py` + `offsets.bin` serve any of the 25.8 M articles in one range
+   read; extend `tools/seeds.txt` and re-extract when a new page needs its
+   sources.

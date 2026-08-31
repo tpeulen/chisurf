@@ -4,6 +4,13 @@ title: The optical and detection chain
 description: Between the excited state and a recorded photon sit a light source, an optical train, and a detector.
 tags: [fundamentals, photons, instrumentation]
 anchor: fundamentals-instrumentation
+sources:
+  - text: Derived in part from the English Wikipedia article "Two-photon absorption"
+    url: https://en.wikipedia.org/wiki/Two-photon_absorption
+    licence: CC-BY-SA-4.0
+  - text: Derived in part from the English Wikipedia article "Two-photon excitation microscopy"
+    url: https://en.wikipedia.org/wiki/Two-photon_excitation_microscopy
+    licence: CC-BY-SA-4.0
 ---
 
 (fundamentals-instrumentation)=
@@ -39,6 +46,46 @@ effective observation volume and produces an apparent diffusion time that
 depends on laser power ({ref}`concept-fcs-saturation`); it also accelerates
 bleaching. Checking that a result is independent of excitation power is the
 standard control.
+
+### Two-photon excitation
+
+In two-photon excitation a molecule absorbs two near-infrared photons
+quasi-simultaneously and reaches the same excited state one photon of half the
+wavelength would reach. Göppert-Mayer predicted the process
+{cite}`goeppertmayer1931`; Denk, Strickler and Webb built the scanning
+microscope on it {cite}`denk1990`. The rate goes as the square of the photon
+flux, so cross-sections carry their own unit, the GM
+($10^{-50}\ \mathrm{cm^4\,s\,photon^{-1}}$), and common fluorophores run from a
+few to a couple of hundred GM across the 690–1050 nm band
+{cite}`xu1996`. Those numbers are why femtosecond pulses are a requirement and
+not an optimisation: only a ~100 fs pulse concentrates the instantaneous flux
+enough, at an average power the sample survives.
+
+Three consequences reach the data:
+
+- **Sectioning without a pinhole.** Emission is created only where the flux is
+  squared — the focus — so out-of-focus background is never generated rather
+  than rejected downstream. Emission photons that scatter on the way out are
+  still usable signal, so the collection budget differs from a confocal setup
+  at the same numerical aperture.
+- **Depth is a scattering budget.** Near-infrared excitation scatters roughly an
+  order of magnitude less on the way in than the visible light that would
+  address the same transition one photon at a time, and creates no out-of-focus
+  bleaching or autofluorescence; the usable depth is set by how many excitation
+  photons survive the tissue {cite}`helmchen2005`.
+- **The data model is unchanged — the clock is not.** Emission is still one
+  photon at a time, so the decay histogram, the instrument-response
+  convolution, pile-up and the TTTR axes all work as on the following page
+  ({ref}`fundamentals-photon-counting`). But a Ti:sapphire cavity runs near
+  80 MHz: a 12.5 ns interval. That violates the four-to-five-lifetime rule
+  above for any lifetime beyond ~3 ns — the tail of one pulse wraps into the
+  next period and must be modelled as the periodic convolution it is
+  ({ref}`concept-tcspc-lifetime`), or the repetition rate is divided down with
+  a pulse-picker at the cost of count rate.
+
+The power-independence control above matters more here, not less: the peak
+intensity at the focus sits close to saturation by design, so an apparent
+lifetime or diffusion time that tracks average power is suspect.
 
 ## Wavelength selection
 
