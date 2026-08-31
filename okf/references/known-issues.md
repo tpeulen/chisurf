@@ -4962,3 +4962,42 @@ auto-named (`obj2`). A bare `orient` / `zoom` then fails with *"orient: nothing
 to orient"* and leaves the camera wherever it was — which reads as a badly
 framed render rather than as an error, because the message goes to the error
 callback a script usually discards. Name `all` explicitly.
+
+# H2MM's fallback engine is correct but 300x slower than the reference (2026-08-31)
+
+Found immediately after fixing the `NameError` that stopped `_estep` running at
+all (see `okf/log.md`, same date). With the fix, `test_ab_vs_h2mm_c.py` gets
+*past* the correctness assertion —
+
+```
+assert mine.loglik == pytest.approx(ref.loglik, rel=1e-4, abs=1.0)   # passes
+```
+
+— and fails the one after it:
+
+```
+numba H2MM 307.55x the H2MM_C time/iter - performance regression
+assert 307.54749331660156 < 1.5
+```
+
+**This is not a regression from that fix.** It is what retiring numba left
+behind: `core/h2mm.py` is now interpreted Python running an `O(N·n²)` loop
+photon by photon, and the guard was written when a JIT stood behind it. Before
+the fix the same test failed earlier and louder, with a `NameError`.
+
+**It does not affect normal use.** `core/engines.py` prefers the tttrlib C++
+backend (`_use_tttrlib()`) and only falls back to this module, so the GUI, the
+wizard and the export all take the compiled path. The slow path is what you get
+when tttrlib is missing, when a caller reaches into `h2mm.fit_states` directly
+(which is what the benchmark does), or when the tttrlib call raises and the
+fallback catches it — and that last one is silent apart from a log line.
+
+Two things are therefore stale rather than broken, and neither is fixed:
+
+* the guard asserts a `< 1.5x` ratio that the architecture no longer promises
+  for this module. Either it should compare the *tttrlib* path against the
+  reference — which is the path users get — or it should be marked as measuring
+  the fallback and given a realistic bound;
+* the fallback is still called "the numba engine" in `engines.py`
+  (`backend()` returns the string `'numba'`, and the fallback warning names it),
+  which will mislead the next reader: there is no numba left in it.
