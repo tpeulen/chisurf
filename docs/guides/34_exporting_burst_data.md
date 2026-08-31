@@ -65,6 +65,23 @@ them up without any mapping — in particular the time axis is named
 the micro-time resolution is known — otherwise `NaN`. Colouring the per-photon
 scatter by `State` in ndX gives the recovered state trajectory directly.
 
+```{figure} figures/burst_export_table.png
+:name: fig-burst-export-table
+:width: 100%
+
+The per-burst table as `build_tables` writes it, opened in ChiSurf's table
+widget. Every column above is numeric — ndX silently drops any that is not —
+and the names are the contract: `Mean Macro Time (s)` is the time axis ndX
+auto-selects, `Mean Microtime (green)`/`(red)` are its FRET-line X axis in
+nanoseconds, and `Proximity ratio` its Y axis.
+
+The rows are a check as much as an illustration. This export was made from a
+simulated trace whose bursts alternate between $E = 0.25$ and $E = 0.75$, so
+`Dominant State` alternating 0/1 in step with `Proximity ratio` is H2MM having
+recovered the two states — a column of constant zeros would mean the fit
+collapsed, which a screenshot of an empty table would not have told you.
+```
+
 ## See also
 
 - {src}`chisurf/plugins/burst/burst_h2mm/core/export.py`, `chisurf/plugins/burst/bid_to_analysis/`.

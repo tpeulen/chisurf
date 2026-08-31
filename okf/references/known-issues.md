@@ -4902,3 +4902,63 @@ has no equivalent pan/rubber-band logic at all, so this is specific to the
 WGPU backend, which is the one under active migration
 ([chiplot](../subsystems/chiplot.md)).
 
+# chimol: three things a documentation grab walked into (2026-08-31)
+
+Found while making `docs/guides/make_screenshots.py` regenerate the figures for
+[the molecular-viewer guide](../../docs/guides/44_molecular_viewer.md). Two of
+the three are chimol's, filed here because chimol is a companion checkout with
+another instance active in it; none is fixed.
+
+## The Objects dock is retired, and the overlay that replaced it lists nothing
+
+`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
+(the list is in the viewport)"* — so `window.objects` no longer exists and the
+old grab raised `AttributeError`. That part is intended.
+
+What is **not** intended: the viewport Object List draws only `all` and `sele`.
+With three real objects loaded it still shows those two rows, before and after
+`refresh_objects()`:
+
+```python
+win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
+Cmd(win).do("create ligand, resn NAG")
+list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
+win.refresh_objects()         # overlay still shows only `all` and `sele`
+```
+
+So the panel that replaced the dock does not yet do the dock's job. Consequence
+for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
+44 show the **retired** Qt dock. They were deliberately *not* regenerated from
+the overlay — that would swap two figures that show the old UI correctly for two
+that show the new UI wrongly. The guide's prose around them (rows carrying
+PyMOL's five **A S H L C** menus) still describes what the overlay draws, so it
+is not misleading, only dated.
+
+## The ray tracer draws a mesh contour as streaks
+
+`isomesh` renders as a clean wireframe cage through the WebGPU path and as long
+crossing bars through `ray`. Same scene, same commands:
+
+```
+molmap all, 6
+isomesh m, molmap_6     # NO level -- see below
+orient all
+zoom all
+ray out.png, 900, 650
+```
+
+This blocks regenerating `chimol_molmap.png` and `chimol_map_isomesh.png`, which
+are chrome-free ray renders; the existing files are correct and were left alone.
+
+**Worth knowing whichever path you use:** give `isomesh` **no level**. A map
+opens already contoured, and a level argument *appends* a second contour rather
+than restyling the first — the solid surface the map opened with then hides the
+mesh, and the figure looks like `isomesh` silently did nothing.
+
+## `orient` with no target resolves nothing on a bare viewer
+
+`Viewer.add_structure(..., name="148l")` does not take the name; the object is
+auto-named (`obj2`). A bare `orient` / `zoom` then fails with *"orient: nothing
+to orient"* and leaves the camera wherever it was — which reads as a badly
+framed render rather than as an error, because the message goes to the error
+callback a script usually discards. Name `all` explicitly.

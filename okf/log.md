@@ -1,6 +1,34 @@
 # Update Log
 
 ## 2026-08-31
+* **Guide screenshots, part 2: the chimol grabs were dead too, and H2MM could not
+  fit at all.** Continues the pass above. Figureless guides **4 → 3**
+  (`34_exporting_burst_data` gains the real exported burst table); `47`/`52` stay
+  blocked because ndX is not installed in this environment, and `53` needs a
+  before/after of a status line rather than one panel.
+  Every figure in `docs/references/figures.yaml` now has a recorded `origin` —
+  the six that were empty stubs are filled, six of them saying *why* they are not
+  regenerable yet, which is the worklist.
+  - **`chisurf/plugins/burst/burst_h2mm/core/h2mm.py` — H2MM was completely
+    broken.** `_estep` sized its accumulators from `get_num_threads()`, a numba
+    symbol that went with the retired numba kernels, so **every** fit raised
+    `NameError`. Not hidden, just unlooked-at: `test_h2mm_engine.py` was failing
+    **8 of 14** at HEAD, and is 14/14 with the one-line fix (the chunk loop is
+    serial now, so a single chunk is the same arithmetic). Regression pinned in
+    `test_estep_runs.py`.
+  - **`docs/guides/make_screenshots.py` — both chimol grabs raised on import.**
+    chimol moved `chimol.cmd` → `chimol.commands`, dropped `chimol.app`, and
+    renamed `chimol.renderer.view.MolView` → `chimol.core.viewer.viewer.Viewer`,
+    so `chimol_accessibility` and both biofilm figures had been unregenerable.
+    Ported; all three regenerate. The dead plugin-window setup in the viewer grab
+    went with it — the render runs on a bare `Viewer`.
+  - The object-panel section is **retired rather than ported**: chimol states
+    *"Objects is permanently hidden (the list is in the viewport)"*, and the
+    overlay that replaced the dock lists only `all`/`sele` even with three objects
+    loaded. Regenerating from it would replace two figures that show the old UI
+    correctly with two that show the new UI wrongly. That, the ray tracer drawing
+    `isomesh` as streaks, and `orient` needing an explicit target on a bare viewer
+    are in `okf/references/known-issues.md`.
 * **Nine figureless guides get real app screenshots — and four GUI defects the
   screenshots exposed get fixed.** The gap was measured, not assumed: 55 of 68
   guides already carried a `{figure}`, 13 carried none. Eight new headless grabs

@@ -514,7 +514,13 @@ def _estep(
     n_streams = obs.shape[1]
     n_bursts = offsets.shape[0] - 1
     n_slots = pow_cache.shape[0]
-    nthreads = get_num_threads()
+    # One chunk. The burst partition below exists to give each *numba* thread
+    # its own accumulators; with the numba kernels retired this function runs
+    # as serial Python, and `get_num_threads` went with the import that
+    # provided it -- leaving a NameError that made every fit fail. The
+    # per-chunk partials are summed in the reduction either way, so a single
+    # chunk is the same arithmetic without allocating N copies of the scratch.
+    nthreads = 1
 
     # Longest burst → size of the reused per-thread α/scale scratch buffers.
     max_len = 0

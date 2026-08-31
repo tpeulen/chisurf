@@ -629,70 +629,37 @@ def _grab_chimol_viewer():
     """
     import pathlib as _pathlib
 
-    from chimol.app.molview_main_window import (
-        MolViewPluginWindow,
-    )
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
 
     pdb = _pathlib.Path(
         "test/data/atomic_coordinates/pdb_files/148l.pdb"
     ).resolve()
 
-    window = MolViewPluginWindow()
-    window.resize(1180, 700)
-    window.show()
-    app = QApplication.instance()
-    for _ in range(20):
-        app.processEvents()
-    window._load_structure_from_path(pdb)
-    for _ in range(30):
-        app.processEvents()
-
-    # -- the object panel, with a couple of derived objects to show rows ------
-    panel_cmd = Cmd(window)
-    panel_cmd.set_message_callback(lambda _m: None)
-    panel_cmd.set_error_callback(lambda m: print("  chimol:", m))
-    panel_cmd.do("create peptidoglycan, chain S")
-    panel_cmd.do("create ligand, resn NAG")
-    for _ in range(30):
-        app.processEvents()
-
-    panel = window.objects.widget       # a property, not a method
-    panel.resize(900, 250)
-    for _ in range(20):
-        app.processEvents()
-    panel.grab().save(str(FIG / "chimol_objects_panel.png"))
-    print("wrote chimol_objects_panel.png")
-
-    # -- the same panel with groups, one open and one collapsed --------------
-    panel_cmd.do("create nag, resn NAG")
-    panel_cmd.do("group ligands, ligand nag")
-    panel_cmd.do("group parts, peptidoglycan")
-    panel_cmd.do("group parts, close")
-    for _ in range(30):
-        app.processEvents()
-    panel.resize(900, 250)
-    for _ in range(20):
-        app.processEvents()
-    panel.grab().save(str(FIG / "chimol_groups_panel.png"))
-    print("wrote chimol_groups_panel.png")
-    # Leave the panel ungrouped: later figures in this function read the same
-    # window, and a collapsed group would hide rows they expect to be drawn.
-    panel_cmd.do("ungroup ligands")
-    panel_cmd.do("ungroup parts")
-    panel_cmd.do("delete nag")
-    for _ in range(20):
-        app.processEvents()
+    # -- the object panel: RETIRED UPSTREAM, so nothing is grabbed here ------
+    # `chimol_objects_panel.png` and `chimol_groups_panel.png` were grabs of a
+    # Qt dock reached through `window.objects.widget`. That dock no longer
+    # exists: chimol's WebGPU port moved the object list into the viewport and
+    # marked the dock permanently hidden ("Objects is permanently hidden (the
+    # list is in the viewport)", chimol/hosts/qt/window.py). The attribute is
+    # gone, so this section raised AttributeError and took the accessibility
+    # figure below down with it.
+    #
+    # The two figures are NOT regenerated from the viewport overlay either,
+    # because that overlay does not yet list the objects: with obj2/obj3/obj4 in
+    # `viewer.objects` it still draws only `all` and `sele`, before and after
+    # `refresh_objects()`. Regenerating now would replace two figures that show
+    # the old UI correctly with two that show the new UI wrongly.
+    # Tracked in okf/references/known-issues.md.
 
     # -- a ray-traced render, coloured by solvent accessibility ---------------
     # Driven through a bare MolView rather than the plugin window: inside the
     # window `ray` hands the trace to a worker, which a script with no event loop
     # of its own never lets finish ("ray: cancelled").
     import chisurf.core.structure as cs_struct
+    from chimol.core.viewer.viewer import Viewer
     from chimol.io.structure import _read_full_model
-    from chimol.renderer.view import MolView
 
-    view = MolView()
+    view = Viewer()
     view.resize(900, 650)
     view.add_structure(
         _read_full_model(cs_struct.Structure, pdb),
@@ -721,8 +688,11 @@ def _grab_chimol_viewer():
         # An explicit range rather than the data's own: the most exposed atom is
         # an outlier, so an automatic range leaves the whole surface reading blue.
         "spectrum b, blue_white_red, all, 0, 25",
-        "orient",
-        "zoom",
+        # `orient`/`zoom` with no target resolve nothing here and fail with
+        # "nothing to orient" -- the viewer auto-names the object (obj2), it is
+        # not called after the file. Naming `all` is what makes them frame it.
+        "orient all",
+        "zoom all",
         f"ray {FIG / 'chimol_accessibility.png'}, 900, 650",
     ):
         cmd.do(line)
@@ -740,15 +710,15 @@ def _grab_chimol_biofilm():
     A frame early in the run and a frame at the end, because the point of the
     demo is the difference between them.
     """
-    from chimol.app.demo_data import generated_demo_path
-    from chimol.cmd.command import Cmd
+    from chimol.commands.command import Cmd
     from chimol.io.structure import load_structure_payload
-    from chimol.renderer.view import MolView
+    from chimol.plugins.demos.material import generated_demo_path
+    from chimol.core.viewer.viewer import Viewer
 
     rmf = generated_demo_path("biofilm_growth.rmf")
     _reader, payload = load_structure_payload(str(rmf))
 
-    view = MolView()
+    view = Viewer()
     view.resize(900, 650)
     view.add_payload(payload, name="biofilm", source_path=str(rmf))
 
@@ -1341,6 +1311,92 @@ def _grab_lumis_quest():
             print("wrote", f"{stem}.png")
 
 
+def _grab_burst_export_table():
+    """The per-burst export table, as it actually comes out of `build_tables`.
+
+    The subject of that guide is a *column contract* -- the names are chosen so
+    ndX imports them without any mapping -- so the figure has to be the real
+    header over real values, not a prose table restating it.
+
+    Driven on a simulated two-state trace whose answer is known: bursts
+    alternate between E = 0.25 and E = 0.75, so `Dominant State` in the figure
+    must alternate 0/1 in step with `Proximity ratio`. That makes the figure
+    check the export *and* the H2MM fit behind it, rather than only showing a
+    layout.
+    """
+    import tttrlib
+
+    from chisurf.core.datastore import column_names, column_values
+    from chisurf.gui.widgets.chitable import ArraySource, ChiTableWidget
+    from chisurf.plugins.burst.burst_h2mm.core import export as burst_export
+    from chisurf.plugins.burst.burst_h2mm.core import h2mm
+    from chisurf.plugins.burst.burst_h2mm.core.photons import (
+        StreamDef,
+        bursts_from_dataframe,
+    )
+
+    rng = np.random.default_rng(0)
+    macro, micro, channel, rows = [], [], [], []
+    clock = 0
+    for index in range(40):
+        n_photons = int(rng.integers(60, 160))
+        efficiency = 0.25 if index % 2 == 0 else 0.75
+        start = len(macro)
+        for _ in range(n_photons):
+            clock += int(rng.integers(1, 40))
+            macro.append(clock)
+            red = rng.random() < efficiency
+            channel.append(1 if red else 0)
+            micro.append(
+                int(rng.integers(100, 500) if red else rng.integers(200, 900))
+            )
+        rows.append(("sim.spc", start, len(macro) - 1))
+        clock += 5000
+
+    tttr = tttrlib.TTTR()
+    tttr.append_events(
+        np.asarray(macro, np.uint64),
+        np.asarray(micro, np.uint16),
+        np.asarray(channel, np.int8),
+        np.zeros(len(macro), np.int8),
+        False,
+        0,
+    )
+
+    # A plain mapping of columns, not a DataFrame: the reader takes either, and
+    # pandas is not the storage model here (test/test_pandas_seam.py).
+    frame = {
+        "First File": [row[0] for row in rows],
+        "First Photon": np.array([row[1] for row in rows], dtype=np.int64),
+        "Last Photon": np.array([row[2] for row in rows], dtype=np.int64),
+    }
+    data, meta = bursts_from_dataframe(
+        frame,
+        {"sim.spc": tttr},
+        [StreamDef("green", [0]), StreamDef("red", [1])],
+        min_photons=1,
+        return_meta=True,
+    )
+    fit = h2mm.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
+    path, _ = h2mm.viterbi(fit, data)
+    tables = burst_export.build_tables(
+        data, meta, path, np.array([0.25, 0.75]),
+        base_time_s=1e-6, micro_time_ns=0.032,
+        stream_groups=[("green", (0,)), ("red", (1,))],
+    )
+
+    bursts = tables.bursts
+    names = column_names(bursts)
+    columns = {
+        name: np.asarray(column_values(bursts, index), dtype=float)
+        for index, name in enumerate(names)
+    }
+    widget = ChiTableWidget(source=ArraySource(columns))
+    # Wide enough for all ten columns: the last one clipped at 1250.
+    widget.resize(1460, 430)
+    _grab(widget, "burst_export_table.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1375,6 +1431,7 @@ def main():
         _grab_console,
         _grab_ai_assistant,
         _grab_lumis_quest,
+        _grab_burst_export_table,
     ):
         try:
             grab()

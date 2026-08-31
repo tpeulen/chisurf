@@ -207,30 +207,40 @@ guides/figures/chimol_map_isomesh.png:
   caption: A density contoured as an `isomesh` around the structure it belongs to. The wireframe leaves
     the model visible inside, which is the point of that mode; the same contour as `isosurface` is a solid
     envelope.
-  kind: ''
-  origin: ''
+  kind: screenshot
+  origin: hand-made (not yet regenerable)
   pages:
   - docs/guides/44_molecular_viewer.md
-  recipe: ''
+  recipe: 'NOT REGENERABLE YET. A density contoured as an `isomesh`. The commands are known
+    and work -- `molmap all, 6` then `isomesh m, molmap_6` with NO level, which
+    restyles the contour the map opens with instead of appending a second one that
+    hides it -- but chimol''s ray tracer draws the mesh as long streaks rather than a
+    wireframe cage, while its WebGPU path renders it correctly. Regenerating today
+    would replace a correct figure with a wrong one.
+    See okf/references/known-issues.md.'
 guides/figures/chimol_map_panel.png:
   caption: The Map panel. Each contour is a marker on the histogram — here a filled surface (blue) and
     a wireframe (orange) on the same map. Drag a marker to move that level, click empty histogram to add
     one, right-click a marker to remove it.
-  kind: ''
-  origin: ''
+  kind: screenshot
+  origin: hand-made (documents a UI with no reachable widget)
   pages:
   - docs/guides/44_molecular_viewer.md
-  recipe: ''
+  recipe: 'NOT REGENERABLE. The Map dock is built from a `VolumeViewModel` and is one of
+    chimol''s initially-hidden docks; no public attribute hands back a widget to grab.
+    See okf/references/known-issues.md.'
 guides/figures/chimol_npc_molecule.png:
   caption: 'The eight-spoke nuclear pore, all 234,184 beads, exactly as the demo draws it. Colour comes
     from the entry''s hierarchy — one per nucleoporin, shared by all sixteen copies — so the eight-fold
     symmetry shows as a repeating pattern rather than as a mosaic. The depth is ambient occlusion: beads
     buried inside the assembly darken, exposed ones stay bright.'
-  kind: ''
-  origin: ''
+  kind: screenshot
+  origin: hand-made (not yet regenerable)
   pages:
   - docs/guides/44_molecular_viewer.md
-  recipe: ''
+  recipe: 'NOT REGENERABLE YET. The eight-spoke nuclear pore as the demo draws it. The demo
+    data comes from `chimol.plugins.demos.material.generated_demo_path`, the same route
+    `_grab_chimol_biofilm` uses, so the grab is a short extension of that one.'
 guides/figures/chimol_objects_panel.png:
   caption: The Objects panel, here with the ligand and its peptidoglycan split off into objects of their
     own. Each molecule gets a row with PyMOL's five menus — **A**ction, **S**how, **H**ide, **L**abel
@@ -389,11 +399,13 @@ guides/figures/flow_tool.png:
   caption: 'The flow-map tool on its own demo. Left: the settings, in workflow order. Right: the headline
     numbers, the arrows over the time-averaged image, and the profile across the frame with the simulated
     truth drawn beside it — which is how the 20 % shear bias becomes visible rather than theoretical.'
-  kind: ''
-  origin: ''
+  kind: screenshot
+  origin: hand-made (not yet regenerable)
   pages:
   - docs/guides/55_pair_correlation.md
-  recipe: ''
+  recipe: 'NOT REGENERABLE YET. The img_flow tool; the plugin ships a `demo.py` that simulates
+    a photon stream whose answer is known, which is the state to drive it into rather
+    than one of the user''s files.'
 guides/figures/frc_workspace.png:
   caption: 'The FRC workspace on a confocal photon stream. Left: the settings. Right: the headline resolution,
     the FRC curve against the 1/7 threshold with the crossing marked, and — behind the *Diagnostics* tabs
@@ -450,11 +462,15 @@ guides/figures/h2mm_state_decays.png:
     the sensitised acceptor, yellow the directly excited acceptor — red and yellow share the same detectors
     and are separated by the PIE window at ~6.8 ns. Solid is S0 (low FRET: little red), dashed is S1 (high
     FRET).'
-  kind: ''
-  origin: ''
+  kind: screenshot
+  origin: hand-made (not yet regenerable)
   pages:
   - docs/guides/19_h2mm_hidden_markov.md
-  recipe: ''
+  recipe: 'NOT REGENERABLE YET. Per-state decays of a two-state fit with every colour ticked.
+    NOTE the H2MM engine could not fit at all until 2026-08-31 -- a NameError in the
+    E-step -- so an attempt to regenerate this before that date failed for a reason
+    that had nothing to do with the figure. It fits now; `_grab_burst_export_table`
+    is a driven two-state fit to build the grab on.'
 guides/figures/hmm_workspace.png:
   caption: 'Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55 counts per bin,
     true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts with 13.9 and 27.9 s⁻¹, and BIC picks
@@ -1963,3 +1979,27 @@ guides/figures/pto_inspector.png:
     data and a 256-point decay derived from those bursts, so the provenance tab has the two-step lineage
     the guide describes -- a container holding only the raw file has no graph to draw. Needs the
     instrument test data present.'
+guides/figures/chimol_molmap.png:
+  caption: '`molmap` at 6 A around 148L, contoured as an `isomesh`.'
+  kind: screenshot
+  origin: hand-made (not yet regenerable)
+  pages:
+  - docs/guides/44_molecular_viewer.md
+  recipe: 'NOT REGENERABLE YET -- the same chimol ray-tracer mesh defect recorded under
+    `chimol_map_isomesh.png`. The command sequence that produces the scene is known and
+    works: `molmap all, 6` then `isomesh m, molmap_6` with NO level argument (a level
+    appends a second contour, and the solid one the map opens with then hides the mesh).'
+guides/figures/burst_export_table.png:
+  caption: The per-burst export table as `build_tables` writes it, opened in ChiSurf's table widget.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_export_table
+  pages:
+  - docs/guides/34_exporting_burst_data.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. A simulated
+    two-state burst trace (40 bursts alternating E = 0.25 / 0.75) is packed with
+    `bursts_from_dataframe`, fitted with `h2mm.fit_states(..., 2)`, and the tables built by
+    `build_tables`; the per-burst one is shown through `ChiTableWidget(source=ArraySource(...))`.
+    The burst table goes in as a plain mapping of column arrays, NOT a pandas DataFrame -- the
+    reader takes either and pandas is not the storage model. The alternating `Dominant State`
+    column is the check that the fit converged; constant zeros would mean it collapsed.
+    Width 1460: the tenth column is clipped at 1250.'
