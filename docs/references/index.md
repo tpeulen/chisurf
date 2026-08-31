@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*198 works.*
+*203 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -376,6 +376,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Kask et al. (1999)](https://doi.org/10.1073/pnas.96.24.13756)** — P. Kask, K. Palo, D. Ullmann, K. Gall. *Fluorescence-intensity distribution analysis and its application in biomolecular detection technology*. Proceedings of the National Academy of Sciences **96**, 13756-13761. (1999).  
 *FIDA - the generating-function route to the same histogram.*
 
+(kondo2019)=
+
+**[Kondo et al. (2019)](https://doi.org/10.1073/pnas.1821207116)** — Toru Kondo, Jesse B. Gordon, Alberta Pinnola, Luca Dall'osto, Roberto Bassi, Gabriela S. Schlau-Cohen. *Microsecond and millisecond dynamics in the photosynthetic protein LHCSR1 observed by single-molecule correlation spectroscopy*. Proceedings of the National Academy of Sciences **116**, 11247-11252. (2019).  
+*The single-molecule 2D-FLC application the plugin's original MATLAB code (TK_Create2DFDC_04.m et al., T. Kondo, Schlau-Cohen lab) was written for.*
+
 (krichevsky2002)=
 
 **[Krichevsky & Bonnet (2002)](https://doi.org/10.1088/0034-4885/65/2/203)** — O. Krichevsky, G. Bonnet. *Fluorescence correlation spectroscopy: the technique and its applications*. Reports on Progress in Physics **65**, 251-297. (2002).  
@@ -505,6 +510,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Banterle et al. (2013)](https://doi.org/10.1016/j.jsb.2013.05.004)** — N. Banterle, K. H. Bui, E. A. Lemke, M. Beck. *Fourier ring correlation as a resolution criterion for super-resolution microscopy*. Journal of Structural Biology **183**, 363-367. (2013).
 
+(biggs1997)=
+
+**[Biggs & Andrews (1997)](https://doi.org/10.1364/AO.36.001766)** — D. S. C. Biggs, M. Andrews. *Acceleration of iterative image restoration algorithms*. Applied Optics **36**, 1766-1775. (1997).  
+*Vector extrapolation for Richardson-Lucy, the same path with larger steps.*
+
 (cardarelli2010)=
 
 **[Cardarelli & Gratton (2010)](https://doi.org/10.1016/j.bpj.2009.12.4114)** — F. Cardarelli, E. Gratton. *In vivo imaging of single-molecule translocation through nuclear pore complexes by pair correlation functions*. PLoS ONE **5**, e10475. (2010).
@@ -559,6 +569,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lakowicz et al. (1992)](https://doi.org/10.1016/0003-2697(92)90112-k)** — J. R. Lakowicz, H. Szmacinski, K. Nowaczyk, K. W. Berndt, M. Johnson. *Fluorescence lifetime imaging*. Analytical Biochemistry **202**, 316-330. (1992).  
 *The method paper for lifetime imaging: contrast from tau rather than from intensity.*
 
+(lucy1974)=
+
+**[Lucy (1974)](https://doi.org/10.1086/111605)** — L. B. Lucy. *An iterative technique for the rectification of observed distributions*. The Astronomical Journal **79**, 745. (1974).  
+*The same iteration, arrived at independently.*
+
 (malacrida2021)=
 
 **[Malacrida et al. (2021)](https://doi.org/10.1146/annurev-biophys-062920-063631)** — L. Malacrida, S. Ranjit, D. M. Jameson, E. Gratton. *The phasor plot - a universal circle to advance fluorescence lifetime analysis and interpretation*. Annual Review of Biophysics **50**, 575-593. (2021).  
@@ -583,6 +598,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Richards & Wolf (1959)](https://doi.org/10.1098/rspa.1959.0200)** — B. Richards, E. Wolf. *Electromagnetic diffraction in optical systems, II. Structure of the image field in an aplanatic system*. Proceedings of the Royal Society of London. Series A. Mathematical and Physical Sciences **253**, 358-379. (1959).  
 *The vectorial focal field a high-NA objective produces — the basis of the PSF calculator.*
 
+(richardson1972)=
+
+**[Richardson (1972)](https://doi.org/10.1364/JOSA.62.000055)** — W. H. Richardson. *Bayesian-based iterative method of image restoration*. Journal of the Optical Society of America **62**, 55-59. (1972).  
+*The iterative Poisson-likelihood restoration, derived from Bayes' theorem.*
+
 (sroda2020)=
 
 **[Sroda et al. (2020)](https://doi.org/10.1364/optica.399600)** — Aleksandra Sroda, Adrian Makowski, Ron Tenne, Uri Rossman, Gur Lubin, Dan Oron, Radek Lapkiewicz. *SOFISM: Super-resolution optical fluctuation image scanning microscopy*. Optica **7**, 1308. (2020).  
@@ -597,6 +617,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Wiseman et al. (2000)](https://doi.org/10.1046/j.1365-2818.2000.00736.x)** — P. W. Wiseman, J. A. Squier, M. H. Ellisman, K. R. Wilson. *Two‐photon image correlation spectroscopy and image cross‐correlation spectroscopy*. Journal of Microscopy **200**, 14-25. (2000).  
 *ICS and its two-colour cross-correlation form at video rate; the basis of the image cross-correlation ChiSurf runs.*
+
+(zhang2007)=
+
+**[Zhang et al. (2007)](https://doi.org/10.1364/AO.46.001819)** — B. Zhang, J. Zerubia, J.-C. Olivo-Marin. *Gaussian approximations of fluorescence microscope point-spread function models*. Applied Optics **46**, 1819-1829. (2007).  
+*Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.*
 
 (zunino2025)=
 

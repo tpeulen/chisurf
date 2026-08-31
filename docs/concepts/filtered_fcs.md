@@ -177,4 +177,7 @@ $k = k_{12} + k_{21}$.
 - Literature: {cite}`boehmer2002` introduces lifetime-weighted correlation;
   {cite}`kapusta2007` the filter formulation; {cite}`felekyan2012` the species
   auto- and cross-correlations this page derives; {cite}`ishii2013,ishii2013b`
-  the two-dimensional extension, principle and application.
+  the two-dimensional extension, principle and application; {cite}`kondo2019`
+  the single-molecule application — microsecond-to-millisecond exchange in the
+  photosynthetic protein LHCSR1 — that the ChiSurf plugin's original MATLAB code
+  was written for.

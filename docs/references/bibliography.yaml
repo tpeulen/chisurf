@@ -1393,6 +1393,17 @@ ishii2013:
   note: Two-dimensional fluorescence lifetime correlation spectroscopy.
   topics: [filtered-fcs, fcs]
 
+kondo2019:
+  authors: Toru Kondo, Jesse B. Gordon, Alberta Pinnola, Luca Dall'osto, Roberto Bassi, Gabriela S. Schlau-Cohen
+  title: "Microsecond and millisecond dynamics in the photosynthetic protein LHCSR1 observed by single-molecule correlation spectroscopy"
+  journal: Proceedings of the National Academy of Sciences
+  year: 2019
+  volume: 116
+  pages: 11247-11252
+  doi: 10.1073/pnas.1821207116
+  note: The single-molecule 2D-FLC application the plugin's original MATLAB code (TK_Create2DFDC_04.m et al., T. Kondo, Schlau-Cohen lab) was written for.
+  topics: [filtered-fcs, fcs]
+
 tittel2015:
   authors: Janine Tittel, Tobias Welz, Aleksander Czogalla, Susanne Dietrich, Annette Samol-Wolf, Markos Schulte, Petra Schwille, Thomas Weidemann, Eugen Kerkhoff
   title: Membrane Targeting of the Spir·Formin Actin Nucleator Complex Requires a Sequential Handshake of Polar Interactions
@@ -2148,3 +2159,47 @@ huang2001:
   year: 2001
   note: The scaled forward-backward recursions in the form used here.
   topics: [dynamics]
+
+richardson1972:
+  authors: W. H. Richardson
+  title: Bayesian-based iterative method of image restoration
+  journal: Journal of the Optical Society of America
+  year: 1972
+  volume: 62
+  pages: 55-59
+  doi: 10.1364/JOSA.62.000055
+  note: The iterative Poisson-likelihood restoration, derived from Bayes' theorem.
+  topics: [imaging]
+
+lucy1974:
+  authors: L. B. Lucy
+  title: An iterative technique for the rectification of observed distributions
+  journal: The Astronomical Journal
+  year: 1974
+  volume: 79
+  pages: 745
+  doi: 10.1086/111605
+  note: The same iteration, arrived at independently.
+  topics: [imaging]
+
+biggs1997:
+  authors: D. S. C. Biggs, M. Andrews
+  title: Acceleration of iterative image restoration algorithms
+  journal: Applied Optics
+  year: 1997
+  volume: 36
+  pages: 1766-1775
+  doi: 10.1364/AO.36.001766
+  note: Vector extrapolation for Richardson-Lucy, the same path with larger steps.
+  topics: [imaging]
+
+zhang2007:
+  authors: B. Zhang, J. Zerubia, J.-C. Olivo-Marin
+  title: Gaussian approximations of fluorescence microscope point-spread function models
+  journal: Applied Optics
+  year: 2007
+  volume: 46
+  pages: 1819-1829
+  doi: 10.1364/AO.46.001819
+  note: Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.
+  topics: [imaging]
