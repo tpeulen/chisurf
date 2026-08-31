@@ -1029,26 +1029,35 @@ def _grab_maxent_decay():
     3.6 ns) rather than two discrete exponentials, because that is the case MEM
     exists for and the case the figure has to show it solving.
 
-    Nuisance fitting is on. Without it a sub-channel misalignment between the
-    model IRF and the data is absorbed as a spurious fast component that
-    dominates the short end of the grid and squashes both real peaks -- the
-    figure would show a MEM artefact rather than a MEM result.
+    **The fixture is integrated over each channel, not sampled at its edge.**
+    A TCSPC channel counts arrivals during the bin, which is what the solver's
+    forward model reproduces; a plain ``np.convolve`` of the decay with the IRF
+    point-samples at the channel's left edge and lands **half a channel early**
+    (measured: rms 6.5e-3 against a 64x-oversampled reference, versus 2.5e-4 for
+    the solver). Feeding that in makes MEM fit a half-channel offset it cannot
+    express, costs 0.5 in chi2r, and pushes the answer into the timeshift --
+    which reads as a ChiSurf defect and is not one.
     """
     import chisurf
     from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
     from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui import MaxentDecayWidget
 
-    n, dt = 512, 0.0323
-    t = np.arange(n) * dt
-    irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
+    n, dt, oversample = 512, 0.0323, 32
+    # Build on a fine grid and average each channel down: that integration is
+    # what a channel does, and what the solver's design matrix assumes.
+    t_fine = (np.arange(n * oversample) + 0.5) * (dt / oversample)
+    irf_fine = np.exp(-0.5 * ((t_fine - 1.0) / 0.12) ** 2)
+    irf = irf_fine.reshape(n, oversample).mean(1)
     irf /= irf.sum()
+
     taus = np.linspace(0.2, 6.0, 200)
     weights = np.exp(-0.5 * ((taus - 1.1) / 0.25) ** 2)
     weights += 0.8 * np.exp(-0.5 * ((taus - 3.6) / 0.55) ** 2)
     weights /= weights.sum()
-    pure = (weights[:, None] * np.exp(-t[None, :] / taus[:, None])).sum(0)
-    conv = np.convolve(pure, irf)[:n]
+    pure_fine = (weights[:, None] * np.exp(-t_fine[None, :] / taus[:, None])).sum(0)
+    conv = np.convolve(pure_fine, irf_fine / irf_fine.sum())[: n * oversample]
+    conv = conv.reshape(n, oversample).mean(1)
     rng = np.random.default_rng(3)
     decay = rng.poisson(3.0e4 * conv / conv.max()).astype(float)
 
@@ -1070,7 +1079,9 @@ def _grab_maxent_decay():
     tool.spin_tau_min.setValue(0.4)
     tool.spin_tau_max.setValue(7.0)
     tool.spin_tau_bins.setValue(120)
-    tool.chk_fit_nuisance.setChecked(True)
+    # Nuisance fitting is deliberately OFF: with the fixture discretised
+    # correctly there is nothing for it to find (it recovers a timeshift of
+    # -0.014 channels and improves chi2r by 0.0006, for 160x the run time).
     tool._run_mem()
     QApplication.instance().processEvents()
     _grab(tool, "maxent_distribution.png")

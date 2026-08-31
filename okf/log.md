@@ -1,6 +1,34 @@
 # Update Log
 
 ## 2026-08-31
+* **The MaxEnt χ²ᵣ = 1.50 was my own test fixture, not a ChiSurf defect — and
+  the correction reverses yesterday's conclusion.** Reported earlier today (and
+  in ticket `T-20260831-03`) as "the 173× slower nuisance loop is the only path
+  that fits". It is not. Traced properly:
+  - both engines return **exactly** the same χ²ᵣ = 1.5030 on that fixture, so it
+    was never an engine difference;
+  - fitting data generated from the solver's **own** forward model gives
+    χ²ᵣ = 0.92 with nuisance *off*, and the nuisance search then finds
+    ts = −0.03 — i.e. nothing. The solver is self-consistent;
+  - the fixture was built with `np.convolve`, which point-samples the decay at
+    each channel's **left edge**. A TCSPC channel integrates over the bin.
+    Measured against a 64×-oversampled binned reference: `np.convolve`
+    rms **6.5e-3**, ChiSurf's `_build_Fi_lifetimes` rms **2.5e-4** — so
+    **ChiSurf's discretisation is the correct one** and `np.convolve` lands
+    exactly **+0.50 channels** early (best-fit shift; residual drops 18× when
+    corrected).
+  With the fixture built by averaging a 32× grid down per channel, the compiled
+  fast path reaches **χ²ᵣ = 1.04 in 125 ms**, and nuisance fitting buys
+  **0.0006** for 160× the time. So the earlier table compared a half-channel
+  error against a search that was spending 20 s undoing it.
+  Fixed everywhere the bad fixture had spread: `_grab_maxent_decay` (figure
+  regenerated, nuisance now **off**, residuals clean), the guide caption in
+  `62_maxent_decay.md`, the `figures.yaml` recipe — which now records the trap in
+  the fixture rather than a fake trap in the tool — and
+  `test_solver_contract.py`, whose χ²ᵣ bound could be tightened 5.0 → 1.5 (it was
+  loose enough to pass either way, which is how this went unnoticed).
+  `T-20260831-03` is re-scoped: the 24 s → 125 ms gap is still worth closing, but
+  as *performance*, not correctness.
 * **Sweep result: the remaining tttrlib fallbacks are not duplicates.** After
   2CDE and BVA, the only modules still naming a NumPy/Python fallback for a
   tttrlib feature are `gopich_szabo.py` (**stale docstring only** — the kernel

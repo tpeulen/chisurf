@@ -347,9 +347,15 @@ The exponential fitting uses scipy.optimize.minimize with:
 
    | Measured tail | Recovered $\tau$ | Recovered $C$ (true 8) |
    |---|---|---|
-   | 4.3 $\tau$ | 2.94 ns (−23 %) | 1120 |
-   | 8.7 $\tau$ | 3.19 ns (−16 %) | 31 |
-   | 12.5 $\tau$ | 4.00 ns (exact) | 6 |
+   | 4.3 $\tau$ (true 3.8 ns) | 2.94 ns (−23 %) | 1125 |
+   | 8.7 $\tau$ (true 3.8 ns) | 3.19 ns (−16 %) | 30 |
+   | 12.5 $\tau$ (true 4.0 ns) | 3.62 ns (−9 %) | 10 |
+
+   Those come from `estimate_irf` — the plugin's own API, with its default
+   Savitzky–Golay window of 11 — so they are what this tool gives you. Calling
+   `IRFEstimator` directly with *its* defaults recovers 4.00 ns in the last row;
+   the difference is the smoothing window, not the tail, and it is worth knowing
+   that the two entry points do not agree out of the box.
 
    The **IRF position** is recovered correctly in every one of those cases —
    it is $\tau$ and $C$ that degrade. So a short window still gives you a

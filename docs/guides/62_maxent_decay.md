@@ -55,10 +55,13 @@ lobes at $\tau = 1.1$ ns and $\tau = 3.6$ ns, not two discrete exponentials.
 **Left**, the recovered distribution: the long lobe comes back at $\approx 3.8$
 ns, and the short one appears split, which is $\nu$ showing more structure than
 the data support — the reason Step 3 exists. **Right**, the decay with the MEM
-fit over it and the weighted residuals ($\chi^2_r = 1.03$, structureless): a good
-$\chi^2_r$ constrains the distribution far less than it looks like it should.
-**Fit nuisance** is on; with it off, a sub-channel IRF misalignment is absorbed
-as a spurious fast component that dominates the short end of the grid.
+fit over it and the weighted residuals ($\chi^2_r = 1.04$, structureless): a good
+$\chi^2_r$ constrains the distribution far less than it looks like it should —
+the split short lobe here has the same $\chi^2_r$ as a single broad one would.
+**Fit nuisance** is off, and on data this clean it has nothing to find: it
+recovers a timeshift of $-0.014$ channels and improves $\chi^2_r$ by $0.0006$
+for about 160× the run time. Turn it on when the IRF was measured separately
+from the decay, which is when a real shift exists to fit.
 ```
 
 ## Step 3 — choose ν with the L-curve

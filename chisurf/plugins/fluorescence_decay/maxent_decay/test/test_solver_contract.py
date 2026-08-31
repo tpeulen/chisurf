@@ -21,16 +21,25 @@ from chisurf.plugins.fluorescence_decay.maxent_decay.core.solver import (
 REQUIRED = ("p", "tau", "Fi", "H", "g0", "y", "sigma", "fitrange", "fit_additive")
 
 
-def _problem(n: int = 256, dt: float = 0.0323):
-    """A reconvolved two-lifetime decay and the lamp it was built from."""
-    t = np.arange(n) * dt
-    lamp = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
+def _problem(n: int = 256, dt: float = 0.0323, oversample: int = 32):
+    """A reconvolved two-lifetime decay and the lamp it was built from.
+
+    Built on a fine grid and averaged down per channel. A plain ``np.convolve``
+    on the channel grid point-samples at each channel's left edge and lands half
+    a channel early, which the solver -- whose forward model integrates over the
+    bin, as a TCSPC channel does -- then cannot fit: it costs ~0.5 in chi2r and
+    pushes the residual into the timeshift.
+    """
+    t_fine = (np.arange(n * oversample) + 0.5) * (dt / oversample)
+    lamp_fine = np.exp(-0.5 * ((t_fine - 1.0) / 0.12) ** 2)
+    lamp = lamp_fine.reshape(n, oversample).mean(1)
     lamp /= lamp.sum()
-    pure = 0.6 * np.exp(-t / 1.1) + 0.4 * np.exp(-t / 3.6)
-    conv = np.convolve(pure, lamp)[:n]
+    pure_fine = 0.6 * np.exp(-t_fine / 1.1) + 0.4 * np.exp(-t_fine / 3.6)
+    conv = np.convolve(pure_fine, lamp_fine / lamp_fine.sum())[: n * oversample]
+    conv = conv.reshape(n, oversample).mean(1)
     rng = np.random.default_rng(0)
     decay = rng.poisson(2.0e4 * conv / conv.max() + 5.0).astype(float)
-    return decay, lamp * 1.0e4, dt, t
+    return decay, lamp * 1.0e4, dt, np.arange(n) * dt
 
 
 @pytest.mark.parametrize("optimize_nuisance", [False, True])
@@ -76,9 +85,10 @@ def test_the_fitted_curve_can_be_rebuilt_from_the_result():
 
     assert fit.shape == y.shape
     chi2r = float(np.mean(((y - fit) / sigma) ** 2))
-    # The MEM solution describes the data it was solved against; a mismatched
-    # design matrix lands orders of magnitude above this.
-    assert chi2r < 5.0, chi2r
+    # With the fixture discretised the way the forward model is, MEM reaches
+    # chi2r ~ 1. The bound was 5.0 while the fixture was half a channel out --
+    # loose enough to pass either way, which is how that went unnoticed.
+    assert chi2r < 1.5, chi2r
 
 
 def test_the_reported_background_is_the_one_that_was_used():

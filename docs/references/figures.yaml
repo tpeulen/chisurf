@@ -1962,11 +1962,15 @@ guides/figures/maxent_distribution.png:
     built from a *distribution* (Gaussian lobes at 1.1 and 3.6 ns) rather than two discrete exponentials,
     because that is the case MEM exists for. Built with `build_lifetime_fit` and installed as
     `chisurf.fits`, then `_on_refresh_data()`, the tau grid set to 0.4-7.0 ns over 120 bins, and
-    `_run_mem()`. TWO TRAPS: (1) `chk_fit_nuisance` must be ticked -- without it a half-channel IRF
-    misalignment is absorbed as a spurious fast component that takes 16 % of the amplitude at the
-    shortest tau and squashes both real peaks; the run recovers timeshift 0.5 channels and IRF background
-    9, and chi2r drops from 1.5 to 1.03. (2) the default tau grid reaches down to where no decay is left
-    to describe, and its first bin collects an edge spike.'
+    `_run_mem()`. THE TRAP, and it is in the *fixture* not the tool: the decay must be integrated
+    over each channel, not sampled at the channel edge. A plain `np.convolve` of the decay with the
+    IRF lands half a channel early -- rms 6.5e-3 against a 64x-oversampled reference, against 2.5e-4
+    for the solver''s own forward model, whose discretisation is the correct one. Feeding that in
+    costs 0.5 in chi2r and pushes the answer into the timeshift, so the figure looks like it needs
+    nuisance fitting; it does not, and turning it on to cover this costs 160x the run time for 0.0006
+    in chi2r. Build the fixture on a 32x grid and average each channel down. Second, smaller trap:
+    the default tau grid reaches to where no decay is left to describe and its first bin collects an
+    edge spike, so it is set to 0.4-7.0 ns.'
 guides/figures/pto_inspector.png:
   caption: One container with every panel populated -- provenance graph, object list, payload, curve and
     details.
