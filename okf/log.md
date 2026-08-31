@@ -37425,3 +37425,9 @@ side of the line.
   Crossref-verified entries from the dump's FRAP article. The hunt pattern —
   grep the test suite for a method family, then check `docs/` — is recorded in
   okf/references/wikipedia-mining.md.
+- 2026-08-31 (continuous) — **Mining goes continuous.** The one-off citation
+  harvest is saturated, so the loop is now a scheduled goose recipe:
+  `okf/recipes/wikipedia-docs-mining.yaml` (one lead per run — usually an
+  implementation without a docs page — Crossref-verify, land, guardrail-test,
+  commit only its own files, record the next lead). Scheduled every 6 hours;
+  pause or delete it any time.
