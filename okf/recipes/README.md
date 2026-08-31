@@ -10,20 +10,19 @@ files, record the next lead, stop.
 |---|---|
 | Mandate, rails, procedure | `wikipedia-docs-mining.prompt.md` |
 | Runner (branch guard, pid lock, logging) | `run-mining-tranche.sh` |
-| Schedule | `~/Library/LaunchAgents/dev.chisurf.docs-mining.plist` |
 | Run logs | `~/Library/Logs/chisurf-docs-mining/` |
 | Superseded goose recipe | `wikipedia-docs-mining.yaml` |
 
-Weekdays, 09:17–17:17 local, hourly. Run one by hand with
-`bash okf/recipes/run-mining-tranche.sh`; the log lands in the directory above.
-
-Control the schedule with:
+**On demand only. There is no scheduled job.** Run a tranche with:
 
 ```bash
-launchctl bootout    gui/$(id -u)/dev.chisurf.docs-mining   # pause
-launchctl bootstrap  gui/$(id -u) ~/Library/LaunchAgents/dev.chisurf.docs-mining.plist
-launchctl print      gui/$(id -u)/dev.chisurf.docs-mining | grep -E "state|runs"
+bash okf/recipes/run-mining-tranche.sh      # log lands in the directory above
 ```
+
+It ran on a launchd timer for about ten minutes on 2026-08-31 and the timer
+was removed the same day: hourly unattended tranches on a metered model spend
+real budget, and on a saturated mandate (below) most of that buys an idle
+note. Re-arm it only together with a mandate worth the hourly spend.
 
 ### Why it does not run on goose any more
 
@@ -45,4 +44,12 @@ concluded the same thing: the dump has no more fluorescence-relevant citations
 to give. The fifth tranche returned 2 keepers from 173 candidates; the sixth
 and seventh were idle. Until the loop is given a wider mandate than
 "mine Wikipedia" or a newer dump, expect idle runs that correctly commit
-nothing. That is the loop working, not the loop broken.
+nothing. That is the loop working, not the loop broken, and it is the main
+reason the schedule was removed rather than merely repointed.
+
+The one tranche that did run under the Claude runner found a real gap the
+citation ranker had missed, which is the shape of lead still worth chasing:
+`global_analysis.md` explained linking, target analysis and identifiability
+while citing none of them. Four verified Beechem/Brand entries landed
+(commit `5ecbb947d`). The lead generalises — a page whose *prose* makes
+claims it never sources beats any DOI-frequency ranking.
