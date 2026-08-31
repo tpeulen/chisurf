@@ -56,12 +56,39 @@ are. The coupling between parameters is therefore never stated directly — it i
 *implied*, through the factors they share, and recovering it explicitly is the
 first step of everything below.
 
-What does **not** carry over is the inference. Factor graphs are best known as
-the substrate for the sum-product algorithm, whose great success is decoding
-capacity-approaching error-correcting codes — a discrete problem, where a
-message is a distribution over finitely many symbols. A ChiSurf posterior is
-continuous and its factors are likelihoods of real-valued data, so those kernels
-do not apply. The **structural** machinery does, and that is all ChiSurf takes.
+The **structural** machinery is what ChiSurf takes from this, and it transfers
+exactly. The *inference* is a longer story, and it is worth telling because the
+short version — "those kernels do not transfer to a continuous posterior" — is
+what this page and the source said until recently, and it is wrong.
+
+Factor graphs are best known as the substrate for the sum-product algorithm,
+whose great success is decoding capacity-approaching error-correcting codes.
+That is a **discrete-table** kernel: a message is a distribution over finitely
+many symbols, and it genuinely does not apply to a posterior over real-valued
+parameters.
+
+But the continuous **linear-Gaussian** case has an exact kernel of its own.
+Write each factor in *canonical form* $(K, h, g)$ — the precision/information
+parameterisation, $\exp(-\tfrac12 x^\top K x + h^\top x + g)$ — and the three
+operations sum-product needs become linear algebra:
+
+| operation | in canonical form |
+| --- | --- |
+| multiply two factors | add $K$, $h$, $g$ on aligned scopes |
+| condition on evidence | slice out the observed block |
+| marginalise $y$ out | Schur complement, $K_{xx} - K_{xy}K_{yy}^{-1}K_{yx}$ |
+
+Variable elimination over the junction tree then runs in **closed form**, with
+no sampling and no re-fit. A fluorescence posterior *is* linear-Gaussian near
+its optimum, and exactly Gaussian in the parameters that enter linearly —
+amplitudes, offsets, scatter fractions — so this is not a hypothetical.
+
+ChiSurf does not implement that kernel yet: it builds the structure such a
+kernel would run on. The gap is concrete rather than philosophical. Conditioning
+one parameter on another currently costs a **full re-optimisation** per query,
+where the canonical form makes it a Schur complement. What a mature toolkit does
+here, and what is worth taking from it, is recorded in
+`okf/references/agrum-mining.md`.
 
 ## What the structure is for
 

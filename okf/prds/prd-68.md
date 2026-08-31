@@ -83,10 +83,20 @@ The design is deliberately modelled on the architecture of mature probabilistic
 graphical-model toolkits: a **model object separate from the inference engine**,
 moralisation + triangulation + junction tree to expose blocks and separators,
 relevance/barren-node pruning per query, and incremental invalidation of only
-what a change touches. Those toolkits' *inference kernels* are discrete-table
-sum-product and do not transfer to a continuous fluorescence posterior; the
-*structural* machinery transfers exactly and is ~150 lines over the graph
-primitives already available in the environment.
+what a change touches. Those toolkits' *discrete-table* sum-product kernels
+do not transfer to a continuous fluorescence posterior; the *structural*
+machinery transfers exactly and is ~150 lines over the graph primitives already
+available in the environment.
+
+> **Correction.** As originally written this said those toolkits' inference
+> kernels do not transfer, without the "discrete-table" qualifier, and that is
+> wrong. Continuous linear-Gaussian networks do exact inference on continuous
+> variables through canonical forms `(K, h, g)`, where marginalisation is a
+> Schur complement and sum-product variable elimination over the junction tree
+> runs in closed form. A fluorescence posterior is linear-Gaussian near its
+> optimum. The claim propagated into `factorgraph.py` and from there into
+> `docs/concepts/factor_graphs.md`; all three are corrected. What to take is
+> recorded in [the aGrUM comparison](/references/agrum-mining.md).
 
 **No external dependency.** Implementation uses only `numpy`, `numba` and the
 in-tree graph layer `chinet.graph` (containers, connected components, spanning

@@ -36,10 +36,27 @@ statement a global fit exists to make.
 
 The design follows the architecture of mature probabilistic graphical-model
 toolkits -- a model object separate from any inference engine, moralisation plus
-triangulation to expose blocks, and relevance pruning per query. Their discrete
-sum-product *kernels* do not transfer to a continuous fluorescence posterior;
-the structural machinery does, and it needs nothing beyond ``numpy`` and the
-in-tree graph layer :mod:`chinet.graph`.
+triangulation to expose blocks, and relevance pruning per query. The structural
+machinery transfers exactly, and it needs nothing beyond ``numpy`` and the
+in-tree graph layer :mod:`chisurf.core.graph`.
+
+Their *discrete-table* sum-product kernels do not transfer, since a
+fluorescence posterior is continuous. That is often stated more broadly -- that
+those toolkits' inference does not transfer at all -- and it is wrong. The
+continuous linear-Gaussian case has an exact kernel: represent each factor by
+its canonical form ``(K, h, g)`` (the precision/information parameterisation),
+and multiplication is addition of the three on aligned scopes, conditioning is a
+slice, and marginalisation is the Schur complement
+``K_xx - K_xy K_yy^-1 K_yx``. Sum-product variable elimination over the junction
+tree then runs in closed form. A fluorescence posterior *is* linear-Gaussian
+near its optimum, and exactly Gaussian in the parameters that enter linearly, so
+this applies here rather than in principle only.
+
+This module does not implement that kernel; it builds the structure the kernel
+would run on. The gap is real and recorded in ``okf/references/agrum-mining.md``
+-- notably :meth:`~chisurf.core.fitting.engine.PosteriorEngine.condition`,
+which currently costs a full re-optimisation per query where the canonical form
+makes it a Schur complement.
 
 Notes
 -----
@@ -56,7 +73,7 @@ import functools
 import inspect
 import itertools
 
-from chinet import graph as cg
+from chisurf.core import graph as cg
 
 from chisurf import typing
 
@@ -189,7 +206,7 @@ def frozen_structure(*targets):
     sampled.** Parameters are not linked, freed, fixed or rediscovered between
     two objective evaluations -- the whole point of an objective is that it is a
     function of the *values* alone. Yet deciding which parameters are free costs
-    three attribute reads each, two of them crossing into the underlying chinet
+    three attribute reads each, two of them crossing into the underlying bff
     port, and that decision was being re-derived several times per evaluation.
 
     Inside this context each model's free-parameter list, bounds and parameter
@@ -575,7 +592,7 @@ class FactorGraph:
 
         Returns
         -------
-        chinet.graph.Graph
+        chisurf.core.graph.Graph
             Cached; call :meth:`invalidate` after mutating the graph.
         """
         if self._markov_graph is not None:
@@ -768,7 +785,7 @@ class FactorGraph:
 
         Returns
         -------
-        chinet.graph.Graph
+        chisurf.core.graph.Graph
             One node per maximal clique. Disconnected fits give a forest.
         """
         cliques = self.cliques(order)
