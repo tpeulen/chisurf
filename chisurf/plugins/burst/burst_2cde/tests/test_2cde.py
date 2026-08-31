@@ -1,8 +1,17 @@
 """Headless tests for the FRET-2CDE / ALEX-2CDE burst feature.
 
-Validate that the ChiSurf compute path (tttrlib ``TwoCDE`` fast path) reproduces
-the pure-NumPy FRETBursts reference, that the result dataclass summarises the
-feature, and that the workflow-prepare RPC resolves settings from context.
+These used to assert that the compiled path reproduced an in-tree NumPy
+"reference". That reference was deleted (2026-08-31) and the assertions with
+it, because the pairing was worth less than it looked: on real photons the two
+agreed to 4e-16 for three of the four variant/kernel combinations and differed
+on **every burst** for the fourth --- ALEX with a Gaussian kernel --- since
+``_alex_2cde_numpy`` took no kernel argument at all and always used Laplace.
+The parity test never caught it because it never passed a kernel.
+
+So what is checked here is what 2CDE is *for*, with answers that do not come
+from either implementation: a static population sits near the baseline, a
+dynamic one sits above it, and the kernel setting has to change the result ---
+the property the deleted code violated.
 """
 
 from __future__ import annotations
@@ -42,42 +51,59 @@ def _build(chan_per_burst, gap=1_000_000):
     return {"f0": d}, df, np.asarray(macro, np.float64), np.asarray(chan)
 
 
-@pytest.mark.parametrize("kernel", ["laplace", "gaussian"])
-def test_fret_2cde_matches_reference(kernel):
-    rng = np.random.default_rng(7)
-    bursts = [(rng.random(300) < p).astype(int) for p in rng.uniform(0.1, 0.9, 30)]
-    tttrs, df, macro, chan = _build(bursts)
-    out = core.compute_2cde(
-        df, tttrs, donor_channels=[0], acceptor_channels=[1],
-        donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-        tau=30.0, kernel=kernel, variant="fret",
-    )
-    got = out[core.COLUMN_FRET_2CDE].to_numpy()
-    ref = core._fret_2cde_numpy(
-        macro, np.isin(chan, [0]), np.isin(chan, [1]),
-        df[["First Photon", "Last Photon"]].to_numpy(), 30.0, kernel,
-    )
-    np.testing.assert_allclose(got, ref, rtol=1e-9, atol=1e-7)
+@pytest.mark.parametrize("variant", ["fret", "alex"])
+def test_the_kernel_setting_changes_the_answer(variant):
+    """A kernel argument that is silently ignored is the bug this replaces.
+
+    ``_alex_2cde_numpy`` accepted no kernel and always used Laplace, so asking
+    for a Gaussian returned the Laplace answer with nothing to say so. The two
+    kernels have different support (3*tau vs 5*tau) and different weights, so on
+    the same photons they cannot agree -- if they do, an argument is being
+    dropped somewhere.
+    """
+    rng = np.random.default_rng(11)
+    if variant == "fret":
+        bursts = [(rng.random(300) < p).astype(int) for p in rng.uniform(0.2, 0.8, 25)]
+        channels = dict(donor_channels=[0], acceptor_channels=[1])
+        column = core.COLUMN_FRET_2CDE
+    else:
+        bursts = []
+        for _ in range(25):
+            r = rng.random(300)
+            bursts.append(np.where(r < 0.45, 0, np.where(r < 0.75, 1, 2)))
+        channels = dict(donor_channels=[0, 1], acceptor_channels=[2])
+        column = core.COLUMN_ALEX_2CDE
+
+    tttrs, df, _, _ = _build(bursts)
+    got = {}
+    for kernel in ("laplace", "gaussian"):
+        out = core.compute_2cde(
+            df.copy(), tttrs, donor_micro_time_ranges=[],
+            acceptor_micro_time_ranges=[], tau=30.0, kernel=kernel,
+            variant=variant, **channels,
+        )
+        got[kernel] = np.asarray(out[column], dtype=float)
+
+    finite = np.isfinite(got["laplace"]) & np.isfinite(got["gaussian"])
+    assert finite.sum() > 5, "not enough finite bursts to compare"
+    assert not np.allclose(
+        got["laplace"][finite], got["gaussian"][finite], rtol=1e-6, atol=1e-6
+    ), f"{variant}: the two kernels gave the same answer -- kernel is being ignored"
 
 
-def test_alex_2cde_matches_reference():
-    rng = np.random.default_rng(8)
-    bursts = []
-    for _ in range(30):
-        r = rng.random(300)
-        bursts.append(np.where(r < 0.45, 0, np.where(r < 0.75, 1, 2)))
-    tttrs, df, macro, chan = _build(bursts)
-    out = core.compute_2cde(
-        df, tttrs, donor_channels=[0, 1], acceptor_channels=[2],
-        donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
-        tau=30.0, variant="alex",
-    )
-    got = out[core.COLUMN_ALEX_2CDE].to_numpy()
-    ref = core._alex_2cde_numpy(
-        macro, np.isin(chan, [0, 1]), np.isin(chan, [2]),
-        df[["First Photon", "Last Photon"]].to_numpy(), 30.0,
-    )
-    np.testing.assert_allclose(got, ref, rtol=1e-9, atol=1e-7)
+def test_the_engine_is_required():
+    """Without the compiled engine, 2CDE says so instead of quietly differing."""
+    import tttrlib as _t
+
+    if hasattr(_t, "TwoCDE"):
+        pytest.skip("the engine is present, which is the normal case")
+    tttrs, df, _, _ = _build([(np.random.random(50) < 0.5).astype(int)])
+    with pytest.raises(RuntimeError, match="TwoCDE"):
+        core.compute_2cde(
+            df, tttrs, donor_channels=[0], acceptor_channels=[1],
+            donor_micro_time_ranges=[], acceptor_micro_time_ranges=[],
+            tau=30.0, variant="fret",
+        )
 
 
 def test_static_bursts_near_ten():

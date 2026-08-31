@@ -227,113 +227,33 @@ def compute_bva(
 ) -> Any:
     """Compute BVA: proximity ratio mean and std per burst.
 
-    Uses the fast tttrlib C++ ``BVA`` engine (parallel over bursts) when
-    available, falling back to the pure-NumPy implementation otherwise.
+    Runs on tttrlib's C++ ``BVA`` engine (parallel over bursts). There is no
+    second implementation: the in-tree NumPy one was deleted once it was shown
+    to agree with this to 3e-16 *after* its off-by-one was corrected -- it
+    sliced ``[first:last]`` and so dropped the last photon of every burst.
     """
-    if hasattr(tttrlib, "BVA"):
-        try:
-            means, stds = _compute_bva_tttrlib(
-                df, tttrs, donor_channels, donor_micro_time_ranges,
-                acceptor_channels, acceptor_micro_time_ranges,
-                minimum_window_length, number_of_photons_per_slice,
-            )
-            df.append_columns(store_from_arrays({
-                'Proximity Ratio Mean': means, 'Proximity Ratio Std': stds,
-            }))
-            if progress_window:
-                progress_window.set_value(row_count(df))
-            return df
-        except Exception as e:  # pragma: no cover - fall back to numpy
-            logging.info(f"compute_bva: tttrlib BVA path failed ({e}); using numpy")
-
-    # Results are addressed by *original* row index, exactly as the C++ path
-    # does: a ``.bur`` table is interleaved (every other row is a sentinel whose
-    # ``First File`` names no measurement), and appending only for the rows that
-    # were processed would hand back a shorter column than the table is long.
-    n_rows = row_count(df)
-    prox_means = np.full(n_rows, np.nan)
-    proxt_stds = np.full(n_rows, np.nan)
-
-    tttr_arrays = {}
-    time_calibrations = {}
-    for ff, tttr in tttrs.items():
-        micro_arr = np.asarray(tttr.micro_times)
-        channel_arr = np.asarray(tttr.routing_channels)
-        macro_arr = np.asarray(tttr.macro_times)
-        tttr_arrays[ff] = (micro_arr, channel_arr, macro_arr)
-        time_calibrations[ff] = tttr.header.tag('MeasDesc_GlobalResolution')['value']
-
-    # The three columns once, as arrays, rather than a tuple per burst.
-    files = np.asarray(df["First File"])
-    firsts = numeric_column(df, "First Photon")
-    lasts = numeric_column(df, "Last Photon")
-
-    for i in range(row_count(df)):
-        ff = files[i]
-        first_photon = int(firsts[i])
-        last_photon = int(lasts[i])
-        if ff not in tttr_arrays:
-            continue
-
-        micro_arr, channel_arr, macro_arr = tttr_arrays[ff]
-        time_calib = time_calibrations[ff]
-
-        mt_burst = micro_arr[first_photon:last_photon]
-        ch_burst = channel_arr[first_photon:last_photon]
-        macro_burst = macro_arr[first_photon:last_photon]
-
-        n_events = len(macro_burst)
-        if n_events == 0:
-            continue
-
-        if number_of_photons_per_slice < 0:
-            window_duration = minimum_window_length / time_calib
-            windows = []
-            start_idx = 0
-            while start_idx < n_events:
-                end_idx = np.searchsorted(macro_burst, macro_burst[start_idx] + window_duration, side='right')
-                if end_idx <= start_idx:
-                    end_idx = start_idx + 1
-                windows.append((start_idx, end_idx))
-                start_idx = end_idx
-        else:
-            chunk_size = number_of_photons_per_slice
-            windows = [(i, min(i + chunk_size, n_events)) for i in range(0, n_events, chunk_size)]
-
-        donor_mask = np.logical_or.reduce(
-            [(mt_burst >= start) & (mt_burst <= stop) for start, stop in donor_micro_time_ranges]
+    if not hasattr(tttrlib, "BVA"):
+        raise RuntimeError(
+            "BVA needs tttrlib's BVA engine, which this build does not have. "
+            "The in-tree NumPy path that used to stand in for it was removed: "
+            "it sliced each burst as [first:last], dropping the last photon of "
+            "every one, and returned all-zero ratios when the micro-time ranges "
+            "were empty. Rebuild tttrlib."
         )
-        donor_mask &= np.isin(ch_burst, donor_channels)
-        acceptor_mask = np.logical_or.reduce(
-            [(mt_burst >= start) & (mt_burst <= stop) for start, stop in acceptor_micro_time_ranges]
-        )
-        acceptor_mask &= np.isin(ch_burst, acceptor_channels)
-
-        donor_cs = np.cumsum(donor_mask.astype(np.int64))
-        acceptor_cs = np.cumsum(acceptor_mask.astype(np.int64))
-
-        def _count(cs, s, e):
-            return cs[e - 1] if s == 0 else cs[e - 1] - cs[s - 1]
-
-        window_ratios = []
-        for s, e in windows:
-            if s >= e:
-                continue
-            dc = _count(donor_cs, s, e)
-            ac = _count(acceptor_cs, s, e)
-            total = dc + ac
-            window_ratios.append(ac / total if total > 0 else 0.0)
-
-        if window_ratios:
-            prox_means[i] = float(np.nanmean(window_ratios))
-            proxt_stds[i] = float(np.nanstd(window_ratios))
-
-        if progress_window:
-            progress_window.set_value(i + 1)
-
+    means, stds = _compute_bva_tttrlib(
+        df, tttrs, donor_channels, donor_micro_time_ranges,
+        acceptor_channels, acceptor_micro_time_ranges,
+        minimum_window_length, number_of_photons_per_slice,
+    )
+    # Results are addressed by *original* row index: a ``.bur`` table is
+    # interleaved (every other row is a sentinel whose ``First File`` names no
+    # measurement), so a column shorter than the table would silently shift
+    # every result onto the wrong burst.
     df.append_columns(store_from_arrays({
-        'Proximity Ratio Mean': prox_means, 'Proximity Ratio Std': proxt_stds,
+        'Proximity Ratio Mean': means, 'Proximity Ratio Std': stds,
     }))
+    if progress_window:
+        progress_window.set_value(row_count(df))
     return df
 
 

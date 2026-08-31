@@ -106,8 +106,9 @@ $$
 \mathrm{ALEX\text{-}2CDE} = 100 - 50\,(BR_{D_{ex}} - BR_{A_{ex}}),
 $$
 
-which is the form implemented in `core/computation._alex_2cde_numpy` and matched
-bit-exactly by `tttrlib.TwoCDE`. (Tomov eq. 12 writes the score with a sum of
+which is the form `tttrlib.TwoCDE` implements. ChiSurf carried a NumPy port of
+it until 2026-08-31; that port is gone, and the paragraph under *ChiSurf
+mapping* records why. (Tomov eq. 12 writes the score with a sum of
 the two ratios; the difference form used here is the FRETBursts/ChiSurf library
 convention that yields a low value for pure single-pair bursts — treat the
 ChiSurf implementation as authoritative for ChiSurf outputs.) Low ALEX-2CDE =
@@ -120,12 +121,23 @@ histograms.
 ## ChiSurf mapping
 
 - **Plugin**: `chisurf/plugins/burst/burst_2cde/` — client/backend split.
-  - `core/computation.py`: the reference NumPy port. `_kde_reference` is the
-    exact two-pointer Laplace/Gaussian kernel (5·τ cutoff Laplace, 3·τ Gaussian);
-    `_fret_2cde_numpy` and `_alex_2cde_numpy` implement the formulas above;
-    `compute_2cde` dispatches per source file, converting τ (seconds) to macro-
-    time ticks via `header.macro_time_resolution`. A stream empty in a burst
-    yields `NaN`.
+  - `core/computation.py`: dispatch only. `compute_2cde` groups bursts per
+    source file and hands each to `tttrlib.TwoCDE`, which takes τ in **seconds**.
+    A stream empty in a burst yields `NaN`.
+
+    **There is no NumPy path any more.** `_kde_reference`, `_fret_2cde_numpy`
+    and `_alex_2cde_numpy` were deleted on 2026-08-31 after an A/B on a real
+    file (`test/data/tttr/BH/132/BH_SPC132.spc`, 120 bursts of 400 photons):
+    three of the four variant/kernel combinations agreed with the compiled
+    engine to **4e-16**, and the fourth — ALEX with a Gaussian kernel — differed
+    on **every burst**, because `_alex_2cde_numpy` took no `kernel` argument and
+    always used Laplace. `_compute_file_numpy` accepted `kernel` and dropped it
+    on the ALEX branch. The parity test never caught this because it never
+    passed a kernel; the replacement asserts instead that the two kernels give
+    *different* answers, which is the property that was violated.
+
+    The τ conversion went with it: `_macro_ticks` existed only because the NumPy
+    kernels worked in ticks.
   - `api/models.py`: `TwoCdeSettings` (donor/acceptor channels + inclusive
     micro-time ranges, `acceptor_excitation_*` streams for ALEX, `tau`, `kernel`
     ∈ {laplace, gaussian}, `variant` ∈ {fret, alex}) and `TwoCdeResult`.

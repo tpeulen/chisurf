@@ -1,6 +1,35 @@
 # Update Log
 
 ## 2026-08-31
+* **2CDE and BVA lose their in-tree NumPy twins — and the A/B is what justified
+  it.** tttrlib is required, so a `try: compiled / except: numpy` pair is not a
+  safety net, it is a second answer nobody compares. Both were A/B'd against the
+  compiled engine on a **real** file (`test/data/tttr/BH/132/BH_SPC132.spc`, 120
+  bursts × 400 photons) before deletion, and both turned out to be wrong in ways
+  a silent fallback would have hidden:
+  - **2CDE**: three of four variant/kernel combinations agreed to **4e-16**; the
+    fourth — ALEX with a Gaussian kernel — differed on **every burst**, because
+    `_alex_2cde_numpy` took no `kernel` argument and always used Laplace while
+    `_compute_file_numpy` accepted one and dropped it on that branch. The parity
+    test never caught it *because it never passed a kernel*. Replaced with a test
+    that asserts the two kernels give **different** answers, which is the
+    property that was violated. −106 lines.
+  - **BVA**: sliced each burst `[first:last]`, **dropping the last photon of
+    every one**. Correcting only the bound moved `max|Δ|` from 1.25e-2 to
+    **3.3e-16**, so the arithmetic was identical and only the slice was wrong.
+    Separately, with empty micro-time ranges it returned all-zero ratios
+    (`np.logical_or.reduce([])` is scalar `False`). Both sat behind
+    `except Exception: … using numpy`, so a transient engine failure would have
+    swapped correct results for quietly wrong ones. −101 lines.
+  **A trap worth stating once**: my first BVA A/B passed `[]` for the micro-time
+  ranges and reported the in-tree path as returning nothing but zeros. That was
+  my harness, not the code — the default is `((0, 4096),)`. Re-run with the real
+  defaults the two agreed to 1e-2, and only then did the off-by-one show. An A/B
+  is only evidence if it is run the way callers call it.
+  Independent checks now stand where parity-against-ourselves used to:
+  `test_bva_row_alignment.py` computes the expected proximity ratio from the
+  channel list arithmetically, and the 2CDE suite keeps its static-bursts-near-10
+  baseline. Concepts updated: `okf/references/{bva,burst-2cde}-theory.md`.
 * **H2MM's in-tree engine is deleted; tttrlib is the implementation
   (`T-20260831-02`).** The follow-on to the routing change below, and the thing
   that made the case for it: with every call site routed, the second engine was

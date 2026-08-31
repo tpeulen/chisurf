@@ -58,93 +58,6 @@ def _to_pairs(ranges) -> List[Tuple[int, int]]:
     return [(int(a), int(b)) for a, b in ranges]
 
 
-def _kde_reference(ts: np.ndarray, tau: float, axis: np.ndarray, kernel: str) -> np.ndarray:
-    """Exact port of the FRETBursts kde_laplace/kde_gaussian two-pointer kernels.
-
-    Parameters
-    ----------
-    ts : numpy.ndarray
-        Source timestamps (macro times of one stream), ascending.
-    tau : float
-        Kernel time constant in macro-time ticks.
-    axis : numpy.ndarray
-        Evaluation points (all photon macro times), ascending.
-    kernel : str
-        ``"laplace"`` (5*tau cutoff) or ``"gaussian"`` (3*tau cutoff).
-
-    Returns
-    -------
-    numpy.ndarray
-        The (un-normalised) kernel-density estimate at every ``axis`` point.
-    """
-    ts = np.asarray(ts, dtype=np.float64)
-    axis = np.asarray(axis, dtype=np.float64)
-    r = np.zeros(axis.size, dtype=np.float64)
-    if ts.size == 0:
-        return r
-    if kernel == "gaussian":
-        lim, tau2 = 3.0 * tau, 2.0 * tau * tau
-        for i, t in enumerate(axis):
-            sel = ts[(ts - t < lim) & (t - ts <= lim)]
-            r[i] = np.exp(-((sel - t) ** 2) / tau2).sum()
-    else:
-        lim = 5.0 * tau
-        for i, t in enumerate(axis):
-            sel = ts[(ts - t < lim) & (t - ts <= lim)]
-            r[i] = np.exp(-np.abs(sel - t) / tau).sum()
-    return r
-
-
-def _fret_2cde_numpy(
-    macro: np.ndarray, mask_d: np.ndarray, mask_a: np.ndarray,
-    bursts: np.ndarray, tau_ticks: float, kernel: str,
-) -> np.ndarray:
-    """Pure-NumPy FRET-2CDE (reference fallback)."""
-    kde_d = _kde_reference(macro[mask_d], tau_ticks, macro, kernel)
-    kde_a = _kde_reference(macro[mask_a], tau_ticks, macro, kernel)
-    out = []
-    for s, e in bursts:
-        sl = slice(int(s), int(e) + 1)
-        if not mask_d[sl].any() or not mask_a[sl].any():
-            out.append(np.nan)
-            continue
-        kde_adi, kde_ddi = kde_a[sl][mask_d[sl]], kde_d[sl][mask_d[sl]]
-        kde_dai, kde_aai = kde_d[sl][mask_a[sl]], kde_a[sl][mask_a[sl]]
-        n_chd, n_cha = mask_d[sl].sum(), mask_a[sl].sum()
-        if kernel == "laplace":
-            kde_ddi = (1 + 2 / n_chd) * (kde_ddi - 1)
-            kde_aai = (1 + 2 / n_cha) * (kde_aai - 1)
-        ed = np.mean(kde_adi / (kde_adi + kde_ddi))
-        ea = np.mean(kde_dai / (kde_dai + kde_aai))
-        out.append(110 - 100 * (ed + ea))
-    return np.asarray(out, dtype=np.float64)
-
-
-def _alex_2cde_numpy(
-    macro: np.ndarray, mask_dex: np.ndarray, mask_aex: np.ndarray,
-    bursts: np.ndarray, tau_ticks: float,
-) -> np.ndarray:
-    """Pure-NumPy ALEX-2CDE (reference fallback, laplace kernel)."""
-    kde_dex = _kde_reference(macro[mask_dex], tau_ticks, macro, "laplace")
-    kde_aex = _kde_reference(macro[mask_aex], tau_ticks, macro, "laplace")
-    out = []
-    for s, e in bursts:
-        sl = slice(int(s), int(e) + 1)
-        if not mask_dex[sl].any() or not mask_aex[sl].any():
-            out.append(np.nan)
-            continue
-        br_dex = np.sum(kde_aex[sl][mask_dex[sl]] / kde_dex[sl][mask_dex[sl]]) / mask_aex[sl].sum()
-        br_aex = np.sum(kde_dex[sl][mask_aex[sl]] / kde_aex[sl][mask_aex[sl]]) / mask_dex[sl].sum()
-        out.append(100 - 50 * (br_dex - br_aex))
-    return np.asarray(out, dtype=np.float64)
-
-
-def _macro_ticks(tttr: "tttrlib.TTTR", tau_seconds: float) -> float:
-    """Convert tau in seconds to macro-time ticks for the given TTTR."""
-    res = tttr.header.macro_time_resolution
-    return tau_seconds / res if res and res > 0 else tau_seconds
-
-
 def compute_2cde(
     df,
     tttrs: Dict[str, "tttrlib.TTTR"],
@@ -211,26 +124,24 @@ def compute_2cde(
     a_ex_mtr = (acceptor_micro_time_ranges if acceptor_excitation_micro_time_ranges is None
                 else acceptor_excitation_micro_time_ranges)
 
-    use_cpp = hasattr(tttrlib, "TwoCDE")
+    if not hasattr(tttrlib, "TwoCDE"):
+        raise RuntimeError(
+            "2CDE needs tttrlib's TwoCDE engine, which this build does not "
+            "have. The in-tree NumPy path that used to stand in for it was "
+            "removed: it silently ignored the kernel argument for ALEX-2CDE "
+            "(always Laplace), so it answered a different question than the "
+            "one asked. Rebuild tttrlib."
+        )
     done = 0
     for ff, (rows_idx, bursts) in per_file.items():
         tttr = tttrs[ff]
         burst_pairs = np.asarray(bursts, dtype=np.int64).reshape(-1, 2)
-        tau_ticks = _macro_ticks(tttr, tau)
-        if use_cpp:
-            vals = _compute_file_cpp(
-                tttr, burst_pairs, tau, kernel, variant,
-                donor_channels, donor_micro_time_ranges,
-                acceptor_channels, acceptor_micro_time_ranges,
-                a_ex_ch, a_ex_mtr,
-            )
-        else:  # pragma: no cover - exercised only without the C++ feature
-            vals = _compute_file_numpy(
-                tttr, burst_pairs, tau_ticks, kernel, variant,
-                donor_channels, donor_micro_time_ranges,
-                acceptor_channels, acceptor_micro_time_ranges,
-                a_ex_ch, a_ex_mtr,
-            )
+        vals = _compute_file_cpp(
+            tttr, burst_pairs, tau, kernel, variant,
+            donor_channels, donor_micro_time_ranges,
+            acceptor_channels, acceptor_micro_time_ranges,
+            a_ex_ch, a_ex_mtr,
+        )
         for k, ri in enumerate(rows_idx):
             values[ri] = vals[k]
         done += len(rows_idx)
@@ -257,31 +168,6 @@ def _compute_file_cpp(
         eng.set_acceptor(list(a_ch), _to_pairs(a_mtr))
         eng.compute(burst_pairs, float(tau), tttrlib.TwoCDE.FRET_2CDE, k)
     return np.asarray(eng.two_cde)
-
-
-def _compute_file_numpy(
-    tttr, burst_pairs, tau_ticks, kernel, variant,
-    d_ch, d_mtr, a_ch, a_mtr, aex_ch, aex_mtr,
-) -> np.ndarray:
-    """Fallback path: pure-NumPy reference (used only if tttrlib lacks TwoCDE)."""
-    macro = np.asarray(tttr.macro_times, dtype=np.float64)
-    chan = np.asarray(tttr.routing_channels)
-    micro = np.asarray(tttr.micro_times)
-
-    def stream_mask(channels, ranges):
-        m = np.isin(chan, list(channels))
-        if ranges:
-            mt = np.logical_or.reduce([(micro >= a) & (micro <= b) for a, b in ranges])
-            m &= mt
-        return m
-
-    if variant == "alex":
-        mask_dex = stream_mask(d_ch, d_mtr)
-        mask_aex = stream_mask(aex_ch, aex_mtr)
-        return _alex_2cde_numpy(macro, mask_dex, mask_aex, burst_pairs, tau_ticks)
-    mask_d = stream_mask(d_ch, d_mtr)
-    mask_a = stream_mask(a_ch, a_mtr)
-    return _fret_2cde_numpy(macro, mask_d, mask_a, burst_pairs, tau_ticks, kernel)
 
 
 def write_2cde_container(

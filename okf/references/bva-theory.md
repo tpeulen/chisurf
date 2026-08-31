@@ -92,9 +92,26 @@ a fixed photon count, for strongly varying count rates.
   `set_donor(channels, micro_time_ranges)` / `set_acceptor(...)`, then
   `compute(burst_pairs (n,2) int64, number_of_photons_per_slice,
   minimum_window_length)` and reads `get_proximity_ratio_mean()` /
-  `get_proximity_ratio_std()`. `compute_bva` prefers this path and falls back to a
-  vectorized NumPy (cumsum-based) path when `tttrlib.BVA` is unavailable or raises.
-  The static-line helper is `tttrlib.BVA.compute_static_bva_line`.
+  `get_proximity_ratio_std()`. `compute_bva` **requires** this path; a missing
+  engine raises rather than degrading. The static-line helper is
+  `tttrlib.BVA.compute_static_bva_line`.
+
+  There used to be a vectorized NumPy (cumsum-based) fallback behind a
+  `try`/`except`. It was deleted on 2026-08-31 after an A/B on a real file
+  (`test/data/tttr/BH/132/BH_SPC132.spc`, 120 bursts of 400 photons) showed two
+  defects that a silent fallback would have made invisible:
+
+  - it sliced each burst `[first_photon:last_photon]`, **dropping the last
+    photon of every burst**. Correcting the slice to `[first:last+1]` brought
+    the two paths from `max|Δ| = 1.25e-2` to **3.3e-16** — so the arithmetic was
+    the same and only the bounds were wrong;
+  - with **empty** micro-time ranges it returned all-zero ratios, because
+    `np.logical_or.reduce([])` is scalar `False` and the stream masks collapsed.
+    The default is `((0, 4096),)`, so this only bit a caller that passed `[]`
+    explicitly — the compiled engine reads empty as *no gating*.
+
+  Both sat behind `except Exception: ... using numpy`, so a transient engine
+  failure would have swapped correct results for quietly wrong ones.
 - **Plugin** — `chisurf/plugins/burst/burst_bva/` follows the client-server burst
   standard: `backend/` + `server/` (RPC services, compute), `api/` (contract,
   models, serialization), `gui/` (database-free client/adapter/tool), `cli/main.py`,
