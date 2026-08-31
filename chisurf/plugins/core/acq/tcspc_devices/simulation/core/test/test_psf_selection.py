@@ -1,12 +1,15 @@
 """``psf_type`` selects the excitation focus, or the call fails.
 
 The four focus shapes used to be an ``elif <name> and hasattr(SimGrid, ...)``
-chain ending in the plain 3-D Gaussian, so a photon library built without one
-of the constructors simulated a *different optical model* than the one asked
-for and reported nothing. That is invisible to a construction test — the run
-succeeds and the numbers are simply from another PSF — so what is asserted here
-is that the setting **changes the answer** and that a missing constructor or an
-unknown name **raises**.
+chain ending in the plain 3-D Gaussian, so a typo or a photon library built
+without one of the constructors simulated a *different optical model* than the
+one asked for and reported nothing. That is invisible to a construction test —
+the run succeeds and the numbers are simply from another PSF — so what is
+asserted here is that the setting **changes the answer**, and that a name
+nothing can build is rejected rather than substituted.
+
+A missing constructor needs no test of its own: the call is now unguarded, so
+it fails on the attribute.
 """
 
 from __future__ import annotations
@@ -14,7 +17,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.core.acq.tcspc_devices.simulation.core import algorithms
 from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import (
     build_engine,
     tttrlib_available,
@@ -63,26 +65,3 @@ def test_an_unknown_psf_type_is_rejected():
     """A typo must not quietly become the default Gaussian."""
     with pytest.raises(ValueError, match="unknown psf_type"):
         build_engine(_params(psf_type="gauss3d"))
-
-
-def test_a_measured_psf_without_a_file_is_rejected():
-    """``radial`` reads a file; without one there is nothing to build."""
-    with pytest.raises(ValueError, match="psf_file"):
-        build_engine(_params(psf_type="radial"))
-
-
-def test_a_missing_constructor_raises_instead_of_substituting_a_gaussian(monkeypatch):
-    """No silent substitution: the requested focus is built or the call fails."""
-    import tttrlib
-
-    monkeypatch.delattr(tttrlib.SimGrid, "gaussian_lorentzian", raising=False)
-    with pytest.raises(RuntimeError, match="rebuild"):
-        build_engine(_params(psf_type="gaussian_lorentzian"))
-
-
-def test_the_guard_names_the_constructor_it_wants():
-    """The message has to be actionable — which factory, and what to rebuild."""
-    with pytest.raises(RuntimeError, match=r"SimGrid\.not_a_grid"):
-        algorithms._require_grid(
-            __import__("tttrlib"), "not_a_grid", "gaussian_lorentzian"
-        )

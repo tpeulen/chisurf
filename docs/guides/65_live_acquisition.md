@@ -135,11 +135,11 @@ words = generate_spc132_uint32({
 `psf_type` is one of `gaussian3d` (default), `analytic_gaussian3d` (the same
 Gaussian evaluated on the fly, no voxel grid), `gaussian_lorentzian` (a confocal
 detection volume whose waist expands with `psf_zR`) or `radial` (a measured
-radially-symmetric focus, read from `psf_file`). The name is honoured or the
-call raises — an unknown name, a `radial` without a file, or a photon library
-built without the grid the name needs are all errors, never a quiet fall back to
-the plain Gaussian, because a substituted focus changes the answer without
-changing anything you can see.
+radially-symmetric focus, read from `psf_file`). The name selects the
+constructor and nothing catches it: an unknown name, a `radial` without a
+`psf_file`, or a photon library built without that grid all fail the call. None
+of them falls back to the plain Gaussian, because a substituted focus changes
+the answer without changing anything you can see.
 
 ## Related
 

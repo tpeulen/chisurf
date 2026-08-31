@@ -308,8 +308,8 @@ Read three things out of it:
 3. **The compiled kernel was worth 3× to 60×** over the in-tree fallback, which
    produced identical labels and only cost time. That is why the fallback is
    gone rather than kept: a second implementation that is never exercised is one
-   nobody would notice going wrong. A photon library without the kernel now
-   raises and names what to rebuild.
+   nobody would notice going wrong. The kernels are called directly, so a photon
+   library without them fails on the attribute.
 
 ## Ensemble samplers
 

@@ -37722,8 +37722,9 @@ side of the line.
   *degraded* rather than raising. The parity tests that compared the two kernels
   are replaced by independent ones (SciPy's `minimum_spanning_tree` over an
   explicit mutual-reachability matrix, the distance matrix's k-th column, an
-  `alpha`-actually-changes-the-answer check) plus a guard that a missing kernel
-  raises — verified to fail when the fallback is put back.
+  `alpha`-actually-changes-the-answer check). No guard replaces the probe: the
+  kernels are called directly, so a library that lacks them fails on the
+  attribute — loudly, and without code that exists only to say so.
 
 - 2026-08-31 (tttrlib delegation, round 2 — follow-up) — **The acquisition
   simulator's PSF selection was the last silent degradation.**
@@ -37738,3 +37739,17 @@ side of the line.
   `simulation/core/test/test_psf_selection.py`, which asserts the setting
   actually changes the photon stream (a construction test cannot see this) as
   well as the four failure modes; documented in `docs/guides/65_live_acquisition.md`.
+
+- 2026-08-31 (tttrlib delegation, round 2 — guards trimmed) — **A capability
+  check that only produces a nicer message is code, and it was removed.** The
+  two guards added earlier today (`_hdbscan._kernel`, the acq simulator's
+  `_require_grid` at four call sites) each did `hasattr` then raised. The
+  library call fails on its own when the attribute is absent, and it fails
+  loudly: `AttributeError: module 'tttrlib' has no attribute
+  'mutual_reachability_mst'`, `type object 'SimGrid' has no attribute
+  'gaussian_lorentzian'`, `KeyError: 'psf_file'`. So the guards are gone,
+  together with the four tests that existed only to exercise them. What stays is
+  the one raise that is *not* a capability check — an unknown `psf_type` is
+  rejected instead of falling through to the plain Gaussian, which is the actual
+  silent-substitution bug — and the property tests that would catch a wrong
+  answer rather than a missing symbol.

@@ -28,7 +28,8 @@ fails if it comes back. What is worth knowing before touching it:
    (max |Δ| = 0 in core distance, in every MST edge weight and in the edge set,
    on 500 and 2000 photons of `BH_SPC132.spc` at `min_samples` 3/5/10) before
    they were **deleted on 2026-08-31** for being 700–3000× slower and never
-   exercised. A missing kernel now raises and names what to rebuild. Two things
+   exercised. They are called directly, with no capability check in front of
+   them, so a library that lacks them fails on the attribute. Two things
    still make the answer reproducible and both are easy to undo: the edge order
    is **total** (weight, then the sorted endpoint pair) rather than by weight
    alone, and the compiled translation unit is built with `-ffp-contract=off`.

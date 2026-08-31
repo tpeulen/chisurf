@@ -10,13 +10,14 @@ The algorithm is four steps, and only the first two cost anything:
    sparse regions cannot be crossed cheaply. A k-d-tree Borůvka is
    ``O(n log n)``.
 
-Both are the photon library's compiled kernels and are required. An in-tree
-``O(n² d)`` brute force and an ``O(n²)`` Prim used to stand behind them as a
-fallback; they agreed **bit for bit** (max |Δ| = 0 in core distance, in every
-MST edge weight and in the edge set) on 500 and 2000 real photons from
-``BH_SPC132.spc`` at ``min_samples`` 3/5/10, and were 700–3000× slower. A
-fallback that is never taken is a second implementation nobody knows is
-broken, so they are gone and a missing kernel raises.
+Both are the photon library's compiled kernels, called directly and with no
+capability check in front of them: a library that does not have them fails on
+the attribute, loudly, which is the point. An in-tree ``O(n² d)`` brute force
+and an ``O(n²)`` Prim used to stand behind a ``hasattr`` probe; they agreed
+**bit for bit** (max |Δ| = 0 in core distance, in every MST edge weight and in
+the edge set) on 500 and 2000 real photons from ``BH_SPC132.spc`` at
+``min_samples`` 3/5/10, and were 700–3000× slower. A fallback that is never
+taken is a second implementation nobody knows is broken.
 3. **Condense** the single-linkage dendrogram: a split that sheds fewer than
    ``min_cluster_size`` points is not a split, it is the parent losing noise.
    What survives is a small tree of genuine clusters.
@@ -85,37 +86,6 @@ _NOISE = -1
 # ---------------------------------------------------------------------------
 
 
-_KERNEL_CACHE: list = []
-
-
-def _kernel():
-    """Return the compiled clustering kernel, or raise saying what to rebuild.
-
-    The kernel lives in the photon library because the k-d tree it is built on
-    is wanted there too (nearest-neighbour work on burst feature spaces and
-    localisation tables). It is not optional: there is no second copy of these
-    two steps to fall back to.
-    """
-    if _KERNEL_CACHE:
-        return _KERNEL_CACHE[0]
-    try:
-        import tttrlib
-    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
-        raise RuntimeError(
-            "HDBSCAN needs the compiled clustering kernel, which is provided by "
-            "tttrlib; tttrlib could not be imported"
-        ) from exc
-    for name in ("core_distances", "mutual_reachability_mst"):
-        if not hasattr(tttrlib, name):
-            raise RuntimeError(
-                f"tttrlib does not expose {name}; rebuild it (the compiled "
-                f"kernel carries the k-d-tree core distances and the Boruvka "
-                f"minimum spanning tree HDBSCAN is built on)"
-            )
-    _KERNEL_CACHE.append(tttrlib)
-    return tttrlib
-
-
 def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
     """Return the distance from every row of ``X`` to its ``min_samples``-th neighbour.
 
@@ -136,7 +106,9 @@ def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
     X = np.ascontiguousarray(X, dtype=np.float64)
     n_samples = X.shape[0]
     k = max(1, min(int(min_samples), n_samples))
-    return np.asarray(_kernel().core_distances(X, k), dtype=np.float64)
+    import tttrlib
+
+    return np.asarray(tttrlib.core_distances(X, k), dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -179,8 +151,11 @@ def mutual_reachability_mst(
     if n_samples < 2:
         return np.empty((0, 3), dtype=np.float64)
     k = max(1, min(int(min_samples), n_samples))
+
+    import tttrlib
+
     return np.asarray(
-        _kernel().mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64
+        tttrlib.mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64
     )
 
 

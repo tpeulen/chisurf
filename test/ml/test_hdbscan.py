@@ -5,12 +5,14 @@ Three things are being proved here, and they are not the same thing:
 1. **The clustering is scikit-learn's.** Labels and membership probabilities
    match, exactly, on data whose mutual-reachability weights are generic.
 2. **The minimum spanning tree is a minimum spanning tree, and a reproducible
-   one.** Steps 1 and 2 are the photon library's compiled kernels and there is
-   no second copy to compare against, so they are checked against arithmetic
-   the method itself supplies: an explicit mutual-reachability distance matrix
-   and SciPy's own MST. Reproducibility is checked where it is hardest — a
-   lattice, where nearly every weight ties and a weight-only ordering would
-   leave the tree undetermined.
+   one.** Steps 1 and 2 are the photon library's compiled kernels, called
+   without a capability check in front of them — a library that lacks them
+   fails on the attribute — so there is no second copy to compare against and
+   no guard to test. They are checked instead against arithmetic the method
+   itself supplies: an explicit mutual-reachability distance matrix and SciPy's
+   own MST. Reproducibility is checked where it is hardest — a lattice, where
+   nearly every weight ties and a weight-only ordering would leave the tree
+   undetermined.
 3. **Degenerate input is answered, not crashed on.** Fewer points than
    ``min_cluster_size``, rows with a NaN, an all-identical column.
 
@@ -221,31 +223,6 @@ def test_core_distances_are_the_kth_row_of_the_distance_matrix():
         np.testing.assert_allclose(
             core_distances(X, min_samples), expected, rtol=0.0, atol=1e-12
         )
-
-
-def test_a_missing_kernel_raises_and_names_what_to_rebuild():
-    """No silent degradation: without the compiled kernel HDBSCAN stops.
-
-    The in-tree Prim/brute-force fallback is gone, so a photon library that
-    predates the kernel must raise rather than quietly take a slower — and
-    possibly different — path.
-    """
-    import tttrlib
-
-    from chisurf.core.ml.cluster import _hdbscan
-
-    for missing in ("core_distances", "mutual_reachability_mst"):
-        saved = getattr(tttrlib, missing)
-        cache = list(_hdbscan._KERNEL_CACHE)
-        _hdbscan._KERNEL_CACHE.clear()
-        try:
-            delattr(tttrlib, missing)
-            with pytest.raises(RuntimeError, match="rebuild"):
-                _hdbscan.core_distances(_blobs(2, sizes=(10,), n_noise=0), 3)
-        finally:
-            setattr(tttrlib, missing, saved)
-            _hdbscan._KERNEL_CACHE.clear()
-            _hdbscan._KERNEL_CACHE.extend(cache)
 
 
 def test_max_cluster_size_is_respected():
