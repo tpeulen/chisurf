@@ -1,3 +1,7 @@
+# SUPERSEDED 2026-08-31. The loop now runs on the Claude CLI under launchd:
+# see README.md, wikipedia-docs-mining.prompt.md and run-mining-tranche.sh.
+# Kept because it is the mandate's history and the goose scheduler still
+# reads this format if the loop is ever moved back.
 version: "1.0.0"
 title: "Wikipedia docs-mining tranche"
 description: >
