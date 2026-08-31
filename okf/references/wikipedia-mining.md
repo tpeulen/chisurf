@@ -242,3 +242,32 @@ gave FRAP away — a real rFRAP implementation in
 concept page), three verified entries (Axelrod 1976, Soumpasis 1983, Sprague
 2004 — pulled from the dump's article and Crossref-checked), toctree entry.
 More leads in the same vein, unexamined: whether every plugin tool has a page.
+
+**Fourth tranche (2026-08-31) — saturation confirmed, enrichment pass.**
+
+The 'every plugin tool has a page' lead was examined exhaustively. Every
+remaining implementation without a concept page falls into one of two
+categories: (a) it is a tool or utility, not a concept (spot_finder,
+clsm_generator, img_calibration, img_pixel_intensity, trajectory tools),
+or (b) it is already covered within an existing concept page (N&B in
+pch_fida.md, VV/VH and G-factor in anisotropy.md, Region MLE in
+tcspc_lifetime.md, FLCS and 2D-FLCS in filtered_fcs.md). No more FRAP-scale
+gaps exist in the plugin-to-concept-page mapping for core fluorescence
+methods.
+
+Two enrichment entries landed from already-extracted articles:
+
+| Entry | Source article | Verified | Landed in |
+|---|---|---|---|
+| sheppard1977 (confocal image formation theory) | Confocal microscopy | Crossref | fcs_correlation.md |
+| shaw1991 (PSF measurement from beads for 3D deconvolution) | Point spread function | Crossref | deconvolution.md |
+
+The fluorescence-adjacent dump harvest remains saturated. Future
+bibliography growth continues to be page-driven: a page needs a source,
+the dump fetches it.
+
+**Where to pick this up.** No remaining unexamined hunt-mode leads. The
+dump's standing use is page-driven lookups (add to seeds.txt, extract,
+verify, land). The next substantive mining work would be a new domain
+tranche (e.g., molecular dynamics trajectory methods from the traj/
+plugin family) or a re-index against a newer dump if one is acquired.
