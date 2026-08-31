@@ -4,6 +4,19 @@ title: 'Factor graphs: the structure ChiSurf fits through'
 description: A ChiSurf posterior factorises exactly, and making that factorisation explicit is what turns a global fit from a dense parameter vector into a structure that can be queried.
 tags: [concepts, fitting, global-analysis, statistics]
 anchor: concept-factor-graphs
+sources:
+  - text: Derived in part from the English Wikipedia article "Factor graph"
+    url: https://en.wikipedia.org/wiki/Factor_graph
+    licence: CC-BY-SA-4.0
+  - text: Derived in part from the English Wikipedia article "Treewidth"
+    url: https://en.wikipedia.org/wiki/Treewidth
+    licence: CC-BY-SA-4.0
+  - text: Derived in part from the English Wikipedia article "Junction tree algorithm"
+    url: https://en.wikipedia.org/wiki/Junction_tree_algorithm
+    licence: CC-BY-SA-4.0
+  - text: Derived in part from the English Wikipedia article "Chordal graph"
+    url: https://en.wikipedia.org/wiki/Chordal_graph
+    licence: CC-BY-SA-4.0
 ---
 
 (concept-factor-graphs)=
@@ -29,15 +42,26 @@ $$p(\theta \mid D) \;\propto\;
   \prod_k L_k\bigl(\theta_{S_k}\bigr) \cdot \prod_i \pi_i(\theta_i) ,$$
 
 where $S_k$ is the set of free parameters dataset $k$'s model actually reads.
-A **factor graph** makes that product explicit: variable nodes are free
-parameters, factor nodes are the per-dataset likelihoods and the per-parameter
-priors, and an edge joins a parameter to every factor that reads it.
+A **factor graph** makes that product explicit. It is a *bipartite* graph with
+two kinds of node — one per variable, one per factor — and an edge joining a
+variable to a factor exactly when that variable is one of the factor's arguments
+{cite}`kschischang2001,loeliger2004`. Nothing about it is specific to
+fluorescence: it is the general representation of "this function is a product of
+these smaller functions", and here the function is the posterior, the variables
+are the free parameters, and the factors are the per-dataset likelihoods and the
+per-parameter priors.
 
-This is the same object used throughout probabilistic graphical modelling
-{cite}`kschischang2001`. What does *not* carry over is the inference: the
-discrete sum-product kernels those methods are built around do not apply to a
-continuous fluorescence posterior. The **structural** machinery does, and that
-is all ChiSurf takes.
+Bipartite matters. A variable and a factor are adjacent; two variables never
+are. The coupling between parameters is therefore never stated directly — it is
+*implied*, through the factors they share, and recovering it explicitly is the
+first step of everything below.
+
+What does **not** carry over is the inference. Factor graphs are best known as
+the substrate for the sum-product algorithm, whose great success is decoding
+capacity-approaching error-correcting codes — a discrete problem, where a
+message is a distribution over finitely many symbols. A ChiSurf posterior is
+continuous and its factors are likelihoods of real-valued data, so those kernels
+do not apply. The **structural** machinery does, and that is all ChiSurf takes.
 
 ## What the structure is for
 
@@ -64,19 +88,61 @@ empty answer there is not evidence that nothing depends on them.
 
 ### Structure: which parameters must move together
 
-Moralising the graph, eliminating variables in a greedy `min_fill` order and
-building a junction tree exposes the **cliques** (the blocks a sampler or a scan
-should move jointly), the **separators** (what the datasets genuinely share) and
-the **treewidth** {cite}`lauritzen1988`.
+Recovering the parameter-to-parameter coupling and reading structure off it is a
+standard three-step pipeline {cite}`lauritzen1988`, and ChiSurf runs exactly it:
 
-Treewidth is `max clique size − 1`, and it is the fit's structural difficulty:
-the cost of exact marginalisation is exponential in it, and it is the dimension
-a blocked sampler has to move at once. A star-shaped global fit — many datasets,
-a few shared globals — has a small treewidth *however many datasets it holds*.
+1. **Moralise.** Replace the bipartite graph by an undirected graph over the
+   *variables only*, in which every factor contributes a clique over its scope —
+   a factor couples all the variables it reads. Two parameters end up adjacent
+   exactly when some dataset's likelihood or some prior depends on both, which is
+   to say exactly when they are **not** conditionally independent given the rest.
+   This is {src}`chisurf/core/fitting/factorgraph.py#FactorGraph.markov_graph`.
+2. **Triangulate.** Eliminate the variables one at a time; each eliminated
+   variable together with its then-remaining neighbours becomes a clique. The
+   result is a **chordal** graph, and chordality is what makes the rest cheap:
+   listing all maximal cliques of a chordal graph is polynomial, while on a
+   general graph it is NP-complete. An elimination order that adds no edges at
+   all is a *perfect elimination ordering*, and a graph has one precisely when it
+   is already chordal.
+3. **Build the junction tree.** Take the maximal cliques as nodes and connect
+   them by the maximum-weight spanning tree of the clique graph weighted by
+   shared-variable count — the standard construction guaranteeing the *running
+   intersection property*, without which the separators would not mean what they
+   claim to.
 
-The elimination order is chosen greedily rather than optimally on purpose:
-finding the best one is NP-hard {cite}`arnborg1987`, and the heuristic is
-sufficient for the shapes real global fits take.
+Out of this come the **cliques** (the blocks a sampler or a scan should move
+jointly), the **separators** (what the datasets genuinely share) and the
+**treewidth**.
+
+The elimination order is chosen by a greedy `min_fill` heuristic rather than
+optimally, on purpose. Finding the best one is NP-hard {cite}`arnborg1987`;
+there *is* a linear-time algorithm for any fixed treewidth bound
+{cite}`bodlaender1996`, but its constant makes it theoretical, and the heuristic
+is sufficient for the shapes real global fits take.
+
+### What treewidth means
+
+Treewidth is `max clique size − 1`. Informally it measures **how far a graph is
+from being a tree**: the minimum is 1, and the graphs of treewidth 1 are exactly
+the trees and forests. Equivalently it is the largest clique in a chordal
+completion, minus one — which is why the triangulation step above computes it.
+
+It is the fit's structural difficulty in a precise sense. The cost of exact
+marginalisation is exponential in it, and it is the dimension a blocked sampler
+has to move at once. The reason it is worth reporting at all is that a great many
+problems that are hard in general become tractable once treewidth is bounded
+{cite}`arnborg1989` — the parameter, not the size, is what decides.
+
+So a star-shaped global fit — many datasets, a few shared globals — has a small
+treewidth *however many datasets it holds*, and that is the structural reason
+global analysis scales.
+
+```{note}
+The parameter was introduced by {cite}`halin1976` under the name *dimension* and
+rediscovered independently; the name "tree-width" and the tree-decomposition
+formulation now used everywhere come from {cite}`robertson1984`. Older
+literature calls the same quantity by either name.
+```
 
 ### Identifiability: what the fit actually couples
 
@@ -133,6 +199,21 @@ Every line changes in a way worth reading:
   not make the problem structurally harder — which is why global fits over many
   datasets remain tractable.
 
+The last line is worth unpacking, because treewidth 1 is not "small", it is a
+statement about shape: **the graphs of treewidth 1 are exactly the trees and
+forests.** Both structures here are one. Before linking the moralised graph is
+three disjoint `a—tau` edges, a forest of three components. After linking it has
+four variables and three edges in one component — a *star*, with the shared
+`tau` at the centre and each dataset's private amplitude hanging off it. Every
+maximal clique is a single edge, so the largest is 2 and the treewidth is 1.
+
+That shape is the general one for global analysis, and it is why the method
+scales: adding a fourth, tenth or hundredth dataset adds another leaf to the
+star. It adds variables and it adds likelihood factors, but it does not enlarge
+the biggest clique, so the treewidth — and with it the cost of exact
+marginalisation and the dimension a blocked sampler must move at once — does not
+grow at all.
+
 ```{note}
 `FitGroup.model` is the model of the currently *selected* local fit, not the
 global one. The joint parameter vector lives on `_model`, and
@@ -165,6 +246,9 @@ makes collapsing possible. See
 - Implementation: {src}`chisurf/core/fitting/factorgraph.py` ·
   {src}`chisurf/core/models/global_model/globalfit.py#GlobalFitModel`.
 - Literature: {cite}`kschischang2001` factor graphs and the factorisation they
-  make explicit; {cite}`lauritzen1988` moralisation, triangulation and the
-  junction tree; {cite}`arnborg1987` why the elimination order is chosen
-  greedily.
+  make explicit, with {cite}`loeliger2004` as the readable introduction;
+  {cite}`lauritzen1988` moralisation, triangulation and the junction tree;
+  {cite}`halin1976` and {cite}`robertson1984` for the parameter now called
+  treewidth; {cite}`arnborg1989` why bounded treewidth is the thing worth
+  reporting; {cite}`arnborg1987` and {cite}`bodlaender1996` on why the
+  elimination order is chosen greedily rather than optimally.

@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*221 works.*
+*226 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -1024,10 +1024,20 @@ and the citation renders as a link to the paper. The source of truth is
 **[Arnborg et al. (1987)](https://doi.org/10.1137/0608024)** — S. Arnborg, D. G. Corneil, A. Proskurowski. *Complexity of finding embeddings in a k-tree*. SIAM Journal on Algebraic and Discrete Methods **8**, 277-284. (1987).  
 *Finding the optimal elimination order is NP-hard, which is why a greedy heuristic is the right implementation choice.*
 
+(arnborg1989)=
+
+**[Arnborg & Proskurowski (1989)](https://doi.org/10.1016/0166-218X(89)90031-0)** — S. Arnborg, A. Proskurowski. *Linear time algorithms for NP-hard problems restricted to partial k-trees*. Discrete Applied Mathematics **23**, 11-24. (1989).  
+*Why treewidth is the quantity worth reporting - bounded treewidth turns hard problems tractable.*
+
 (beechem1992)=
 
 **[Beechem (1992)](https://doi.org/10.1016/0076-6879(92)10004-W)** — J. M. Beechem. *Global analysis of biochemical and biophysical data*. Methods in Enzymology **210**, 37-54. (1992).  
 *The method review - what to link, what not to, and how to test whether a link is justified.*
+
+(bodlaender1996)=
+
+**[Bodlaender (1996)](https://doi.org/10.1137/S0097539793251219)** — H. L. Bodlaender. *A linear-time algorithm for finding tree-decompositions of small treewidth*. SIAM Journal on Computing **25**, 1305-1317. (1996).  
+*Optimal decomposition is linear time for any fixed treewidth bound, though with a constant that rules it out in practice.*
 
 (terbraak2006)=
 
@@ -1063,6 +1073,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Haario et al. (2001)](https://doi.org/10.2307/3318737)** — H. Haario, E. Saksman, J. Tamminen. *An adaptive Metropolis algorithm*. Bernoulli **7**, 223-242. (2001).
 
+(halin1976)=
+
+**[Halin (1976)](https://doi.org/10.1007/BF01917434)** — R. Halin. *S-functions for graphs*. Journal of Geometry **8**, 171-186. (1976).  
+*Introduces the parameter later known as treewidth, under the name dimension.*
+
 (karamanis2021)=
 
 **[Karamanis & Beutler (2021)](https://doi.org/10.1007/s11222-021-10038-2)** — M. Karamanis, F. Beutler. *Ensemble slice sampling*. Statistics and Computing **31**, 61. (2021).
@@ -1077,6 +1092,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lauritzen & Spiegelhalter (1988)](https://doi.org/10.1111/j.2517-6161.1988.tb01721.x)** — S. L. Lauritzen, D. J. Spiegelhalter. *Local computations with probabilities on graphical structures and their application to expert systems*. Journal of the Royal Statistical Society Series B **50**, 157-194. (1988).  
 *Moralisation, triangulation and the junction tree - the construction that turns a factorisation into cliques and separators.*
 
+(loeliger2004)=
+
+**[Loeliger (2004)](https://doi.org/10.1109/MSP.2004.1267047)** — H.-A. Loeliger. *An introduction to factor graphs*. IEEE Signal Processing Magazine **21**, 28-41. (2004).  
+*The readable introduction - what the bipartite graph is and what message passing on it does.*
+
 (mcinnes2018)=
 
 **[McInnes et al. (2018)](https://arxiv.org/abs/1802.03426)** — L. McInnes, J. Healy, J. Melville. *UMAP: uniform manifold approximation and projection for dimension reduction*. arXiv **1802.03426**. (2018).
@@ -1084,6 +1104,11 @@ and the citation renders as a link to the paper. The source of truth is
 (neal2003)=
 
 **[Neal (2003)](https://doi.org/10.1214/aos/1056562461)** — R. M. Neal. *Slice sampling*. Annals of Statistics **31**, 705-767. (2003).
+
+(robertson1984)=
+
+**[Robertson & Seymour (1984)](https://doi.org/10.1016/0095-8956(84)90013-3)** — N. Robertson, P. D. Seymour. *Graph minors. III. Planar tree-width*. Journal of Combinatorial Theory Series B **36**, 49-64. (1984).  
+*The rediscovery that fixed the name tree-width and the tree-decomposition formulation.*
 
 (vehtari2021)=
 

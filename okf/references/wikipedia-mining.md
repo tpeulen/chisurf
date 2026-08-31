@@ -362,3 +362,48 @@ already written down, so the tranche is verify-and-wire rather than hunt. Note
 that some of the six are genuinely citation-free by nature (`photon_container`
 describes a file format, `region_properties` a geometry API) — check that a
 page *wants* literature before manufacturing some for it.
+
+**Eighth tranche (2026-08-31) — the dump is not only a citation source.**
+
+The saturation finding above is about *citations*: no fluorescence-adjacent
+article had verified DOIs left that a page wanted. It was read too broadly. The
+dump is also a **knowledge** source, and that pool is not saturated at all,
+because ChiSurf's own methods sit on general mathematics whose articles nobody
+had touched.
+
+`docs/concepts/factor_graphs.md` was written from the module docstring of
+`chisurf/core/fitting/factorgraph.py` and was correct but thin: it used
+"moralise", "triangulate", "junction tree" and "treewidth" as terms without
+defining any of them. Eleven articles were extracted (Factor graph, Graphical
+model, Belief propagation, Junction tree algorithm, Treewidth, Tree
+decomposition, Bayesian network, Markov random field, Chordal graph, Variable
+elimination, Conditional independence) yielding 107 distinct DOIs; five landed,
+all Crossref-verified: `loeliger2004`, `halin1976`, `robertson1984`,
+`bodlaender1996`, `arnborg1989`.
+
+Three facts changed what the page says rather than merely decorating it:
+
+- **treewidth 1 means the graph is a tree or forest, exactly.** The page's
+  worked example measures treewidth 1 and previously just noted it was small.
+  It is small *because* the moralised graph of a global fit is a star, verified
+  directly: 4 variables, 3 edges, one component, every maximal clique an edge.
+  That is the structural reason global analysis scales with dataset count.
+- **chordality is what makes clique enumeration cheap** — polynomial on a
+  chordal graph, NP-complete in general. That is why the triangulation step
+  exists at all, which the page could not previously explain.
+- **bounded treewidth is why the number is worth reporting**, not just an
+  implementation statistic.
+
+**Where to pick this up.** The lead is *general mathematics under a ChiSurf
+method*, and it is the first one in several tranches that was not exhausted on
+contact. Candidates: the samplers (`ensemble samplers`, slice sampling,
+Rao-Blackwellisation — `parameter_uncertainty.md` uses "collapsed" and
+"Rao-Blackwellised" undefined), maximum entropy (`maximum_entropy.md`), the
+hidden-Markov pages (forward-backward, Baum-Welch, Viterbi), and the graph layer
+in `chisurf/core/graph`. The test is the same one that worked here: find a term
+the docs *use* but never *define*, and check whether Wikipedia defines it in a
+way that changes what the page can say.
+
+Note the earlier per-page citation count is still the right first measurement,
+but it is the wrong *only* measurement: `factor_graphs.md` already had three
+citations and was still the thinnest page in the docs on its own subject.
