@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*210 works.*
+*212 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -469,6 +469,11 @@ and the citation renders as a link to the paper. The source of truth is
 **[Schwille et al. (1999)](https://doi.org/10.1002/(sici)1097-0320(19990701)36:3<176::aid-cyto5>3.0.co;2-f)** — P. Schwille, J. Korlach, W. W. Webb. *Fluorescence correlation spectroscopy with single-molecule sensitivity on cell and model membranes*. Cytometry **36**, 176-182. (1999).  
 *Two-dimensional membrane diffusion.*
 
+(sheppard1977)=
+
+**[Sheppard & Choudhury (1977)](https://doi.org/10.1080/713819421)** — C. J. R. Sheppard, A. Choudhury. *Image Formation in the Scanning Microscope*. Optica Acta **24**, 1051-1073. (1977).  
+*The theoretical foundation of confocal image formation and the PSF that FCS measures in.*
+
 (siegel2013)=
 
 **[Siegel et al. (2013)](https://doi.org/10.3390/ijms141020340)** — A. P. Siegel, M. A. Baird, M. W. Davidson, R. N. Day. *Strengths and weaknesses of recently engineered red fluorescent proteins evaluated in live cells using fluorescence correlation spectroscopy*. International Journal of Molecular Sciences **14**, 20340-20358. (2013).
@@ -607,6 +612,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Richardson (1972)](https://doi.org/10.1364/JOSA.62.000055)** — W. H. Richardson. *Bayesian-based iterative method of image restoration*. Journal of the Optical Society of America **62**, 55-59. (1972).  
 *The iterative Poisson-likelihood restoration, derived from Bayes' theorem.*
+
+(shaw1991)=
+
+**[Shaw & Rawlins (1991)](https://doi.org/10.1111/j.1365-2818.1991.tb03168.x)** — P. J. Shaw, D. J. Rawlins. *The point-spread function of a confocal microscope — its measurement and use in deconvolution of 3-D data*. Journal of Microscopy **163**, 151-165. (1991).  
+*Measuring the real PSF from a sub-resolution bead and using it for 3-D deconvolution.*
 
 (soumpasis1983)=
 
