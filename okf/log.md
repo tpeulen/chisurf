@@ -37431,3 +37431,6 @@ side of the line.
   implementation without a docs page — Crossref-verify, land, guardrail-test,
   commit only its own files, record the next lead). Scheduled every 6 hours;
   pause or delete it any time.
+- 2026-08-31 (cadence) — Mining loop rescheduled: hourly during working hours,
+  weekdays 09:00–17:00 (`0 0 9-17 * * 1-5`). Idle runs (no lead) log a note
+  and commit nothing, so quiet hours cost nothing.
