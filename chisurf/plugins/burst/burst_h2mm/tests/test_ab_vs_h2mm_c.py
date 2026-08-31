@@ -1,6 +1,13 @@
-"""A/B correctness tests: numba H2MM port vs. the reference ``H2MM_C`` library.
+"""A/B correctness tests: ChiSurf's H2MM engine vs. the reference ``H2MM_C``.
 
-The port in :mod:`chisurf.plugins.burst.burst_h2mm.core.h2mm` is asserted to be
+This is the suite that gives the answer an *independent* check -- ``H2MM_C`` is
+P. D. Harris's implementation, not a port of ours -- which is why it matters
+more, not less, now that ChiSurf has a single engine. It used to exercise the
+in-tree numba port; since that was deleted (2026-08-31) it exercises whatever
+:mod:`~chisurf.plugins.burst.burst_h2mm.core.engines` routes to, which is
+``tttrlib``.
+
+The engine reached through :mod:`chisurf.plugins.burst.burst_h2mm.core.engines` is asserted to be
 numerically equivalent to the reference C/Cython implementation
 (``H2MM_C`` / ``h2mm_c`` on PyPI) on identical data.  Photon data is simulated
 and carried through a real ``tttrlib.TTTR`` object and the plugin's own
@@ -20,7 +27,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from chisurf.plugins.burst.burst_h2mm.core import h2mm as H
+from chisurf.plugins.burst.burst_h2mm.core import engines as H
+from chisurf.plugins.burst.burst_h2mm.core import h2mm as _types
 from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
     bursts_from_dataframe,
@@ -45,7 +53,7 @@ def _simulate_via_tttrlib(gt, n_bursts, burst_len, rate=0.25, seed=42):
         np.concatenate([[0], np.cumsum(rng.poisson(1.0 / rate, burst_len - 1) + 1)]).astype(np.int64)
         for _ in range(n_bursts)
     ]
-    streams_local = H.simulate_bursts(gt, times_local, seed=seed + 7)
+    streams_local = _types.simulate_bursts(gt, times_local, seed=seed + 7)
 
     macro, chan, rows = [], [], []
     off, base = 0, 0
@@ -88,7 +96,7 @@ def _align(prior, trans, obs):
 
 
 def _two_state_gt():
-    return H.H2mmModel(
+    return _types.H2mmModel(
         np.array([0.5, 0.5]),
         np.array([[0.990, 0.010], [0.020, 0.980]]),
         np.array([[0.80, 0.20], [0.25, 0.75]]),
@@ -96,7 +104,7 @@ def _two_state_gt():
 
 
 def _three_state_gt():
-    return H.H2mmModel(
+    return _types.H2mmModel(
         np.array([1 / 3, 1 / 3, 1 / 3]),
         np.array([[0.98, 0.01, 0.01], [0.01, 0.98, 0.01], [0.01, 0.01, 0.98]]),
         np.array([[0.85, 0.15], [0.50, 0.50], [0.15, 0.85]]),
@@ -117,7 +125,7 @@ def test_forward_loglik_matches_reference():
     obs = np.array([[0.7, 0.3], [0.3, 0.7]])
 
     ref_ll = h2mm_c.H2MM_arr([h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy())], ref_idx, ref_times)[0].loglik
-    mine_ll = H.optimize(H.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0).loglik
+    mine_ll = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0).loglik
 
     assert mine_ll == pytest.approx(ref_ll, rel=1e-6, abs=1e-4)
 
@@ -137,7 +145,7 @@ def test_one_em_step_matches_reference():
 
     with contextlib.redirect_stdout(io.StringIO()):
         ref = h2mm_c.EM_H2MM_C(h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()), ref_idx, ref_times, max_iter=1)
-    mine = H.optimize(H.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0)
+    mine = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=1, tol=0.0)
 
     rp, rt, ro = _align(ref.prior, ref.trans, ref.obs)
     mp, mt, mo = _align(mine.prior, mine.trans, mine.obs)
@@ -186,7 +194,7 @@ def test_converged_model_matches_reference(gt, start):
             ref_idx, ref_times, max_iter=500,
         )
     mine = H.optimize(
-        H.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10
+        _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10
     )
 
     # Converged log-likelihood and BIC agree.
@@ -217,7 +225,7 @@ def test_viterbi_path_matches_reference():
     with contextlib.redirect_stdout(io.StringIO()):
         ref = h2mm_c.EM_H2MM_C(h2mm_c.h2mm_model(prior.copy(), trans.copy(), obs.copy()), ref_idx, ref_times, max_iter=500)
         ref_vit = h2mm_c.viterbi_path(ref, ref_idx, ref_times)
-    mine = H.optimize(H.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10)
+    mine = H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=500, tol=1e-10)
 
     ref_path = np.concatenate(list(ref_vit[0]))
     mine_path, _ = H.viterbi(mine, data)
@@ -233,7 +241,7 @@ def test_viterbi_path_matches_reference():
 
 
 # ---------------------------------------------------------------------------
-# A/B-5 — wall-clock benchmark: numba port vs. reference H2MM_C
+# A/B-5 — wall-clock benchmark: ChiSurf's engine vs. reference H2MM_C
 # ---------------------------------------------------------------------------
 
 
@@ -242,10 +250,10 @@ def test_viterbi_path_matches_reference():
 def test_benchmark_vs_reference(n_states, capsys):
     """Time one EM run against ``H2MM_C`` on identical data (perf A/B guard).
 
-    Companion to the correctness tests above: the numba engine must stay
+    Companion to the correctness tests above: the engine must stay
     competitive with the reference C implementation.  Timing is reported as
     ``ms / EM-iteration`` so the comparison is independent of how many
-    iterations each engine happens to run, and the numba JIT is warmed up
+    iterations each engine happens to run, and the engine is warmed up
     first so compilation is never timed.  Marked ``slow`` (excluded from
     default runs); run explicitly with ``-m slow -s`` to see the numbers.
     """
@@ -265,12 +273,12 @@ def test_benchmark_vs_reference(n_states, capsys):
 
     max_iter = 100
 
-    # Warm up the numba JIT so compilation time is not charged to the port.
-    H.optimize(H.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=2, tol=0.0)
+    # One warm-up call, so first-call setup is not charged to the engine.
+    H.optimize(_types.H2mmModel(prior.copy(), trans.copy(), obs.copy()), data, max_iter=2, tol=0.0)
 
     t0 = time.perf_counter()
     mine = H.optimize(
-        H.H2mmModel(prior.copy(), trans.copy(), obs.copy()),
+        _types.H2mmModel(prior.copy(), trans.copy(), obs.copy()),
         data, max_iter=max_iter, tol=1e-12,
     )
     t_mine = time.perf_counter() - t0
@@ -291,9 +299,9 @@ def test_benchmark_vs_reference(n_states, capsys):
         print(
             f"\n[H2MM bench {n_states}-state] N={data.n_photons} "
             f"bursts={data.n_bursts} uniq_dt={int(data.unique_dt.shape[0])}\n"
-            f"  numba : {mine_ms_it:7.2f} ms/iter ({mine.n_iter} it)\n"
+            f"  chisurf: {mine_ms_it:7.2f} ms/iter ({mine.n_iter} it)\n"
             f"  H2MM_C: {ref_ms_it:7.2f} ms/iter ({int(ref.niter)} it)\n"
-            f"  ratio numba/cpp = {ratio:.2f}x"
+            f"  ratio chisurf/reference = {ratio:.2f}x"
         )
 
     # A ≡ B: a fast but wrong engine would make the timing meaningless.  Loose
@@ -305,5 +313,5 @@ def test_benchmark_vs_reference(n_states, capsys):
     # Measured ~0.3-0.6x on dense bursts; the wide margin keeps this robust to
     # CI machine variance while still catching an O(N·n⁴)-style regression.
     assert ratio < 1.5, (
-        f"numba H2MM {ratio:.2f}x the H2MM_C time/iter — performance regression"
+        f"ChiSurf H2MM {ratio:.2f}x the H2MM_C time/iter — performance regression"
     )

@@ -22,7 +22,7 @@ little statistical precision for a large speed-up, which is safe when the data
 over-determine the model (many bursts).  A trained surrogate is specific to a
 ``(n_states, n_streams)`` and the burst-length / inter-photon-Δt regime it was
 trained on; it does not ship pretrained.  Train one with :func:`train_surrogate`
-and cache it, or fall back to EM (:func:`~.h2mm.fit_states`).
+and cache it, or fall back to EM (:func:`~.engines.fit_states`).
 
 This module has **no Qt / ChiSurf-GUI dependency** and uses only ``numpy`` plus
 the in-tree estimators of :mod:`chisurf.core.ml` (``MLPRegressor``,

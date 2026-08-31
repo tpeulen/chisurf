@@ -68,7 +68,7 @@ def build_tables(
     meta : PhotonMeta
         Per-photon macro/micro/channel/burst arrays aligned with ``data``.
     path : numpy.ndarray
-        Per-photon Viterbi state (length ``N``, from :func:`~.h2mm.viterbi`).
+        Per-photon Viterbi state (length ``N``, from :func:`~.engines.viterbi`).
     fret : numpy.ndarray
         Per-state apparent FRET efficiency (for the model ``Mean FRET E`` column).
     base_time_s : float

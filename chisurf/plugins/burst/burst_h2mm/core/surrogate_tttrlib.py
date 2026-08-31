@@ -7,7 +7,7 @@ drop-in replacement for :func:`~.surrogate.estimate_model` on the surrogate
 engines — the same relationship :mod:`.h2mm_tttrlib` has to the EM engines.
 
 The C++ feature extractor reproduces :func:`~.surrogate.extract_features`
-bit for bit (verified to 1e-12 against the numba kernel), so a surrogate trained
+bit for bit (verified to 1e-12 against the in-tree kernel it replaced), so a surrogate trained
 here with scikit-learn and exported via
 :meth:`~.surrogate.SurrogateModel.export_json` gives identical estimates through
 either path. When tttrlib is unavailable this module reports so via
@@ -53,7 +53,7 @@ def is_json_surrogate(obj) -> bool:
 
 
 def extract_features(data: BurstPhotons) -> np.ndarray:
-    """Feature vector via the C++ extractor (matches the numba one to 1e-12)."""
+    """Feature vector via the C++ extractor (matched the in-tree one to 1e-12)."""
     if not HAVE_TTTRLIB:
         raise RuntimeError("tttrlib with HmmSurrogate support is required")
     return np.asarray(tttrlib.HmmSurrogate.features(_to_engine(data)), dtype=np.float64)

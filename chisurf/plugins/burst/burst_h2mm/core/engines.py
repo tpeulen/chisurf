@@ -12,7 +12,7 @@ Engines
     reference maximum-likelihood estimate.
 ``em-float32``
     The same EM in the approximate ``float32`` fast mode (~1.5–2× faster, small
-    round-off; see :func:`~.h2mm.optimize`).
+    round-off; see :func:`optimize`).
 ``surrogate``
     The optional amortised neural estimator (:mod:`.surrogate`): one forward pass,
     **approximate**, ~5–25× faster. Requires a trained surrogate for the state
@@ -38,28 +38,19 @@ construction. See the tttrlib ``h2mm-state-decoding`` guide.
 
 from __future__ import annotations
 
-import concurrent.futures
 import logging
-import os
 
 import numpy as np
 
 from .h2mm import BurstPhotons, H2mmModel
-from .h2mm import fit_states as _fit_states_numba
-from .h2mm import optimize as _optimize_numba
-from .h2mm import viterbi as _viterbi_numba
 
 logger = logging.getLogger(__name__)
 
-# Prefer the fast tttrlib C++ backend for the EM engines; fall back to numba.
-# Set CHISURF_H2MM_BACKEND=numba to force the pure-numba engine.
-try:
-    from . import h2mm_tttrlib as _tttrlib_engine
-
-    _HAVE_TTTRLIB = _tttrlib_engine.HAVE_TTTRLIB
-except Exception:  # pragma: no cover - defensive
-    _tttrlib_engine = None
-    _HAVE_TTTRLIB = False
+# H2MM compute lives in the photon library. There is no second implementation
+# to fall back to: the in-tree one was deleted once it was 44x slower than this
+# for identical numbers (see .h2mm), which made it a slower way to be wrong
+# about which engine had run rather than a safety net.
+from . import h2mm_tttrlib as _tttrlib_engine
 
 # The C++ surrogate is used only for surrogates stored in the language-neutral
 # JSON schema; a pickled SurrogateModel stays on the scikit-learn path.
@@ -72,67 +63,58 @@ except Exception:  # pragma: no cover - defensive
     _HAVE_TTTRLIB_SURROGATE = False
 
 
-def _backend_fallback(what: str, exc: Exception) -> None:
-    """Record that the C++ backend failed *what* and the numba engine takes over.
+def _use_tttrlib() -> bool:
+    """Whether the compiled H2MM backend is usable.
 
-    A silent ``except Exception: pass`` makes a broken backend build look exactly
-    like a working one, only slower; the fallback is a diagnosis the user needs.
+    Retained as the single place that answers the question; it is no longer a
+    *choice*, because there is nothing else to choose: the
+    ``CHISURF_H2MM_BACKEND`` escape went with the second engine.
+    """
+    return bool(_tttrlib_engine.HAVE_TTTRLIB)
+
+
+def active_backend() -> str:
+    """Return the H2MM compute backend: ``'tttrlib'``, or raise if unusable."""
+    _require_backend("compute")
+    return "tttrlib"
+
+
+def _require_backend(what: str) -> None:
+    """Raise a diagnosable error when the compiled engine is missing.
 
     Parameters
     ----------
     what : str
-        Name of the backend call that raised.
-    exc : Exception
-        The exception that triggered the fallback.
+        The operation being attempted, named in the message.
+
+    Raises
+    ------
+    RuntimeError
+        When :class:`tttrlib.HMM` is unavailable.
     """
-    logger.warning(
-        "tttrlib H2MM %s failed (%s: %s) - falling back to the numba engine.",
-        what,
-        type(exc).__name__,
-        exc,
-    )
-
-
-def _use_tttrlib() -> bool:
-    """Whether to route EM/Viterbi through the tttrlib C++ backend."""
-    if os.environ.get("CHISURF_H2MM_BACKEND", "").strip().lower() == "numba":
-        return False
-    return _HAVE_TTTRLIB
-
-
-def active_backend() -> str:
-    """Return the H2MM compute backend in use: ``'tttrlib'`` or ``'numba'``."""
-    return "tttrlib" if _use_tttrlib() else "numba"
+    if not _tttrlib_engine.HAVE_TTTRLIB:
+        raise RuntimeError(
+            f"H2MM {what} needs tttrlib's HMM engine, which this build does "
+            f"not have. ChiSurf no longer ships a second implementation to "
+            f"fall back to. Install or rebuild tttrlib (>= 0.27)."
+        )
 
 
 def viterbi(model: H2mmModel, data: BurstPhotons):
-    """Viterbi path + ICL, routed to the active backend (tttrlib or numba)."""
-    if _use_tttrlib():
-        try:
-            return _tttrlib_engine.viterbi(model, data)
-        except concurrent.futures.CancelledError:
-            raise  # a stop is not a backend failure - do not redo it on numba
-        except Exception as exc:
-            _backend_fallback("viterbi", exc)
-    return _viterbi_numba(model, data)
+    """Viterbi path + ICL."""
+    _require_backend("Viterbi decoding")
+    return _tttrlib_engine.viterbi(model, data)
 
 
 def _require_tttrlib(what: str):
-    """Return the tttrlib engine module, or explain why the decoder is missing.
+    """Return the engine module, or say why *what* cannot run.
 
-    The faithful decoders (γ, the marginal draw, FFBS) live only in the C++
-    engine; the numba engine implements Viterbi and EM. Rather than quietly
-    substituting Viterbi — which is exactly the biased answer these decoders
-    exist to avoid — say so.
+    Kept as a distinct name because the decoders that call it (γ, the marginal
+    draw, FFBS) used to be the *only* things the second engine could not do;
+    now nothing can run without this one.
     """
-    if _use_tttrlib():
-        return _tttrlib_engine
-    raise RuntimeError(
-        f"H2MM {what} needs the tttrlib backend, which is not active "
-        f"(backend={active_backend()!r}). The numba engine implements EM and "
-        f"Viterbi only. Unset CHISURF_H2MM_BACKEND=numba, or use "
-        f"decoder='viterbi'."
-    )
+    _require_backend(what)
+    return _tttrlib_engine
 
 
 def posterior(model: H2mmModel, data: BurstPhotons) -> tuple[np.ndarray, int]:
@@ -266,7 +248,7 @@ def fit_one(
     refine_iters : int
         EM polish maps for ``surrogate-refine``.
     n_restarts, max_iter, tol, seed
-        EM parameters (passed to :func:`~.h2mm.fit_states`).
+        EM parameters (passed to the engine).
     on_iter : callable, optional
         Per-EM-map progress callback ``on_iter(done, total)`` (EM engines only).
 
@@ -283,51 +265,30 @@ def fit_one(
             ri = int(refine_iters) if engine == "surrogate-refine" else 0
             # JSON surrogates run through the C++ estimator; pickled
             # SurrogateModel objects stay on the scikit-learn path. Both produce
-            # the same numbers — the C++ feature extractor reproduces the numba
-            # one to 1e-12 — so this is purely a speed/dependency choice.
-            if (
-                _use_tttrlib()
-                and _HAVE_TTTRLIB_SURROGATE
-                and _tttrlib_surrogate.is_json_surrogate(sm)
-            ):
-                try:
-                    return _tttrlib_surrogate.estimate_model(
-                        data, n_states, sm, refine_iters=ri, tol=tol)
-                except concurrent.futures.CancelledError:
-                    raise
-                except Exception as exc:
-                    _backend_fallback("surrogate estimate_model", exc)
-            return _fit_states_numba(
-                data, n_states, surrogate=sm, refine_iters=ri, tol=tol
-            )
+            # the same numbers (the two feature extractors agree to 1e-12), so
+            # this is purely a speed/dependency choice.
+            if _HAVE_TTTRLIB_SURROGATE and _tttrlib_surrogate.is_json_surrogate(sm):
+                return _tttrlib_surrogate.estimate_model(
+                    data, n_states, sm, refine_iters=ri, tol=tol
+                )
+            # A pickled SurrogateModel stays on the scikit-learn path. This
+            # used to go through the in-tree `fit_states`, whose surrogate arm
+            # only forwarded here -- so it kept a whole EM engine alive to make
+            # one call.
+            from .surrogate import estimate_model
+
+            return estimate_model(data, n_states, sm, refine_iters=ri, tol=tol)
         # No surrogate for this state count → exact EM keeps the scan usable.
         engine = "em"
 
     single_precision = engine == "em-float32"
-    # Fast path: the tttrlib C++ backend (same algorithm, several-fold faster).
-    if _use_tttrlib():
-        try:
-            return _tttrlib_engine.fit_states(
-                data, n_states, n_restarts=n_restarts, max_iter=max_iter,
-                tol=tol, seed=seed, single_precision=single_precision,
-                on_iter=on_iter,
-            )
-        except concurrent.futures.CancelledError:
-            # ``on_iter`` is how a GUI stop is delivered: it raises out of the
-            # progress callback. Catching it here would abandon the backend and
-            # silently restart the same state count on the slower engine.
-            raise
-        except Exception as exc:
-            _backend_fallback("fit_states", exc)
-
-    return _fit_states_numba(
-        data,
-        n_states,
-        n_restarts=n_restarts,
-        max_iter=max_iter,
-        tol=tol,
-        seed=seed,
-        single_precision=single_precision,
+    _require_backend("fitting")
+    # `on_iter` is how a GUI stop is delivered: it raises CancelledError out of
+    # the progress callback, and that must reach the caller unfitted rather than
+    # be treated as a backend problem. Nothing is caught here.
+    return _tttrlib_engine.fit_states(
+        data, n_states, n_restarts=n_restarts, max_iter=max_iter,
+        tol=tol, seed=seed, single_precision=single_precision,
         on_iter=on_iter,
     )
 
@@ -342,17 +303,10 @@ def optimize(
     single_precision: bool = False,
     on_iter=None,
 ) -> H2mmModel:
-    """Baum-Welch EM from ``model``, routed to the active backend.
+    """Baum-Welch EM from ``model``.
 
-    Callers used to import :func:`~.h2mm.optimize` directly and so always got
-    the fallback engine, even where the C++ one was available and several-fold
-    faster. Import this instead; the fallback is reachable through
-    ``CHISURF_H2MM_BACKEND=numba``.
-
-    The two engines agree on the reported log-likelihood to ~1e-15 relative,
-    including at ``max_iter=1`` where it is the *input* model's forward
-    log-likelihood (what :func:`~.analysis.fixed_loglik` documents), so this is
-    a speed choice and not a semantic one.
+    At ``max_iter=1`` the reported ``loglik`` is the *input* model's forward
+    log-likelihood, which is what :func:`~.analysis.fixed_loglik` rests on.
 
     Parameters
     ----------
@@ -378,18 +332,8 @@ def optimize(
     H2mmModel
         The optimised model.
     """
-    if _use_tttrlib():
-        try:
-            return _tttrlib_engine.optimize(
-                model, data, max_iter=max_iter, tol=tol, min_trans=min_trans,
-                accelerate=accelerate, single_precision=single_precision,
-                on_iter=on_iter,
-            )
-        except concurrent.futures.CancelledError:
-            raise  # a stop is not a backend failure - do not redo it on numba
-        except Exception as exc:
-            _backend_fallback("optimize", exc)
-    return _optimize_numba(
+    _require_backend("optimisation")
+    return _tttrlib_engine.optimize(
         model, data, max_iter=max_iter, tol=tol, min_trans=min_trans,
         accelerate=accelerate, single_precision=single_precision,
         on_iter=on_iter,

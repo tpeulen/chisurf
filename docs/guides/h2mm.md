@@ -146,13 +146,13 @@ h2mm compute /path/to/analysis \
 ### Python API
 
 ```python
-from chisurf.plugins.burst.burst_h2mm.core import h2mm, analysis
+from chisurf.plugins.burst.burst_h2mm.core import analysis, engines, h2mm
 
 data = h2mm.prepare_bursts(times, streams, n_streams=2)      # engine layout
 ana = analysis.analyze(data, state_counts=(1, 2, 3, 4),
                        criterion="bic", engine="em", patience=1)
 print(ana.best.n_states, ana.fret)
-path, icl = h2mm.viterbi(ana.best.model, data)               # per-photon states
+path, icl = engines.viterbi(ana.best.model, data)            # per-photon states
 ```
 
 The plugin ships its own examples under

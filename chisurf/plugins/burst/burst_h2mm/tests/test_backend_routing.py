@@ -1,15 +1,21 @@
-"""Every compute path goes through the backend selector, not around it.
+"""Every compute path goes through the engine seam, not around it.
 
-``engines.py`` picks tttrlib-or-fallback per call, but four places imported the
-fallback engine *directly* and so always got it, even where the C++ backend was
-available and ~44x faster on the same data: ``analysis.fixed_loglik``,
+Four places used to import the in-tree engine directly and so always got it,
+even where the compiled one was available and 44x faster: ``fixed_loglik``,
 ``burst_gs``'s cross-check fit, ``surrogate``'s EM polish, and --- least
 intentionally --- ``surrogate_tttrlib``, the C++ surrogate, which refined its
-own estimate with the fallback optimiser.
+own estimate with the in-tree optimiser.
 
-The routing is only safe because the two engines agree, which is what the first
-test here pins: a future divergence has to fail loudly rather than change what
-``fixed_loglik`` returns depending on which backend happens to be installed.
+That second engine has since been deleted, so those imports no longer resolve
+and the mistake is unrepeatable *in that form*. The guard at the bottom stays
+anyway: :mod:`~chisurf.plugins.burst.burst_h2mm.core.h2mm` still holds the data
+types, and a compute helper added beside them later would be reachable the same
+way.
+
+What the cross-engine comparisons here used to check --- that the answer does
+not depend on which engine ran --- now lives in ``test_ab_vs_h2mm_c.py``,
+against the independent ``H2MM_C`` reference rather than against a port of
+ourselves, which is the stronger check of the two.
 """
 
 from __future__ import annotations
@@ -18,11 +24,6 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
-from chisurf.plugins.burst.burst_h2mm.core import h2mm_tttrlib as tttrlib_engine
-
-needs_tttrlib = pytest.mark.skipif(
-    not tttrlib_engine.HAVE_TTTRLIB, reason="tttrlib H2MM backend not available"
-)
 
 
 @pytest.fixture(scope="module")
@@ -50,32 +51,13 @@ def model():
     return h2mm.factory_model(2, 2, seed=1)
 
 
-# -- the semantics the routing rests on ---------------------------------------
-
-@needs_tttrlib
-def test_the_two_engines_report_the_same_log_likelihood(data, model):
-    """Routing `optimize` is a speed choice only if this holds.
-
-    Checked at ``max_iter=1`` because that is the case ``fixed_loglik`` depends
-    on -- the reported value is the *input* model's forward log-likelihood, and
-    an engine that reported the post-update value instead would silently change
-    every confidence interval built on it.
-    """
-    one_fallback = h2mm.optimize(model, data, max_iter=1, tol=0.0).loglik
-    one_tttrlib = tttrlib_engine.optimize(model, data, max_iter=1, tol=0.0).loglik
-    assert one_tttrlib == pytest.approx(one_fallback, rel=1e-10)
-
-    two_fallback = h2mm.optimize(model, data, max_iter=2, tol=0.0).loglik
-    two_tttrlib = tttrlib_engine.optimize(model, data, max_iter=2, tol=0.0).loglik
-    assert two_tttrlib == pytest.approx(two_fallback, rel=1e-10)
-    # An EM map improves the likelihood, so the two calls must differ -- if they
-    # did not, `max_iter` would not be doing anything and the check above would
-    # pass for the wrong reason.
-    assert two_fallback > one_fallback
-
-
 def test_fixed_loglik_is_the_input_models_own_likelihood(data, model):
-    """What `fixed_loglik` documents, pinned against the engine it now routes to."""
+    """What ``fixed_loglik`` documents, pinned against the engine it routes to.
+
+    At ``max_iter=1`` the reported value must be the log-likelihood of the model
+    that went *in*. An engine reporting the post-update value instead would
+    silently shift every confidence interval built on this.
+    """
     from chisurf.plugins.burst.burst_h2mm.core.analysis import fixed_loglik
 
     assert fixed_loglik(model, data) == pytest.approx(
@@ -83,62 +65,41 @@ def test_fixed_loglik_is_the_input_models_own_likelihood(data, model):
     )
 
 
-# -- the selector is actually consulted ---------------------------------------
-
-def test_fixed_loglik_respects_the_backend_setting(data, model, monkeypatch):
-    """`fixed_loglik` used to import the fallback directly and ignore this."""
-    from chisurf.plugins.burst.burst_h2mm.core import analysis
-
-    called = []
-    real = engines._optimize_numba
-
-    def spy(*args, **kwargs):
-        called.append(1)
-        return real(*args, **kwargs)
-
-    monkeypatch.setenv("CHISURF_H2MM_BACKEND", "numba")
-    monkeypatch.setattr(engines, "_optimize_numba", spy)
-    analysis.fixed_loglik(model, data)
-    assert called, "the fallback engine was not reached with the backend forced to it"
+def test_an_em_map_improves_the_likelihood(data, model):
+    """``max_iter`` does something -- else the test above passes vacuously."""
+    one = engines.optimize(model, data, max_iter=1, tol=0.0).loglik
+    two = engines.optimize(model, data, max_iter=2, tol=0.0).loglik
+    assert two > one
 
 
-@needs_tttrlib
-def test_the_selector_reaches_the_compiled_engine_by_default(data, model, monkeypatch):
-    """The other half: with nothing forced, the C++ engine is the one that runs."""
-    monkeypatch.delenv("CHISURF_H2MM_BACKEND", raising=False)
-    called = []
-    real = tttrlib_engine.optimize
+def test_fit_states_recovers_the_simulated_states(data):
+    """The engine is reached *and* returns the right answer.
 
-    def spy(*args, **kwargs):
-        called.append(1)
-        return real(*args, **kwargs)
+    The bursts alternate between E = 0.25 and E = 0.75, so a fit that ran but
+    collapsed onto one state -- which a broken seam could still produce -- fails
+    here rather than passing as "it did not raise".
+    """
+    fit = engines.fit_states(data, 2, n_restarts=1, max_iter=300, seed=0)
+    path, _ = engines.viterbi(fit, data)
 
-    monkeypatch.setattr(engines._tttrlib_engine, "optimize", spy)
-    engines.optimize(model, data, max_iter=1, tol=0.0)
-    assert called, "the compiled engine was available but not used"
+    assert path.shape == data.streams.shape
+    assert len(set(np.unique(path))) == 2, "the fit collapsed onto one state"
 
-
-# -- the results do not depend on which one ran -------------------------------
-
-@needs_tttrlib
-def test_fit_states_agrees_across_backends(data, monkeypatch):
-    """`burst_gs`'s cross-check calls this; its answer must not move."""
-    monkeypatch.delenv("CHISURF_H2MM_BACKEND", raising=False)
-    compiled = engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-
-    monkeypatch.setenv("CHISURF_H2MM_BACKEND", "numba")
-    fallback = engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-
-    assert compiled.loglik == pytest.approx(fallback.loglik, rel=1e-8)
+    fractions = sorted(
+        float(np.mean(data.streams[path == state] == 1))
+        for state in np.unique(path)
+    )
+    assert fractions[0] == pytest.approx(0.25, abs=0.12), fractions
+    assert fractions[1] == pytest.approx(0.75, abs=0.12), fractions
 
 
-def test_no_module_imports_compute_entry_points_from_the_engine(monkeypatch):
-    """The guard behind all of the above: only ``engines`` may reach past it.
+def test_no_module_imports_compute_entry_points_from_the_types_module():
+    """Only ``engines`` may hand out compute; ``h2mm`` is data types.
 
-    Data structures (``BurstPhotons``, ``H2mmModel``, ``prepare_bursts``,
-    ``factory_model``, ``simulate_bursts``) are fine to import from ``h2mm``;
-    the compute entry points are not, because importing them pins the caller to
-    one engine.
+    ``BurstPhotons``, ``H2mmModel``, ``prepare_bursts``, ``factory_model`` and
+    ``simulate_bursts`` are fine to import from ``h2mm``. A compute entry point
+    would not be: importing one pins the caller to whatever sits behind it,
+    which is exactly how four call sites ended up on the slow engine.
     """
     import pathlib
 
@@ -162,8 +123,7 @@ def test_no_module_imports_compute_entry_points_from_the_engine(monkeypatch):
         rel = path.relative_to(root).as_posix()
         if rel in allowed or "/tests/" in rel or "/test/" in rel:
             continue
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        for line in text.splitlines():
+        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
             stripped = line.strip()
             if not stripped.startswith("from") or "h2mm import" not in stripped:
                 continue
@@ -174,6 +134,6 @@ def test_no_module_imports_compute_entry_points_from_the_engine(monkeypatch):
                 offenders.append(f"{rel}: {stripped}")
 
     assert not offenders, (
-        "these import a compute entry point from the fallback engine and so "
-        "bypass the backend selector:\n  " + "\n  ".join(offenders)
+        "these import a compute entry point from the types module and so bypass "
+        "the engine seam:\n  " + "\n  ".join(offenders)
     )

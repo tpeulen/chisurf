@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.burst.burst_h2mm.core import h2mm
+from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
 from chisurf.plugins.burst.burst_h2mm.core import surrogate as S
 
 pytestmark = pytest.mark.skipif(
@@ -68,7 +68,14 @@ def test_train_predict_recovers_states():
     assert np.abs(E_est - E_gt).max() < 0.12
 
 
-def test_estimate_via_fit_states_and_refine():
+def test_estimate_via_fit_one_and_refine():
+    """The surrogate arm is reached through ``fit_one``, not ``fit_states``.
+
+    It used to be a ``surrogate=`` keyword on the in-tree ``fit_states``, whose
+    only job there was to forward to :func:`~.surrogate.estimate_model`. With
+    that engine deleted, ``fit_one``'s ``engine="surrogate"`` /
+    ``"surrogate-refine"`` is the entry point, and ``fit_states`` is plain EM.
+    """
     sm = S.train_surrogate(
         n_states=2, n_streams=2, n_samples=400,
         hidden_layer_sizes=(128, 64), max_iter=300,
@@ -76,10 +83,12 @@ def test_estimate_via_fit_states_and_refine():
     )
     data, _ = _two_state_data(seed=9, n_bursts=250)
 
-    one_shot = h2mm.fit_states(data, 2, surrogate=sm)
+    one_shot = engines.fit_one(data, 2, "surrogate", surrogates={2: sm})
     assert one_shot.n_states == 2
 
-    refined = h2mm.fit_states(data, 2, surrogate=sm, refine_iters=50)
+    refined = engines.fit_one(
+        data, 2, "surrogate-refine", surrogates={2: sm}, refine_iters=50
+    )
     # Polishing must not lower the likelihood below the pure surrogate estimate.
     assert np.isfinite(refined.loglik)
     assert refined.n_iter > 0

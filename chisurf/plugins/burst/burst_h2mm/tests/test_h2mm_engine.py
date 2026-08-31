@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.burst.burst_h2mm.core import analysis, h2mm
+from chisurf.plugins.burst.burst_h2mm.core import analysis, engines, h2mm
 
 
 def _make_ground_truth() -> h2mm.H2mmModel:
@@ -84,7 +84,7 @@ def test_zero_dt_propagates_with_the_identity():
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
 
     # One EM map, unaccelerated: ``loglik`` is that of the *input* model.
-    got = h2mm.optimize(model, data, max_iter=1, tol=0.0, accelerate=False).loglik
+    got = engines.optimize(model, data, max_iter=1, tol=0.0, accelerate=False).loglik
     assert got == pytest.approx(_reference_loglik(model, times, streams), abs=1e-9)
 
 
@@ -98,32 +98,9 @@ def test_all_gaps_zero_is_not_a_free_lunch():
     # Previously the table came out empty, the propagator cache was never filled
     # and the logL counted only the first photon of each burst.
     assert list(data.unique_dt) == [0]
-    got = h2mm.optimize(model, data, max_iter=1, tol=0.0, accelerate=False).loglik
+    got = engines.optimize(model, data, max_iter=1, tol=0.0, accelerate=False).loglik
     assert got == pytest.approx(_reference_loglik(model, times, streams), abs=1e-9)
     assert got < np.log(0.5) * data.n_bursts
-
-
-def test_eig_build_handles_the_zero_dt_slot():
-    """The spectral build must not turn ``Δt == 0`` into ``λ⁻¹``."""
-    n = 2
-    # An exactly singular ``A``: the confluent term ``Δt·λ^{Δt-1}`` would evaluate
-    # ``0⁻¹ = inf`` at the Δt == 0 slot and poison the divided differences with NaN.
-    trans = np.array([[0.0, 1.0], [0.0, 1.0]])
-    unique_dt = np.array([0, 4], dtype=np.int64)
-    n_s = unique_dt.shape[0]
-    pow_pp = np.zeros((n_s, n, n))
-    rho_pp = np.zeros((n_s, n, n, n, n))
-    pow_eig = np.zeros((n_s, n, n))
-    rho_eig = np.zeros((n_s, n, n, n, n))
-
-    h2mm._build_caches(trans, unique_dt, pow_pp, rho_pp)
-    assert h2mm._build_caches_eig(trans, unique_dt, pow_eig, rho_eig) is True
-    assert np.all(np.isfinite(pow_eig)) and np.all(np.isfinite(rho_eig))
-    assert np.abs(pow_eig - pow_pp).max() < 1e-9
-    assert np.abs(rho_eig - rho_pp).max() < 1e-8
-    # The Δt == 0 slot is the identity with no transition mass either way.
-    assert np.abs(pow_pp[0] - np.eye(n)).max() < 1e-12
-    assert np.abs(rho_pp[0]).max() < 1e-12
 
 
 def test_loglik_monotonic_increase():
@@ -136,7 +113,7 @@ def test_loglik_monotonic_increase():
     model = init
     # Run EM one iteration at a time and confirm logL never decreases.
     for _ in range(15):
-        model = h2mm.optimize(model, data, max_iter=1, tol=0.0)
+        model = engines.optimize(model, data, max_iter=1, tol=0.0)
         lls.append(model.loglik)
     diffs = np.diff(lls)
     assert np.all(diffs >= -1e-6), f"logL decreased: {lls}"
@@ -147,7 +124,7 @@ def test_recovers_ground_truth_two_state():
     times, streams = _simulate(gt, n_bursts=600, burst_len=100, seed=11)
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
 
-    fit = h2mm.fit_states(data, n_states=2, n_restarts=2, max_iter=400, seed=0)
+    fit = engines.fit_states(data, n_states=2, n_restarts=2, max_iter=400, seed=0)
 
     # States may be permuted; align by donor (stream-0) emission probability.
     order = np.argsort(-fit.obs[:, 0])
@@ -167,8 +144,8 @@ def test_bic_prefers_two_states():
     times, streams = _simulate(gt, n_bursts=500, burst_len=100, seed=21)
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
 
-    fit1 = h2mm.fit_states(data, n_states=1, n_restarts=1, max_iter=200, seed=0)
-    fit2 = h2mm.fit_states(data, n_states=2, n_restarts=2, max_iter=400, seed=0)
+    fit1 = engines.fit_states(data, n_states=1, n_restarts=1, max_iter=200, seed=0)
+    fit2 = engines.fit_states(data, n_states=2, n_restarts=2, max_iter=400, seed=0)
 
     assert fit2.loglik > fit1.loglik
     assert fit2.bic < fit1.bic
@@ -178,9 +155,9 @@ def test_viterbi_path_and_icl():
     gt = _make_ground_truth()
     times, streams = _simulate(gt, n_bursts=200, burst_len=80, seed=31)
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
-    fit = h2mm.fit_states(data, n_states=2, n_restarts=1, max_iter=300, seed=0)
+    fit = engines.fit_states(data, n_states=2, n_restarts=1, max_iter=300, seed=0)
 
-    path, icl = h2mm.viterbi(fit, data)
+    path, icl = engines.viterbi(fit, data)
     assert path.shape[0] == data.n_photons
     assert path.min() >= 0 and path.max() < 2
     assert np.isfinite(icl)
@@ -193,8 +170,8 @@ def test_squarem_matches_plain_em_but_fewer_iters():
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
     init = h2mm.factory_model(2, 2, seed=0)
 
-    plain = h2mm.optimize(init, data, max_iter=2000, tol=1e-10, accelerate=False)
-    fast = h2mm.optimize(init, data, max_iter=2000, tol=1e-10, accelerate=True)
+    plain = engines.optimize(init, data, max_iter=2000, tol=1e-10, accelerate=False)
+    fast = engines.optimize(init, data, max_iter=2000, tol=1e-10, accelerate=True)
 
     assert plain.converged and fast.converged
     # Same optimum (log-likelihood and model parameters).
@@ -203,41 +180,6 @@ def test_squarem_matches_plain_em_but_fewer_iters():
     assert np.abs(fast.obs - plain.obs).max() < 1e-3
     # Acceleration must not cost more EM maps than the plain loop.
     assert fast.n_iter <= plain.n_iter
-
-
-def test_eig_build_matches_pair_power():
-    """The spectral cache build agrees with the pair-power build on long Δt."""
-    n = 3
-    trans = np.array([[0.97, 0.02, 0.01], [0.02, 0.96, 0.02], [0.01, 0.03, 0.96]])
-    trans = h2mm._row_normalize(trans)
-    unique_dt = np.array([1, 7, 64, 513, 2000], dtype=np.int64)
-
-    n_s = unique_dt.shape[0]
-    pow_pp = np.zeros((n_s, n, n))
-    rho_pp = np.zeros((n_s, n, n, n, n))
-    pow_eig = np.zeros((n_s, n, n))
-    rho_eig = np.zeros((n_s, n, n, n, n))
-
-    h2mm._build_caches(trans, unique_dt, pow_pp, rho_pp)
-    assert h2mm._build_caches_eig(trans, unique_dt, pow_eig, rho_eig) is True
-
-    assert np.abs(pow_eig - pow_pp).max() < 1e-9
-    assert np.abs(rho_eig - rho_pp).max() < 1e-8
-
-
-def test_eig_build_declines_on_defective_matrix():
-    """A non-diagonalisable ``A`` must be rejected so the caller falls back."""
-    # A 2x2 shear-like stochastic matrix with a repeated eigenvalue and a single
-    # eigenvector is defective; the spectral build must decline.
-    trans = np.array([[1.0, 0.0], [1.0, 0.0]])  # rank-deficient, repeated eig 0/1
-    unique_dt = np.array([3, 10], dtype=np.int64)
-    pow_c = np.zeros((2, 2, 2))
-    rho_c = np.zeros((2, 2, 2, 2, 2))
-    # Either it declines (returns False) or it succeeds and still matches
-    # pair-power; both keep the caller correct.  Assert the fallback path is
-    # exercised by _fill_caches without error.
-    h2mm._fill_caches(trans, unique_dt, pow_c, rho_c, prefer_eig=True)
-    assert np.all(np.isfinite(pow_c)) and np.all(np.isfinite(rho_c))
 
 
 def test_scan_early_stopping_matches_full_scan():
@@ -265,8 +207,8 @@ def test_single_precision_lands_near_double():
     data = h2mm.prepare_bursts(times, streams, n_streams=2)
     init = h2mm.factory_model(2, 2, seed=0)
 
-    ref = h2mm.optimize(init, data, max_iter=2000, tol=1e-10)
-    f32 = h2mm.optimize(init, data, max_iter=2000, tol=1e-6, single_precision=True)
+    ref = engines.optimize(init, data, max_iter=2000, tol=1e-10)
+    f32 = engines.optimize(init, data, max_iter=2000, tol=1e-6, single_precision=True)
 
     # Approximate mode: float32 round-off plus the coarse (floored) convergence
     # threshold and non-deterministic parallel reduction order mean it only lands

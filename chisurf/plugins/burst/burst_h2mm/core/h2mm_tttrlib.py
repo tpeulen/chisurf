@@ -3,13 +3,14 @@
 This adapter runs the Baum-Welch EM optimisation and Viterbi decoding through
 the fast C++ :class:`tttrlib.HMM` engine while keeping the plugin's own
 :class:`~.h2mm.BurstPhotons` / :class:`~.h2mm.H2mmModel` data types, so it is a
-drop-in replacement for the numba :func:`~.h2mm.optimize` /
-:func:`~.h2mm.viterbi` / :func:`~.h2mm.fit_states` on the EM engines.
+adapter over :class:`tttrlib.HMM`.
 
-The tttrlib engine implements the identical algorithm (it is a C++ port of the
-numba engine) and reaches the same optimum several-fold faster; see the tttrlib
-``H2MM`` performance notes. When tttrlib is unavailable this module reports so
-via :data:`HAVE_TTTRLIB` and callers fall back to the numba engine.
+This is now the *only* H2MM engine. ChiSurf carried a second, in-tree
+implementation until 2026-08-31 -- the C++ engine is a port of it -- and that
+copy was deleted once it had become 44x slower for identical numbers; see
+:mod:`.h2mm`. :data:`HAVE_TTTRLIB` therefore reports whether H2MM can run at
+all, not which of two engines will; :mod:`.engines` turns a False into a
+diagnosable error rather than a silent slow path.
 """
 
 from __future__ import annotations
@@ -93,7 +94,7 @@ def optimize(
     single_precision: bool = False,
     on_iter=None,
 ) -> H2mmModel:
-    """EM optimisation via tttrlib (same result as :func:`~.h2mm.optimize`)."""
+    """EM optimisation via tttrlib. Reach it through :func:`~.engines.optimize`."""
     eng = _to_engine(data)
     fit = eng.optimize(_to_engine_model(model), int(max_iter), float(tol),
                        float(min_trans), bool(accelerate), bool(single_precision))

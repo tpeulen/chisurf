@@ -1997,7 +1997,7 @@ guides/figures/burst_export_table.png:
   - docs/guides/34_exporting_burst_data.md
   recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. A simulated
     two-state burst trace (40 bursts alternating E = 0.25 / 0.75) is packed with
-    `bursts_from_dataframe`, fitted with `h2mm.fit_states(..., 2)`, and the tables built by
+    `bursts_from_dataframe`, fitted with `engines.fit_states(..., 2)`, and the tables built by
     `build_tables`; the per-burst one is shown through `ChiTableWidget(source=ArraySource(...))`.
     The burst table goes in as a plain mapping of column arrays, NOT a pandas DataFrame -- the
     reader takes either and pandas is not the storage model. The alternating `Dominant State`

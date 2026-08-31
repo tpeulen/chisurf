@@ -1,17 +1,21 @@
-"""The C++-backend fallback must not swallow a user's stop (RF-537).
+"""A user's stop must reach the caller, not be mistaken for a backend problem.
 
 A stop is delivered by raising :class:`concurrent.futures.CancelledError` out of
-the per-EM-map ``on_iter`` callback. That exception is an ordinary ``Exception``,
-so a bare ``except Exception`` around the tttrlib call would catch it and restart
-the very same work on the numba engine instead of stopping. These tests pin both
-halves of the contract: cancellation propagates, a genuine backend failure still
-falls back (and says so).
+the per-EM-map ``on_iter`` callback. That exception is an ordinary
+``Exception``, so a bare ``except Exception`` around the engine call would catch
+it and treat a deliberate stop as a failure.
+
+This file used to pin *two* halves: cancellation propagates, and a genuine
+backend failure falls back to the second engine. The second half is gone with
+that engine (2026-08-31) --- there is nothing to fall back to, and a failure is
+now raised rather than downgraded to a slower path. So what is pinned here is
+that nothing swallows an exception on the way out: neither a stop nor a real
+error.
 """
 
 from __future__ import annotations
 
 import concurrent.futures
-import logging
 
 import numpy as np
 import pytest
@@ -20,7 +24,7 @@ from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
 
 
 class _Raiser:
-    """Stand-in for the tttrlib engine module whose calls raise *exc*."""
+    """Stand-in for the engine module whose calls raise *exc*."""
 
     def __init__(self, exc: BaseException):
         self._exc = exc
@@ -31,10 +35,18 @@ class _Raiser:
         self.calls += 1
         raise self._exc
 
+    def optimize(self, *args, **kwargs):
+        """Raise the configured exception instead of optimising."""
+        self.calls += 1
+        raise self._exc
+
     def viterbi(self, *args, **kwargs):
         """Raise the configured exception instead of decoding."""
         self.calls += 1
         raise self._exc
+
+    #: The router asks this before calling anything.
+    HAVE_TTTRLIB = True
 
 
 @pytest.fixture
@@ -45,74 +57,49 @@ def data() -> h2mm.BurstPhotons:
     return h2mm.prepare_bursts(times, streams, n_streams=2)
 
 
-@pytest.fixture
-def numba_sentinel(monkeypatch):
-    """Replace the numba engines with counters so no real fit runs."""
-    calls = {"fit_states": 0, "viterbi": 0}
-
-    def fake_fit_states(*args, **kwargs):
-        calls["fit_states"] += 1
-        return "numba-model"
-
-    def fake_viterbi(*args, **kwargs):
-        calls["viterbi"] += 1
-        return ("numba-path", -1.0)
-
-    # `_fit_states_numba`, not `fit_states`: since the backend selector grew a
-    # routed `fit_states`, the bare name is the router and patching it would
-    # stub out the very dispatch these tests exercise. The private name is the
-    # fallback engine, matching `_viterbi_numba` beside it.
-    monkeypatch.setattr(engines, "_fit_states_numba", fake_fit_states)
-    monkeypatch.setattr(engines, "_viterbi_numba", fake_viterbi)
-    return calls
-
-
-def _use_backend(monkeypatch, stub) -> None:
-    """Force the tttrlib fast path onto *stub*."""
+def _use_engine(monkeypatch, stub) -> None:
+    """Put *stub* in the engine's place."""
     monkeypatch.setattr(engines, "_tttrlib_engine", stub)
-    monkeypatch.setattr(engines, "_HAVE_TTTRLIB", True)
-    monkeypatch.delenv("CHISURF_H2MM_BACKEND", raising=False)
 
 
-def test_fit_one_propagates_cancellation(monkeypatch, data, numba_sentinel):
-    """A stop raised inside the backend reaches the caller, unfitted."""
-    stub = _Raiser(concurrent.futures.CancelledError())
-    _use_backend(monkeypatch, stub)
+@pytest.mark.parametrize("call", ["fit_one", "optimize", "viterbi"])
+def test_cancellation_reaches_the_caller(monkeypatch, data, call):
+    """A stop raised inside the engine is not converted into anything else."""
+    _use_engine(monkeypatch, _Raiser(concurrent.futures.CancelledError()))
 
     with pytest.raises(concurrent.futures.CancelledError):
-        engines.fit_one(data, 2, "em", on_iter=lambda done, total: None)
-
-    assert stub.calls == 1
-    assert numba_sentinel["fit_states"] == 0, "stop must not restart on numba"
-
-
-def test_fit_one_falls_back_on_backend_failure(monkeypatch, caplog, data, numba_sentinel):
-    """A real backend error still falls back to numba — and is logged."""
-    stub = _Raiser(RuntimeError("no H2MM in this build"))
-    _use_backend(monkeypatch, stub)
-
-    with caplog.at_level(logging.WARNING, logger=engines.logger.name):
-        assert engines.fit_one(data, 2, "em") == "numba-model"
-
-    assert numba_sentinel["fit_states"] == 1
-    assert "no H2MM in this build" in caplog.text
+        if call == "fit_one":
+            engines.fit_one(data, 2, "em")
+        elif call == "optimize":
+            engines.optimize(h2mm.factory_model(2, 2), data, max_iter=1)
+        else:
+            engines.viterbi(h2mm.factory_model(2, 2), data)
 
 
-def test_viterbi_propagates_cancellation(monkeypatch, data, numba_sentinel):
-    """Viterbi decoding stops on cancellation instead of redoing it on numba."""
-    stub = _Raiser(concurrent.futures.CancelledError())
-    _use_backend(monkeypatch, stub)
+@pytest.mark.parametrize("call", ["fit_one", "optimize", "viterbi"])
+def test_a_real_engine_error_is_raised_rather_than_downgraded(monkeypatch, data, call):
+    """There is no second engine to retry on, so the error must surface.
 
-    with pytest.raises(concurrent.futures.CancelledError):
-        engines.viterbi(h2mm.factory_model(2, 2), data)
+    It used to be logged and answered on the fallback engine, which made a
+    broken build look like a working one that happened to be slow.
+    """
+    _use_engine(monkeypatch, _Raiser(RuntimeError("no H2MM in this build")))
 
-    assert numba_sentinel["viterbi"] == 0
+    with pytest.raises(RuntimeError, match="no H2MM in this build"):
+        if call == "fit_one":
+            engines.fit_one(data, 2, "em")
+        elif call == "optimize":
+            engines.optimize(h2mm.factory_model(2, 2), data, max_iter=1)
+        else:
+            engines.viterbi(h2mm.factory_model(2, 2), data)
 
 
-def test_viterbi_falls_back_on_backend_failure(monkeypatch, data, numba_sentinel):
-    """A broken backend degrades to the numba decoder."""
-    stub = _Raiser(ValueError("bad model"))
-    _use_backend(monkeypatch, stub)
+def test_a_missing_engine_says_so(monkeypatch, data):
+    """Without the compiled engine, H2MM explains itself instead of failing oddly."""
 
-    assert engines.viterbi(h2mm.factory_model(2, 2), data) == ("numba-path", -1.0)
-    assert numba_sentinel["viterbi"] == 1
+    class _Absent:
+        HAVE_TTTRLIB = False
+
+    _use_engine(monkeypatch, _Absent())
+    with pytest.raises(RuntimeError, match="tttrlib"):
+        engines.fit_one(data, 2, "em")

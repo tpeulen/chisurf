@@ -1,6 +1,36 @@
 # Update Log
 
 ## 2026-08-31
+* **H2MM's in-tree engine is deleted; tttrlib is the implementation
+  (`T-20260831-02`).** The follow-on to the routing change below, and the thing
+  that made the case for it: with every call site routed, the second engine was
+  a 1210-line duplicate that agreed with the compiled one to 1e-15 and took 44×
+  as long. `core/h2mm.py` is **1210 → 376 lines** and now holds only the data
+  types the engine is driven with — `H2mmModel`, `BurstPhotons`,
+  `prepare_bursts`, `factory_model`, `simulate_bursts`. `engines.py` lost its
+  fallback branches, `_backend_fallback`, and the `CHISURF_H2MM_BACKEND=numba`
+  escape; a missing `tttrlib.HMM` is now a diagnosable error rather than a
+  silent slow path.
+  **The two perf-guard tests that had been red are green, and ChiSurf is now
+  *faster* than the reference**: `test_ab_vs_h2mm_c.py` reports 1.04× the
+  `H2MM_C` time/iter on two states and **0.48×** on three. That suite matters
+  more than it did, not less — it checks against an independent implementation
+  rather than against a port of ourselves, which is what the deleted engine had
+  become. The whole H2MM + burst_gs suite runs 136 tests green in 138 s, down
+  from 535 s.
+  Two things the next engine deletion should expect. `fit_one`'s surrogate
+  branch went through the in-tree `fit_states`, whose `surrogate=` arm only
+  forwarded to `surrogate.estimate_model` — it kept a whole EM engine alive to
+  make one call, and now calls it directly; the surrogate entry point is
+  `fit_one(engine="surrogate"|"surrogate-refine")`. And the docs were part of
+  the change rather than after it: `docs/guides/h2mm.md`, the plugin's
+  `H2MM_01_Simulated_smFRET.ipynb` and `make_screenshots.py`'s
+  `_grab_burst_export_table` all called `h2mm.viterbi`/`h2mm.fit_states` and
+  would have broken silently — the regenerated figure is byte-identical.
+  Coverage was moved, not dropped: `test_h2mm_engine.py` keeps its behaviour
+  tests against `engines` and loses only the three that poked deleted cache
+  internals; `test_engine_cancellation.py` now pins that neither a stop nor a
+  real error is swallowed, there being nothing to downgrade to.
 * **H2MM routes to tttrlib everywhere — four call sites were reaching around the
   backend selector (`T-20260811-16`).** `engines.py` had chosen tttrlib-or-fallback
   per call for a while, but `analysis.fixed_loglik`, `burst_gs`'s cross-check,

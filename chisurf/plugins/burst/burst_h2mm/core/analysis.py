@@ -121,7 +121,7 @@ class H2mmAnalysis:
     posterior_populations : numpy.ndarray
         State populations from the per-photon posterior γ (its column means) —
         the **unbiased** occupancy estimate, independent of which decoder ran.
-        All-``nan`` when γ was unavailable (numba backend).
+        All-``nan`` if γ could not be computed.
     stoichiometry : numpy.ndarray
         Per-state apparent stoichiometry ``S``, shape ``(n_states,)``. All-``nan``
         when the data has no acceptor-excitation stream (< 3 streams).
@@ -886,14 +886,15 @@ def analyze(
 
     # The unbiased occupancy, independent of which decoder ran. Counting a
     # Viterbi path answers the "distribution over states" question with a
-    # one-directional bias; the posterior column means do not. Unavailable on the
-    # numba backend, where it stays nan rather than silently becoming the counts.
+    # one-directional bias; the posterior column means do not. If γ cannot be
+    # had it stays nan rather than silently becoming the counts -- which is the
+    # biased answer this exists to avoid.
     try:
         gamma, gamma_underflow = posterior(best.model, data)
         posterior_pops = np.asarray(gamma.mean(axis=0), dtype=np.float64)
         if decoder == "viterbi":
             n_underflow = gamma_underflow
-    except Exception as exc:  # pragma: no cover - numba-only backend
+    except Exception as exc:  # pragma: no cover - defensive
         logger.info("H2MM posterior unavailable (%s: %s)", type(exc).__name__, exc)
         posterior_pops = np.full(best.model.n_states, np.nan, dtype=np.float64)
 

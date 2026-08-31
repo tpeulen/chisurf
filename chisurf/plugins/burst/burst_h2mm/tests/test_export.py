@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import export as X
-from chisurf.plugins.burst.burst_h2mm.core import h2mm
+from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
     PhotonMeta,
     StreamDef,
@@ -84,8 +84,8 @@ def test_meta_aligns_with_streams():
 
 def test_build_tables_schema_and_lengths():
     data, meta = _dataset_via_tttrlib()
-    fit = h2mm.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-    path, _ = h2mm.viterbi(fit, data)
+    fit = engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
+    path, _ = engines.viterbi(fit, data)
     fret = np.array([0.15, 0.80])
 
     tables = X.build_tables(
@@ -115,8 +115,8 @@ def test_build_tables_schema_and_lengths():
 
 def test_ndx_hdf5_and_csv_roundtrip(tmp_path):
     data, meta = _dataset_via_tttrlib()
-    fit = h2mm.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-    path, _ = h2mm.viterbi(fit, data)
+    fit = engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
+    path, _ = engines.viterbi(fit, data)
     tables = X.build_tables(data, meta, path, np.array([0.15, 0.80]), base_time_s=1e-6)
 
     h5 = X.write_hdf5(tables.photons, tmp_path / "h2mm_photons.h5")

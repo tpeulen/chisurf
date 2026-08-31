@@ -1329,7 +1329,7 @@ def _grab_burst_export_table():
     from chisurf.core.datastore import column_names, column_values
     from chisurf.gui.widgets.chitable import ArraySource, ChiTableWidget
     from chisurf.plugins.burst.burst_h2mm.core import export as burst_export
-    from chisurf.plugins.burst.burst_h2mm.core import h2mm
+    from chisurf.plugins.burst.burst_h2mm.core import engines as h2mm_engines
     from chisurf.plugins.burst.burst_h2mm.core.photons import (
         StreamDef,
         bursts_from_dataframe,
@@ -1377,8 +1377,8 @@ def _grab_burst_export_table():
         min_photons=1,
         return_meta=True,
     )
-    fit = h2mm.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-    path, _ = h2mm.viterbi(fit, data)
+    fit = h2mm_engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
+    path, _ = h2mm_engines.viterbi(fit, data)
     tables = burst_export.build_tables(
         data, meta, path, np.array([0.25, 0.75]),
         base_time_s=1e-6, micro_time_ns=0.032,
