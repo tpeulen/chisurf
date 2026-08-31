@@ -32,6 +32,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    global_analysis
+   factor_graphs
    maximum_entropy
    parameter_uncertainty
 

@@ -309,7 +309,8 @@ Unlinked, the fit is six independent 2-parameter problems that each draw
 essentially independent samples. Linked, it is one 7-parameter problem in which
 $a$ is strongly correlated with every dataset's $c$ — and a conditional move can
 only shift $a$ a little before the $c$'s object. The factor graph reports the
-right quantity: number of components, separator, treewidth.
+right quantity: number of components, separator, treewidth — see
+{ref}`concept-factor-graphs` for how that structure is built and read.
 
 ### Collapsing: integrate the private parameters out
 

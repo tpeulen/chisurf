@@ -62,6 +62,14 @@ parameter vector and evaluates to its **master**'s value. A chain of links
 resolves to the master at its head; a cycle is refused, because it has no
 value.
 
+Internally the linked fit is not a dense parameter vector but an explicit
+**factor graph**: the posterior above factorises into one likelihood factor per
+dataset over the parameters that dataset's model actually reads, plus one factor
+per prior ({cite}`kschischang2001`). That representation is what lets ChiSurf
+recompute only the models a change touches, name the parameters the datasets
+share, and state whether the fit couples them at all — see
+{ref}`concept-factor-graphs`.
+
 ### Uncertainty
 
 The shared parameter's covariance comes from the *joint* Jacobian. For a
@@ -128,7 +136,10 @@ you know the mechanism that produces it.
 ## Reading the result
 
 - **The free-parameter count must drop.** If it did not, the link did not take
-  effect and the numbers mean nothing.
+  effect and the numbers mean nothing. The
+  {ref}`structure report <concept-factor-graphs>` says the same thing more
+  sharply: a "global" fit whose datasets fall into more than one connected
+  component is sharing nothing.
 - **Re-run every fit.** A link changes the objective of *all* the measurements
   it touches, so results computed before it are stale.
 - **A small rise in $\chi^2_r$ is expected** — it is the price of the
@@ -145,6 +156,8 @@ you know the mechanism that produces it.
 
 The linking scheme is a graph: parameters are nodes, links are directed edges,
 and the connected components are the quantities the analysis actually estimates.
+That is the same structure {ref}`the factor graph <concept-factor-graphs>`
+exposes numerically — the picture and the report are two views of one object.
 ChiSurf's **Global View** draws exactly that graph and lets it be edited — see
 the [guide](../guides/60_global_analysis.md). The same information appears as a
 table, and both are views of one live state: a link made in either is a link in
@@ -156,7 +169,9 @@ For the posterior's structure — which parameters the data actually constrains
 
 ## See also
 
-- Concepts: {ref}`concept-parameter-uncertainty` (what the joint interval
+- Concepts: {ref}`concept-factor-graphs` (how ChiSurf represents a linked fit,
+  and the structure report that says what it shares) ·
+  {ref}`concept-parameter-uncertainty` (what the joint interval
   means) · {ref}`concept-photon-by-photon-kinetics` (fitting the mechanism
   rather than the observables) · {ref}`concept-mfd-fitting`.
 - Guide: [global analysis](../guides/60_global_analysis.md) — the Global View,

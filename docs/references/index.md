@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*218 works.*
+*221 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -1019,6 +1019,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 ## Statistics, sampling and convergence
 
+(arnborg1987)=
+
+**[Arnborg et al. (1987)](https://doi.org/10.1137/0608024)** — S. Arnborg, D. G. Corneil, A. Proskurowski. *Complexity of finding embeddings in a k-tree*. SIAM Journal on Algebraic and Discrete Methods **8**, 277-284. (1987).  
+*Finding the optimal elimination order is NP-hard, which is why a greedy heuristic is the right implementation choice.*
+
 (beechem1992)=
 
 **[Beechem (1992)](https://doi.org/10.1016/0076-6879(92)10004-W)** — J. M. Beechem. *Global analysis of biochemical and biophysical data*. Methods in Enzymology **210**, 37-54. (1992).  
@@ -1061,6 +1066,16 @@ and the citation renders as a link to the paper. The source of truth is
 (karamanis2021)=
 
 **[Karamanis & Beutler (2021)](https://doi.org/10.1007/s11222-021-10038-2)** — M. Karamanis, F. Beutler. *Ensemble slice sampling*. Statistics and Computing **31**, 61. (2021).
+
+(kschischang2001)=
+
+**[Kschischang et al. (2001)](https://doi.org/10.1109/18.910572)** — F. R. Kschischang, B. J. Frey, H.-A. Loeliger. *Factor graphs and the sum-product algorithm*. IEEE Transactions on Information Theory **47**, 498-519. (2001).  
+*The factor graph itself - variable nodes, factor nodes, and the factorisation they make explicit.*
+
+(lauritzen1988)=
+
+**[Lauritzen & Spiegelhalter (1988)](https://doi.org/10.1111/j.2517-6161.1988.tb01721.x)** — S. L. Lauritzen, D. J. Spiegelhalter. *Local computations with probabilities on graphical structures and their application to expert systems*. Journal of the Royal Statistical Society Series B **50**, 157-194. (1988).  
+*Moralisation, triangulation and the junction tree - the construction that turns a factorisation into cliques and separators.*
 
 (mcinnes2018)=
 

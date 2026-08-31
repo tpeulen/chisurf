@@ -2376,3 +2376,38 @@ beechem1992:
   doi: 10.1016/0076-6879(92)10004-W
   note: The method review - what to link, what not to, and how to test whether a link is justified.
   topics: [statistics]
+
+# ── Graphical models and factor structure ───────────────────────────
+
+kschischang2001:
+  authors: F. R. Kschischang, B. J. Frey, H.-A. Loeliger
+  title: Factor graphs and the sum-product algorithm
+  journal: IEEE Transactions on Information Theory
+  year: 2001
+  volume: 47
+  pages: 498-519
+  doi: 10.1109/18.910572
+  note: The factor graph itself - variable nodes, factor nodes, and the factorisation they make explicit.
+  topics: [statistics]
+
+lauritzen1988:
+  authors: S. L. Lauritzen, D. J. Spiegelhalter
+  title: Local computations with probabilities on graphical structures and their application to expert systems
+  journal: Journal of the Royal Statistical Society Series B
+  year: 1988
+  volume: 50
+  pages: 157-194
+  doi: 10.1111/j.2517-6161.1988.tb01721.x
+  note: Moralisation, triangulation and the junction tree - the construction that turns a factorisation into cliques and separators.
+  topics: [statistics]
+
+arnborg1987:
+  authors: S. Arnborg, D. G. Corneil, A. Proskurowski
+  title: Complexity of finding embeddings in a k-tree
+  journal: SIAM Journal on Algebraic and Discrete Methods
+  year: 1987
+  volume: 8
+  pages: 277-284
+  doi: 10.1137/0608024
+  note: Finding the optimal elimination order is NP-hard, which is why a greedy heuristic is the right implementation choice.
+  topics: [statistics]
