@@ -714,11 +714,14 @@ def solve_lifetime_mem(
                     "nuisance_optimized": False,
                 }
                 return result
-        except Exception:
-            # Not a fallback to a second implementation -- there is none. The
-            # path below builds the design matrix and calls the same compiled
-            # optimiser; it is the general route, this was the one-shot one.
-            pass
+        except Exception as exc:
+            # There is no second implementation to retry on, so a failure of the
+            # engine is the answer. Falling through to the general route would
+            # report success for a run whose one-shot solve had failed, which is
+            # the class of silent degradation this plugin no longer has.
+            raise RuntimeError(
+                "the MEM engine failed on the one-shot lifetime solve"
+            ) from exc
 
         result = _eval_mem_lifetime_single(ts0, float(background), irf_bg0)
         result["nuisance_optimized"] = False

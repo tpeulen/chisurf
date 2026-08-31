@@ -1,6 +1,20 @@
 # Update Log
 
 ## 2026-08-31
+* **No fallback paths left: tttrlib or an error.** Closing the sweep on the
+  user's rule. Three silent degradations removed:
+  - `maxent_decay/core/solver.py`: the one-shot `solve_tcspc_mem_lifetime` call
+    was wrapped in `except Exception: pass`, so an engine failure fell through
+    to the general route and **reported success**. It now raises.
+  - `burst_h2mm/core/engines.py`: the `surrogate_tttrlib` import was guarded by
+    `except Exception: _tttrlib_surrogate = None`. Unguarded now.
+  - same file: a **JSON** surrogate — the compiled estimator's own format — was
+    silently handed to the scikit-learn path when `HmmSurrogate` was absent,
+    answering with a different estimator than the surrogate was trained for. It
+    raises instead. The pickled-vs-JSON split stays: that is a *format*
+    dispatch, not a fallback.
+  What remains around tttrlib is GUI error handling — a file that will not open,
+  a header that cannot be detected — which is not compute degrading.
 * **MaxEnt's inner MEM optimiser goes to tttrlib too (`T-20260831-03`).** The
   last real duplicate from the sweep. `tttrlib.tcspc_run_mem` takes the same
   `(H, g0, m, const_chi2, nu, max_iter, tol, min_prob)` the in-tree `_run_mem`
