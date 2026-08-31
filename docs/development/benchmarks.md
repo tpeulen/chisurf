@@ -242,10 +242,11 @@ count:
 * **`min_samples`**, the neighbour rank for the core distance, sets how loose the
   pruning bound is. Larger core distances prune less, so a more conservative
   clustering is also a slower one.
-* **Whether the compiled kernel is present.** The in-tree numba fallback is
-  `O(n²)` Prim and single-threaded by design (a `parallel=True` numba kernel
-  would launch numba's thread pool and lock `NUMBA_NUM_THREADS` for the
-  process). It is a row of the table so the gap is visible rather than assumed.
+* **Whether the compiled kernel is present** — it always is now. The in-tree
+  `O(n²)` Prim fallback that used to stand behind it was deleted on 2026-08-31
+  (bit-identical results, 700–3000× slower on real photons), so a photon library
+  without the kernel raises instead of degrading. Its rows are kept below as a
+  record of the gap that justified requiring it; they cannot be reproduced.
 
 The cluster count is next to every time, because a clustering that disagrees is
 not a comparison. Note the convention difference: `min_samples` counts the point
@@ -263,29 +264,29 @@ are inflated by roughly a factor of three across every row alike.
 | n=5,000 d=2 | chisurf | 0.019 | 20 |
 | n=5,000 d=2 | hdbscan | 0.138 | 20 |
 | n=5,000 d=2 | scikit-learn | 0.138 | 20 |
-| n=5,000 d=2 | chisurf (no compiled kernel) | 0.152 | 20 |
+| n=5,000 d=2 | chisurf (in-tree fallback, deleted 2026-08-31) | 0.152 | 20 |
 | n=20,000 d=2 | chisurf | 0.097 | 82 |
 | n=20,000 d=2 | hdbscan | 25.445 | 83 |
 | n=20,000 d=2 | scikit-learn | 4.763 | 84 |
-| n=20,000 d=2 | chisurf (no compiled kernel) | 5.979 | 82 |
+| n=20,000 d=2 | chisurf (in-tree fallback, deleted 2026-08-31) | 5.979 | 82 |
 | n=100,000 d=2 | chisurf | 1.018 | 1186 |
 | n=100,000 d=2 | hdbscan | 2.772 | 1186 |
 | n=100,000 d=2 | scikit-learn | 73.998 | 1188 |
 | n=20,000 d=3 | chisurf | 0.061 | 60 |
 | n=20,000 d=3 | hdbscan | 0.731 | 57 |
 | n=20,000 d=3 | scikit-learn | 2.360 | 58 |
-| n=20,000 d=3 | chisurf (no compiled kernel) | 3.120 | 60 |
+| n=20,000 d=3 | chisurf (in-tree fallback, deleted 2026-08-31) | 3.120 | 60 |
 | n=100,000 d=3 | chisurf | 0.634 | 275 |
 | n=100,000 d=3 | hdbscan | 6.379 | 271 |
 | n=100,000 d=3 | scikit-learn | 83.684 | 274 |
 | n=20,000 d=8 | chisurf | 1.656 | 7 |
 | n=20,000 d=8 | hdbscan | 5.056 | 8 |
 | n=20,000 d=8 | scikit-learn | 8.942 | 7 |
-| n=20,000 d=8 | chisurf (no compiled kernel) | 8.475 | 7 |
+| n=20,000 d=8 | chisurf (in-tree fallback, deleted 2026-08-31) | 8.475 | 7 |
 | n=20,000 d=16 | chisurf | 8.644 | 4 |
 | n=20,000 d=16 | hdbscan | 8.679 | 4 |
 | n=20,000 d=16 | scikit-learn | 25.952 | 4 |
-| n=20,000 d=16 | chisurf (no compiled kernel) | 24.010 | 4 |
+| n=20,000 d=16 | chisurf (in-tree fallback, deleted 2026-08-31) | 24.010 | 4 |
 
 Read three things out of it:
 
@@ -304,9 +305,11 @@ Read three things out of it:
    moving the candidate comparison out of squared-distance space. That removed a
    square root per candidate from the inner loop and, incidentally, fixed a
    tie-break bug; see the [OKF concept](../../okf/subsystems/machine-learning.md).
-3. **The compiled kernel is worth 3× to 60×** over the in-tree fallback, and the
-   fallback is what runs when the photon library is not importable. Both produce
-   identical labels; only the time differs.
+3. **The compiled kernel was worth 3× to 60×** over the in-tree fallback, which
+   produced identical labels and only cost time. That is why the fallback is
+   gone rather than kept: a second implementation that is never exercised is one
+   nobody would notice going wrong. A photon library without the kernel now
+   raises and names what to rebuild.
 
 ## Ensemble samplers
 

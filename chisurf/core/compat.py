@@ -5,9 +5,9 @@ NumPy 2 removed a batch of long-standing *aliases* — ``np.trapz`` became
 ``np.trapezoid``, ``np.bool8`` became ``np.bool_``, and so on. Every one of them
 raises ``AttributeError`` at the call site, usually deep inside a computation and
 often inside a ``try``/``except`` that turns it into a silent wrong answer. Three
-such call sites in this tree (the Förster overlap integral, the phasor transform
-and the light-path spectral propagation) were dead under NumPy 2 before this
-module existed.
+such call sites in this tree (the Förster overlap integral, the fractal-dimension
+transfer efficiency and the light-path spectral propagation) were dead under
+NumPy 2 before this module existed.
 
 Rewriting every call site is the wrong fix twice over: it does not help the code
 in dependencies and submodules, and it pins the tree to one NumPy. So the aliases

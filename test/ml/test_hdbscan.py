@@ -4,11 +4,13 @@ Three things are being proved here, and they are not the same thing:
 
 1. **The clustering is scikit-learn's.** Labels and membership probabilities
    match, exactly, on data whose mutual-reachability weights are generic.
-2. **The answer does not depend on which kernel ran.** The compiled k-d-tree
-   Borůvka in the photon library and the in-tree Prim fallback must produce the
-   *same dendrogram*, bit for bit — otherwise a clustering silently changes when
-   that library is or is not importable. This is what the total edge order and
-   the disabled floating-point contraction in the kernel are for.
+2. **The minimum spanning tree is a minimum spanning tree, and a reproducible
+   one.** Steps 1 and 2 are the photon library's compiled kernels and there is
+   no second copy to compare against, so they are checked against arithmetic
+   the method itself supplies: an explicit mutual-reachability distance matrix
+   and SciPy's own MST. Reproducibility is checked where it is hardest — a
+   lattice, where nearly every weight ties and a weight-only ordering would
+   leave the tree undetermined.
 3. **Degenerate input is answered, not crashed on.** Fewer points than
    ``min_cluster_size``, rows with a NaN, an all-identical column.
 
@@ -27,14 +29,27 @@ import pytest
 
 from chisurf.core.ml.cluster import HDBSCAN
 from chisurf.core.ml.cluster._hdbscan import (
-    _compiled_kernel,
-    _core_distances_bruteforce,
-    _prim_mst,
     core_distances,
     mutual_reachability_mst,
     single_linkage_tree,
     tree_to_labels,
 )
+
+
+def _mutual_reachability_matrix(X, min_samples, alpha=1.0):
+    """The dense mutual-reachability distance matrix, written out by hand.
+
+    Deliberately naive and independent of everything under test: a full
+    pairwise distance matrix, the core distance read off its sorted rows, and
+    ``max(core_i, core_j, d_ij / alpha)``. It is what the kernel's k-d tree and
+    Boruvka are an efficient way of not building.
+    """
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    d = np.sqrt(((X[:, None, :] - X[None, :, :]) ** 2).sum(-1))
+    k = max(1, min(int(min_samples), n))
+    core = np.sort(d, axis=1)[:, k - 1]
+    return np.maximum(np.maximum(core[:, None], core[None, :]), d / alpha), core
 
 
 def _blobs(n_features=2, seed=7, sizes=(200, 180, 120), n_noise=40):
@@ -193,21 +208,44 @@ def test_core_distances_match_sklearn():
         )
 
 
-def test_core_distances_agree_between_kernels():
-    """Compiled and fallback core distances are *bit*-identical.
+def test_core_distances_are_the_kth_row_of_the_distance_matrix():
+    """The k-d tree answers what the definition answers, to the last place.
 
-    The tolerance the test above allows scikit-learn is not allowed here: this
-    is the same algorithm on the same data, and the last place is what decides
-    the ties the clustering is built on. If these two ever drift apart, a
-    clustering changes depending on whether the compiled kernel was importable.
+    Independent of the kernel: a full pairwise distance matrix, sorted, column
+    ``k - 1``. Equality is demanded exactly rather than to a tolerance, because
+    the last place is what decides the ties the clustering is built on.
     """
-    if _compiled_kernel() is None:
-        pytest.skip("the compiled clustering kernel is not available")
     X = _blobs(3)
     for min_samples in (1, 5, 25):
-        np.testing.assert_array_equal(
-            core_distances(X, min_samples), _core_distances_bruteforce(X, min_samples)
+        _, expected = _mutual_reachability_matrix(X, min_samples)
+        np.testing.assert_allclose(
+            core_distances(X, min_samples), expected, rtol=0.0, atol=1e-12
         )
+
+
+def test_a_missing_kernel_raises_and_names_what_to_rebuild():
+    """No silent degradation: without the compiled kernel HDBSCAN stops.
+
+    The in-tree Prim/brute-force fallback is gone, so a photon library that
+    predates the kernel must raise rather than quietly take a slower — and
+    possibly different — path.
+    """
+    import tttrlib
+
+    from chisurf.core.ml.cluster import _hdbscan
+
+    for missing in ("core_distances", "mutual_reachability_mst"):
+        saved = getattr(tttrlib, missing)
+        cache = list(_hdbscan._KERNEL_CACHE)
+        _hdbscan._KERNEL_CACHE.clear()
+        try:
+            delattr(tttrlib, missing)
+            with pytest.raises(RuntimeError, match="rebuild"):
+                _hdbscan.core_distances(_blobs(2, sizes=(10,), n_noise=0), 3)
+        finally:
+            setattr(tttrlib, missing, saved)
+            _hdbscan._KERNEL_CACHE.clear()
+            _hdbscan._KERNEL_CACHE.extend(cache)
 
 
 def test_max_cluster_size_is_respected():
@@ -245,41 +283,52 @@ def test_recovers_known_blobs():
 
 
 # ---------------------------------------------------------------------------
-# The two kernels must not disagree
+# The minimum spanning tree is a minimum spanning tree
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("n_features", [2, 3, 7])
-def test_compiled_and_fallback_kernels_agree(n_features):
-    """Borůvka (compiled) and Prim (in-tree) give the same dendrogram, bit for bit.
+def test_mst_matches_scipy_on_the_explicit_graph(n_features):
+    """The kernel's tree weighs exactly what SciPy's MST of the same graph weighs.
 
-    Skipped when the compiled kernel is not importable — in which case there is
-    only one path and nothing to compare.
+    Every minimum spanning tree of a graph carries the same multiset of edge
+    weights, so this survives the tie-break: if the sorted weights agree, the
+    core distances, the mutual-reachability inflation *and* the minimality all
+    agree, and only the choice among equals can still differ. The graph here is
+    built by hand from a dense distance matrix — nothing the kernel produced.
     """
-    if _compiled_kernel() is None:
-        pytest.skip("the compiled clustering kernel is not available")
+    scipy_sparse = pytest.importorskip("scipy.sparse.csgraph")
 
     X = _blobs(n_features, seed=3)
     min_samples = 5
+    reach, _ = _mutual_reachability_matrix(X, min_samples)
+    expected = scipy_sparse.minimum_spanning_tree(reach).toarray()
+    expected_weights = np.sort(expected[expected > 0])
 
-    compiled_core = core_distances(X, min_samples)
-    fallback_core = _core_distances_bruteforce(X, min_samples)
-    np.testing.assert_array_equal(compiled_core, fallback_core)
-
-    compiled = mutual_reachability_mst(X, min_samples)
-    sources, targets, weights = _prim_mst(X, fallback_core, 1.0)
-    fallback = np.column_stack(
-        (sources.astype(float), targets.astype(float), weights)
+    mine = mutual_reachability_mst(X, min_samples)
+    np.testing.assert_allclose(
+        np.sort(mine[:, 2]), expected_weights, rtol=1e-12, atol=1e-12
     )
 
-    left = single_linkage_tree(compiled)
-    right = single_linkage_tree(fallback)
-    for field in left.dtype.names:
-        np.testing.assert_array_equal(left[field], right[field])
 
-    labels_left = tree_to_labels(left, 15)[0]
-    labels_right = tree_to_labels(right, 15)[0]
-    np.testing.assert_array_equal(labels_left, labels_right)
+@pytest.mark.parametrize("alpha", [0.5, 1.0, 2.0])
+def test_alpha_rescales_the_plain_distance_only(alpha):
+    """``alpha`` is not decoration: it changes the tree, the way it says it does.
+
+    A setting that is passed through but ignored is invisible to a parity test,
+    so it is pinned against the definition (``d / alpha`` under the two core
+    distances) rather than against a stored number.
+    """
+    scipy_sparse = pytest.importorskip("scipy.sparse.csgraph")
+
+    X = _blobs(2, seed=11, sizes=(80, 70), n_noise=15)
+    reach, _ = _mutual_reachability_matrix(X, 5, alpha)
+    expected = scipy_sparse.minimum_spanning_tree(reach).toarray()
+
+    mine = mutual_reachability_mst(X, 5, alpha)
+    np.testing.assert_allclose(
+        np.sort(mine[:, 2]), np.sort(expected[expected > 0]), rtol=1e-12, atol=1e-12
+    )
 
 
 def test_mst_is_a_spanning_tree():
@@ -309,7 +358,8 @@ def test_tied_weights_are_broken_deterministically():
 
     On a regular lattice the mutual-reachability graph is almost entirely tied,
     which is the case where a weight-only ordering leaves the minimum spanning
-    tree undetermined. Two runs, and the two kernels, must still agree.
+    tree undetermined. Two runs must still agree, and the tree must still be
+    minimal.
     """
     grid = np.stack(
         np.meshgrid(np.arange(12.0), np.arange(12.0)), axis=-1
@@ -322,12 +372,13 @@ def test_tied_weights_are_broken_deterministically():
     n_tied = mst.shape[0] - np.unique(mst[:, 2]).size
     assert n_tied > mst.shape[0] // 2, "the fixture is supposed to be tie-heavy"
 
-    core = core_distances(grid, 5)
-    sources, targets, weights = _prim_mst(np.ascontiguousarray(grid), core, 1.0)
-    prim = np.column_stack((sources.astype(float), targets.astype(float), weights))
-    left, right = single_linkage_tree(mst), single_linkage_tree(prim)
-    for field in left.dtype.names:
-        np.testing.assert_array_equal(left[field], right[field])
+    # Still minimal, tie-heavy or not: the same total weight SciPy finds.
+    scipy_sparse = pytest.importorskip("scipy.sparse.csgraph")
+    reach, _ = _mutual_reachability_matrix(grid, 5)
+    expected = scipy_sparse.minimum_spanning_tree(reach).toarray()
+    np.testing.assert_allclose(
+        mst[:, 2].sum(), expected[expected > 0].sum(), rtol=1e-12
+    )
 
 
 # ---------------------------------------------------------------------------

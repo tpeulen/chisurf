@@ -535,13 +535,6 @@ Sub‑sections:
   - **`factor`**, **`epsfcn`** – step‑size and finite‑difference parameters
   - **`full_output`** – whether to keep full optimizer diagnostics
 
-- **`mem`** (maximum entropy regularization; `math.optimization.mem`)  
-  Controls MEM optimizer configuration:
-  - **`lower_bound`**, **`upper_bound`** – bounds for the solution
-  - **`factr`** – convergence factor for L‑BFGS or similar routines
-  - **`maxfun`**, **`maxiter`** – iteration / function‑evaluation limits
-  - **`reg_scale`** – regularization strength scaling.
-
 - **`sampling`** (MCMC / error‑estimation sampling)  
   Used by `FittingControllerWidget.onErrorEstimate` and
   `chisurf.core.fitting.fit.sample_fit`:

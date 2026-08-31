@@ -4780,9 +4780,14 @@ restructure finished **2026-08-15** and its PRD mentions and the broken
 `e7f9a3835`). The fret-core PRD mentions and the stale trajectory/converter
 lines remain free wins.
 
-## lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
+## ✅ FIXED — lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
 
-**Found 2026-08-14 (T-20260814-05).** Deterministic failure (3/3 runs) in
+**Found 2026-08-14 (T-20260814-05). Fixed by 2026-08-23** — the npcs edit the
+entry blamed landed, and the full lumis + games suite runs green (434 passed,
+3 skipped) with the hitch-step test among them. Kept as a FIXED stub so a
+reader can tell a healed failure from one nobody filed.
+
+**Original text.** Deterministic failure (3/3 runs) in
 `chisurf/plugins/misc/games/lumis_quest/test/test_npcs.py`. The cause is an
 **uncommitted in-flight edit to `api/npcs.py`** (working-tree diff of
 -125/+59 lines against HEAD by a peer session, still evolving at time of
@@ -4902,6 +4907,7 @@ has no equivalent pan/rubber-band logic at all, so this is specific to the
 WGPU backend, which is the one under active migration
 ([chiplot](../subsystems/chiplot.md)).
 
+
 # chimol: three things a documentation grab walked into (2026-08-31)
 
 Found while making `docs/guides/make_screenshots.py` regenerate the figures for
@@ -5017,36 +5023,62 @@ follow-up was needed in the end:
 `simulate_bursts`). The whole H2MM + burst_gs suite went from 535 s to 138 s,
 which is the same slow EM leaving the tests.
 
-# Candidates for further tttrlib delegation — surveyed, NOT verified (2026-08-31)
+# Further tttrlib delegation — the five candidates, settled (2026-08-31)
 
-ChiSurf references **101 of tttrlib 0.27's 608 exports**. After deleting the
-five confirmed duplicates (H2MM engine, 2CDE, BVA, the MEM optimiser, the
-surrogate feature extractor), these compute entry points are **unused** and sit
-next to an in-tree module that may implement the same thing.
+The table below was published earlier the same day as **candidates, not
+findings**: five unused tttrlib entry points sitting next to an in-tree module
+that *might* implement the same thing. All five have now been settled by
+importing and A/B-ing on real data. Three were false candidates — the symbol
+name matched a subsystem and computed something else — which is exactly the
+failure mode the original note warned about.
 
-**Each is a candidate, not a finding.** Nothing below has been A/B'd — the name
-matching a subsystem is not evidence that it computes the same quantity, and
-this session already produced one false finding from exactly that shortcut
-(`OptsCluster` was mislabelled as k-means in an earlier tracker; it is 2-D
-Gaussian peak fitting). Verify by *importing and comparing on real data* before
-deleting anything.
-
-| tttrlib symbol | in-tree neighbour | size |
+| tttrlib symbol | what it actually computes | verdict |
 |---|---|---|
-| `BurstML`, `BurstMLFitResult` | `core/fluorescence/mle/` | 7 files, 1205 lines |
-| `BurstFeatureExtractor`, `BurstFeature` | `core/fluorescence/burst/` | 18 files, 5939 lines |
-| `DecayPhasor`, `StreamingPhasor` | `core/fluorescence/imaging/` | 13 files, 6965 lines |
-| `maxent_invert` | `core/math/` | 20 files, 6887 lines |
-| `OptsCluster`, `ResultsCluster` | `core/ml/cluster/` | 3 files, 1470 lines |
+| `BurstML`, `BurstMLFitResult` | FRET_burstML (Hoffmann *et al.*): a **joint diffusion + kinetics + photon-counting** likelihood over burst photon sequences, 5·n parameters (`n0`, `tau_diff`, `k`, `f`, `E`, `bkg`), radial coordinate discretised and eigendecomposed per parameter set. | **false candidate.** `core/fluorescence/mle/` is a typed facade over `fit2x` (`DecayFit2`/`DecayFitProblem`) and carries no algorithm of its own; the nearest in-tree relative of `BurstML` is `burst/gopich_szabo.py`, which has no diffusion term. Nothing to delete — this is a *missing feature*, not a duplicate. |
+| `BurstFeatureExtractor`, `BurstFeature` | Per burst `[start, stop, size, duration (s), rate (Hz)]`, per-channel photon counts, and uncorrected `E = A/(D+A)`. | **false candidate, but verified numerically.** On 293 bursts of `BH_SPC132.spc` it reproduces ChiSurf's `.bur` arithmetic exactly (size max\|Δ\| = 0, duration 1.8e-15 ms after the s→ms conversion). It is a strict *subset* — no per-detector first/last photon, no per-detector duration or mean macro/micro time, no per-window count rates, no corrected E/S (γ/α/β/δ) — and it only reads a `tttrlib.BurstFilter`, which ChiSurf never has: its boundaries come from eight searches, several of them in-tree (BOCPD, CUSUM, Kalman). Delegating five of ~40 columns would add a conversion path without removing an algorithm. |
+| `DecayPhasor`, `StreamingPhasor` | Sine/cosine moments of a decay, normalised by its integral, with IRF calibration. | **duplicate — deleted.** The imaging phasor already delegated (`CLSMImage.get_phasor`) and `StreamingPhasor` was already live in the acquisition pipeline; the duplicate was the unreachable `core/fluorescence/tcspc/phasor.py`. See [FLIM and the phasor approach](imaging-flim-phasor-theory.md) for the measurement. |
+| `maxent_invert` | Skilling–Bryan MEM: minimise `‖Ax − b‖² − ν²·S(x)` by an active-set bound-constrained QP inside a Newton outer iteration. | **duplicate — deleted.** `core/math/optimization/mem.py::maxent` had the same signature, no callers, and the **wrong sign** on the entropy gradient: it returned `chi2` as the objective but `grad_chi2 − ν²(1 + ln x)`, which minimises entropy instead of maximising it. On a 3-peak/30-node inversion its objective is worse at every ν, and at ν = 30 it drives S to 5.5e-6 (every component on the 1e-8 floor) where the compiled solve holds S = −87. tttrlib's own registry entry had already recorded `mem.py` as "not equivalent … which is why that was rejected as a reference". |
+| `OptsCluster`, `ResultsCluster` | **Single-molecule localisation**: 2-D Gaussian PSF fitting (`fit2DGauss`, `maxNPeaks`, `elliptical_circular`), whose results carry `peak_x/y`, `sigma_x/y`, `background`, `chi2`, `imageID`, `pixelID`. | **false candidate**, as the earlier tracker already suspected. Nothing to do with `core/ml/cluster/`. |
+
+Also settled while surveying, and *not* from the table: `core/ml/cluster/_hdbscan.py`
+carried an in-tree `O(n²·d)` brute-force core distance and an `O(n²)` Prim MST
+behind a `hasattr` probe on `tttrlib.mutual_reachability_mst`. They agreed
+**bit for bit** (max\|Δ\| = 0 in core distance, in every MST edge weight and in the
+edge set) on 500 and 2000 real photons from `BH_SPC132.spc` at `min_samples`
+3/5/10, and were 700–3000× slower. Deleted; a missing kernel now raises.
 
 Already delegating, listed so nobody re-checks: `DecayFitNExp` (tcspc models),
-`StreamingCorrelator` (fcs), plus everything in the `hasattr` probe list
-verified earlier today.
+`StreamingCorrelator` (fcs), `GopichSzabo`, `HMM`, `TwoCDE`, `BVA`,
+`tcspc_run_mem`, `HmmSurrogate`, `sim_occupation_fractions`, `SimEngine`,
+`richardson_lucy_2d`, `PdaBurstLikelihood`.
 
-**The method that worked**, and the two traps it caught, are worth reusing:
-run the A/B on a **real** file rather than synthetic data (the synthetic case
-put 2CDE into its sentinel branch and proved nothing), and run it **the way
-callers call it** (passing `[]` for BVA's micro-time ranges made a correct path
-look like it returned only zeros). Three of the five deletions were justified
-not by "identical" but by the in-tree copy being *wrong* — which only showed up
-under those conditions.
+**What is left from this survey.** Nothing to delete. One genuine *gap*:
+`BurstML` implements a method ChiSurf does not have at all — freely-diffusing
+burst analysis where diffusion through the focus, conformational kinetics and
+photon counting are fitted jointly, without binning. `burst_gs` fits kinetics on
+photon sequences but assumes the burst is the observation window and carries no
+diffusion term, so the two are complementary rather than competing. The entry
+point is `tttrlib.BurstML` (`set_burst_data(times_ms, colours, offsets)`, then
+`fit(init, lower, upper, n_states, n_colours, jmax, qmax, t_th, n_th)`);
+`examples/single_molecule/plot_burstml_two_state.py` upstream documents the
+5·n parameter layout and simulates data the likelihood's own forward model
+generated, which is the fixture a plugin would be built against.
+
+**The method that worked**, and the traps it caught, are worth reusing:
+
+- Run the A/B on a **real** file, not synthetic data (synthetic photons put 2CDE
+  into its sentinel branch and proved nothing).
+- Call it **the way callers call it** (passing `[]` for BVA's micro-time ranges
+  made a correct path look like it returned only zeros).
+- **Match the unit and index conventions before concluding anything.**
+  `DecayPhasor` takes frequency in *cycles per micro-time channel*, not per
+  nanosecond; passing the physical frequency makes it return `(≈0, ≈0)` and look
+  like a different quantity entirely. `BurstFeatureExtractor` reports duration in
+  seconds and rate in Hz where the `.bur` contract is ms and kHz. Both looked
+  like disagreements at first and were unit mismatches.
+- Report `max|Δ|`, never "they agree" — and when they differ, settle it against
+  an **independent third** calculation rather than against either side. The
+  MaxEnt verdict came from SciPy L-BFGS-B on the documented objective; the
+  phasor verdict from writing the definition out as a weighted sum; the MST
+  verdict from SciPy's `minimum_spanning_tree` over an explicit
+  mutual-reachability matrix.

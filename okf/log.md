@@ -37698,3 +37698,29 @@ side of the line.
   lead recorded in `okf/references/wikipedia-mining.md`: the remaining uncited
   concept pages, `live_streaming_analysis` first because its DOIs are already
   written down.
+
+- 2026-08-31 (tttrlib delegation, round 2) — **The five "further delegation"
+  candidates are settled; three were false, two were duplicates and both were
+  wrong.** [known-issues](references/known-issues.md) had published five unused
+  tttrlib entry points beside an in-tree module that *might* implement the same
+  thing, explicitly as candidates. Verified by importing and A/B-ing on real
+  data. `BurstML` is FRET_burstML — a joint diffusion + kinetics likelihood —
+  not the neighbour of `core/fluorescence/mle/`, which is a facade over `fit2x`
+  and carries no algorithm; `OptsCluster` is 2-D Gaussian localisation, not
+  clustering; `BurstFeatureExtractor` reproduces ChiSurf's `.bur` arithmetic
+  exactly (size max|Δ| = 0, duration 1.8e-15 ms on 293 real bursts) but is a
+  strict subset reading a `BurstFilter` ChiSurf never has. Deleted:
+  `core/math/optimization/mem.py` (`maxent` — no callers, and it subtracted the
+  entropy gradient, i.e. *minimised* entropy; at ν = 30 it pins every component
+  on the 1e-8 floor where `tttrlib.maxent_invert` holds S = −87) and
+  `core/fluorescence/tcspc/phasor.py` with its never-instantiated `PhasorWidget`
+  and `.ui` (`np.trapz` half-weights the end channels — 1e-4 off the definition
+  where `DecayPhasor` is 8e-17). Also deleted, found while surveying:
+  HDBSCAN's `_core_distances_bruteforce` / `_edge_less` / `_prim_mst` fallback,
+  bit-identical to `tttrlib.core_distances` / `mutual_reachability_mst` on real
+  photons and 700–3000× slower — the last `hasattr(tttrlib, …)` in the tree that
+  *degraded* rather than raising. The parity tests that compared the two kernels
+  are replaced by independent ones (SciPy's `minimum_spanning_tree` over an
+  explicit mutual-reachability matrix, the distance matrix's k-th column, an
+  `alpha`-actually-changes-the-answer check) plus a guard that a missing kernel
+  raises — verified to fail when the fallback is put back.

@@ -21,15 +21,21 @@ package is struck from every manifest, and a guardrail
 ([`test/test_no_retired_dependency_imports.py`](/../test/test_no_retired_dependency_imports.py))
 fails if it comes back. What is worth knowing before touching it:
 
-1. **The clustering answer must not depend on which kernel ran.** There are two
-   implementations of the mutual-reachability spanning tree — a compiled
-   k-d-tree Borůvka in the photon library and a numba Prim here — and they are
-   *bit-identical by construction*, not by coincidence. Two things enforce that
-   and both are easy to undo: the edge order is **total** (weight, then the
-   sorted endpoint pair) rather than by weight alone, and the compiled
-   translation unit is built with `-ffp-contract=off`. Remove either and the two
-   paths start returning different cluster counts on the same data, silently,
-   depending on whether the compiled kernel happened to be importable.
+1. **Steps 1 and 2 are the photon library's and are required.** There used to be
+   a second implementation of both here — an `O(n²·d)` brute-force core distance
+   and an `O(n²)` Prim spanning tree — selected by a `hasattr` probe. They were
+   *bit-identical by construction*, and that was verified on real photons
+   (max |Δ| = 0 in core distance, in every MST edge weight and in the edge set,
+   on 500 and 2000 photons of `BH_SPC132.spc` at `min_samples` 3/5/10) before
+   they were **deleted on 2026-08-31** for being 700–3000× slower and never
+   exercised. A missing kernel now raises and names what to rebuild. Two things
+   still make the answer reproducible and both are easy to undo: the edge order
+   is **total** (weight, then the sorted endpoint pair) rather than by weight
+   alone, and the compiled translation unit is built with `-ffp-contract=off`.
+   Removing either changes cluster counts silently. The guards are now
+   independent rather than parity: SciPy's `minimum_spanning_tree` over an
+   explicit mutual-reachability matrix, the distance matrix's k-th column, and a
+   check that `alpha` actually moves the tree.
 2. **Ties are the whole story in HDBSCAN.** A mutual-reachability weight is
    frequently a *core distance*, and one core distance is the weight of every
    edge it dominates, so hundreds of edges share a value and the minimum
@@ -72,8 +78,9 @@ fails if it comes back. What is worth knowing before touching it:
 6. **`parallel=True` is banned in this package.** A numba kernel with
    `parallel=True` launches numba's thread pool on first call, after which
    `NUMBA_NUM_THREADS` can no longer be set — and the settings bootstrap sets it
-   from a preference. The fallback kernels here are single-threaded on purpose;
-   the compiled path is where the threads are.
+   from a preference. The Python kernels that remain (the condensation and
+   labelling, steps 3 and 4) are single-threaded on purpose; the compiled path is
+   where the threads are.
 
 ## What is here
 
@@ -101,7 +108,7 @@ whichever clusters persist over the widest range.
    the standalone package excludes it, so its `min_samples=5` is this one's `6`.
 2. **Mutual-reachability MST** — edge weight `max(core_i, core_j, d(i, j))`, the
    distance inflated so sparse regions cannot be crossed cheaply. This is where
-   the time goes and where the two kernels live.
+   the time goes, and it is the photon library's Borůvka.
 3. **Condense** — a split that sheds fewer than `min_cluster_size` points is not
    a split, it is the parent losing noise.
 4. **Select** — excess of mass (keep a cluster when it is more stable than its

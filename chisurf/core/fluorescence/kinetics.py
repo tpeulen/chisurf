@@ -411,15 +411,16 @@ def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
     Sampling is delegated to the simulation library's kinetics, which evolves the
     same continuous-time Markov chain in C++ and accumulates the time spent in
     each state rather than sampling snapshots, so occupation times are exact and
-    the truncated final sojourn counts. Each window
-    is one immobile, non-emitting molecule started from the equilibrium
-    populations, which makes the rows independent draws — the scheme
-    when the installed engine predates the state log.
+    the truncated final sojourn counts. Each window is one immobile,
+    non-emitting molecule started from the equilibrium populations, which makes
+    the rows independent draws.
 
-    The two agree distribution-for-distribution; the engine is roughly an order
-    of magnitude faster once there is more than a handful of transitions per
-    window (measured 8x at 6 per window, 13x at 60, on a three-state scheme),
-    which is the regime where sampling is needed at all.
+    There is no in-tree sampler behind this: an engine that predates the state
+    log raises rather than falling back, because a second Markov chain that is
+    only ever run on old builds is one nobody would notice going wrong. The
+    engine is also roughly an order of magnitude faster than sampling the chain
+    in Python (measured 8x at 6 transitions per window, 13x at 60, on a
+    three-state scheme), which is the regime where sampling is needed at all.
 
     Parameters
     ----------

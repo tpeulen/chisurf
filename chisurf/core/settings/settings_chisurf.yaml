@@ -360,13 +360,6 @@ optimization:
     gtol: 0
     maxfev: 0
     xtol: 1.49012e-08
-  mem:
-    factr: 10
-    lower_bound: 1.0e-08
-    maxfun: 1500000
-    maxiter: 150000
-    reg_scale: 1
-    upper_bound: 10000000
   sampling:
     chi2max: 1000000000
     # blocked: per-block covariance proposal seeded from the curvature at the

@@ -2,7 +2,7 @@
 type: Reference
 title: FLIM and the phasor approach — theory mapped to chisurf
 description: Theory note on fluorescence-lifetime imaging (FLIM) and the phasor transform (universal semicircle, lever-rule fractions, calibration, FRET-by-phasor), mapped to the chisurf implementation.
-resource: chisurf/core/fluorescence/tcspc/phasor.py
+resource: chisurf/core/fluorescence/imaging/pixel_maps.py
 tags: [tcspc, flim, phasor, imaging, fret, clsm]
 timestamp: '2026-07-24T00:00:00Z'
 ---
@@ -51,14 +51,30 @@ $(g, s)$ are the normalized real/imaginary parts of the decay's Fourier componen
 brightness cancels, so the phasor encodes decay *shape*. The mapping is reciprocal:
 a phasor-space ROI back-projects to exact image pixels.
 
-**chisurf implementation** (`chisurf/core/fluorescence/tcspc/phasor.py`):
+**chisurf implementation** — the transform itself is the photon library's, and
+chisurf holds no second copy of it:
 
-- `phasor_giw(f, n, omega, times)` → $g$ via `np.trapz(f*cos(n*omega*t)) / np.trapz(f)`.
-- `phasor_siw(f, n, omega, times)` → $s$ (sine analogue).
-- `class Phasor` (`phasor_n`, `phasor_omega`, default 31.25 MHz) exposes
-  `phasor_giwD0/siwD0`, `…DA`, `…E` — donor-only, donor–acceptor, and
-  transfer-efficiency decays, i.e. FRET phasors built from `set_fd0_fda_et`.
-- Source comments reference "The phasor approach to fluorescence lifetime, p. 236".
+- `tttrlib.DecayPhasor.compute_phasor_bincounts(bincounts, frequency, …)` for a
+  decay histogram and `DecayPhasor.compute_phasor(micro_times, …, idxs)` for a
+  selection of photons. `frequency` is in **cycles per micro-time channel**, so
+  the physical $\omega = 2\pi f$ of the formula above becomes
+  `frequency = f · dt`, and harmonic $n$ is just `n · f`. Photon positions are
+  bin **indices**, i.e. left edges.
+- `tttrlib.StreamingPhasor` for a live stream (used by the acquisition pipeline),
+  `CLSMImage.get_phasor` per pixel, reached through
+  `chisurf/core/fluorescence/imaging/pixel_maps.py::phasor_maps` / `phasor_frames`.
+- IRF calibration (rotation + scaling onto the universal circle) is
+  `DecayPhasor.g(g_irf, s_irf, g_exp, s_exp)` and `DecayPhasor.s(...)`; a
+  degenerate `(0, 0)` IRF phasor raises rather than returning `nan`.
+
+An in-tree `phasor_giw` / `phasor_siw` / `class Phasor` existed in
+`core/fluorescence/tcspc/phasor.py` until 2026-08-31. It was unreachable — its
+only consumer, `PhasorWidget`, was itself never instantiated — and it integrated
+with `np.trapz` rather than summing, which half-weights the first and last
+channel. On 2048 channels of `EasyTau300/215-268 D0.dat` the compiled transform
+reproduces the definition to **8e-17** while the trapezoid form is off by
+**~1e-4** in $(g, s)$ at 1, 2 and 4 cycles per window. Deleted, along with the
+widget and its `.ui`.
 
 Per-pixel `g,s` maps and phasor-plot tooling live in
 `chisurf/plugins/microscopy/img_pixel_phasor/` (RPC surface: `phasor.describe`,

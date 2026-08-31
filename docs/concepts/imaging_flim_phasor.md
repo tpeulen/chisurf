@@ -184,11 +184,14 @@ fit the pixels that matter.
 
 - Guide: {doc}`/guides/24_scan_images` — building CLSM images from a TTTR stream and
   computing per-pixel intensity, lifetime, MLE, and phasor maps.
-- Phasor math: the two moments
-  {src}`chisurf/core/fluorescence/tcspc/phasor.py#phasor_giw` and
-  {src}`chisurf/core/fluorescence/tcspc/phasor.py#phasor_siw`, and the
-  calibration and unmixing on
-  {src}`chisurf/core/fluorescence/tcspc/phasor.py#Phasor`.
+- Phasor math: the two moments are computed by the photon library
+  (`tttrlib.DecayPhasor` for a decay histogram or a micro-time selection,
+  `tttrlib.StreamingPhasor` for a live stream, `CLSMImage.get_phasor` per
+  pixel), and reached through
+  {src}`chisurf/core/fluorescence/imaging/pixel_maps.py#phasor_maps`. IRF
+  calibration is `DecayPhasor.g`/`DecayPhasor.s`; the apparent lifetimes,
+  cursors and unmixing built on top of $(g, s)$ live in
+  {src}`chisurf/plugins/microscopy/img_pixel_phasor/analysis.py`.
 - Imaging plugins: `chisurf/plugins/microscopy/img_pixel_phasor/` (per-pixel
   $g,s$ maps, universal-circle ROI, apparent lifetime, cursor masks, unmixing),
   `img_pixel_micro_time/`, and `img_pixel_mle/` for per-pixel fitting; CLSM

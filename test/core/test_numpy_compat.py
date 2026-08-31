@@ -4,8 +4,8 @@ NumPy 2 removed a batch of aliases (``np.trapz``, ``np.bool8``, ``np.NaN``, …)
 Each removal raises ``AttributeError`` at the call site — often inside a
 ``try``/``except`` that turns it into a silent wrong answer rather than a crash.
 Three call sites in this tree were dead under NumPy 2 before the shim existed:
-the Förster overlap integral, the phasor transform and the light-path spectral
-propagation. These tests pin that the shim is applied on import and that those
+the Foerster overlap integral, a fractal-dimension transfer efficiency and the
+light-path spectral propagation. These tests pin that the shim is applied on import and that those
 three paths actually compute.
 """
 
@@ -72,18 +72,19 @@ def test_forster_overlap_integral_runs():
     assert overlap > 0 and 20.0 < r0 < 150.0
 
 
-def test_phasor_transform_runs():
-    """The phasor coordinates of a decay — the second dead call site."""
-    from chisurf.core.fluorescence.tcspc import phasor
+def test_dimensionality_transfer_efficiency_runs():
+    """Fractal-dimension FRET transfer efficiency — the second dead call site.
 
-    times = np.linspace(0.0, 40.0, 512)
-    decay = np.exp(-times / 4.0)
-    omega = 2.0 * np.pi * 0.02
-    g = phasor.phasor_giw(decay, 1, omega, times)
-    s = phasor.phasor_siw(decay, 1, omega, times)
-    assert np.isfinite(g) and np.isfinite(s)
-    # a single-exponential decay lies on the universal semicircle
-    assert abs((g - 0.5) ** 2 + s**2 - 0.25) < 1e-3
+    Was the phasor transform until that module was deleted (the photon library's
+    ``DecayPhasor`` computes the same coordinates, and to the definition rather
+    than to a trapezoid); this is the surviving ``np.trapz`` in the same package.
+    """
+    from chisurf.core.fluorescence.fret.dimensionality import transfer_efficiency
+
+    values = [transfer_efficiency(1.0, d) for d in (3, 2, 1)]
+    assert all(np.isfinite(v) and 0.0 < v < 1.0 for v in values)
+    # more directions to approach from -> more efficient transfer at C = C0
+    assert values[0] > values[1] > values[2]
 
 
 def test_lightpath_spectral_propagation_runs():

@@ -1,7 +1,6 @@
 import numpy as np
 
 import chisurf.core.math.linalg
-from .mem import maxent
 
 
 #leastsqbound = skf.math.optimize.leastsqbound.leastsqbound

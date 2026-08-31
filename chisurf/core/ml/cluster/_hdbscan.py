@@ -4,15 +4,19 @@ The algorithm is four steps, and only the first two cost anything:
 
 1. **Core distance** of every point: the distance to its ``min_samples``-th
    nearest neighbour. This is the local density estimate the whole method rests
-   on. Brute force is ``O(n² d)``; a k-d tree makes it ``O(n log n)``.
+   on. A k-d tree makes it ``O(n log n)``.
 2. **Minimum spanning tree** of the *mutual-reachability* graph, whose edge
    weight is ``max(core_i, core_j, d(i, j))`` — the distance inflated so that
-   sparse regions cannot be crossed cheaply. Prim's algorithm over the implicit
-   graph is ``O(n²)`` and allocates nothing; a k-d-tree Borůvka is ``O(n log n)``.
-   Both are available: :func:`mutual_reachability_mst` prefers the compiled
-   Borůvka kernel from the photon library when it is importable and falls back
-   to the in-tree Prim kernel otherwise, so the estimator works either way and
-   the numbers agree.
+   sparse regions cannot be crossed cheaply. A k-d-tree Borůvka is
+   ``O(n log n)``.
+
+Both are the photon library's compiled kernels and are required. An in-tree
+``O(n² d)`` brute force and an ``O(n²)`` Prim used to stand behind them as a
+fallback; they agreed **bit for bit** (max |Δ| = 0 in core distance, in every
+MST edge weight and in the edge set) on 500 and 2000 real photons from
+``BH_SPC132.spc`` at ``min_samples`` 3/5/10, and were 700–3000× slower. A
+fallback that is never taken is a second implementation nobody knows is
+broken, so they are gone and a missing kernel raises.
 3. **Condense** the single-linkage dendrogram: a split that sheds fewer than
    ``min_cluster_size`` points is not a split, it is the parent losing noise.
    What survives is a small tree of genuine clusters.
@@ -81,46 +85,35 @@ _NOISE = -1
 # ---------------------------------------------------------------------------
 
 
-# Deliberately not `parallel=True`. A parallel kernel launches numba's thread
-# pool the first time it runs, and `NUMBA_NUM_THREADS` can then no longer be
-# set — which the settings bootstrap does, from a preference. A library module
-# that may be imported at any point must not decide that for the process; the
-# fast path here is the compiled kernel anyway, and it is threaded.
-def _core_distances_bruteforce(X: np.ndarray, k: int) -> np.ndarray:
-    """Distance to the ``k``-th nearest neighbour of every row, brute force.
+_KERNEL_CACHE: list = []
 
-    The k smallest squared distances are kept in a sorted insertion buffer of
-    length ``k``. ``k`` is small (the neighbour rank, not the sample count), so
-    the insertion costs less than a partition would and nothing of size
-    ``n × n`` is ever allocated.
 
-    The distance is accumulated from coordinate differences rather than from
-    ``‖x‖² - 2x·y + ‖y‖²``. The expansion is faster — it is a matrix product —
-    but it loses about four significant digits on clustered data, and the ties
-    it then breaks differently are exactly the ties this algorithm decides
-    cluster membership on.
+def _kernel():
+    """Return the compiled clustering kernel, or raise saying what to rebuild.
+
+    The kernel lives in the photon library because the k-d tree it is built on
+    is wanted there too (nearest-neighbour work on burst feature spaces and
+    localisation tables). It is not optional: there is no second copy of these
+    two steps to fall back to.
     """
-    n_samples, n_features = X.shape
-    out = np.empty(n_samples, dtype=np.float64)
-    for i in range(n_samples):
-        best = np.full(k, np.inf)
-        worst = np.inf
-        for j in range(n_samples):
-            acc = 0.0
-            for f in range(n_features):
-                diff = X[i, f] - X[j, f]
-                acc += diff * diff
-                if acc >= worst:
-                    break
-            if acc < worst:
-                pos = k - 1
-                while pos > 0 and best[pos - 1] > acc:
-                    best[pos] = best[pos - 1]
-                    pos -= 1
-                best[pos] = acc
-                worst = best[k - 1]
-        out[i] = np.sqrt(best[k - 1])
-    return out
+    if _KERNEL_CACHE:
+        return _KERNEL_CACHE[0]
+    try:
+        import tttrlib
+    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
+        raise RuntimeError(
+            "HDBSCAN needs the compiled clustering kernel, which is provided by "
+            "tttrlib; tttrlib could not be imported"
+        ) from exc
+    for name in ("core_distances", "mutual_reachability_mst"):
+        if not hasattr(tttrlib, name):
+            raise RuntimeError(
+                f"tttrlib does not expose {name}; rebuild it (the compiled "
+                f"kernel carries the k-d-tree core distances and the Boruvka "
+                f"minimum spanning tree HDBSCAN is built on)"
+            )
+    _KERNEL_CACHE.append(tttrlib)
+    return tttrlib
 
 
 def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
@@ -143,10 +136,7 @@ def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
     X = np.ascontiguousarray(X, dtype=np.float64)
     n_samples = X.shape[0]
     k = max(1, min(int(min_samples), n_samples))
-    kernel = _compiled_kernel()
-    if kernel is not None:
-        return np.asarray(kernel.core_distances(X, k), dtype=np.float64)
-    return _core_distances_bruteforce(X, k)
+    return np.asarray(_kernel().core_distances(X, k), dtype=np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -154,100 +144,19 @@ def core_distances(X: np.ndarray, min_samples: int) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-# `ninf` is deliberately absent from the fast-math set: the running best is
-# seeded with `inf`, and a compiler allowed to assume finiteness turns the
-# first comparison of every round into whatever it likes.
-def _edge_less(w1: float, u1: int, v1: int, w2: float, u2: int, v2: int) -> bool:
-    """Total order on edges: by weight, then by the sorted endpoint pair.
-
-    Weight alone is not a total order here — a mutual-reachability weight is
-    frequently a *core distance*, and one core distance is the weight of every
-    edge it dominates, so hundreds of edges can share a value. Any minimum
-    spanning tree algorithm then has a choice, and Prim and Borůvka make
-    different ones, which propagates all the way to different cluster counts.
-    Ordering the endpoints as well makes the order total, and an MST under a
-    total edge order is unique: every algorithm returns the same tree.
-    """
-    if w1 != w2:
-        return w1 < w2
-    a1 = u1 if u1 < v1 else v1
-    b1 = v1 if u1 < v1 else u1
-    a2 = u2 if u2 < v2 else v2
-    b2 = v2 if u2 < v2 else u2
-    if a1 != a2:
-        return a1 < a2
-    return b1 < b2
-
-
-def _prim_mst(
-    X: np.ndarray, core: np.ndarray, alpha: float
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Prim's algorithm over the implicit mutual-reachability graph.
-
-    The graph is never built: each of the ``n - 1`` rounds recomputes the
-    distances from the node that just joined and keeps a running per-node best,
-    so the memory is ``O(n)`` and the arithmetic ``O(n² d)``.
-    """
-    n_samples, n_features = X.shape
-    sources = np.empty(n_samples - 1, dtype=np.int64)
-    targets = np.empty(n_samples - 1, dtype=np.int64)
-    weights = np.empty(n_samples - 1, dtype=np.float64)
-
-    in_tree = np.zeros(n_samples, dtype=np.uint8)
-    min_reach = np.full(n_samples, np.inf)
-    current_sources = np.zeros(n_samples, dtype=np.int64)
-
-    current = 0
-    for i in range(n_samples - 1):
-        in_tree[current] = 1
-        current_core = core[current]
-        best_reach = np.inf
-        best_source = -1
-        best_target = -1
-        for j in range(n_samples):
-            if in_tree[j]:
-                continue
-            acc = 0.0
-            for f in range(n_features):
-                diff = X[current, f] - X[j, f]
-                acc += diff * diff
-            reach = np.sqrt(acc) / alpha
-            if current_core > reach:
-                reach = current_core
-            if core[j] > reach:
-                reach = core[j]
-            # Both candidate edges end at j, so the tie-break of _edge_less
-            # collapses to "smaller source wins".
-            if reach < min_reach[j] or (
-                reach == min_reach[j] and current < current_sources[j]
-            ):
-                min_reach[j] = reach
-                current_sources[j] = current
-            if best_target < 0 or _edge_less(
-                min_reach[j],
-                current_sources[j],
-                j,
-                best_reach,
-                best_source,
-                best_target,
-            ):
-                best_reach = min_reach[j]
-                best_source = current_sources[j]
-                best_target = j
-        sources[i] = best_source
-        targets[i] = best_target
-        weights[i] = best_reach
-        current = best_target
-    return sources, targets, weights
-
-
 def mutual_reachability_mst(
     X: np.ndarray,
     min_samples: int = 5,
     alpha: float = 1.0,
-    core: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Return the MST of the mutual-reachability graph of ``X``.
+
+    Edge weight alone is not a total order here — a mutual-reachability weight
+    is frequently a *core distance*, and one core distance is the weight of
+    every edge it dominates, so hundreds of edges can share a value. The kernel
+    orders the endpoint pair as well, which makes the order total; an MST under
+    a total edge order is unique, so the tree does not depend on which spanning
+    algorithm produced it.
 
     Parameters
     ----------
@@ -258,8 +167,6 @@ def mutual_reachability_mst(
     alpha : float
         Distance scaling. Values above one shrink the plain distance relative to
         the core distances, which makes the hierarchy more conservative.
-    core : numpy.ndarray, optional
-        Precomputed core distances; computed from ``X`` when omitted.
 
     Returns
     -------
@@ -271,50 +178,10 @@ def mutual_reachability_mst(
     n_samples = X.shape[0]
     if n_samples < 2:
         return np.empty((0, 3), dtype=np.float64)
-
-    kernel = _compiled_kernel()
-    if kernel is not None and core is None:
-        k = max(1, min(int(min_samples), n_samples))
-        return np.asarray(
-            kernel.mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64
-        )
-
-    if core is None:
-        core = core_distances(X, min_samples)
-    core = np.ascontiguousarray(core, dtype=np.float64)
-    sources, targets, weights = _prim_mst(X, core, float(alpha))
-    return np.column_stack(
-        (sources.astype(np.float64), targets.astype(np.float64), weights)
+    k = max(1, min(int(min_samples), n_samples))
+    return np.asarray(
+        _kernel().mutual_reachability_mst(X, k, float(alpha)), dtype=np.float64
     )
-
-
-_KERNEL_CACHE: list = []
-
-
-def _compiled_kernel():
-    """Return the compiled clustering kernel, or ``None`` when unavailable.
-
-    The kernel lives in the photon library because the k-d tree it is built on
-    is wanted there too (nearest-neighbour work on burst feature spaces and
-    localisation tables), and because a compiled Borůvka is an order of
-    magnitude faster than the ``O(n²)`` fallback here. It is genuinely optional:
-    the results are identical either way, and the in-tree path is what the
-    parity tests run against.
-    """
-    if _KERNEL_CACHE:
-        return _KERNEL_CACHE[0]
-    kernel = None
-    try:
-        import tttrlib
-
-        if hasattr(tttrlib, "mutual_reachability_mst") and hasattr(
-            tttrlib, "core_distances"
-        ):
-            kernel = tttrlib
-    except Exception:
-        kernel = None
-    _KERNEL_CACHE.append(kernel)
-    return kernel
 
 
 # ---------------------------------------------------------------------------
@@ -383,12 +250,13 @@ def single_linkage_tree(mst: np.ndarray) -> np.ndarray:
         increasing distance.
     """
     mst = np.asarray(mst, dtype=np.float64)
-    # Merge order among equal weights decides the dendrogram (see _edge_less),
-    # so it is fixed by the same total order the MST kernels use rather than
-    # left to whichever permutation the sort algorithm happens to produce.
-    # The endpoints are also put in order, not just the rows: which end of an
-    # edge is called the source decides which dendrogram child is `left`, and
-    # Prim and Borůvka report an edge from opposite ends.
+    # Merge order among equal weights decides the dendrogram, so it is fixed by
+    # the same total order (weight, then the sorted endpoint pair) the MST
+    # kernel uses, rather than left to whichever permutation the sort algorithm
+    # happens to produce. The endpoints are also put in order, not just the
+    # rows: which end of an edge is called the source decides which dendrogram
+    # child is `left`, and two spanning algorithms report an edge from opposite
+    # ends.
     low = np.minimum(mst[:, 0], mst[:, 1])
     high = np.maximum(mst[:, 0], mst[:, 1])
     order = np.lexsort((high, low, mst[:, 2]))

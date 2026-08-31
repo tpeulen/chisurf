@@ -8,15 +8,14 @@ installed. Neither is a dependency any more.
 Three things decide the number and none of them is the estimator's Python:
 
 ``n``
-    The sample count. The spanning tree is where the time goes, and the two
-    kernels available for it scale differently — a k-d-tree Borůvka in
-    ``O(n log n)`` while the tree prunes, Prim in ``O(n²)`` when it does not.
+    The sample count. The spanning tree is where the time goes: the compiled
+    k-d-tree Borůvka is ``O(n log n)`` for as long as the tree prunes.
 
 ``d``
     The number of features, which decides whether the tree prunes at all. Past
     about ten dimensions a bounding box overlaps the query ball in nearly every
-    direction, the tree visits most of itself per query, and the plain scan
-    wins. The crossover is the reason both kernels exist.
+    direction and the tree visits most of itself per query, so the curve bends
+    towards ``O(n²)``.
 
 ``min_samples``
     The neighbour rank for the core distance. Larger values make the core
@@ -47,7 +46,6 @@ import numpy as np
 import pytest
 
 from chisurf.core.ml.cluster import HDBSCAN
-from chisurf.core.ml.cluster import _hdbscan as _kernel
 
 try:  # optional external reference, not a dependency
     import hdbscan as _reference_package
@@ -104,33 +102,21 @@ def _n_clusters(labels):
     return int(labels.max()) + 1
 
 
-def run_case(n_samples, n_features, compiled=True):
+def run_case(n_samples, n_features):
     """Return one row per implementation for one case."""
     data = make_blobs(n_samples, n_features)
     rows = []
 
-    _kernel._KERNEL_CACHE.clear()
-    if not compiled:
-        _kernel._KERNEL_CACHE.append(None)
-    try:
-        seconds, fitted = _time(
-            lambda x: HDBSCAN(
-                min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
-            ).fit(x),
-            data,
-            repeat=2,
-        )
-    finally:
-        _kernel._KERNEL_CACHE.clear()
-    rows.append(
-        (
-            "chisurf" if compiled else "chisurf (no compiled kernel)",
-            seconds,
-            _n_clusters(fitted.labels_),
-        )
+    seconds, fitted = _time(
+        lambda x: HDBSCAN(
+            min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
+        ).fit(x),
+        data,
+        repeat=2,
     )
+    rows.append(("chisurf", seconds, _n_clusters(fitted.labels_)))
 
-    if _reference_package is not None and compiled:
+    if _reference_package is not None:
         seconds, fitted = _time(
             lambda x: _reference_package.HDBSCAN(
                 min_cluster_size=MIN_CLUSTER_SIZE,
@@ -141,7 +127,7 @@ def run_case(n_samples, n_features, compiled=True):
         )
         rows.append(("hdbscan", seconds, _n_clusters(fitted.labels_)))
 
-    if _ReferenceSklearn is not None and compiled:
+    if _ReferenceSklearn is not None:
         seconds, fitted = _time(
             lambda x: _ReferenceSklearn(
                 min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
@@ -155,7 +141,7 @@ def run_case(n_samples, n_features, compiled=True):
 
 def main():
     """Print the markdown table for ``docs/development/benchmarks.md``."""
-    # One warm run so numba's compilation does not land in the first case.
+    # One warm run so first-call overhead does not land in the first case.
     HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE).fit(make_blobs(400, 3))
 
     print("| case | implementation | fit [s] | clusters |")
@@ -164,50 +150,39 @@ def main():
         label = f"n={n_samples:,} d={n_features}"
         for name, seconds, clusters in run_case(n_samples, n_features):
             print(f"| {label} | {name} | {seconds:.3f} | {clusters} |")
-        if n_samples <= 20_000:
-            for name, seconds, clusters in run_case(
-                n_samples, n_features, compiled=False
-            ):
-                print(f"| {label} | {name} | {seconds:.3f} | {clusters} |")
 
 
 @pytest.mark.slow
-def test_compiled_kernel_is_not_slower_than_the_fallback():
+def test_the_compiled_kernel_keeps_up_with_scikit_learn():
     """The compiled kernel must earn its existence on the shape it is for.
 
     Two or three features is what a burst feature space has, and it is where the
-    k-d tree prunes best. If the compiled path is not clearly ahead of the
-    in-tree fallback there, something has stopped working — most likely OpenMP,
-    which fails to be found on some toolchains and turns every parallel kernel
-    in the compiled library serial without failing the build.
+    k-d tree prunes best. The reference is scikit-learn — an independent
+    implementation, not a second copy of ours — so this also checks the answer,
+    not only the clock. If the time regresses badly, something has stopped
+    working; most likely OpenMP, which fails to be found on some toolchains and
+    turns every parallel kernel in the compiled library serial without failing
+    the build.
     """
-    if _kernel._compiled_kernel() is None:
-        pytest.skip("the compiled clustering kernel is not available")
+    if _ReferenceSklearn is None:
+        pytest.skip("scikit-learn is not installed")
     data = make_blobs(20_000, 3)
 
-    _kernel._KERNEL_CACHE.clear()
-    compiled, first = _time(
+    mine, fitted = _time(
         lambda x: HDBSCAN(min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES).fit(x),
         data,
     )
-    _kernel._KERNEL_CACHE.clear()
-    _kernel._KERNEL_CACHE.append(None)
-    try:
-        fallback, second = _time(
-            lambda x: HDBSCAN(
-                min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
-            ).fit(x),
-            data,
-        )
-    finally:
-        _kernel._KERNEL_CACHE.clear()
+    theirs, reference = _time(
+        lambda x: _ReferenceSklearn(
+            min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES
+        ).fit(x),
+        data,
+    )
 
-    # Same answer, whichever kernel ran: that is the invariant the total edge
-    # order and the disabled floating-point contraction exist to guarantee.
-    np.testing.assert_array_equal(first.labels_, second.labels_)
-    assert compiled < fallback, (
-        f"the compiled kernel ({compiled:.3f} s) is not faster than the in-tree "
-        f"fallback ({fallback:.3f} s)"
+    assert _n_clusters(fitted.labels_) == _n_clusters(reference.labels_)
+    assert mine < 3.0 * theirs, (
+        f"the compiled kernel ({mine:.3f} s) is more than 3x scikit-learn "
+        f"({theirs:.3f} s) -- check that OpenMP was found when tttrlib was built"
     )
 
 

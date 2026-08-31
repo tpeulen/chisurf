@@ -25,7 +25,7 @@ their old speed.
 
 | File | Functions |
 |---|---|
-| `core/ml/cluster/_hdbscan.py` | `_core_distances_bruteforce`, `_edge_less`, `_prim_mst`, `_single_linkage`, `_bfs_nodes`, `_condense`, `_label_points` |
+| `core/ml/cluster/_hdbscan.py` | `_single_linkage`, `_bfs_nodes`, `_condense`, `_label_points` (the pre-MST half — `_core_distances_bruteforce`, `_edge_less`, `_prim_mst` — was **deleted** on 2026-08-31; `tttrlib.core_distances` / `tttrlib.mutual_reachability_mst` are now required) |
 | `core/ml/cluster/_kmeans.py` | `_squared_distances`, `_kmeanspp_seed`, `_kmeans_lloyd` |
 | `core/roi/segmentation.py` | `_flood`, `_grow` |
 | `core/fluorescence/burst/kalman.py` | `_inv2x2`, `_kalman_filter_loop` |
@@ -37,12 +37,12 @@ their old speed.
 | `plugins/burst/burst_h2mm/core/h2mm.py` | `_matmul_norm`, `_rho_base`, `_pair_compose`, `_pair_pow`, `_build_caches` **[parallel]**, `_estep` **[parallel]**, `_viterbi_burst`, `_viterbi_all` **[parallel]** |
 | `plugins/burst/burst_h2mm/core/surrogate.py` | `_feature_kernel` |
 
-**Two of these are only fallbacks.** `h2mm.py` and `gopich_szabo.py` prefer
-compiled backends (`tttrlib.HMM`, `tttrlib.GopichSzabo`) and select them in
-`burst_h2mm/core/engines.py`, so their Python loops run only when the backend is
-unavailable or `CHISURF_H2MM_BACKEND=numba` is set. **The rest are on the hot
-path** — HDBSCAN's post-MST half, the AV grid, the dye-diffusion maps, the
-ProteinMC potentials and the ROI watershed.
+**The two that were only fallbacks are gone.** `h2mm.py` and `gopich_szabo.py`
+used to prefer compiled backends (`tttrlib.HMM`, `tttrlib.GopichSzabo`) and keep
+a Python loop behind them; both in-tree copies have since been deleted and the
+compiled engines are required. **The rest are on the hot path** — HDBSCAN's
+post-MST half, the AV grid, the dye-diffusion maps, the ProteinMC potentials and
+the ROI watershed.
 
 ## Replaced rather than de-decorated
 
