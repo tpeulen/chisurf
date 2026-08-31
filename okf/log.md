@@ -1,6 +1,25 @@
 # Update Log
 
 ## 2026-08-31
+* **Sweep result: the remaining tttrlib fallbacks are not duplicates.** After
+  2CDE and BVA, the only modules still naming a NumPy/Python fallback for a
+  tttrlib feature are `gopich_szabo.py` (**stale docstring only** — the kernel
+  was already deleted; fixed), `surrogate_tttrlib.py` (a genuine *feature*
+  split: JSON surrogates run through C++, pickled ones through scikit-learn),
+  and `maxent_decay/core/solver.py`. `core/math/rand` was a false positive.
+  MaxEnt is the one real remaining case and it is **not** a duplicate to delete:
+  `tttrlib.solve_tcspc_mem_lifetime` takes timeshift/background/lamp_scatter as
+  *fixed* inputs, so ChiSurf's outer nuisance search has no upstream equivalent.
+  Measured, and it is the wrong way round: the fast path is 139 ms with
+  χ²ᵣ = 1.50, the Python nuisance loop 24 064 ms with χ²ᵣ = **1.03** — the 173×
+  slower path is the one that fits. Issued as `T-20260831-03`: keep the search,
+  route its *inner* solve to the compiled one.
+  Also checked and clean: every `hasattr(tttrlib, …)` probe in `chisurf/`
+  (`SimEngine`, `GopichSzabo`, `TwoCDE`, `BVA`, `HMM`, `HmmSurrogate`,
+  `richardson_lucy_2d`, `PdaBurstLikelihood`, `mutual_reachability_mst`,
+  `sim_occupation_fractions`, `get_supported_filetypes`, `SimGrid`,
+  `SimVectorGrid`) resolves against 0.27.0, and `restoration.py`,
+  `pda3c/likelihood.py` and `gopich_szabo.py` already raise instead of degrading.
 * **2CDE and BVA lose their in-tree NumPy twins — and the A/B is what justified
   it.** tttrlib is required, so a `try: compiled / except: numpy` pair is not a
   safety net, it is a second answer nobody compares. Both were A/B'd against the

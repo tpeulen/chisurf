@@ -420,8 +420,9 @@ def _validate_emission(emission) -> np.ndarray:
 def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
     """Return the total log-likelihood of a kinetic scheme given the photons.
 
-    Delegates to tttrlib's C++ GopichSzabo engine when available (~1.5x faster
-    than the numba implementation), falling back to the Python kernel otherwise.
+    Runs on tttrlib's C++ GopichSzabo engine, which is required: the in-tree
+    kernel this used to fall back to was deleted with the library defect that
+    justified keeping it (see the note in :func:`log_likelihood`'s body).
 
     Parameters
     ----------
