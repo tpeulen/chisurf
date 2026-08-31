@@ -1,6 +1,25 @@
 # Update Log
 
 ## 2026-08-31
+* **MaxEnt's inner MEM optimiser goes to tttrlib too (`T-20260831-03`).** The
+  last real duplicate from the sweep. `tttrlib.tcspc_run_mem` takes the same
+  `(H, g0, m, const_chi2, nu, max_iter, tol, min_prob)` the in-tree `_run_mem`
+  did, and on a 120-lifetime grid the two returned the same solution to the last
+  printed digit (χ²ᵣ 1.040852, identical `p`, same peak) with the compiled one
+  **3.1×** faster — 70 ms against 222 ms. `_run_mem` is now a thin adapter and
+  the NumPy transcription of the optimiser is gone.
+  It matters more than 3× sounds, because this is the *inner* solve of the
+  nuisance search: **20 012 ms → 6 938 ms** for a full `optimize_nuisance=True`
+  run, with χ²ᵣ, timeshift and IRF background unchanged to every printed digit.
+  What ChiSurf keeps is what has no upstream equivalent: the design matrices
+  (already one call each) and the outer search over
+  timeshift/background/lamp_scatter, which `solve_tcspc_mem_lifetime` takes as
+  *fixed* inputs.
+  One contract change, stated in the docstring: the compiled optimiser does not
+  report per iteration, so `progress_cb` is now called **once** with the
+  converged values instead of once per map, and `history` carries that single
+  entry. Nothing read the intermediate values — `api/helpers.py` takes `history`
+  with a default, and the GUI uses the callback only to drive a dialog.
 * **The MaxEnt χ²ᵣ = 1.50 was my own test fixture, not a ChiSurf defect — and
   the correction reverses yesterday's conclusion.** Reported earlier today (and
   in ticket `T-20260831-03`) as "the 173× slower nuisance loop is the only path
