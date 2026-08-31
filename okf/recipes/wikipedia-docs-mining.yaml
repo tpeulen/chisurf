@@ -11,8 +11,10 @@ description: >
   one tranche per run, then stop.
 instructions: |
   You are running one tranche of a continuous docs-mining loop for ChiSurf.
-  Work from /Users/tpeulen/dev/chisurf (branch: development). One tranche per
-  run. When the tranche is committed (or deliberately skipped), stop.
+  First command of every run: cd /Users/tpeulen/dev/chisurf (scheduled sessions
+  start in /Users/tpeulen). Confirm `git rev-parse --abbrev-ref HEAD` prints
+  development before touching anything. One tranche per run. When the tranche
+  is committed (or deliberately skipped), stop.
 
   ## Fixed environment facts (verified, do not re-derive)
   - Wikipedia dump: /Volumes/SD1TB/wikipedia/ with articles/*.wiki (extracted)
@@ -77,9 +79,17 @@ instructions: |
      their references, Crossref-verify each, keep only verified. Small tranches
      (2-6 entries) beat big ones.
   4. Land: bibliography section, page edits or a new page (with sources: block
-     when prose derives from Wikipedia), toctree entry if new page, regenerate
-     docs/references/index.md.
-  5. Verify: run the four guardrail test files; require a full pass.
+     when prose derives from Wikipedia), toctree entry if new page. Then
+     REGENERATE docs/references/index.md with the exact command above and
+     machine-check it: `grep -c <key> docs/references/index.md` must be >= 1
+     for EVERY new key. Landing bibliography entries without a regenerated
+     index is a failed run.
+  5. Verify: run ALL FOUR guardrail test files in a single pytest invocation;
+     the summary line must show zero failures and zero errors (currently
+     20 passed). Running only some of the files does not count.
+  5b. Pre-commit checklist, all must be true: index.md contains every new
+     cite key; the full four-file test run passed; staged files are exactly
+     the ones you edited this run; okf bookkeeping updated.
   6. Bookkeeping: append a dated entry to okf/log.md and update
      okf/references/wikipedia-mining.md (what landed, next lead). Commit the
      docs/okf files you touched as ONE commit, explicit paths only, message
