@@ -5016,3 +5016,37 @@ follow-up was needed in the end:
 (`H2mmModel`, `BurstPhotons`, `prepare_bursts`, `factory_model`,
 `simulate_bursts`). The whole H2MM + burst_gs suite went from 535 s to 138 s,
 which is the same slow EM leaving the tests.
+
+# Candidates for further tttrlib delegation — surveyed, NOT verified (2026-08-31)
+
+ChiSurf references **101 of tttrlib 0.27's 608 exports**. After deleting the
+five confirmed duplicates (H2MM engine, 2CDE, BVA, the MEM optimiser, the
+surrogate feature extractor), these compute entry points are **unused** and sit
+next to an in-tree module that may implement the same thing.
+
+**Each is a candidate, not a finding.** Nothing below has been A/B'd — the name
+matching a subsystem is not evidence that it computes the same quantity, and
+this session already produced one false finding from exactly that shortcut
+(`OptsCluster` was mislabelled as k-means in an earlier tracker; it is 2-D
+Gaussian peak fitting). Verify by *importing and comparing on real data* before
+deleting anything.
+
+| tttrlib symbol | in-tree neighbour | size |
+|---|---|---|
+| `BurstML`, `BurstMLFitResult` | `core/fluorescence/mle/` | 7 files, 1205 lines |
+| `BurstFeatureExtractor`, `BurstFeature` | `core/fluorescence/burst/` | 18 files, 5939 lines |
+| `DecayPhasor`, `StreamingPhasor` | `core/fluorescence/imaging/` | 13 files, 6965 lines |
+| `maxent_invert` | `core/math/` | 20 files, 6887 lines |
+| `OptsCluster`, `ResultsCluster` | `core/ml/cluster/` | 3 files, 1470 lines |
+
+Already delegating, listed so nobody re-checks: `DecayFitNExp` (tcspc models),
+`StreamingCorrelator` (fcs), plus everything in the `hasattr` probe list
+verified earlier today.
+
+**The method that worked**, and the two traps it caught, are worth reusing:
+run the A/B on a **real** file rather than synthetic data (the synthetic case
+put 2CDE into its sentinel branch and proved nothing), and run it **the way
+callers call it** (passing `[]` for BVA's micro-time ranges made a correct path
+look like it returned only zeros). Three of the five deletions were justified
+not by "identical" but by the in-tree copy being *wrong* — which only showed up
+under those conditions.
