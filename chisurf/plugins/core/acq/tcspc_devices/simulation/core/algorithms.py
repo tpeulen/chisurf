@@ -133,6 +133,32 @@ def _species_decay(tttrlib, spectrum, n_bins: int, dt: float, irf=None, t0: floa
     return tttrlib.SimDecay.from_pattern(pattern.tolist(), float(dt), float(t0))
 
 
+def _require_grid(tttrlib, constructor: str, psf_type: str) -> None:
+    """Raise unless the photon library can build the requested excitation focus.
+
+    Parameters
+    ----------
+    tttrlib : module
+        The imported photon library (imported locally by the caller, as
+        everywhere else in this module).
+    constructor : str
+        ``tttrlib.SimGrid`` factory the selected ``psf_type`` needs.
+    psf_type : str
+        The value the caller asked for, quoted back in the message.
+
+    Raises
+    ------
+    RuntimeError
+        If the installed library has no such constructor.
+    """
+    if not hasattr(tttrlib.SimGrid, constructor):
+        raise RuntimeError(
+            f"psf_type={psf_type!r} needs tttrlib.SimGrid.{constructor}, which "
+            f"the installed tttrlib does not have; rebuild it (the excitation "
+            f"grids live in the compiled simulator)"
+        )
+
+
 def build_engine(params: Dict[str, Any]):
     """Build a configured ``tttrlib.SimEngine`` from plugin parameters.
 
@@ -241,26 +267,39 @@ def build_engine(params: Dict[str, Any]):
     if params.get("analytic_excitation", False) and psf_type == "gaussian3d":
         psf_type = "analytic_gaussian3d"
 
-    if psf_type in ("gaussian_lorentzian", "gauss_lorentz") and hasattr(
-        tttrlib.SimGrid, "gaussian_lorentzian"
-    ):
+    # The requested PSF is built or the call fails. These used to be
+    # ``elif <name> and hasattr(SimGrid, <constructor>)`` chains ending in the
+    # plain Gaussian, so a photon library without one of the constructors
+    # silently simulated a *different optical model* than the one asked for and
+    # said nothing — the answer changes, the run does not.
+    if psf_type in ("gaussian_lorentzian", "gauss_lorentz"):
+        _require_grid(tttrlib, "gaussian_lorentzian", psf_type)
         zR = float(params.get("psf_zR", z0))
         excitation = tttrlib.SimGrid.gaussian_lorentzian(w0, zR, ext_xy, ext_z, spacing, 1.0)
-    elif (
-        psf_type in ("radial", "numeric", "measured")
-        and params.get("psf_file")
-        and hasattr(tttrlib.SimGrid, "numeric_from_file")
-    ):
+    elif psf_type in ("radial", "numeric", "measured"):
+        _require_grid(tttrlib, "numeric_from_file", psf_type)
+        if not params.get("psf_file"):
+            raise ValueError(
+                f"psf_type={psf_type!r} reads a measured point-spread function "
+                f"from disk, but no 'psf_file' was given"
+            )
         excitation = tttrlib.SimGrid.numeric_from_file(
             str(params["psf_file"]),
             r_step=float(params.get("psf_r_step", spacing)),
             z_step=float(params.get("psf_z_step", spacing)),
             extent_xy=ext_xy, extent_z=ext_z, spacing=spacing,
         )
-    elif psf_type == "analytic_gaussian3d" and hasattr(tttrlib.SimGrid, "analytic_gaussian3d"):
+    elif psf_type == "analytic_gaussian3d":
+        _require_grid(tttrlib, "analytic_gaussian3d", psf_type)
         excitation = tttrlib.SimGrid.analytic_gaussian3d(w0, z0, 1.0)
-    else:  # "gaussian3d" (default / fallback)
+    elif psf_type == "gaussian3d":
+        _require_grid(tttrlib, "gaussian3d", psf_type)
         excitation = tttrlib.SimGrid.gaussian3d(w0, z0, ext_xy, ext_z, spacing, 1.0)
+    else:
+        raise ValueError(
+            f"unknown psf_type {psf_type!r}; expected one of gaussian3d, "
+            f"analytic_gaussian3d, gaussian_lorentzian, radial"
+        )
 
     settings = tttrlib.SimIntegrator()
     settings.dt = dt

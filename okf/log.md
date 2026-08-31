@@ -37724,3 +37724,17 @@ side of the line.
   explicit mutual-reachability matrix, the distance matrix's k-th column, an
   `alpha`-actually-changes-the-answer check) plus a guard that a missing kernel
   raises — verified to fail when the fallback is put back.
+
+- 2026-08-31 (tttrlib delegation, round 2 — follow-up) — **The acquisition
+  simulator's PSF selection was the last silent degradation.**
+  `plugins/core/acq/tcspc_devices/simulation/core/algorithms.py` chose the
+  excitation focus with `elif <name> and hasattr(tttrlib.SimGrid, <ctor>)`,
+  ending in `else: # gaussian3d (default / fallback)`. A photon library built
+  without `gaussian_lorentzian` or `numeric_from_file` therefore simulated a
+  **different optical model** than the one requested and said nothing — the run
+  succeeds, the numbers are from another PSF. Now the requested focus is built
+  or the call raises, and an unknown `psf_type` or a `radial` without a
+  `psf_file` is an error rather than the default Gaussian. Guarded by
+  `simulation/core/test/test_psf_selection.py`, which asserts the setting
+  actually changes the photon stream (a construction test cannot see this) as
+  well as the four failure modes; documented in `docs/guides/65_live_acquisition.md`.

@@ -5040,7 +5040,12 @@ failure mode the original note warned about.
 | `maxent_invert` | Skilling–Bryan MEM: minimise `‖Ax − b‖² − ν²·S(x)` by an active-set bound-constrained QP inside a Newton outer iteration. | **duplicate — deleted.** `core/math/optimization/mem.py::maxent` had the same signature, no callers, and the **wrong sign** on the entropy gradient: it returned `chi2` as the objective but `grad_chi2 − ν²(1 + ln x)`, which minimises entropy instead of maximising it. On a 3-peak/30-node inversion its objective is worse at every ν, and at ν = 30 it drives S to 5.5e-6 (every component on the 1e-8 floor) where the compiled solve holds S = −87. tttrlib's own registry entry had already recorded `mem.py` as "not equivalent … which is why that was rejected as a reference". |
 | `OptsCluster`, `ResultsCluster` | **Single-molecule localisation**: 2-D Gaussian PSF fitting (`fit2DGauss`, `maxNPeaks`, `elliptical_circular`), whose results carry `peak_x/y`, `sigma_x/y`, `background`, `chi2`, `imageID`, `pixelID`. | **false candidate**, as the earlier tracker already suspected. Nothing to do with `core/ml/cluster/`. |
 
-Also settled while surveying, and *not* from the table: `core/ml/cluster/_hdbscan.py`
+Also settled while surveying, and *not* from the table:
+`plugins/core/acq/tcspc_devices/simulation/core/algorithms.py` picked the
+excitation focus with `elif <name> and hasattr(tttrlib.SimGrid, <ctor>)` ending
+in `else: # gaussian3d (default / fallback)`, so a library missing
+`gaussian_lorentzian` or `numeric_from_file` silently simulated a different
+optical model. It now raises. And `core/ml/cluster/_hdbscan.py`
 carried an in-tree `O(n²·d)` brute-force core distance and an `O(n²)` Prim MST
 behind a `hasattr` probe on `tttrlib.mutual_reachability_mst`. They agreed
 **bit for bit** (max\|Δ\| = 0 in core distance, in every MST edge weight and in the
