@@ -1,6 +1,17 @@
 # Update Log
 
 ## 2026-08-31
+* **The last algorithm twin goes: the surrogate feature extractor.** ChiSurf's
+  `surrogate.py` carried its own `_feature_kernel` beside the compiled one. On
+  the same bursts they agreed to **8.9e-16** with the compiled one **15x**
+  faster (5.2 ms against 79.4 ms), so `extract_features` now delegates and the
+  86-line kernel is gone. This was the duplication that mattered most of the
+  set: a *second definition of what a feature is*. A surrogate trained against
+  one extractor and evaluated against the other is wrong in a way nothing
+  reports — no exception, no warning, just a worse model.
+  What is left of the pickled-vs-JSON surrogate split is a **format** dispatch:
+  both paths now extract features with the same compiled extractor and differ
+  only in which regressor was serialised.
 * **No fallback paths left: tttrlib or an error.** Closing the sweep on the
   user's rule. Three silent degradations removed:
   - `maxent_decay/core/solver.py`: the one-shot `solve_tcspc_mem_lifetime` call
@@ -37669,3 +37680,21 @@ side of the line.
 - 2026-08-31 (cadence) — Mining loop rescheduled: hourly during working hours,
   weekdays 09:00–17:00 (`0 0 9-17 * * 1-5`). Idle runs (no lead) log a note
   and commit nothing, so quiet hours cost nothing.
+
+- 2026-08-31 (mining, seventh tranche) — **A page's own reference list is
+  invisible.** `docs/concepts/global_analysis.md` — the page for the thing
+  ChiSurf is built around — carried a hand-rolled `## References` block of three
+  works that `bibliography.yaml` had never heard of, so none of them reached the
+  Literature index, the help browser, or the guardrail that checks a citation
+  resolves. Crossref-verifying them caught a wrong DOI in our own prose:
+  Beechem, Ameloot & Brand (1985) was given as `10.1080/10739148508543581`,
+  which is a Phillips et al. TCSPC paper; the correct one ends in 5. Four
+  verified entries landed under a new *Global and target analysis* bibliography
+  section (knutson1983, beechem1985, ameloot1986, beechem1992), the page gained
+  a *linking is not target analysis* subsection and a house-style See-also
+  block, and `docs/references/index.md` was regenerated — which also repaired
+  the fifth tranche's omission, where `kabsch1976`/`kabsch1978` had been
+  committed to the YAML without regenerating the index (212 → 218 works). Next
+  lead recorded in `okf/references/wikipedia-mining.md`: the remaining uncited
+  concept pages, `live_streaming_analysis` first because its DOIs are already
+  written down.

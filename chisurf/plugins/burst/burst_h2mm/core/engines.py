@@ -257,10 +257,10 @@ def fit_one(
         sm = (surrogates or {}).get(int(n_states))
         if sm is not None:
             ri = int(refine_iters) if engine == "surrogate-refine" else 0
-            # JSON surrogates run through the C++ estimator; pickled
-            # SurrogateModel objects stay on the scikit-learn path. Both produce
-            # the same numbers (the two feature extractors agree to 1e-12), so
-            # this is purely a speed/dependency choice.
+            # A format dispatch, not two implementations: both paths extract
+            # features with the same (compiled) extractor and differ only in
+            # which regressor was serialised -- a C++ estimator in JSON, or a
+            # pickled scikit-learn model.
             if _tttrlib_surrogate.is_json_surrogate(sm):
                 # A JSON surrogate is the C++ estimator's format. If that engine
                 # is missing, say so -- quietly handing it to the scikit-learn
