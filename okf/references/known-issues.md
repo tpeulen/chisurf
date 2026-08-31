@@ -4963,7 +4963,7 @@ to orient"* and leaves the camera wherever it was — which reads as a badly
 framed render rather than as an error, because the message goes to the error
 callback a script usually discards. Name `all` explicitly.
 
-# H2MM's fallback engine is correct but 300x slower than the reference (2026-08-31)
+# ~~H2MM's fallback engine is correct but 300x slower than the reference~~ — RESOLVED (2026-08-31)
 
 Found immediately after fixing the `NameError` that stopped `_estep` running at
 all (see `okf/log.md`, same date). With the fix, `test_ab_vs_h2mm_c.py` gets
@@ -5001,3 +5001,18 @@ Two things are therefore stale rather than broken, and neither is fixed:
 * the fallback is still called "the numba engine" in `engines.py`
   (`backend()` returns the string `'numba'`, and the fallback warning names it),
   which will mislead the next reader: there is no numba left in it.
+
+**Resolved the same day, by deleting the fallback** (`T-20260831-02`). Neither
+follow-up was needed in the end:
+
+* the perf guard now benchmarks the engine users actually get, and **passes** —
+  1.04× the reference on the 2-state case and **0.48×** on the 3-state one, so
+  ChiSurf is *faster* than `H2MM_C` there. Both parametrisations had been red;
+  they are green.
+* nothing is called "the numba engine" any more because there is no second
+  engine. `active_backend()` returns `'tttrlib'` or raises.
+
+`core/h2mm.py` went 1210 → 376 lines, keeping only the data types
+(`H2mmModel`, `BurstPhotons`, `prepare_bursts`, `factory_model`,
+`simulate_bursts`). The whole H2MM + burst_gs suite went from 535 s to 138 s,
+which is the same slow EM leaving the tests.
