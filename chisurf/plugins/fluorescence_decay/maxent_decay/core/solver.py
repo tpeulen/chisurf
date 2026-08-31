@@ -715,7 +715,10 @@ def solve_lifetime_mem(
                 }
                 return result
         except Exception:
-            pass  # fall back to the Python MEM path below
+            # Not a fallback to a second implementation -- there is none. The
+            # path below builds the design matrix and calls the same compiled
+            # optimiser; it is the general route, this was the one-shot one.
+            pass
 
         result = _eval_mem_lifetime_single(ts0, float(background), irf_bg0)
         result["nuisance_optimized"] = False
