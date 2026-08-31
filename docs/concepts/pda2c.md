@@ -10,7 +10,7 @@ anchor: concept-pda2c
 # Two-colour PDA (PDA2c)
 
 Photon Distribution Analysis (PDA) explains the **shape of a single-molecule
-FRET histogram** from first principles. When freely diffusing molecules are
+FRET histogram** from first principles {cite}`antonik2006`. When freely diffusing molecules are
 observed one burst at a time, the FRET-efficiency (or proximity-ratio) histogram
 is never a set of sharp lines: even a perfectly rigid molecule at a single
 donor–acceptor distance produces a *broad* peak. PDA forward-models that width
@@ -44,7 +44,7 @@ $E_\text{app}$ is already $\sqrt{E(1-E)/N}\approx 0.11$ at $E=0.5$. Small bursts
 are broad, large bursts are narrow — the observed width is a property of the
 photon statistics, not of the molecule. PDA turns this liability into
 information: since the broadening is *known exactly*, any excess width beyond
-shot noise is real heterogeneity or dynamics.
+shot noise is real heterogeneity or dynamics {cite}`antonik2006`.
 
 ## Forward-modelling the full count distribution
 
@@ -127,7 +127,7 @@ If a molecule interconverts between states *during* the burst, no single $E$
 describes it. What matters is how the total transfer accumulated over the
 observation window compares with the exchange time. PDA handles this by
 modelling the **fraction of the window** $f$ that the molecule spends in state 1
-of a two-state (telegraph) process. For a stationary two-state Markov system
+of a two-state (telegraph) process {cite}`kalinin2010`. For a stationary two-state Markov system
 $f$ has a known law $w(f)$ with two boundary masses (the molecule stayed in one
 state the whole window) and an interior density expressed through modified
 Bessel functions, governed by a single dimensionless exchange parameter
@@ -221,7 +221,9 @@ to the floor. With $N = 50$ bursts, a genuine $\sigma_\text{het} = 0.05$ widens
 the peak from 0.071 to 0.087 — a 23 % change that is easy to miss if the
 background or $\gamma$ is even slightly off. The same heterogeneity at $N = 200$
 widens 0.035 to 0.061, a 74 % change that is unmistakable. **Photon budget, not
-fit quality, sets what PDA can resolve.**
+fit quality, sets what PDA can resolve.** Resolving several states at once, and
+deciding how many the data actually support, is the subject of
+{cite}`kalinin2008`.
 
 :::{tip}
 This yields a model-free diagnostic that costs nothing. Split the bursts into
@@ -292,11 +294,8 @@ the burst-size diagnostic above and, for dynamics, the characteristic valley
   `dynamic_mc.py`), anisotropy (`anisotropy.py`), SAW-$\nu$ polymer
   (`saw_nu.py`); nuisance/background and correction factors in `nusiance.py`;
   the histogram engine is `tttrlib.Pda` (S1S2 matrix).
-- Antonik, M.; Felekyan, S.; Gaiduk, A.; Seidel, C. A. M. *Separating
-  Structural Heterogeneities from Stochastic Variations in Fluorescence
-  Resonance Energy Transfer Distributions via Photon Distribution Analysis.*
-  J. Phys. Chem. B **2006**, 110, 6970–6978.
-- Kalinin, S.; Felekyan, S.; Valeri, A.; Seidel, C. A. M. *Characterizing
-  Multiple Molecular States in Single-Molecule Multiparameter Fluorescence
-  Detection by Probability Distribution Analysis.* J. Phys. Chem. B **2008**,
-  112, 8361–8374.
+- Literature: {cite}`antonik2006` introduces PDA and separates structural
+  heterogeneity from shot noise; {cite}`kalinin2007` extends the same treatment
+  to anisotropy; {cite}`kalinin2008` characterises several molecular states at
+  once; {cite}`kalinin2010` adds dynamics during the burst, which is the
+  dynamic-PDA model above.

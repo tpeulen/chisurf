@@ -11,7 +11,8 @@ anchor: concept-mfd-fitting
 
 The two plots that define multiparameter fluorescence detection — FRET efficiency
 against donor lifetime, and anisotropy against lifetime — are usually *read*: a
-static line is drawn on top, and the deviation from it is discussed. This page
+static line is drawn on top, and the deviation from it is discussed
+({cite}`eggeling2001,sisamakis2010`). This page
 describes how ChiSurf **fits** them, and why the model is built forwards rather than
 by inverting each burst.
 
@@ -43,8 +44,9 @@ Forward-modelling the raw observables removes all three at once.
 
 The nuisance measure is the **empirical** joint distribution of the burst signal
 `S` and the per-channel observation spans `(t_G, t_R)` — written `D12`. This is
-exactly what photon-distribution analysis does with `P(S)` per fixed time window,
-except that bursts have no fixed window, so the measure is resolved by time.
+exactly what photon-distribution analysis does with `P(S)` per fixed time window
+({cite}`antonik2006`), except that bursts have no fixed window, so the measure is
+resolved by time.
 
 Three consequences, all of them the point:
 
@@ -158,7 +160,7 @@ them is a real error:
 
 Averaging the efficiency first and quenching once gives the wrong decay shape;
 averaging the decay to a single lifetime gives the wrong efficiency. Together they
-produce the familiar linker-broadened static line — and they mean `σ` is imprinted
+produce the familiar linker-broadened static line ({cite}`kalinin2012`) — and they mean `σ` is imprinted
 on the decay *shape*, which is why it must not be a free broadening parameter tacked
 on afterwards.
 
@@ -392,3 +394,8 @@ lost, are recorded in the project's design notes.
   lower.
 * [Anisotropy](anisotropy.md) — the second MFD axis.
 * Guide: [Fitting an MFD burst histogram](../guides/57_mfd_fitting.md)
+* Literature: {cite}`eggeling2001` multiparameter detection and burst selection;
+  {cite}`sisamakis2010` the MFD analysis chain end to end; {cite}`antonik2006`
+  the photon-distribution treatment this model borrows its nuisance measure
+  from; {cite}`kalinin2010` exchange during a burst; {cite}`kalinin2012` the
+  linker-broadened distance distribution and its use in structural modelling.
