@@ -44,7 +44,9 @@ import os
 
 import numpy as np
 
-from .h2mm import BurstPhotons, H2mmModel, fit_states
+from .h2mm import BurstPhotons, H2mmModel
+from .h2mm import fit_states as _fit_states_numba
+from .h2mm import optimize as _optimize_numba
 from .h2mm import viterbi as _viterbi_numba
 
 logger = logging.getLogger(__name__)
@@ -295,7 +297,9 @@ def fit_one(
                     raise
                 except Exception as exc:
                     _backend_fallback("surrogate estimate_model", exc)
-            return fit_states(data, n_states, surrogate=sm, refine_iters=ri, tol=tol)
+            return _fit_states_numba(
+                data, n_states, surrogate=sm, refine_iters=ri, tol=tol
+            )
         # No surrogate for this state count → exact EM keeps the scan usable.
         engine = "em"
 
@@ -316,7 +320,7 @@ def fit_one(
         except Exception as exc:
             _backend_fallback("fit_states", exc)
 
-    return fit_states(
+    return _fit_states_numba(
         data,
         n_states,
         n_restarts=n_restarts,
@@ -324,5 +328,110 @@ def fit_one(
         tol=tol,
         seed=seed,
         single_precision=single_precision,
+        on_iter=on_iter,
+    )
+
+
+def optimize(
+    model: H2mmModel,
+    data: BurstPhotons,
+    max_iter: int = 500,
+    tol: float = 1e-7,
+    min_trans: float = 1e-12,
+    accelerate: bool = True,
+    single_precision: bool = False,
+    on_iter=None,
+) -> H2mmModel:
+    """Baum-Welch EM from ``model``, routed to the active backend.
+
+    Callers used to import :func:`~.h2mm.optimize` directly and so always got
+    the fallback engine, even where the C++ one was available and several-fold
+    faster. Import this instead; the fallback is reachable through
+    ``CHISURF_H2MM_BACKEND=numba``.
+
+    The two engines agree on the reported log-likelihood to ~1e-15 relative,
+    including at ``max_iter=1`` where it is the *input* model's forward
+    log-likelihood (what :func:`~.analysis.fixed_loglik` documents), so this is
+    a speed choice and not a semantic one.
+
+    Parameters
+    ----------
+    model : H2mmModel
+        Starting model.
+    data : BurstPhotons
+        Photon data in engine layout.
+    max_iter : int
+        Maximum EM maps.
+    tol : float
+        Convergence tolerance on the log-likelihood.
+    min_trans : float
+        Floor on transition probabilities.
+    accelerate : bool
+        Use SQUAREM acceleration.
+    single_precision : bool
+        Run the float32 kernel.
+    on_iter : callable, optional
+        Progress callback ``on_iter(done, total)``.
+
+    Returns
+    -------
+    H2mmModel
+        The optimised model.
+    """
+    if _use_tttrlib():
+        try:
+            return _tttrlib_engine.optimize(
+                model, data, max_iter=max_iter, tol=tol, min_trans=min_trans,
+                accelerate=accelerate, single_precision=single_precision,
+                on_iter=on_iter,
+            )
+        except concurrent.futures.CancelledError:
+            raise  # a stop is not a backend failure - do not redo it on numba
+        except Exception as exc:
+            _backend_fallback("optimize", exc)
+    return _optimize_numba(
+        model, data, max_iter=max_iter, tol=tol, min_trans=min_trans,
+        accelerate=accelerate, single_precision=single_precision,
+        on_iter=on_iter,
+    )
+
+
+def fit_states(
+    data: BurstPhotons,
+    n_states: int,
+    *,
+    n_restarts: int = 2,
+    max_iter: int = 500,
+    tol: float = 1e-7,
+    seed: int = 0,
+    single_precision: bool = False,
+    on_iter=None,
+) -> H2mmModel:
+    """Fit an ``n_states`` model from random restarts, routed to the backend.
+
+    The plain-EM half of :func:`fit_one`, for callers that want a fit rather
+    than an engine choice.
+
+    Parameters
+    ----------
+    data : BurstPhotons
+        Photon data in engine layout.
+    n_states : int
+        State count to fit.
+    n_restarts, max_iter, tol, seed
+        EM parameters.
+    single_precision : bool
+        Run the float32 kernel.
+    on_iter : callable, optional
+        Progress callback ``on_iter(done, total)``.
+
+    Returns
+    -------
+    H2mmModel
+        The best model over the restarts.
+    """
+    return fit_one(
+        data, n_states, engine="em-float32" if single_precision else "em",
+        n_restarts=n_restarts, max_iter=max_iter, tol=tol, seed=seed,
         on_iter=on_iter,
     )

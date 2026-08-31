@@ -58,7 +58,11 @@ def numba_sentinel(monkeypatch):
         calls["viterbi"] += 1
         return ("numba-path", -1.0)
 
-    monkeypatch.setattr(engines, "fit_states", fake_fit_states)
+    # `_fit_states_numba`, not `fit_states`: since the backend selector grew a
+    # routed `fit_states`, the bare name is the router and patching it would
+    # stub out the very dispatch these tests exercise. The private name is the
+    # fallback engine, matching `_viterbi_numba` beside it.
+    monkeypatch.setattr(engines, "_fit_states_numba", fake_fit_states)
     monkeypatch.setattr(engines, "_viterbi_numba", fake_viterbi)
     return calls
 

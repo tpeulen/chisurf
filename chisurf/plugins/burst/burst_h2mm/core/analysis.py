@@ -23,8 +23,8 @@ from .engines import (
     posterior,
     viterbi,
 )
+from .engines import optimize as _h2mm_optimize
 from .h2mm import BurstPhotons, H2mmModel, prepare_bursts
-from .h2mm import optimize as _h2mm_optimize
 
 logger = logging.getLogger(__name__)
 

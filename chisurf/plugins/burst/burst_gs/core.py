@@ -546,7 +546,11 @@ def compare_with_h2mm(bursts: gs.PhotonBursts, fit: gs.GsFitResult,
         fails must not take the fit down with it.
     """
     try:
-        from chisurf.plugins.burst.burst_h2mm.core.h2mm import fit_states, prepare_bursts
+        # `fit_states` from `.engines`, not `.h2mm`: the latter is the
+        # fallback engine and would run here even where the C++ one is
+        # available. `prepare_bursts` is a data structure, not compute.
+        from chisurf.plugins.burst.burst_h2mm.core.engines import fit_states
+        from chisurf.plugins.burst.burst_h2mm.core.h2mm import prepare_bursts
     except Exception as exc:  # pragma: no cover - H2MM plugin missing
         return {"error": f"the H2MM engine is unavailable: {exc}"}
 

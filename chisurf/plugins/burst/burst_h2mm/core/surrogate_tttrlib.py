@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .h2mm import BurstPhotons, H2mmModel, optimize
+from .h2mm import BurstPhotons, H2mmModel
 from .h2mm_tttrlib import _to_engine
 
 try:
@@ -104,5 +104,9 @@ def estimate_model(
     if refine_iters > 0:
         # Polish with the plugin's own EM so the refined result is identical to
         # the pure-Python path (which itself dispatches to tttrlib for EM).
+        # Routed, not `.h2mm.optimize`: this is the C++ surrogate, and it was
+        # polishing its estimate with the fallback optimiser.
+        from .engines import optimize
+
         model = optimize(model, data, max_iter=refine_iters, tol=tol)
     return model

@@ -17,7 +17,7 @@ shared board (`okf/agent-board.md`), each carrying its **interface** and its
 |---|---|---:|---|
 | `T-20260811-14` | `flc_2d/core.py` | 5 | delegation written and exact; land it |
 | `T-20260811-15` | `_hdbscan.py` (part) | 3 | compiled path exists; make it required |
-| `T-20260811-16` | h2mm call sites | 0 | prerequisite for `h2mm.py`'s 8 |
+| `T-20260811-16` | h2mm call sites | 0 | ✅ done 2026-08-31 — 4 sites (not 2), 44× |
 | `T-20260811-17` | `av/static.py` + part of `av/functions.py` | 9 | PRD-100 g1 |
 | `T-20260811-18` | `av/dynamic.py` + rest of `av/functions.py` | 7 | PRD-100 g2, decision first |
 | `T-20260811-19` | `potentials.py`, `protein.py` | 7 | PRD-100 g3, **no IMP target** |

@@ -1,6 +1,35 @@
 # Update Log
 
 ## 2026-08-31
+* **H2MM routes to tttrlib everywhere — four call sites were reaching around the
+  backend selector (`T-20260811-16`).** `engines.py` had chosen tttrlib-or-fallback
+  per call for a while, but `analysis.fixed_loglik`, `burst_gs`'s cross-check,
+  `surrogate`'s EM polish and — least intentionally — **`surrogate_tttrlib`, the
+  C++ surrogate, which refined its own estimate with the fallback optimiser** all
+  imported the fallback engine directly. The ticket said two; there were four.
+  **Measured: 6.8 ms (tttrlib) vs 302.3 ms (fallback) for the same 50-map EM —
+  44× — with logliks agreeing to 9.6e-16.**
+  `engines.py` gains routed `optimize()` and `fit_states()`; the fallback entry
+  points become `_optimize_numba` / `_fit_states_numba`, so writing the obvious
+  name can no longer get the slow engine. Six tests in `test_backend_routing.py`,
+  including a guard that no module outside `engines.py` imports a compute entry
+  point from `h2mm` — data structures stay importable.
+  Semantics were pinned before routing, as the ticket required: the two engines
+  agree at `max_iter=1` (-1758.418772759227 vs -1758.4187727592298), which is
+  the case `fixed_loglik` rests on, so the special path the ticket warned might
+  be needed is not.
+  Two things worth carrying forward: the rename broke a test that was patching
+  `engines.fit_states` (now the router, retargeted to `_fit_states_numba`); and
+  the first version of the guard **passed vacuously** because `parents[4]` made
+  it scan `chisurf/chisurf` — it was only trusted after being made to fail on a
+  reintroduced bypass.
+  Context checked while here: `test/numba_import_allowlist.txt` is **empty** —
+  numba is fully retired from the package — and every tttrlib capability probe
+  in `chisurf/` (`SimEngine`, `GopichSzabo`, `TwoCDE`, `BVA`, `HMM`,
+  `HmmSurrogate`, `richardson_lucy_2d`, `PdaBurstLikelihood`,
+  `mutual_reachability_mst`, …) resolves against 0.27.0, so those seams take the
+  compiled path. The remaining duplication is `h2mm.py`'s own kernels, whose
+  deletion the ticket scopes out and which is now fully measured.
 * **Guide screenshots, part 2: the chimol grabs were dead too, and H2MM could not
   fit at all.** Continues the pass above. Figureless guides **4 → 3**
   (`34_exporting_burst_data` gains the real exported burst table); `47`/`52` stay

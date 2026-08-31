@@ -46,7 +46,6 @@ from .h2mm import (
     BurstPhotons,
     H2mmModel,
     _row_normalize,
-    optimize,
     prepare_bursts,
     simulate_bursts,
 )
@@ -438,5 +437,10 @@ def estimate_model(
         )
     model = surrogate.predict(data)
     if refine_iters > 0:
+        # Imported here, not at module scope: `.engines` pulls in
+        # `surrogate_tttrlib`, which imports this module's siblings, so a
+        # top-level import closes a cycle.
+        from .engines import optimize
+
         model = optimize(model, data, max_iter=refine_iters, tol=tol)
     return model
