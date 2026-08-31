@@ -99,6 +99,23 @@ The transcript shows every tool call, the skill it is following, and the
 reduced chi-square as fits complete, so you can see what it did rather than
 having to trust it.
 
+```{figure} figures/ai_assistant.png
+:name: fig-ai-assistant
+:width: 95%
+
+The assistant in **ChiSurf tools** mode, having been asked for lifetimes in
+ordinary words. The greyed lines between the question and the answer are the
+actual tool calls — `load_data`, `add_fit`, `run_fit` — with what each returned,
+so the reduced chi-squares are visible *before* the prose that interprets them.
+The header shows which mode is active and a green dot for a usable provider; the
+banner above the conversation lists what this mode is allowed to do, and changes
+when you change the mode.
+
+The conversation shown was placed rather than generated: a live answer depends
+on which model the machine has configured, so the figure could not otherwise be
+re-taken. The layout, the tool-call rendering and the mode chrome are ChiSurf's.
+```
+
 ## Using it from a terminal
 
 ```bash

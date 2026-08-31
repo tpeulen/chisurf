@@ -88,6 +88,19 @@ API, which remains the right choice when the reference samples were measured
 separately.
 :::
 
+```{figure} figures/accurate_fret_es.png
+:name: fig-fret-calibration-es
+:width: 90%
+
+What the four factors buy you, on an E–S histogram. Donor-only sits near
+$S = 1$ and acceptor-only near $S = 0$ — their "efficiency" is meaningless,
+which is exactly why they are the reference populations the factors are
+determined from. The doubly labelled populations land at $S \approx 0.5$ once
+$\beta$ is right; before calibration they do not, and the efficiency axis is a
+proximity ratio rather than $E$. The colours are the classes the mixture model
+found, not gates drawn by hand.
+```
+
 ### 1. Light-path prior → data-optimized posterior
 
 The [light-path calculator](../reference/plugins/index.md) computes the spectral crosstalk matrices

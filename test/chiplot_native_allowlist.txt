@@ -18,7 +18,6 @@
 #   * curve performance — setDownsampling / setClipToView
 #     (tttr_lut_tools, lineplot)
 #   * legend text colour (spectrum_view)
-#   * scene mouse position → data coordinates (irf_estimator)
 #
 # This list only SHRINKS. When you touch one of these files, port it and strike
 # the line; adding a NEW line is a test failure, not a fix. Goal: empty.
@@ -31,5 +30,4 @@ chisurf/plugins/calculator/fcs_saturation_calc/tests/test_gui.py
 chisurf/plugins/core/lightpath_simulator/gui/node_types.py
 chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
 chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
-chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
 chisurf/plugins/fret_line/gui/tool.py

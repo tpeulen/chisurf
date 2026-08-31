@@ -88,7 +88,7 @@ def _grab_parameter_link_menu():
     from chisurf.gui.widgets.fitting.parameter_widgets import (
         FittingParameterProxyController,
     )
-    from chisurf.gui.widgets.models.tcspc.lifetime import LifetimeModelWidget
+    from chisurf.gui.widgets.models.tcspc import LifetimeModelWidget
     from chisurf.server.services.fits import get_fit_info, list_fits
     from chisurf.server.session import SessionState
 
@@ -1052,6 +1052,295 @@ def _grab_ask_the_documentation():
     _grab(widget, "ask_the_documentation.png")
 
 
+def _grab_maxent_decay():
+    """MaxEnt decay on a decay whose lifetime distribution is known.
+
+    The decay is built from a *bimodal* distribution (peaks at 1.1 ns and
+    3.6 ns) rather than two discrete exponentials, because that is the case MEM
+    exists for and the case the figure has to show it solving.
+
+    Nuisance fitting is on. Without it a sub-channel misalignment between the
+    model IRF and the data is absorbed as a spurious fast component that
+    dominates the short end of the grid and squashes both real peaks -- the
+    figure would show a MEM artefact rather than a MEM result.
+    """
+    import chisurf
+    from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
+    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+    from chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui import MaxentDecayWidget
+
+    n, dt = 512, 0.0323
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
+    irf /= irf.sum()
+    taus = np.linspace(0.2, 6.0, 200)
+    weights = np.exp(-0.5 * ((taus - 1.1) / 0.25) ** 2)
+    weights += 0.8 * np.exp(-0.5 * ((taus - 3.6) / 0.55) ** 2)
+    weights /= weights.sum()
+    pure = (weights[:, None] * np.exp(-t[None, :] / taus[:, None])).sum(0)
+    conv = np.convolve(pure, irf)[:n]
+    rng = np.random.default_rng(3)
+    decay = rng.poisson(3.0e4 * conv / conv.max()).astype(float)
+
+    fit = build_lifetime_fit(
+        decay, bin_width=dt, irf=irf, n_components=2,
+        start_bin=int(1.0 / dt), stop_bin=n - 1,
+    )
+    fit.data.name = "MEM-demo-decay"
+    install_fitting_client(None)
+    chisurf.fits = [fit]
+
+    tool = MaxentDecayWidget()
+    tool.resize(1400, 900)
+    tool.show()
+    QApplication.instance().processEvents()
+    tool._on_refresh_data()
+    # The default grid reaches down to where no decay is left to describe; its
+    # first bin then collects an edge spike that dwarfs both real peaks.
+    tool.spin_tau_min.setValue(0.4)
+    tool.spin_tau_max.setValue(7.0)
+    tool.spin_tau_bins.setValue(120)
+    tool.chk_fit_nuisance.setChecked(True)
+    tool._run_mem()
+    QApplication.instance().processEvents()
+    _grab(tool, "maxent_distribution.png")
+
+
+def _grab_global_view():
+    """The parameter network with one lifetime shared across three fits.
+
+    Three fits with a *link* between them, not three unrelated ones: the guide
+    is about the shared parameter, and an unlinked network has nothing in it
+    that a list of fits would not have shown.
+    """
+    import chisurf
+    from chisurf.core.data import DataCurve, DataCurveGroup
+    from chisurf.core.fitting.fit import FitGroup
+    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+    from chisurf.gui.widgets.models.tcspc import LifetimeModelWidget
+    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
+
+    def make(name, tau, n_curves=1):
+        x = np.linspace(0.1, 25, 256)
+        y = 1000.0 * np.exp(-x / tau) + 1.0
+        curves = [
+            DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
+        ]
+        return FitGroup(
+            data=DataCurveGroup(curves, name=name), model_class=LifetimeModelWidget
+        )
+
+    fits = [make("Donor-only", 4.0), make("FRET-low", 2.4, 2), make("FRET-high", 1.3)]
+    install_fitting_client(None)
+    chisurf.fits = fits
+    source = fits[0].model.parameters_all_dict["tL1"]
+    for fit in fits[1:]:
+        fit.model.parameters_all_dict["tL1"].link = source
+
+    tool = GraphWizard(fit_list=fits)
+    tool.resize(1150, 760)
+    tool.recompute_graph()
+    _grab(tool, "globalview_network.png")
+
+
+def _grab_pto_inspector():
+    """A container holding an instrument file and two results derived from it.
+
+    A `.pto` with only the raw file in it has no provenance to draw, so the
+    fixture writes a burst table derived from the instrument data and a decay
+    derived from those bursts -- the two-step lineage the guide describes.
+    """
+    import shutil
+
+    from chisurf.core.fio.pto import Measurement
+    from chisurf.plugins.core.pto_inspector.gui.tool import PtoInspectorTool
+
+    ptu = pathlib.Path("test/data/clsm/Leica_SP5.ptu")
+    if not ptu.is_file():
+        raise FileNotFoundError(f"instrument test data missing: {ptu}")
+
+    work = pathlib.Path(tempfile.mkdtemp()) / "sample"
+    work.mkdir()
+    raw = work / "measurement.ptu"
+    shutil.copy(ptu, raw)
+
+    n_bursts = 128
+    rng = np.random.default_rng(1)
+    with Measurement.create(raw) as measurement:
+        bursts = measurement.put_table(
+            "bursts",
+            {
+                "First Photon": np.arange(n_bursts, dtype=np.int64),
+                "Np": rng.integers(40, 400, n_bursts).astype(np.int32),
+            },
+            artifact_kind="burst_table",
+            operation_type="burst_selection",
+            row_grain="burst",
+            parameters={"M": 10, "T": 0.0005, "N": 20},
+            derived_from=measurement.instrument_uid,
+        )
+        t = np.arange(256.0) * 0.032
+        measurement.put_curve(
+            "decay", t, 3.0e4 * np.exp(-t / 3.2) + 5.0,
+            artifact_kind="tcspc_decay",
+            operation_type="tcspc_histogram_computation",
+            x_units="nanoseconds", y_units="counts",
+            derived_from=bursts,
+        )
+
+    tool = PtoInspectorTool()
+    tool.resize(1400, 900)
+    tool.model.set_filename(str(work / "measurement.pto"))
+    QApplication.instance().processEvents()
+    _grab(tool, "pto_inspector.png")
+
+
+def _grab_irf_estimator():
+    """A blind IRF estimate on a decay that reaches baseline.
+
+    50 ns of range at tau = 4 ns, deliberately: the method fits a *truncated*
+    exponential, and with only a few lifetimes of measured tail the offset C is
+    degenerate against the exponential -- tau comes back low and the recovered
+    IRF grows a tail that is regularisation ringing, not an instrument
+    response. The guide says so; this figure is the case where the assumption
+    holds.
+    """
+    from chisurf.plugins.fluorescence_decay.irf_estimator.gui.tool import (
+        IRFEstimatorTool,
+    )
+
+    n, dt = 500, 0.1002
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 5.0) / 0.5) ** 2)
+    irf /= irf.sum()
+    conv = np.convolve(np.exp(-t / 4.0), irf)[:n]
+    rng = np.random.default_rng(5)
+    decay = rng.poisson(4.0e4 * conv / conv.max() + 8.0).astype(float)
+
+    tool = IRFEstimatorTool()
+    tool.resize(1300, 860)
+    tool.show()
+    QApplication.instance().processEvents()
+    tool._process_decay_data(np.column_stack((t, decay)), dt)
+    tool.data_info_label.setText(
+        "simulated decay \u2014 \u03c4 = 4.0 ns, IRF FWHM 1.18 ns at 5.0 ns"
+    )
+    QApplication.instance().processEvents()
+    tool.estimate_irf()
+    QApplication.instance().processEvents()
+    _grab(tool, "irf_estimator.png")
+
+
+def _grab_console():
+    """The console answering a question about two fits that were really run.
+
+    The console echoes nothing on its own -- the prompt shows whatever is in
+    the input buffer -- so a transcript has to be "typed" into the buffer
+    before each line is executed, or the figure shows bare ``In []:`` prompts.
+    """
+    import chisurf
+    from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
+    from chisurf.gui.chinsole.widget import Chinsole
+    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+
+    n, dt = 512, 0.0323
+    t = np.arange(n) * dt
+    irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
+    irf /= irf.sum()
+    rng = np.random.default_rng(7)
+    fits = []
+    for name, tau in (("Donor-only", 3.8), ("FRET-high", 1.6)):
+        conv = np.convolve(np.exp(-t / tau), irf)[:n]
+        decay = rng.poisson(3.0e4 * conv / conv.max() + 5.0).astype(float)
+        fit = build_lifetime_fit(
+            decay, bin_width=dt, irf=irf, n_components=2,
+            start_bin=int(1.2 / dt), stop_bin=n - 1,
+        )
+        fit.data.name = name
+        fit.run()
+        fits.append(fit)
+    install_fitting_client(None)
+    chisurf.fits = fits
+
+    console = Chinsole()
+    console.resize(1000, 320)
+    console.show()
+    QApplication.instance().processEvents()
+    console.push({"cs": chisurf, "np": np})
+    for line in (
+        "cs.fits",
+        "fit = cs.fits[0]",
+        "fit.chi2r",
+        "[(f.name, round(f.chi2r, 3)) for f in cs.fits]",
+        "sorted(fit.model.parameters_all_dict)[:6]",
+    ):
+        console.view.set_input_buffer(line)
+        QApplication.instance().processEvents()
+        console.execute(line)
+        QApplication.instance().processEvents()
+    _grab(console, "console.png")
+
+
+def _grab_ai_assistant():
+    """The assistant in the mode that operates ChiSurf.
+
+    The conversation is placed rather than run, for the same reason as
+    :func:`_grab_ask_the_documentation`: a live answer depends on whichever
+    model the machine has configured, and the figure could not be re-taken.
+    The mode selector is set to *ChiSurf tools* because the transcript is a
+    tool-driven run -- "Chat only" beside tool calls is an incoherent figure.
+    """
+    from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
+
+    panel = AgentPanelWidget()
+    panel.resize(980, 720)
+    panel.mode_combo.setCurrentIndex(1)
+    panel.show()
+    QApplication.instance().processEvents()
+
+    panel.transcript.clear()
+    panel._append_sys(panel._greeting_for(panel._current_mode()))
+    panel._append_user(
+        "Fit the decays in test/data/tcspc/ibh and tell me the lifetimes."
+    )
+    panel._append_sys("load_data(path='test/data/tcspc/ibh')  ->  3 dataset(s)")
+    panel._append_sys("add_fit(model='Lifetime', dataset=0..2)  ->  3 fits")
+    panel._append_sys("run_fit(all)  ->  chi2r = 1.03, 1.12, 0.98")
+    panel._append_assistant(
+        "All three converged. The donor-only sample gives 3.81 ns; the two "
+        "labelled samples give 2.34 ns and 1.61 ns, so the transfer "
+        "efficiencies are 0.39 and 0.58. The fits are in your window \u2014 "
+        "chi2r is 0.98-1.12, so none of them is straining. Ask me to add a "
+        "second component if the residuals look structured."
+    )
+    QApplication.instance().processEvents()
+    _grab(panel, "ai_assistant.png")
+
+
+def _grab_lumis_quest():
+    """Two screens of the game, rendered through its own capture harness.
+
+    The game draws through wgpu, so ``QWidget.grab()`` returns an empty
+    surface -- the frames have to come from the engine's offscreen path. The
+    plugin already ships that harness (it is how the game is reviewed), so
+    this reuses it rather than re-deriving the scene setup.
+    """
+    import shutil
+
+    from chisurf.plugins.misc.games.lumis_quest.test import capture as lumis_capture
+
+    staging = pathlib.Path(tempfile.mkdtemp()) / "lumis"
+    staging.mkdir()
+    lumis_capture.main([str(staging)])
+    # Two of the gallery: the map-is-the-documentation screen, and the battle
+    # where the fluorophore mechanic is visible.
+    for stem in ("lumis_town", "lumis_battle"):
+        source = staging / f"{stem}.png"
+        if source.is_file():
+            shutil.copy(source, FIG / f"{stem}.png")
+            print("wrote", f"{stem}.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1079,6 +1368,13 @@ def main():
         _grab_region_editor,
         _grab_ndx_gaussian_panel,
         _grab_ask_the_documentation,
+        _grab_maxent_decay,
+        _grab_global_view,
+        _grab_pto_inspector,
+        _grab_irf_estimator,
+        _grab_console,
+        _grab_ai_assistant,
+        _grab_lumis_quest,
     ):
         try:
             grab()

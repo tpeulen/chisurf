@@ -1,5 +1,44 @@
 # Update Log
 
+## 2026-08-31
+* **Nine figureless guides get real app screenshots — and four GUI defects the
+  screenshots exposed get fixed.** The gap was measured, not assumed: 55 of 68
+  guides already carried a `{figure}`, 13 carried none. Eight new headless grabs
+  land in `docs/guides/make_screenshots.py` (`_grab_maxent_decay`,
+  `_grab_global_view`, `_grab_pto_inspector`, `_grab_irf_estimator`,
+  `_grab_console`, `_grab_ai_assistant`, `_grab_lumis_quest`), each driven into a
+  state whose answer is known, each read and inspected as a PNG; two more guides
+  (`h2mm`, `fret_calibration`) are wired to the existing figures for the same
+  tools. Every figure is registered in `docs/references/figures.yaml` with a
+  recipe naming the trap that makes it hard to re-take. Figureless guides:
+  **13 → 4** (`34`, `47`, `52`, `53` remain — 47/52 need the external ndX GUI).
+  **Four defects, none of which any test saw**, because each sat behind a
+  `try`/`except` or produced a plausible-looking picture:
+  - `maxent_decay/core/solver.py` — the tttrlib fast path built a result dict
+    without `Fi`/`H`/`g0`/`y`/`sigma`, so **the MaxEnt GUI raised `KeyError: 'Fi'`
+    on every run whenever the compiled engine was present**, which on a normal
+    install is always. It also reported the median background instead of the one
+    it was given, and the GUI writes that number back into the input field. Both
+    fixed by rebuilding the design matrix from the arguments the engine got;
+    guarded by `test_solver_contract.py` (4 tests).
+  - `irf_estimator/gui/tool.py` — `.native.scene()` no longer exists, so the tool
+    **crashed on construction**; ported to chiplot's `mouse_moved(x, y)` signal
+    and struck from `test/chiplot_native_allowlist.txt`.
+  - same file — `showMessage(..., timeout=)` is not Qt's spelling (`msecs`), so
+    **every *successful* IRF estimate raised and popped an error dialog**.
+  - `irf_estimator` forward model — the kernel was built on a **nanosecond** axis
+    from a **per-channel** rate, stretching the exponential by `dt`; the curve
+    labelled "IRF ⊗ Exp" could not reproduce the decay it was drawn over. The
+    result now carries `k_per_ns` beside `k`; guarded by `test_units.py` (3 tests).
+  - `code_editor/agent_panel.py` — the greeting always said "select code in the
+    editor", including in the modes whose point is that the assistant loads data
+    and runs fits itself. Now follows the mode selector; 5 tests.
+  Also fixed: `_grab_parameter_link_menu` imported a submodule PRD-38 removed, so
+  `parameter_link_menu.png` had been unregenerable. Measured and documented in
+  `docs/guides/irf_estimation.md`: the blind-IRF method needs the decay to reach
+  baseline — at 4.3 lifetimes of tail the recovered τ is 23 % low and the offset
+  comes back at 1120 against a true 8, while the IRF *position* stays correct.
+
 ## 2026-08-23
 * **Lumis Quest follow-up 3: the dark manifold has a loop** (open front 1).
   Ferals — beasts that crossed with their labels still burning — hunt the

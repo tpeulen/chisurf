@@ -41,6 +41,19 @@ and every link between parameters.
 The colour key sits in the top-left corner of the panel, and the status bar
 counts what is on screen.
 
+```{figure} figures/globalview_network.png
+:name: fig-globalview-network
+:width: 100%
+
+Three fits sharing one donor lifetime. Each **blue** disc is a fit
+(*Donor-only*, *FRET-low*, *FRET-high*) surrounded by its parameters; the two
+**cyan arrows** run from the followers' `tL1` to the master's, and they point
+*at* the master, so the direction of the constraint is readable off the picture.
+The follower nodes are **green** and the master stays **purple** — a green node
+with no arrow leaving it is a link you thought you made and did not. The status
+bar counts what is drawn: *3 owners · 15 parameters · 2 linked*.
+```
+
 ## 3. Link the shared parameter
 
 Two ways, and they do the same thing:

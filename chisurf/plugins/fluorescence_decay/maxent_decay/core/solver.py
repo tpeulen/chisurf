@@ -651,6 +651,26 @@ def solve_lifetime_mem(
                     nu=float(nu), max_iter=int(max_iter), tol=float(tol),
                     min_prob=MIN_PROB, prior=prior_vec_l.tolist(),
                 )
+                # The C++ engine returns only the MEM solution, but every
+                # consumer (the GUI plots, the sampler, the saved result) needs
+                # the design matrix and the fitted segment it was solved
+                # against. Rebuild them from the arguments the engine was given
+                # -- the same call the Python path makes -- so both paths return
+                # one contract.
+                Fi_l, y_l, sigma_l, fit_additive_l = _build_Fi_lifetimes(
+                    decay_arr,
+                    lamp_corr_l,
+                    float(dt),
+                    tau_arr,
+                    float(ts0),
+                    bg_val_used,
+                    float(lamp_scatter),
+                    int(fitstart),
+                    int(fitstop),
+                    period_val,
+                )
+                M_l = float(y_l.size)
+                y_w_l = (y_l - fit_additive_l) / sigma_l
                 p_cpp = np.asarray(cpp.p)
                 result = {
                     "p": p_cpp,
@@ -667,11 +687,17 @@ def solve_lifetime_mem(
                     "fitrange": (int(fitstart), int(fitstop)),
                     "dt": float(dt),
                     "timeshift": float(ts0),
-                    "background": float(bg0),
+                    # what the engine was actually given, not the median bg0.
+                    "background": bg_val_used,
                     "lamp_scatter": float(lamp_scatter),
-                    "fit_additive": np.zeros(tau_arr.size),
+                    "fit_additive": fit_additive_l,
                     "irf_background": float(irf_bg_val_l),
                     "nu_input": float(nu),
+                    "H": (2.0 / M_l) * (Fi_l.T @ Fi_l),
+                    "g0": (2.0 / M_l) * (y_w_l @ Fi_l),
+                    "y": y_l,
+                    "sigma": sigma_l,
+                    "Fi": Fi_l,
                     "prior": prior_vec_l,
                     "nuisance_optimized": False,
                 }

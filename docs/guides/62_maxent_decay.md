@@ -46,6 +46,21 @@ the regularization weight $\nu$ you have not chosen yet. That is the honest
 state of the result, not a defect: the inversion is ill-posed, so $\nu$ decides
 how much structure you are shown.
 
+```{figure} figures/maxent_distribution.png
+:name: fig-maxent-distribution
+:width: 100%
+
+MEM on a decay built from a **known** bimodal lifetime distribution — Gaussian
+lobes at $\tau = 1.1$ ns and $\tau = 3.6$ ns, not two discrete exponentials.
+**Left**, the recovered distribution: the long lobe comes back at $\approx 3.8$
+ns, and the short one appears split, which is $\nu$ showing more structure than
+the data support — the reason Step 3 exists. **Right**, the decay with the MEM
+fit over it and the weighted residuals ($\chi^2_r = 1.03$, structureless): a good
+$\chi^2_r$ constrains the distribution far less than it looks like it should.
+**Fit nuisance** is on; with it off, a sub-channel IRF misalignment is absorbed
+as a spurious fast component that dominates the short end of the grid.
+```
+
 ## Step 3 — choose ν with the L-curve
 
 Press **L-curve**. It sweeps $\nu$ and plots residual norm against solution

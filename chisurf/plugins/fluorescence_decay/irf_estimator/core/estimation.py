@@ -77,9 +77,19 @@ def estimate_irf(
     tau_channels = 1.0 / k_per_channel if k_per_channel > 0 else float("inf")
     tau_ns = tau_channels * dt
 
+    # ``k`` is per *channel* -- the estimator is deliberately run on a unit grid
+    # (``dt=1.0``) so the fit does not depend on the sampling. Every axis handed
+    # out below is in nanoseconds, so the per-ns rate travels beside it under a
+    # name that says which one it is; using ``k`` against a nanosecond axis
+    # stretches the exponential by a factor of ``dt``.
     return IRFEstimationResult(
         irf=irf.tolist(),
-        params={"A": float(params["A"][0]), "C": float(params["C"][0]), "k": float(params["k"])},
+        params={
+            "A": float(params["A"][0]),
+            "C": float(params["C"][0]),
+            "k": float(params["k"]),
+            "k_per_ns": float(k_per_ns),
+        },
         time_axis=(np.arange(len(irf)) * dt).tolist(),
         dt=dt,
         lifetime_ns=tau_ns,

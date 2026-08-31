@@ -47,6 +47,17 @@ That middle band is the frontier the game exists to work. A village's ground
 brightens as its pages are settled, so a neglected section is visibly a ghost
 town from across the map.
 
+```{figure} figures/lumis_town.png
+:name: fig-lumis-town
+:width: 90%
+
+A settlement. Each building is a documentation page and the compound is a
+`toctree`; the plaque names the section you are standing in rather than a file
+path. The bar along the top is the party, the line at the bottom is the game
+telling you what to do next, and the figure on the left is another agent going
+about the town's day — not scenery, and not waiting for you.
+```
+
 You play **Iris**, a probe photon; **Lumi**, a dog, trots behind her. You will
 meet them again — they are the ball in Pong and the probe in Breakout.
 
@@ -86,6 +97,18 @@ Hare** around 640. You learn to read the spectrum without ever being shown a
 number.
 
 **Somebody is doing this to the wild**, and that is the story.
+
+```{figure} figures/lumis_battle.png
+:name: fig-lumis-battle
+:width: 90%
+
+A body-and-label encounter. The **Cyan Crow** names its band and the panel gives
+the number — 503 nm — so the naming convention teaches itself; **T3** is the
+label's tier and the bar is how much of it is left to wear down. The log is the
+mechanic stated plainly: one emits, the other *transfers*, and the amount
+depends on the two spectra rather than on a damage table. **Unbind** carries its
+odds (14%) instead of hiding them.
+```
 
 ## Unbinding, not catching
 

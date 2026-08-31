@@ -110,6 +110,20 @@ The photon and burst tables are plain numeric tables (time column
 CSV / MFD-HDF5 readers — colour the per-photon scatter by `State` to visualise the
 recovered state trajectory.
 
+```{figure} figures/h2mm_dashboard.png
+:name: fig-h2mm-dashboard-plugin
+:width: 100%
+
+What the plugin produces from those outputs. The panels are the state-resolved
+answer a burst-averaged histogram cannot give: the recovered per-state FRET
+efficiencies, the populations and transition rates, the dwell-time
+distributions, and the model-order scan that chose the number of states. The
+same run is walked step by step in
+{doc}`Photon-by-photon HMM (H2MM) <19_h2mm_hidden_markov>` and validated
+against simulated data with a known answer in
+{doc}`H2MM simulation and validation <31_h2mm_simulation_validation>`.
+```
+
 ## Usage
 
 ### GUI

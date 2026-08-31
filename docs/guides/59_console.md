@@ -78,6 +78,17 @@ which makes a question across several fits a one-liner:
 [(f.name, round(f.chi2r, 3)) for f in cs.fits]
 ```
 
+```{figure} figures/console.png
+:name: fig-console
+:width: 100%
+
+The console answering exactly that, on a session with two fits open. `cs.fits`
+is the live list — the objects the GUI is showing, not a copy — so `fit.chi2r`
+reads the number the fit window is displaying, and the comprehension asks the
+same question of every fit at once without touching a dialog. Note `Out[3]` and
+the entry for *Donor-only* in `Out[4]` agree: there is only one object.
+```
+
 That is the kind of thing the console is for. There is no dialog that compares
 chi-square across every open fit, and there does not need to be.
 

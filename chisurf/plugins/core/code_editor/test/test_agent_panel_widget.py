@@ -140,3 +140,46 @@ class TestAgentPanelWidget:
         panel = AgentPanelWidget()
         panel._use_example("Fit the decay in this folder.")
         assert panel.input.toPlainText() == "Fit the decay in this folder."
+
+
+class TestTheGreetingFollowsTheMode:
+    """The banner is the only text that says what the assistant is for.
+
+    In a tool mode the assistant loads data and runs fits by itself, so a
+    banner telling the user to select code in the editor is wrong advice --
+    and it is the kind of mismatch no assertion on the mode selector catches.
+    """
+
+    def test_chat_only_talks_about_the_editor(self, qapp):
+        """Chat mode has no tools, so the editor is the whole story."""
+        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
+
+        panel = AgentPanelWidget()
+        text = panel._greeting_for(AgentMode.CHAT_ONLY)
+        assert "editor" in text.lower()
+
+    @pytest.mark.parametrize(
+        "mode_name", ["CHISURF_TOOLS", "FULL_CONTROL"]
+    )
+    def test_a_tool_mode_talks_about_operating_chisurf(self, qapp, mode_name):
+        """A mode that runs fits must not tell the user to select code."""
+        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
+
+        panel = AgentPanelWidget()
+        text = panel._greeting_for(getattr(AgentMode, mode_name))
+        assert "select code in the editor" not in text.lower()
+        assert "fit" in text.lower()
+
+    def test_full_control_says_it_will_ask_first(self, qapp):
+        """The dangerous tier is the one whose banner has to be explicit."""
+        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
+
+        panel = AgentPanelWidget()
+        text = panel._greeting_for(AgentMode.FULL_CONTROL)
+        assert "asks you first" in text.lower()
+
+    def test_switching_mode_re_greets(self, qapp):
+        """The banner is refreshed, not left describing the previous mode."""
+        panel = AgentPanelWidget()
+        panel.mode_combo.setCurrentIndex(1)
+        assert "operate chisurf" in panel.transcript.toPlainText().lower()

@@ -55,6 +55,20 @@ and residuals red.
 Click a node and every other panel follows it. Double-click one to open the tool
 that performs its step.
 
+```{figure} figures/pto_inspector.png
+:name: fig-pto-inspector
+:width: 100%
+
+One container, every panel at once. **Provenance** (top right) draws the two
+recorded steps: the instrument file (brown) → the burst table (blue) → the decay
+computed from those bursts (violet); the README sits unconnected because nothing
+was derived from it. The object list (left) is the same four objects as rows,
+with the kind, the operation that made each, the row grain and the size.
+**Data**, **Curve** and **Details** below all follow the selected node — here the
+decay, its 256 × 2 payload, the curve itself, and the operation and version that
+produced it.
+```
+
 ## The numbers
 
 **Data** shows a tabular payload in the shared table — search, filter, hide

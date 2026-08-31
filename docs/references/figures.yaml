@@ -42,6 +42,7 @@ guides/figures/accurate_fret_es.png:
   origin: docs/guides/make_screenshots.py::_grab_accurate_fret_tool
   pages:
   - docs/guides/41_accurate_fret.md
+  - docs/guides/fret_calibration.md
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_accurate_fret_tool()`.
 guides/figures/accurate_fret_etau.png:
@@ -433,6 +434,7 @@ guides/figures/h2mm_dashboard.png:
   origin: docs/guides/make_figures.py::fig_h2mm_dashboard
   pages:
   - docs/guides/30_h2mm_workflow_results.md
+  - docs/guides/h2mm.md
   recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
     `fig_h2mm_dashboard()`.
 guides/figures/h2mm_recovery.png:
@@ -1864,3 +1866,100 @@ guides/figures/rehm_weller.png:
     their known ORDERING, not at measured dG values, and they sit on the rising part of the curve rather
     than the plateau because that is where the bases actually differ. Moving them onto the plateau would
     make the figure say the opposite of what the ordering means. The caption states this.'
+guides/figures/ai_assistant.png:
+  caption: The assistant in ChiSurf-tools mode, with the tool calls it made visible above the prose that
+    interprets them.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_ai_assistant
+  pages:
+  - docs/guides/40_ai_assistant.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. The panel is
+    built, the mode selector set to "ChiSurf tools" (index 1) and the conversation *placed* rather than
+    run -- a live answer depends on whichever model the machine has configured, so the figure could not
+    otherwise be re-taken. The mode matters: the transcript is a tool-driven run, and "Chat only" beside
+    tool calls is an incoherent figure. The greeting under the header follows the mode, so it is
+    re-emitted after the mode is set.'
+guides/figures/console.png:
+  caption: The console reading chi-square off two fits that were actually run.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_console
+  pages:
+  - docs/guides/59_console.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. Two lifetime
+    fits are built with `build_lifetime_fit` and really run, then installed as `chisurf.fits`, so every
+    number on screen is a fitted one. TRAP: the console echoes nothing on its own -- the prompt renders
+    whatever is in the input buffer -- so each line is written with `view.set_input_buffer(line)` before
+    `execute(line)`. Executing alone yields a transcript of bare `In []:` prompts with outputs and no
+    inputs.'
+guides/figures/globalview_network.png:
+  caption: Three fits sharing one donor lifetime, with the cyan link arrows pointing at the master.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_global_view
+  pages:
+  - docs/guides/60_global_analysis.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. Three FitGroups
+    (Donor-only, FRET-low with two curves, FRET-high) are built on synthetic decays and the `tL1`
+    parameter of the two FRET fits is linked to the donor-only one -- an *unlinked* network shows nothing
+    a list of fits would not have shown, so the links are the point. The parameter is `tL1`; the older
+    spelling `t(L,1)` raises KeyError.'
+guides/figures/irf_estimator.png:
+  caption: A blind IRF estimate on a simulated decay with a known answer, with the forward model lying on
+    the measured data.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_irf_estimator
+  pages:
+  - docs/guides/irf_estimation.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. A single
+    exponential (tau = 4 ns) reconvolved with a 1.18 ns FWHM Gaussian at 5 ns, 500 channels of 0.1002 ns
+    = 50 ns of range, fed in with `_process_decay_data` then `estimate_irf()`. TRAP: the range is chosen
+    so the decay reaches baseline. The method fits a *truncated* exponential, and over a few lifetimes
+    the offset C is degenerate against it -- at 4.3 lifetimes of tail the recovered tau is 23 % low and C
+    comes back at 1120 against a true 8, and the recovered IRF grows a long tail that is regularisation
+    ringing rather than instrument response. The measured table is in the guide.'
+guides/figures/lumis_battle.png:
+  caption: A body-and-label encounter, with the emission band, the tier and the transfer stated on screen.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_lumis_quest
+  pages:
+  - docs/guides/71_lumis_quest.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py, which delegates
+    to the plugin''s own gallery harness (`chisurf.plugins.misc.games.lumis_quest.test.capture`) and
+    copies two of its screens in. TRAP: the game draws through wgpu, so `QWidget.grab()` on
+    `LumisQuestWidget` returns an *empty* surface -- the frames have to come from the engine''s offscreen
+    path (`chigame.capture`), not from Qt.'
+guides/figures/lumis_town.png:
+  caption: A settlement -- each building is a documentation page, each compound a toctree.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_lumis_quest
+  pages:
+  - docs/guides/71_lumis_quest.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. See
+    `lumis_battle.png` for the wgpu trap; both screens come from the same harness run.'
+guides/figures/maxent_distribution.png:
+  caption: MEM on a decay built from a known bimodal lifetime distribution, with the fit and residuals
+    beside it.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_maxent_decay
+  pages:
+  - docs/guides/62_maxent_decay.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. The decay is
+    built from a *distribution* (Gaussian lobes at 1.1 and 3.6 ns) rather than two discrete exponentials,
+    because that is the case MEM exists for. Built with `build_lifetime_fit` and installed as
+    `chisurf.fits`, then `_on_refresh_data()`, the tau grid set to 0.4-7.0 ns over 120 bins, and
+    `_run_mem()`. TWO TRAPS: (1) `chk_fit_nuisance` must be ticked -- without it a half-channel IRF
+    misalignment is absorbed as a spurious fast component that takes 16 % of the amplitude at the
+    shortest tau and squashes both real peaks; the run recovers timeshift 0.5 channels and IRF background
+    9, and chi2r drops from 1.5 to 1.03. (2) the default tau grid reaches down to where no decay is left
+    to describe, and its first bin collects an edge spike.'
+guides/figures/pto_inspector.png:
+  caption: One container with every panel populated -- provenance graph, object list, payload, curve and
+    details.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_pto_inspector
+  pages:
+  - docs/guides/63_pto_inspector.md
+  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. A `.pto` is
+    created from `test/data/clsm/Leica_SP5.ptu` with a 128-row burst table derived from the instrument
+    data and a 256-point decay derived from those bursts, so the provenance tab has the two-step lineage
+    the guide describes -- a container holding only the raw file has no graph to draw. Needs the
+    instrument test data present.'

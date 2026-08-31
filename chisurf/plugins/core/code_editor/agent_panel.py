@@ -467,14 +467,52 @@ class AgentPanelWidget(QtWidgets.QWidget):
         self.runtimeFinished.connect(self._on_runtime_finished)
 
         self._populate_providers()
-        self._append_sys(
-            "👋 I'm an AI coding assistant. Select code in the editor and ask me to:\n"
-            "• 🔍 Explain the selected code\n"
-            "• 🔧 Refactor or improve it\n"
-            "• 🐛 Find bugs or issues\n"
-            "• 🧪 Write tests\n"
-            "• 📝 Add documentation\n\n"
-            f"{Glyphs.DOCS} Use 'Wiki' to feed the current codebase to the LLM Wiki."
+        self._append_sys(self._greeting_for(self._current_mode()))
+
+    def _greeting_for(self, mode: AgentMode) -> str:
+        """Return the opening message that matches *mode*.
+
+        The greeting is the only place that says what the assistant is *for*,
+        so it has to follow the mode selector: telling someone to select code
+        in the editor is wrong advice in a mode whose whole point is that the
+        assistant loads data and runs fits by itself.
+
+        Parameters
+        ----------
+        mode : AgentMode
+            The mode the panel is in.
+
+        Returns
+        -------
+        str
+            The message to show.
+        """
+        if mode is AgentMode.CHAT_ONLY:
+            return (
+                "👋 I'm an AI coding assistant. Select code in the editor and ask me to:\n"
+                "• 🔍 Explain the selected code\n"
+                "• 🔧 Refactor or improve it\n"
+                "• 🐛 Find bugs or issues\n"
+                "• 🧪 Write tests\n"
+                "• 📝 Add documentation\n\n"
+                f"{Glyphs.DOCS} Use 'Wiki' to feed the current codebase to the LLM Wiki."
+            )
+        extra = (
+            "\n• ⚠️ run Python in this session and write files — each asks you first"
+            if mode is AgentMode.FULL_CONTROL
+            else ""
+        )
+        return (
+            "👋 I operate ChiSurf for you. Describe what you want in ordinary "
+            "words and I will:\n"
+            "• 📂 Load data from a file or a folder\n"
+            "• 📈 Add fits, choose models and set parameters\n"
+            "• ▶️ Run the fits and judge the result\n"
+            f"• 💾 Export the numbers{extra}\n"
+            # A bullet, not a trailing paragraph: the banner flattens newlines,
+            # so a closing sentence runs straight into the last bullet.
+            "• 🗂️ Everything I create appears in your windows and is saved in "
+            "your project"
         )
 
     def _populate_providers(self) -> None:
@@ -526,6 +564,8 @@ class AgentPanelWidget(QtWidgets.QWidget):
         self._check_provider_status()
         # The tool set differs per mode, so the running conversation is stale.
         self._agent_session = None
+        # ... and so is the greeting, which describes that tool set.
+        self._append_sys(self._greeting_for(mode))
 
     def _update_mode_status(self, mode: AgentMode) -> None:
         """Update the status label with current mode info."""

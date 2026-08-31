@@ -82,8 +82,7 @@ class IRFEstimatorTool(ChisurfDockTool):
         # Mouse-tracking crosshairs (non-movable; positioned in _on_mouse_moved).
         self.crosshair_v = self.main_plot.vline(0.0, movable=False)
         self.crosshair_h = self.main_plot.hline(0.0, movable=False)
-        # pyqtgraph scene mouse signal — reached via the backend escape hatch.
-        self.main_plot.native.scene().sigMouseMoved.connect(self._on_mouse_moved)
+        self.main_plot.mouse_moved.connect(self._on_mouse_moved)
 
         # The range selector is created now but only shown when range selection
         # is enabled; region() adds it, so remove it until it is switched on.
@@ -719,14 +718,14 @@ class IRFEstimatorTool(ChisurfDockTool):
             self._update_control_states()
 
             self._status_bar.showMessage(
-                "IRF estimation completed", timeout=5000
+                "IRF estimation completed", 5000
             )
         except Exception as e:
             dialogs.error(
                 self, "Estimation Error", str(e)
             )
             self._status_bar.showMessage(
-                "IRF estimation failed", timeout=5000
+                "IRF estimation failed", 5000
             )
             import traceback
             traceback.print_exc()
@@ -835,7 +834,8 @@ class IRFEstimatorTool(ChisurfDockTool):
                     {
                         "A": 1.0,
                         "C": 0.0,
-                        "k": self.irf_params["k"],
+                        # per ns -- the axis just above is in ns, not channels.
+                        "k": self.irf_params["k_per_ns"],
                         "t0": 0.0,
                     },
                 )
@@ -860,25 +860,24 @@ class IRFEstimatorTool(ChisurfDockTool):
             self.main_plot.add(self.range_selector)
             self._range_in_plot = True
 
-    def _on_mouse_moved(self, pos: QtCore.QPointF) -> None:
-        """Handle mouse movement for crosshair display."""
-        if self.main_plot.native.sceneBoundingRect().contains(pos):
-            mouse_point = self.main_plot.native.getViewBox().mapSceneToView(pos)
-            x, y = mouse_point.x(), mouse_point.y()
-            self.crosshair_v.set_value(x)
-            self.crosshair_h.set_value(y)
-            if self.channel_axis is not None and self.decay_data is not None:
-                idx = int(np.argmin(np.abs(self.channel_axis - x)))
-                if 0 <= idx < len(self.channel_axis):
-                    x_val = float(self.channel_axis[idx])
-                    y_val = (
-                        float(self.decay_data[idx])
-                        if idx < len(self.decay_data)
-                        else 0.0
-                    )
-                    self.main_plot.setToolTip(
-                        f"Time: {x_val:.2f} ns, Intensity: {y_val:.1f}"
-                    )
+    def _on_mouse_moved(self, x: float, y: float) -> None:
+        """Track the pointer with the crosshairs and report the decay under it.
+
+        Parameters
+        ----------
+        x, y : float
+            Pointer position in data coordinates, as emitted by the chiplot
+            panel's ``mouse_moved`` signal.
+        """
+        self.crosshair_v.set_value(x)
+        self.crosshair_h.set_value(y)
+        if self.channel_axis is None or self.decay_data is None:
+            return
+        idx = int(np.argmin(np.abs(self.channel_axis - x)))
+        if 0 <= idx < len(self.channel_axis):
+            x_val = float(self.channel_axis[idx])
+            y_val = float(self.decay_data[idx]) if idx < len(self.decay_data) else 0.0
+            self.main_plot.setToolTip(f"Time: {x_val:.2f} ns, Intensity: {y_val:.1f}")
 
     # ------------------------------------------------------------------
     # Parameter change handlers
