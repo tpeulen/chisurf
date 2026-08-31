@@ -101,7 +101,7 @@ answer. Too narrow leaves the image blurred, too wide rings around every object.
 Three routes, in decreasing order of trust:
 
 1. **Measured from beads.** Image sub-resolution fluorescent beads under the
-   same optics and fit them. ChiSurf's **PSF determination** tool does this and
+   same optics and fit them {cite}`shaw1991`. ChiSurf's **PSF determination** tool does this and
    reports $\sigma$ per axis; that number is the input to the kernel builder.
 2. **Computed from the optics.** The Gaussian approximations of
    {cite}`zhang2007`:

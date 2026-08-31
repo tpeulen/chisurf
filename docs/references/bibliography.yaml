@@ -442,6 +442,17 @@ qian1991:
   note: The confocal detection volume treated optically rather than as a Gaussian - where the 3D Gaussian approximation breaks.
   topics: [fcs]
 
+sheppard1977:
+  authors: C. J. R. Sheppard, A. Choudhury
+  title: Image Formation in the Scanning Microscope
+  journal: Optica Acta
+  year: 1977
+  volume: 24
+  pages: 1051-1073
+  doi: 10.1080/713819421
+  note: The theoretical foundation of confocal image formation and the PSF that FCS measures in.
+  topics: [fcs, imaging]
+
 meseth1999:
   authors: U. Meseth, T. Wohland, R. Rigler, H. Vogel
   title: Resolution of Fluorescence Correlation Measurements
@@ -2240,6 +2251,17 @@ huang2001:
   year: 2001
   note: The scaled forward-backward recursions in the form used here.
   topics: [dynamics]
+
+shaw1991:
+  authors: P. J. Shaw, D. J. Rawlins
+  title: The point-spread function of a confocal microscope — its measurement and use in deconvolution of 3-D data
+  journal: Journal of Microscopy
+  year: 1991
+  volume: 163
+  pages: 151-165
+  doi: 10.1111/j.1365-2818.1991.tb03168.x
+  note: Measuring the real PSF from a sub-resolution bead and using it for 3-D deconvolution.
+  topics: [imaging]
 
 richardson1972:
   authors: W. H. Richardson

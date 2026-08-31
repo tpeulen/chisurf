@@ -96,7 +96,9 @@ Reading a model name is reading which $P$ and $D$ factors it switches on.
 
 ## The diffusion factor and the confocal Gaussian volume
 
-The detection volume is approximated by a 3-D Gaussian with lateral $1/e^2$
+The detection volume is a **confocal PSF** — the point-spread function of a
+focused excitation spot observed through a pinhole — and is only approximated
+by a 3-D Gaussian with lateral $1/e^2$
 half-axis $w_{xy}$ (ChiSurf `w_r`) and axial $w_z$; their ratio is the
 **structure / aspect parameter** $\gamma = p = s = w_z/w_{xy}$ (the same quantity
 appears as `s` in the legacy `3D Gauss` models and `p` in the PAM-derived ones).
@@ -285,6 +287,8 @@ $\chi^2$.
   resolve them.
 - {cite}`hess2002` — the focal volume treated as an optical system: which
   aberrations bias $G(0)$ and which bias $\tau_D$.
+
+- {cite}`sheppard1977` — the theoretical foundation of confocal image formation; the PSF that FCS measures in.
 
 ## See also
 
