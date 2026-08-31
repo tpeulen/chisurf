@@ -2306,3 +2306,27 @@ zhang2007:
   doi: 10.1364/AO.46.001819
   note: Where sigma = 0.21 lambda / NA comes from, and how far it can be trusted.
   topics: [imaging]
+
+# ── Structural alignment and trajectory methods ─────────────────────
+
+kabsch1976:
+  authors: W. Kabsch
+  title: A solution for the best rotation to relate two sets of vectors
+  journal: Acta Crystallographica Section A
+  year: 1976
+  volume: 32
+  pages: 922-923
+  doi: 10.1107/s0567739476001873
+  note: The SVD-based rigid superposition that ChiSurf's trajectory alignment uses.
+  topics: [structure]
+
+kabsch1978:
+  authors: W. Kabsch
+  title: A discussion of the solution for the best rotation to relate two sets of vectors
+  journal: Acta Crystallographica Section A
+  year: 1978
+  volume: 34
+  pages: 827-828
+  doi: 10.1107/s0567739478001680
+  note: Extends the 1976 solution to the general case with reflections, with the handedness correction.
+  topics: [structure]

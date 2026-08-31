@@ -1642,6 +1642,8 @@ all walk the bond graph, a false bond propagates into every one of them.
 
 ## Superposing structures
 
+The structural alignment uses the Kabsch SVD method {cite}`kabsch1976`{cite}`kabsch1978` — an optimal least-squares rigid rotation (with a handedness correction for reflections).
+
 `align` finds its own correspondence between two objects and fits them:
 
 ```text
