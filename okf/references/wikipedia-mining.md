@@ -231,3 +231,14 @@ cross-reference guardrail (item 4). What remains:
    `extract.py` + `offsets.bin` serve any of the 25.8 M articles in one range
    read; extend `tools/seeds.txt` and re-extract when a new page needs its
    sources.
+
+## Hunt mode (2026-08-31) — FRAP
+
+One more mode the saturation finding does not cover: hunt for *implementations
+without pages*, then take the method's article from the dump. `test_frap.py`
+gave FRAP away — a real rFRAP implementation in
+`chisurf/core/fluorescence/imaging/frap.py` and not one mention anywhere in
+`docs/`. New page `docs/concepts/frap.md` (the first `sources:`-carrying
+concept page), three verified entries (Axelrod 1976, Soumpasis 1983, Sprague
+2004 — pulled from the dump's article and Crossref-checked), toctree entry.
+More leads in the same vein, unexamined: whether every plugin tool has a page.

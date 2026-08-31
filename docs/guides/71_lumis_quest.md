@@ -50,6 +50,13 @@ town from across the map.
 You play **Iris**, a probe photon; **Lumi**, a dog, trots behind her. You will
 meet them again — they are the ball in Pong and the probe in Breakout.
 
+The whole cast is drawn from **Ninja Adventure** by pixel-boy (CC0, credited
+with the shipped art): every figure walks a four-direction animation, shows
+its attack pose mid-swing, and carries its weapon on the same sheets. Your
+life reads as quarter-step **hearts**; the sky answers the land — rain and
+cloud over a withered section, drifting leaves in wild country, fog in the
+dark manifold.
+
 Each land has a **biome** — meadowland, deep wood, marsh, highland, coast —
 which decides its ground cover, how many lakes it grows, and which animals are
 at home in it. Every land also has cliffs with a **cave** in them, and the cave
@@ -131,14 +138,24 @@ where the water was, dead wood, ruins where people lived — and your own roads,
 going the same way they always did. Everything that was ever driven all the way
 down is standing in it, still shaped like the animal it used to be.
 
-There are two things to do down there. A shelved animal can be **rekindled** —
-give it one of your labels back and it comes up out of the ash with you, at the
-cost of the gentlest label you carry. And every **ruin** was a premises someone
-kept stocked on the lit side: press the action key at one and you **salvage**
-what is left in it — a bench reagent for the crafting shelf, weighted toward
-the ones the lit world drops rarely. Each ruin gives up its find once, ever;
-which reagent it holds is fixed by where it stands, so reloading a save cannot
-reroll it.
+There are three things to do down there. A shelved animal can be
+**rekindled** — give it one of your labels back and it comes up out of the
+ash with you, at the cost of the gentlest label you carry. And every **ruin**
+was a premises someone kept stocked on the lit side: press the action key at
+one and you **salvage** what is left in it — a bench reagent for the crafting
+shelf, weighted toward the ones the lit world drops rarely. Each ruin gives
+up its find once, ever; which reagent it holds is fixed by where it stands, so
+reloading a save cannot reroll it.
+
+The third is the reason to go down at all: **ferals**. Beasts that crossed
+with their labels still burning hunt the ash, and the lit world's licence
+means nothing to them — their tiers run one step hotter than the same land's
+wild, so a label you cannot yet unbind in the meadows can be taken down here,
+if you survive the dive. The dark bleeds your photon budget the whole time
+you are under (the **dark drain** setting sets how fast), and when the
+photons are gone it starts on Iris herself, down to one vitality and no
+further. There is no recovery station down there because nobody down there is
+keeping anything: what you bring is what you have.
 
 ## Controls
 

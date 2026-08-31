@@ -1819,6 +1819,41 @@ reichardt1994:
   note: "The E_T(30) scale: solvent polarity read off one betaine dye's transition energy."
   topics: [photophysics]
 
+# ── Fluorescence recovery after photobleaching ─────────────────────
+
+axelrod1976:
+  authors: D. Axelrod, D. E. Koppel, J. Schlessinger, E. Elson, W. W. Webb
+  title: Mobility measurement by analysis of fluorescence photobleaching recovery kinetics
+  journal: Biophysical Journal
+  year: 1976
+  volume: 16
+  pages: 1055-1069
+  doi: 10.1016/s0006-3495(76)85755-4
+  note: The FRAP analysis itself - the recovery curve, and the diffusion coefficient and mobile fraction read from it.
+  topics: [frap, imaging]
+
+soumpasis1983:
+  authors: D. M. Soumpasis
+  title: Theoretical analysis of fluorescence photobleaching recovery experiments
+  journal: Biophysical Journal
+  year: 1983
+  volume: 41
+  pages: 95-97
+  doi: 10.1016/s0006-3495(83)84410-5
+  note: The closed-form recovery solutions for common bleach geometries, without the approximations of the original treatment.
+  topics: [frap, imaging]
+
+sprague2004:
+  authors: B. L. Sprague, R. L. Pego, D. A. Stavreva, J. G. McNally
+  title: Analysis of binding reactions by fluorescence recovery after photobleaching
+  journal: Biophysical Journal
+  year: 2004
+  volume: 86
+  pages: 3473-3495
+  doi: 10.1529/biophysj.103.026765
+  note: Recovery is not always diffusion - the reaction-dominant and diffusion-dominant regimes, and how a bleach-size dependence tells them apart.
+  topics: [frap, imaging]
+
 # ── Two-photon excitation ───────────────────────────────────────────
 
 goeppertmayer1931:

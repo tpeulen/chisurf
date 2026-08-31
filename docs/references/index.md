@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*207 works.*
+*210 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -506,6 +506,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 ## Image correlation and scanning microscopy
 
+(axelrod1976)=
+
+**[Axelrod et al. (1976)](https://doi.org/10.1016/s0006-3495(76)85755-4)** — D. Axelrod, D. E. Koppel, J. Schlessinger, E. Elson, W. W. Webb. *Mobility measurement by analysis of fluorescence photobleaching recovery kinetics*. Biophysical Journal **16**, 1055-1069. (1976).  
+*The FRAP analysis itself - the recovery curve, and the diffusion coefficient and mobile fraction read from it.*
+
 (banterle2013)=
 
 **[Banterle et al. (2013)](https://doi.org/10.1016/j.jsb.2013.05.004)** — N. Banterle, K. H. Bui, E. A. Lemke, M. Beck. *Fourier ring correlation as a resolution criterion for super-resolution microscopy*. Journal of Structural Biology **183**, 363-367. (2013).
@@ -602,6 +607,16 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Richardson (1972)](https://doi.org/10.1364/JOSA.62.000055)** — W. H. Richardson. *Bayesian-based iterative method of image restoration*. Journal of the Optical Society of America **62**, 55-59. (1972).  
 *The iterative Poisson-likelihood restoration, derived from Bayes' theorem.*
+
+(soumpasis1983)=
+
+**[Soumpasis (1983)](https://doi.org/10.1016/s0006-3495(83)84410-5)** — D. M. Soumpasis. *Theoretical analysis of fluorescence photobleaching recovery experiments*. Biophysical Journal **41**, 95-97. (1983).  
+*The closed-form recovery solutions for common bleach geometries, without the approximations of the original treatment.*
+
+(sprague2004)=
+
+**[Sprague et al. (2004)](https://doi.org/10.1529/biophysj.103.026765)** — B. L. Sprague, R. L. Pego, D. A. Stavreva, J. G. McNally. *Analysis of binding reactions by fluorescence recovery after photobleaching*. Biophysical Journal **86**, 3473-3495. (2004).  
+*Recovery is not always diffusion - the reaction-dominant and diffusion-dominant regimes, and how a bleach-size dependence tells them apart.*
 
 (sroda2020)=
 

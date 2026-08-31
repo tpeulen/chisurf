@@ -37418,3 +37418,10 @@ side of the line.
   application the `flc_2d` plugin's MATLAB code was written for), and the
   generator note that `pixi run -e docs --frozen` is what works while the
   `build` env fails to solve on `wgpu`.
+
+- 2026-08-31 (later) — **Hunt mode: implementations without pages.** FRAP was
+  implemented (`core/fluorescence/imaging/frap.py`, rFRAP whole-image fitting)
+  and documented nowhere. New concept page `docs/concepts/frap.md` with three
+  Crossref-verified entries from the dump's FRAP article. The hunt pattern —
+  grep the test suite for a method family, then check `docs/` — is recorded in
+  okf/references/wikipedia-mining.md.

@@ -46,6 +46,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    pair_correlation
    scan_precision
    pch_fida
+   frap
 
 .. rubric:: Single-molecule FRET (bursts)
 
