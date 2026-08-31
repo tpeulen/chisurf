@@ -266,8 +266,45 @@ The fluorescence-adjacent dump harvest remains saturated. Future
 bibliography growth continues to be page-driven: a page needs a source,
 the dump fetches it.
 
-**Where to pick this up.** No remaining unexamined hunt-mode leads. The
-dump's standing use is page-driven lookups (add to seeds.txt, extract,
-verify, land). The next substantive mining work would be a new domain
-tranche (e.g., molecular dynamics trajectory methods from the traj/
-plugin family) or a re-index against a newer dump if one is acquired.
+**Fifth tranche (2026-08-31) — MD trajectory domain, saturation confirmed.**
+
+The recorded lead — molecular dynamics trajectory methods from the traj/
+plugin family — was examined. Seven Wikipedia articles were extracted
+(Molecular dynamics, Kabsch algorithm, Root-mean-square deviation of atomic
+positions, Distance geometry, Protein dynamics, Rotational diffusion,
+Time-resolved fluorescence spectroscopy), yielding 173 distinct works (145
+with DOIs). After strict filtering for relevance to ChiSurf's trajectory
+and superposition code, **2 entries landed**, both Crossref-verified:
+
+| Entry | Source article | Verified | Landed in |
+|---|---|---|---|
+| kabsch1976 (SVD-based rigid superposition) | Kabsch algorithm, RMSD | Crossref | 44_molecular_viewer.md |
+| kabsch1978 (handedness correction for reflections) | Kabsch algorithm | Crossref | 44_molecular_viewer.md |
+
+The Wikipedia Molecular dynamics article carries 103 cited works, but nearly
+all are general computational chemistry and biophysics — force fields,
+integrators, enhanced sampling — with no connection to fluorescence methods.
+The two Kabsch papers are the only entries the trajectory domain has to offer
+that ChiSurf's documentation needs. The finding is definitive: the dump has
+no more fluorescence-relevant citations to give, even in adjacent domains.
+
+One Wikipedia DOI typo was caught and corrected: the Molecular dynamics
+article lists `10.1002/jcc.20077` for Coutsias et al. 2004 ("Using
+quaternions to calculate RMSD"), but Crossref resolves that to a CHARMM
+force-field paper. The correct DOI is `10.1002/jcc.20110`.
+
+**Where to pick this up.** The dump harvest is exhausted. No domain tranche
+will yield new fluorescence-relevant entries — the MD domain was the last
+candidate and returned 2/173. All future bibliography growth is page-driven:
+a page needs a source, the dump fetches it. The next useful step is a re-index
+against a newer dump if one is acquired, or extending `tools/seeds.txt` for
+one-off page-driven lookups.
+
+**Sixth tranche (2026-08-31) — idle, saturation confirmed.** Examined all
+seven uncited concept pages, checked for implementation-without-page gaps
+(beyond the FRAP/pda2c/mfd_fitting etc. already covered), verified that all
+already-extracted articles' remaining citations are non-fluorescence (EM
+algorithm variants, Fisher/Schottky historical, quantum-well physics), and
+checked whether general-statistics pages (least squares, bootstrap, MLE)
+have uncited mentions in docs — they don't, or the mentions are in pages that
+already carry citations. The dump has nothing left to give. No commit.
