@@ -232,15 +232,23 @@ def pch_mixture(k_vals, epsilons, avgNs):
 
     Notes
     -----
-    The length check is not defensive tidiness and must not be dropped as
-    redundant with the library: tttrlib's ``pch_mixture`` iterates over the
-    brightnesses and subscripts the occupancies with the same index, with no
-    bounds check, so an unequal pair reads past the end of a ``std::vector``.
-    It does not crash -- the memory there is zero, the ``avg_numbers[s] <= 0.0``
-    guard on the next line then skips the species whose occupancy was never
-    supplied, and the result is a normalised finite histogram of *fewer species
-    than were asked for*. Filed upstream (tttrlib ``BUGS.md``); this raises
-    until it is fixed there.
+    **Fixed upstream, 2026-08-10** (tttrlib ``okf/BUGS.md``, "``pch_mixture``
+    indexes ``avg_numbers`` by the length of ``brightnesses``, and reads past
+    the end"): a mismatched pair used to iterate the brightnesses and
+    subscript the occupancies with the same index, with no bounds check, so
+    an unequal pair read past the end of a ``std::vector``. It did not crash
+    -- the memory there was zero, the ``avg_numbers[s] <= 0.0`` guard on the
+    next line then skipped the species whose occupancy was never supplied,
+    and the result was a normalised finite histogram of *fewer species than
+    were asked for*, silently. ``pch_mixture`` now throws
+    ``std::invalid_argument`` naming both sizes, which this wrapper surfaces
+    as the same :class:`ValueError` below. Recorded in this repo's
+    ``okf/references/known-issues.md`` under the same title.
+
+    The length check here is kept anyway, deliberately, as defense in depth:
+    it fails one call earlier, with a message this module controls, and it
+    means this wrapper does not depend on which tttrlib build a given
+    environment happens to have linked.
     """
     eps = [float(e) for e in epsilons]
     ns = [float(n) for n in avgNs]

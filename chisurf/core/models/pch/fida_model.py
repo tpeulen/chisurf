@@ -19,9 +19,11 @@ from chisurf import typing
 import numpy as np
 
 import chisurf.core.fitting
+import chisurf.logging
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pch import fida
+from chisurf.core.models.pch.pch import _k_max as _validate_k_axis
 
 
 class FidaModel(ModelCurve):
@@ -100,7 +102,19 @@ class FidaModel(ModelCurve):
         return list(zip(q[mask], n[mask]))
 
     def update_model(self, **kwargs) -> None:
-        """Compute the photon-counting histogram on the data's k grid."""
+        """Compute the photon-counting histogram on the data's k grid.
+
+        **Refuses a non-count axis rather than computing on it.** A FIDA
+        histogram is defined per photon count -- the axis must be ``0, 1,
+        ... k_max`` -- and a caller that hands this a different axis (a decay
+        model's time axis, say) would otherwise get a finite, non-constant,
+        entirely meaningless curve indexed by rounding that axis to the
+        nearest integer: not an error, not a flat placeholder, just the wrong
+        answer with nothing to say so. :func:`_validate_k_axis` is the same
+        check :mod:`chisurf.core.models.pch.pch` uses for the sibling
+        multi-component model, reused here rather than re-derived so the two
+        PCH-family models refuse the same axes.
+        """
         fit = getattr(self.fit, "selected_fit", self.fit)
         data = getattr(fit, "data", None)
         meta = getattr(data, "meta_data", {}) or {}
@@ -113,6 +127,14 @@ class FidaModel(ModelCurve):
         if k.size == 0:
             self.x = np.array([], dtype=float)
             self.y = np.array([], dtype=float)
+            return
+
+        try:
+            _validate_k_axis(k)
+        except ValueError as exc:
+            chisurf.logging.warning("FIDA: refusing to fit -- %s", exc)
+            self.x = k
+            self.y = np.zeros_like(k, dtype=float)
             return
 
         species = self.species

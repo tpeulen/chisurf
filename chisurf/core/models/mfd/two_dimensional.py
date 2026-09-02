@@ -606,6 +606,16 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
     def update_model(self, **kwargs):
         """Recompute the predicted histogram and store it flattened.
 
+        **A missing payload is a loud no-op, not a silent one.** A model built
+        before its data is attached (a legal state -- see
+        :meth:`seed_from_data`) leaves the curve at ``ModelCurve``'s zeroed
+        placeholder, which is fine while nothing has asked for a fit yet. What
+        must not happen is that placeholder reading as "computed and correct"
+        later -- the census (``imp.bff/test/minimizer/census_models.py``)
+        checks exactly this, and without the warning below its row for this
+        model would say nothing beyond "no dataset", which is the same thing
+        a genuinely-fitted-but-flat model would say.
+
         Parameters
         ----------
         **kwargs
@@ -613,6 +623,11 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         """
         data = burst_payload(self.fit.data)
         if data is None:
+            cs.logging.warning(
+                "Mfd2DModel.update_model: no MFD burst payload on this fit's "
+                "data; the curve is left at its last (or zeroed) value -- "
+                "nothing was fitted."
+            )
             return
         try:
             predicted = self._compute_model().histogram(data)
