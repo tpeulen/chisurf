@@ -38404,3 +38404,17 @@ side of the line.
   centralized RNG (imp.bff commit `da571e3`, vendored `Random.h`).
   Parity: moments + KS-test vs. pre-port Python at matched seed — a
   kappa² MC output is a distribution, not a point value.
+
+- **2026-09-02 — PRD-121 closed: the imp.bff census gained a third
+  column** (`update_model()` actually computed a non-degenerate curve,
+  checked independently of whether a graph builds), and its two known
+  silent passes are honest now: `Mfd2DModel` warns and reads `dead`
+  without a burst payload, `FidaModel` refuses a non-count axis instead
+  of computing nonsense on it. `pch_mixture`'s "upstream bug" turned out
+  already fixed (tttrlib, 2026-08-10) — confirmed present in the arm64
+  env. Two pre-existing, already-committed import-chain breaks found
+  getting the census to run were fixed separately (not part of this
+  PRD's own commit): a missing `OptimizationCancelled` re-export (already
+  covered by PRD-122's commit) and a stale `chisurf.core.graph` /
+  `parameter.py` mismatch already mid-fix as uncommitted work elsewhere
+  in the shared tree — left untouched here, not this PRD's to land.
