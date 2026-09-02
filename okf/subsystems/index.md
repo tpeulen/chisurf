@@ -7,6 +7,7 @@
 * [Burst companion files](burst-companions.md) - The one contract every burst-analysis plugin follows when writing results beside the bursts, so a folder merges into one table without misaligning.
 * [Fluorescence domain](fluorescence-domain.md) - Shared fluorescence math and algorithms used by models and plugins.
 * [Fitting engine](fitting.md) - Fit/FitGroup, weighted residuals, global analysis, error analysis, and sampling.
+* [Graph objective](graph-objective.md) - The seam in `minimizer.py` that builds the whole fitting objective in C++ when a model can be expressed as an Expression → ChiSquared → Minimizer pipeline, and falls back to a Python-residual director when it cannot.
 * [Hidden Markov models](hidden-markov-models.md) - The in-tree Gaussian HMM (fused compiled E-step, data-driven initialisation, SQUAREM acceleration) and the shared analysis seam every state-reporting tool calls.
 * [Machine learning estimators](machine-learning.md) - chisurf.core.ml: the in-tree GaussianMixture/KMeans/HDBSCAN/PCA/StandardScaler/MLPRegressor, and the compiled k-d tree and Borůvka MST the density clustering runs on.
 * [Fitting models](models.md) - TCSPC/FCS/PDA/PCH/DEER/RICS/structure models and data-described editors.

@@ -31,14 +31,28 @@ and [parameters](/subsystems/parameters.md).
    (`calculate_weighted_residuals` in `fitting/__init__.py`; masked via
    `_apply_fit_mask`).
 3. `chi2 = Σ wres²`; `chi2r = chi2 / (n_points − n_free − 1)` (`get_chi2`).
-4. `Fit.run()` minimizes `get_wres` with `leastsqbound`
-   (`chisurf/core/math/optimization/leastsqbound.py`) over the model's free
-   parameters and their bounds, then updates error estimates and pushes model
-   state onto a bounded `results` deque.
+4. `Fit.run()` minimizes `get_wres` — preferring the **graph objective**
+   (see [graph objective](/subsystems/graph-objective.md)) when the model
+   can be built as an Expression → ChiSquared → Minimizer pipeline in C++,
+   falling back to `leastsqbound` via a SWIG **director** when it cannot.
+   Both paths use the same bounded LM algorithm (IMP.bff's `Minimizer`); the
+   difference is whether per-iteration model evaluation stays in C++ or
+   crosses back to Python. After optimisation, error estimates are computed
+   via `curvature_over_the_graph` (or the numpy Jacobian fallback) and model
+   state is pushed onto a bounded `results` deque.
 
-`leastsqbound` wraps `scipy.optimize` MINPACK `leastsq` (Levenberg–Marquardt),
-adding box bounds via an internal↔external parameter transform and a
-cancellable `progress_callback` (`OptimizationCancelled`).
+**Two transport paths, one optimiser.** The graph route builds the whole
+objective — parameters, model, residuals, LM — in C++ nodes, so the SWIG
+boundary is crossed once for `Minimizer.run()`. The director route wraps a
+Python residual callback as a node the C++ optimiser drives, crossing once
+per residual evaluation. A model that builds a graph must build the *same*
+model — checked by the census (`imp.bff/test/minimizer/census_models.py`).
+On a 512-point three-parameter fit: 0.26 ms (graph) vs 0.86 ms (scipy
+`leastsqbound`, historical) per iteration.
+
+`leastsqbound` (the scipy path) is kept as a frozen reference
+(`imp.bff/test/minimizer/reference_leastsqbound.py`) imported by nothing
+and used only to assert the port is still 1:1.
 
 # Noise model / estimator (`noise_model`)
 
