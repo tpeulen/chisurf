@@ -36,6 +36,18 @@ the acceptor-channel signal from directly excited acceptors as a fraction of the
 signal a donor-only molecule would put in the green channel. It is stated because
 the literature also carries definitions relative to the acceptor's own maximum, and
 the two differ by ``γ``.
+
+**The spectrum algebra is not written here.** A FRET-quenched donor spectrum and a
+polarised spectrum are the *same* transforms the TCSPC decay graph applies, and they
+live in its producer nodes — :class:`IMP.bff.FretSpectrum` and
+:class:`IMP.bff.AnisotropySpectrum`, the two this module drives directly. Keeping a
+numpy twin here is the failure shape the decay stack has already paid for: two
+owners of one piece of photophysics drift, and the histogram absorbs the drift into
+a distance rather than reporting it. See
+:mod:`chisurf.core.fluorescence.anisotropy.decay` for the polarisation conventions
+and ``okf/architecture/`` for the graph. The one piece that has *no* producer is the
+sensitized-acceptor rise; :func:`acceptor_lifetime_spectrum` says so explicitly
+rather than quietly keeping a second implementation of something that does.
 """
 
 from __future__ import annotations
@@ -44,10 +56,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from chisurf.core.fluorescence.fret.lines import (
-    _state_spectrum,
-    donor_lifetime_spectrum,
-)
+from chisurf.core.fluorescence.fret.lines import donor_lifetime_spectrum
 from chisurf.core.fluorescence.mfd.moments import (
     background_moments,
     mixture_moments,
@@ -75,6 +84,243 @@ __all__ = [
 #: unlike a division by zero it cannot produce an infinity that survives into a
 #: fitted parameter.
 _DEGENERACY_EPS = 1e-6
+
+#: The orientation factor the Förster radii in :class:`Optics` are quoted at.
+#: MFD reports one ``R₀`` per dye pair with the isotropic κ² folded into it, so the
+#: producer node — which takes ``R₀`` and ``κ²`` separately — is handed the value
+#: that leaves ``R₀`` meaning what this module's docstring says it means. A κ²
+#: *distribution* is a different model and belongs upstream of here.
+_ISOTROPIC_KAPPA2 = 2.0 / 3.0
+
+
+def _bff():
+    """Return the ``IMP.bff`` module, or raise saying why it is needed.
+
+    Imported lazily and never guarded by a numpy fallback. A fallback is what
+    would let the two implementations of this photophysics diverge unnoticed,
+    which is the whole reason the algebra moved onto the producers; a missing
+    engine is a broken installation and must read as one.
+
+    Returns
+    -------
+    module
+    """
+    try:
+        import IMP.bff as bff
+    except ImportError as error:                      # pragma: no cover
+        raise ImportError(
+            "chisurf.core.fluorescence.mfd.patterns needs IMP.bff: the lifetime "
+            "spectrum algebra it used to duplicate now lives in that package's "
+            "FretSpectrum/AnisotropySpectrum producer nodes"
+        ) from error
+    for required in ("LifetimeSpectrumNode", "FretSpectrum", "AnisotropySpectrum"):
+        if not hasattr(bff, required):                # pragma: no cover
+            raise ImportError(
+                "IMP.bff is present but has no %s; rebuild the extensions "
+                "(`pixi run build-extensions`)" % required
+            )
+    return bff
+
+
+def _interleave(amplitudes, values) -> np.ndarray:
+    """Pack ``(a₀, x₀, a₁, x₁, …)`` — the wire format every producer port uses.
+
+    Parameters
+    ----------
+    amplitudes, values : array_like
+        Equal-length sequences.
+
+    Returns
+    -------
+    numpy.ndarray
+        Contiguous and ``float64``; the ports read a raw buffer.
+    """
+    a = np.atleast_1d(np.asarray(amplitudes, dtype=float)).ravel()
+    x = np.atleast_1d(np.asarray(values, dtype=float)).ravel()
+    if a.size != x.size:
+        raise ValueError("an interleaved spectrum needs one value per amplitude")
+    out = np.empty(2 * a.size, dtype=float)
+    out[0::2] = a
+    out[1::2] = x
+    return np.ascontiguousarray(out)
+
+
+def _deinterleave(spectrum) -> tuple[np.ndarray, np.ndarray]:
+    """Unpack a producer's interleaved output into amplitudes and time constants.
+
+    Parameters
+    ----------
+    spectrum : array_like
+        Interleaved ``(a, t)`` pairs.
+
+    Returns
+    -------
+    amplitudes, times : numpy.ndarray
+    """
+    values = np.asarray(spectrum, dtype=float).ravel()
+    return values[0::2].copy(), values[1::2].copy()
+
+
+def _donor_node(amplitudes, lifetimes):
+    """Return a ``LifetimeSpectrumNode`` holding the donor-only spectrum.
+
+    The amplitudes handed in are already the *unpolarised, unquenched* ones, and
+    :func:`chisurf.core.fluorescence.fret.lines.donor_lifetime_spectrum` has
+    normalised them. So both of the node's rescaling switches are off, for the
+    same reason
+    :func:`chisurf.core.fitting.minimizer._spectrum_chain` turns them off on the
+    decay it feeds (``decay.set_absolute_amplitudes(False)`` /
+    ``decay.set_normalize_amplitudes(False)``): normalising again downstream
+    divides by a different sum — after a rotation it is ``1 + 2 r₀`` rather than
+    one — and silently rescales every pattern built from it.
+
+    Parameters
+    ----------
+    amplitudes, lifetimes : array_like
+        The donor-only lifetime spectrum.
+
+    Returns
+    -------
+    IMP.bff.LifetimeSpectrumNode
+        Already evaluated; ``get_spectrum()`` is valid.
+    """
+    bff = _bff()
+    a = np.atleast_1d(np.asarray(amplitudes, dtype=float)).ravel()
+    t = np.atleast_1d(np.asarray(lifetimes, dtype=float)).ravel()
+    node = bff.LifetimeSpectrumNode("donor")
+    node.set_number_of_lifetimes(int(a.size))
+    node.add_output_port("donor", bff.Port([0.0], False, True))
+    node.set_absolute_amplitudes(False)
+    node.set_normalize_amplitudes(False)
+    for i in range(a.size):
+        node.get_input_port("a%d" % i).set_value(float(a[i]))
+        node.get_input_port("t%d" % i).set_value(float(t[i]))
+    node.evaluate()
+    return node
+
+
+def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
+                   optics: Optics) -> tuple[np.ndarray, np.ndarray]:
+    """Drive ``IMP.bff.FretSpectrum`` — the donor quenched over a distribution.
+
+    A distance is a transfer rate, rates add, so the quenched spectrum is the
+    Cartesian product of the donor's rates and the transfer rates. That is why
+    this is a *spectrum* transform and not a curve one, and why it belongs to the
+    same node the TCSPC graph uses rather than to a numpy copy of it.
+
+    The node's output is returned verbatim, which means the quenched block
+    followed — unconditionally, because the length of a spectrum is observable
+    and a node that sometimes returns a shorter one is a second code path —
+    by a donor-only block scaled by ``x_donly``. ``x_donly`` is zero here: the
+    MFD forward model carries incomplete labelling as its own *species*
+    (``has_acceptor``) rather than as a term inside one state. Callers that
+    promise a purely quenched spectrum drop that block themselves; see
+    :func:`donor_lifetime_spectrum_of_state`.
+
+    Parameters
+    ----------
+    donor_amplitudes, donor_lifetimes : array_like
+        The donor-only lifetime spectrum.
+    weights, distances : array_like
+        A discretized donor–acceptor distance distribution, Å.
+    optics : Optics
+        Supplies ``r0`` and ``tau_d0``.
+
+    Returns
+    -------
+    amplitudes, lifetimes : numpy.ndarray
+    """
+    bff = _bff()
+    donor = _donor_node(donor_amplitudes, donor_lifetimes)
+    node = bff.FretSpectrum("fret")
+    node.build_ports()
+    node.add_output_port("fret", bff.Port([0.0], False, True))
+    node.get_input_port("donor_lifetime_spectrum").link = \
+        donor.get_output_port("donor")
+    node.get_input_port("distance_distribution").set_values_array(
+        _interleave(weights, distances)
+    )
+    node.get_input_port("x_donly").set_value(0.0)
+    node.get_input_port("forster_radius").set_value(float(optics.r0))
+    node.get_input_port("tau0").set_value(float(optics.tau_d0))
+    node.get_input_port("kappa2").set_value(_ISOTROPIC_KAPPA2)
+    node.evaluate()
+    return _deinterleave(node.get_spectrum())
+
+
+def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
+                        polarization: str) -> tuple[np.ndarray, np.ndarray]:
+    """Drive ``IMP.bff.AnisotropySpectrum`` for one detection channel.
+
+    The measured decay is the *product* of the fluorescence decay and
+    ``r(t) = r₀ e^{−t/ρ}``, and a product of two sums of exponentials is again a
+    sum of exponentials — over the Cartesian product of the two spectra, with the
+    harmonic mean of the time constants. So a polarisation is a spectrum
+    transform, and this is the node that owns it.
+
+    .. rubric:: Why ``g`` is deliberately not handed to the node
+
+    The node's ``g`` port divides its *ideal* perpendicular spectrum **before**
+    the ``l₁``/``l₂`` channel mixing. That ordering makes the mixing terms carry
+    a stray factor of ``G``, and the result then disagrees with the Schaffer /
+    Eggeling amplitude form that
+    :func:`chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`, tttrlib's
+    ``DecayFit23`` and this module's own round-trip tests all use::
+
+        f_VV = f · (1 + (2 − 3 l₁) r),   f_VH = f · (1 − (1 − 3 l₂) r) / G
+
+    At ``G = 1`` the two spellings are *identical* for every ``l₁``, ``l₂``:
+    ``(1 − l₁)(1 + 2r) + l₁(1 − r) = 1 + (2 − 3 l₁) r`` and
+    ``l₂(1 + 2r) + (1 − l₂)(1 − r) = 1 − (1 − 3 l₂) r``. Away from it they are
+    not — at ``G = 2``, ``l₁ = l₂ = 0.1`` the recovered anisotropy differs by a
+    factor of two.
+
+    So the node is driven at ``g = 1``, where it *is* the Schaffer form, and
+    ``G`` is applied afterwards as what it physically is: a detection
+    sensitivity scaling the whole perpendicular channel, after the mixing that
+    happens in front of the detector. That is one multiplication of a channel
+    gain, not a second copy of the spectrum algebra. The node's own ordering is
+    a defect recorded in ``okf/references/known-issues.md``; it is not corrected
+    here because ``AnisotropySpectrum`` must stay bit-identical to
+    :func:`chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`,
+    which the fitted TCSPC models are pinned against.
+
+    Parameters
+    ----------
+    amplitudes, lifetimes : array_like
+        The emitting species' lifetime spectrum.
+    rho : float
+        Rotational correlation time, ns.
+    optics : Optics
+        Supplies ``l1``, ``l2`` and ``r0_anisotropy``. ``g_factor`` is *not*
+        read here — see above.
+    polarization : {'vv', 'vh'}
+        Which detection channel to build.
+
+    Returns
+    -------
+    amplitudes, lifetimes : numpy.ndarray
+    """
+    bff = _bff()
+    node = bff.AnisotropySpectrum("anisotropy")
+    node.set_number_of_rotations(1)
+    node.add_output_port("anisotropy", bff.Port([0.0], False, True))
+    # Refuses an unknown name rather than defaulting to magic angle, which would
+    # silently be a model with no anisotropy in it.
+    node.set_polarization_name(polarization)
+    node.get_input_port("lifetime_spectrum").set_values_array(
+        _interleave(amplitudes, lifetimes)
+    )
+    node.get_input_port("r0").set_value(float(optics.r0_anisotropy))
+    node.get_input_port("g").set_value(1.0)
+    node.get_input_port("l1").set_value(float(optics.l1))
+    node.get_input_port("l2").set_value(float(optics.l2))
+    node.get_input_port("b0").set_value(1.0)
+    # A zero correlation time is a division by zero in the harmonic mean of the
+    # product; a dye that fast is unpolarized, which the limit already gives.
+    node.get_input_port("rho0").set_value(float(max(rho, 1e-9)))
+    node.evaluate()
+    return _deinterleave(node.get_spectrum())
 
 
 def noncentral_chi_distance_distribution(
@@ -251,6 +497,23 @@ def donor_lifetime_spectrum_of_state(
     genuine distribution of lifetimes rather than one averaged lifetime — which is
     what lets the decay shape carry the linker width.
 
+    The algebra is :class:`IMP.bff.FretSpectrum`'s — the same producer the TCSPC
+    decay graph quenches its donor with. For a single-exponential donor, which is
+    what ``optics.tau_d0`` describes, that reproduces the older closed form
+    ``τ(R) = τ_D₀ / (1 + (R₀/R)⁶)`` exactly. For a *multi*-exponential donor it
+    does not, and the difference is a correction rather than a regression: the
+    transfer rate is fixed by ``R₀`` and the reference lifetime ``τ_D₀`` it was
+    determined at, so it is the same for every donor component and the rates add
+    (``1/τᵢ + k_T``). Scaling each component's lifetime by one common quench
+    factor instead — the previous behaviour — gives each component its own
+    ``R₀``, which is not what a Förster radius is.
+
+    The node's trailing donor-only block is dropped here. This function promises
+    a *quenched* spectrum, and every invariant a caller can state about one
+    ("no lifetime exceeds ``τ_D₀``") would be false of a zero-amplitude
+    passenger sitting at ``τ_D₀``. Incomplete labelling reaches the MFD forward
+    model as its own species, never through this return value.
+
     Parameters
     ----------
     state : FretState
@@ -266,7 +529,7 @@ def donor_lifetime_spectrum_of_state(
     Returns
     -------
     amplitudes, lifetimes : numpy.ndarray
-        Flattened over (donor component, distance); amplitudes sum to one.
+        Flattened over (distance, donor component); amplitudes sum to one.
     """
     donor_x, donor_tau = donor_lifetime_spectrum(
         optics.tau_d0 if donor is None else donor
@@ -274,10 +537,11 @@ def donor_lifetime_spectrum_of_state(
     weights, distances = noncentral_chi_distance_distribution(
         state.distance, optics.sigma, n_points=n_points
     )
-    amplitudes, lifetimes = _state_spectrum(
-        weights, distances, donor_x, donor_tau, float(optics.r0)
+    amplitudes, lifetimes = _fret_spectrum(
+        donor_x, donor_tau, weights[0], distances[0], optics
     )
-    amplitudes, lifetimes = amplitudes[0], lifetimes[0]
+    quenched = weights.shape[-1] * donor_x.size
+    amplitudes, lifetimes = amplitudes[:quenched], lifetimes[:quenched]
     total = float(np.sum(amplitudes))
     return (amplitudes / total if total else amplitudes), lifetimes
 
@@ -299,6 +563,22 @@ def acceptor_lifetime_spectrum(
     The negative amplitude is physical — it is the rise — and it is why the acceptor
     pattern must be built as a decay and then measured, rather than treated as a
     mixture with weights.
+
+    .. warning::
+
+       **This is the one transform on this module's surface with no producer
+       node behind it, and it is therefore the one that can drift.** The decay
+       graph's producers cover the donor
+       (:class:`IMP.bff.FretSpectrum`) and the polarisation
+       (:class:`IMP.bff.AnisotropySpectrum`); nothing in ``IMP.bff`` emits the
+       *sensitized acceptor's* spectrum, because no fitted TCSPC model in the
+       graph has needed the acceptor rise yet. The transform is a genuine
+       addition to the engine — an ``AcceptorSpectrum`` node taking the quenched
+       donor spectrum plus ``tau_a`` and ``tau0`` — and it belongs *in* the
+       engine rather than beside it. Until that node exists this stays a second
+       implementation, stated loudly here rather than hidden behind a fallback
+       that reads as if a producer were in use. Recorded in
+       ``okf/references/known-issues.md``.
 
     Parameters
     ----------
@@ -425,6 +705,38 @@ class ChannelResponse:
         """Return the laser period, ns."""
         return self.n_channels * float(self.dt)
 
+    def _unnormalized_decay(self, amplitudes, lifetimes) -> np.ndarray:
+        """Return the periodic decay of a lifetime spectrum, keeping its scale.
+
+        :meth:`decay` normalises, which is right for a pattern and wrong for a
+        *branching*: the fraction of a species' photons that lands in the
+        parallel channel is the ratio of two channel decays, and normalising each
+        first would make that ratio one half by construction. So the sum is kept
+        here and divided out one level up.
+
+        Parameters
+        ----------
+        amplitudes, lifetimes : array_like
+            A lifetime spectrum.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_channels,)``, clipped at zero, in units of ``Σ aᵢ τᵢ``.
+        """
+        a = np.atleast_1d(np.asarray(amplitudes, dtype=float))
+        tau = np.atleast_1d(np.asarray(lifetimes, dtype=float))
+        if a.shape != tau.shape:
+            raise ValueError("amplitudes and lifetimes must have the same shape")
+        out = np.zeros(self.n_channels, dtype=float)
+        for weight, t in zip(a * tau, tau):
+            if weight == 0.0:
+                continue
+            out += weight * wrapped_exponential_pattern(
+                float(t), self.n_channels, self.dt
+            )
+        return np.clip(out, 0.0, None)
+
     def decay(self, amplitudes, lifetimes) -> np.ndarray:
         """Return the periodic decay of a lifetime spectrum, before the response.
 
@@ -445,22 +757,33 @@ class ChannelResponse:
         numpy.ndarray
             ``(n_channels,)``, summing to one.
         """
-        a = np.atleast_1d(np.asarray(amplitudes, dtype=float))
-        tau = np.atleast_1d(np.asarray(lifetimes, dtype=float))
-        if a.shape != tau.shape:
-            raise ValueError("amplitudes and lifetimes must have the same shape")
-        out = np.zeros(self.n_channels, dtype=float)
-        for weight, t in zip(a * tau, tau):
-            if weight == 0.0:
-                continue
-            out += weight * wrapped_exponential_pattern(
-                float(t), self.n_channels, self.dt
-            )
-        out = np.clip(out, 0.0, None)
+        out = self._unnormalized_decay(amplitudes, lifetimes)
         total = out.sum()
         if total <= 0.0:
             raise ValueError("the lifetime spectrum produces no emission")
         return out / total
+
+    def _record(self, decay: np.ndarray) -> np.ndarray:
+        """Convolve a periodic decay with the response and normalise it.
+
+        Parameters
+        ----------
+        decay : numpy.ndarray
+            ``(n_channels,)`` periodic decay.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_channels,)``, summing to one where there is any signal at all.
+        """
+        pattern = np.real(
+            np.fft.irfft(
+                self._spectrum * np.fft.rfft(decay), n=self.n_channels
+            )
+        )
+        pattern = np.clip(pattern, 0.0, None)
+        total = pattern.sum()
+        return pattern / total if total > 0 else pattern
 
     def pattern(self, amplitudes, lifetimes) -> np.ndarray:
         """Return the recorded micro-time pattern of a lifetime spectrum.
@@ -475,15 +798,7 @@ class ChannelResponse:
         numpy.ndarray
             ``(n_channels,)``, summing to one.
         """
-        decay = self.decay(amplitudes, lifetimes)
-        pattern = np.real(
-            np.fft.irfft(
-                self._spectrum * np.fft.rfft(decay), n=self.n_channels
-            )
-        )
-        pattern = np.clip(pattern, 0.0, None)
-        total = pattern.sum()
-        return pattern / total if total > 0 else pattern
+        return self._record(self.decay(amplitudes, lifetimes))
 
     def signal_moments(self, amplitudes, lifetimes) -> tuple[float, float]:
         """Return the mean and variance of this channel's *signal* micro times.
@@ -587,25 +902,31 @@ def polarized_patterns(
 ):
     """Split a decay into the parallel and perpendicular patterns actually recorded.
 
-    Follows the convention of ``tttrlib`` (``corrections = [period, g, l1, l2]``)
-    and of :func:`chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`, which
-    is reused rather than reimplemented::
+    A polarisation is a **spectrum** transform, not a curve one: the measured decay
+    is the product of the fluorescence decay and ``r(t)``, and a product of two sums
+    of exponentials is a sum of exponentials. So the split is
+    :class:`IMP.bff.AnisotropySpectrum`'s — the producer the TCSPC decay graph
+    polarises with — and this function only folds the two spectra onto the laser
+    period and convolves them with the response::
 
-        f_VV(t) = f_VM(t) · (1 + 2 r(t))
-        f_VH(t) = g · f_VM(t) · (1 − r(t))
-        f_VV,measured = (1 − l₁) f_VV + l₁ f_VH
-        f_VH,measured = l₂ f_VV + (1 − l₂) f_VH
+        f_VV = f · (1 + (2 − 3 l₁) r),   f_VH = f · (1 − (1 − 3 l₂) r) / G
 
-    ``g`` is a *detection sensitivity*, so it multiplies the whole perpendicular
-    channel and not just its depolarization term. That placement is what makes the
-    pair invert back to the anisotropy it was built from; putting it on the
-    depolarization term alone is a common and silent error, and the round-trip test
-    is what catches it.
+    ``G`` is a *detection sensitivity*, so it divides the whole perpendicular
+    channel rather than only its depolarization term, and it is applied here rather
+    than through the node's ``g`` port — :func:`_polarized_spectrum` says why, and
+    says what goes wrong if it is not.
 
-    The split is applied to the **decay**, before the instrument response is
-    convolved in: the anisotropy modulates emission, and the detector then responds
-    to what was emitted. Doing it the other way round mixes the response into the
-    depolarization.
+    .. rubric:: Folding the product, not the folded decay
+
+    The anisotropy multiplies the emission at a photon's *true* age, and under
+    repeated excitation a photon detected at micro time ``t`` may be ``t``,
+    ``t + T``, ``t + 2T`` … old. Folding the fluorescence decay first and then
+    multiplying by ``r(t)`` — which is what building the pair from a time-domain VM
+    decay does — gives the wrapped photons the anisotropy of a *younger* photon
+    than they are, so it over-polarises the wrapped tail. Building the product as a
+    spectrum and folding each of its components carries every photon's own age,
+    which is the arrangement the fitted models use. The two agree to the extent
+    that nothing wraps.
 
     Parameters
     ----------
@@ -627,30 +948,15 @@ def polarized_patterns(
         branching the anisotropy axis needs, exactly as the acceptor probability is
         the branching the FRET axis needs.
     """
-    from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
-
-    decay = response.decay(amplitudes, lifetimes)
-    time = np.arange(decay.size, dtype=float) * response.dt
-    vv, vh = vm_rt_to_vv_vh(
-        time,
-        decay,
-        np.array([float(optics.r0_anisotropy), float(max(rho, 1e-9))]),
-        g_factor=float(optics.g_factor),
-        l1=float(optics.l1),
-        l2=float(optics.l2),
+    vv = response._unnormalized_decay(
+        *_polarized_spectrum(amplitudes, lifetimes, rho, optics, "vv")
     )
-    vv = np.clip(np.asarray(vv, dtype=float), 0.0, None)
-    vh = np.clip(np.asarray(vh, dtype=float), 0.0, None)
+    # The perpendicular detector is 1/G as sensitive, and that applies to
+    # everything it collects -- including the parallel light l2 mixed into it.
+    vh = response._unnormalized_decay(
+        *_polarized_spectrum(amplitudes, lifetimes, rho, optics, "vh")
+    ) / float(optics.g_factor)
+
     total = vv.sum() + vh.sum()
     p_parallel = float(vv.sum() / total) if total > 0 else 0.5
-
-    spectrum = response._spectrum
-    recorded = []
-    for channel in (vv, vh):
-        pattern = np.real(
-            np.fft.irfft(spectrum * np.fft.rfft(channel), n=response.n_channels)
-        )
-        pattern = np.clip(pattern, 0.0, None)
-        weight = pattern.sum()
-        recorded.append(pattern / weight if weight > 0 else pattern)
-    return recorded[0], recorded[1], p_parallel
+    return response._record(vv), response._record(vh), p_parallel

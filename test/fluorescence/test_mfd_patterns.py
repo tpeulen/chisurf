@@ -157,6 +157,11 @@ def test_donor_spectrum_spans_the_distance_distribution():
     amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
         FretState(distance=52.0), optics
     )
+    # One component per distance sample and nothing else: the producer node also
+    # emits a donor-only block scaled by ``x_donly``, which this module drops
+    # because incomplete labelling is its own MFD *species* rather than a term
+    # inside one state — and because every invariant below ("every lifetime is
+    # quenched") would otherwise be false of a zero-amplitude passenger.
     assert amplitudes.size == lifetimes.size == 81
     assert float(amplitudes.sum()) == pytest.approx(1.0)
     assert lifetimes.min() < 1.0 < lifetimes.max() < optics.tau_d0
@@ -384,3 +389,116 @@ def test_the_parallel_pattern_decays_faster_than_the_perpendicular():
         _sharp_response(), [1.0], [3.0], 1.0, Optics(r0_anisotropy=0.38)
     )
     assert pattern_moments(parallel, DT)[0] < pattern_moments(perpendicular, DT)[0]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The producers own the algebra — and these pin that they still say the same
+# thing the closed forms this module used to carry did.
+# ──────────────────────────────────────────────────────────────────────────────
+def test_the_quenched_spectrum_is_the_producers_and_matches_the_closed_form():
+    """``FretSpectrum`` against ``τ(R) = τ_D₀ / (1 + (R₀/R)⁶)``, to machine precision.
+
+    The node works in *rates* — a transfer rate set by ``R₀`` and the reference
+    lifetime ``τ_D₀`` it was determined at, added to the donor's own rate. For a
+    single-exponential donor that is algebraically the same thing as scaling one
+    lifetime by a quench factor, and this is the fixture that says so, so a future
+    change to either spelling cannot pass unnoticed.
+    """
+    optics = Optics(r0=52.0, tau_d0=4.0, sigma=6.0)
+    for distance in (30.0, 45.0, 52.0, 70.0, 120.0):
+        amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+            FretState(distance=distance), optics
+        )
+        weights, r = noncentral_chi_distance_distribution(distance, optics.sigma)
+        closed = optics.tau_d0 / (1.0 + (optics.r0 / r[0]) ** 6)
+        assert lifetimes == pytest.approx(closed, abs=1e-14)
+        assert amplitudes == pytest.approx(weights[0], abs=1e-15)
+
+
+def test_a_multiexponential_donor_adds_rates_rather_than_scaling_lifetimes():
+    """One ``R₀`` for the pair, therefore one transfer rate for every component.
+
+    Scaling each donor component's lifetime by a common quench factor — which is
+    what a closed form in ``τ`` does — gives each component *its own* Förster
+    radius, which is not what a Förster radius is. The producer adds the transfer
+    rate ``k_T`` to each component's own rate instead, so the two spellings agree
+    only when the donor is single-exponential and this is the case that shows the
+    difference is real rather than a rounding.
+    """
+    optics = Optics(r0=52.0, tau_d0=4.0, sigma=0.0)
+    donor = [(0.5, 2.0), (0.5, 6.0)]
+    _, lifetimes = donor_lifetime_spectrum_of_state(
+        FretState(distance=52.0), optics, donor=donor
+    )
+    k_transfer = (1.0 / optics.tau_d0) * (optics.r0 / 52.0) ** 6
+    assert lifetimes == pytest.approx(
+        [1.0 / (1.0 / 2.0 + k_transfer), 1.0 / (1.0 / 6.0 + k_transfer)], rel=1e-12
+    )
+    # And it is *not* the common-quench-factor answer, which would be tau_i / 2.
+    assert lifetimes[0] != pytest.approx(1.0, rel=1e-3)
+
+
+@pytest.mark.parametrize("g_factor", [0.7, 1.0, 1.4, 2.0])
+@pytest.mark.parametrize("l1, l2", [(0.0, 0.0), (0.05, 0.03), (0.1, 0.1)])
+def test_the_polarised_split_does_not_depend_on_the_g_factor(g_factor, l1, l2):
+    """The recovered anisotropy is a property of the dye, not of the detectors.
+
+    ``AnisotropySpectrum``'s ``g`` port divides its *ideal* perpendicular spectrum
+    **before** the ``l₁``/``l₂`` mixing, which leaves the mixing terms carrying a
+    stray factor of ``G``; at ``G = 2``, ``l₁ = l₂ = 0.1`` that is a factor-of-two
+    error in the recovered anisotropy. So the node is driven at ``g = 1`` — where
+    its union-of-ideal-pairs form is *identically* the Schaffer/Eggeling amplitude
+    form — and ``G`` is applied afterwards to the whole perpendicular channel,
+    which is what a detection sensitivity is. This test is what pins that choice:
+    it fails on the node's own ordering.
+    """
+    from chisurf.core.fluorescence.mfd.patterns import (
+        perrin_anisotropy,
+        polarized_patterns,
+    )
+
+    _, _, p_parallel = polarized_patterns(
+        _sharp_response(), [1.0], [2.0], 1.0,
+        Optics(r0_anisotropy=0.38, g_factor=g_factor, l1=l1, l2=l2),
+    )
+    recovered = _anisotropy_from_split(p_parallel, g_factor, l1, l2)
+    assert recovered == pytest.approx(
+        float(perrin_anisotropy(2.0, 1.0, 0.38)), abs=0.002
+    )
+
+
+def test_the_anisotropy_multiplies_a_photons_own_age_not_its_micro_time():
+    """A wrapped photon is a period older than its micro time says, and ``r`` knows.
+
+    The polarisation is built as a *spectrum* and each product component is then
+    folded onto the laser period, so a photon detected at micro time ``t`` that is
+    really ``t + T`` old carries ``r(t + T)``. Multiplying ``r(t)`` into an
+    already-folded decay — the arrangement a time-domain split has to use — gives
+    those photons the anisotropy of a younger photon and so over-polarises the
+    tail. Here the window is short enough that 3% of the donor's photons wrap, and
+    the parallel share differs measurably from the naive answer.
+    """
+    from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
+    from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
+
+    optics = Optics(r0_anisotropy=0.38, g_factor=1.2, l1=0.05, l2=0.03)
+    response = _response()
+    amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+        FretState(distance=52.0), Optics()
+    )
+    _, _, p_parallel = polarized_patterns(
+        response, amplitudes, lifetimes, 1.0, optics
+    )
+
+    decay = response.decay(amplitudes, lifetimes)
+    vv, vh = vm_rt_to_vv_vh(
+        np.arange(decay.size) * DT, decay, np.array([0.38, 1.0]),
+        g_factor=1.2, l1=0.05, l2=0.03,
+    )
+    naive = float(vv.sum() / (vv.sum() + vh.sum()))
+
+    # Close, because the two are the same physics discretised differently ...
+    assert p_parallel == pytest.approx(naive, abs=1e-3)
+    # ... but not equal, and the folded-product answer is the smaller one: the
+    # wrapped photons are old, hence depolarised, hence less parallel.
+    assert p_parallel < naive
