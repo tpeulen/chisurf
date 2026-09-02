@@ -30,8 +30,8 @@ own bounds transform, in C++, driving :class:`IMP.bff.Port` parameters and a
   ``fconv_per_cs`` and the ``shift_lamp`` timeshift, both taken header-only
   -- so bff builds the network, tttrlib computes the curve, and this package
   is not between them. Measured at **4.4x** on a default `LifetimeModel`.
-  A model carrying a term the node does not have (pile-up, a DNL table, a
-  measured background, a non-periodic mode) is refused.
+  A model carrying a term the node does not have (a measured background, a
+  non-periodic mode) is refused; pile-up and the DNL table ride in the node.
 * **A polarised or a FRET decay** is that same instrument with a *producer*
   in front of it, because both are spectrum transforms rather than curve
   ones -- the product of two sums of exponentials is a sum of exponentials,
@@ -1147,8 +1147,6 @@ def _lifetime_objective(fit, model, free):
         return None            # the node reconvolves periodically, only
     if not getattr(convolve, "do_convolution", False):
         return None            # the ideal decay is a different curve
-    if getattr(corrections, "correct_dnl", False):
-        return None            # the DNL table multiplies the curve
     if generic.background_curve is not None:
         return None            # a measured background is a second curve
     if getattr(lifetimes, "_link", None) is not None:
@@ -1239,6 +1237,21 @@ def _lifetime_objective(fit, model, free):
                 float(corrections.measurement_time))
             if not autoscale:
                 node.set_data_arrays(y, ey)
+        except Exception:
+            return None
+
+    # The DNL table multiplies the finished curve, after the background and
+    # before the clamp -- `Corrections.linearize`'s slot. The table is
+    # measured, not fitted (its window parameters are fixed), so it is read
+    # once here; `lintable` already resolves the `reverse` orientation. An
+    # older engine without the setter refuses rather than dropping the term.
+    if getattr(corrections, "correct_dnl", False):
+        try:
+            table = np.ascontiguousarray(
+                corrections.lintable, dtype=np.float64)
+            if table.ndim != 1 or table.size != y.size:
+                return None
+            node.set_linearization_array(table)
         except Exception:
             return None
 

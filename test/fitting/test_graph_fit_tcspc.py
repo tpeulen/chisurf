@@ -215,10 +215,58 @@ def test_pile_up_joins_the_graph_with_the_same_curve():
     assert np.max(np.abs(python - plain)) / np.max(plain) > 1e-4
 
 
-def test_a_dnl_table_refuses_the_graph():
+def test_the_dnl_table_joins_the_graph_with_the_same_curve():
+    """The linearization runs in the node since 2026-09-02 (PRD-105 phase 3).
+
+    `Corrections.linearize` multiplies the finished curve by a measured
+    channel-width table, after the constant background and before the
+    non-negativity clamp; the node applies the same table in the same slot.
+    The table must be a real one (a flat table of ones is a no-op and
+    proves nothing) and the `reverse` orientation must ride along, because
+    `lintable` resolves it at read time and the builder reads it once.
+    """
     fit = make_fit()
-    fit.model.corrections.correct_dnl = True
-    assert _refuses(fit)
+    corrections = fit.model.corrections
+    corrections.correct_dnl = True
+    # A visibly non-flat table, deterministic, mean ~1 -- the shape a real
+    # DNL calibration has.
+    channels = np.arange(N, dtype=float)
+    corrections._lintable = 1.0 + 0.05 * np.sin(2.0 * np.pi * channels / 37.0)
+
+    for reverse in (False, True):
+        corrections.reverse = reverse
+        fit.model.update_model()
+        built = M.graph_objective(fit, fit.model)
+        assert built is not None, "a DNL table must not refuse the graph"
+        node = built[0]._decay
+        node.update()
+        graph = np.asarray(node.get_output_port("decay").value, dtype=float)
+        python = np.array(fit.model.y, dtype=float)
+        np.testing.assert_allclose(graph, python, rtol=1e-12)
+
+    # The correction did something: the same fixture without it differs.
+    with_table = np.array(fit.model.y, dtype=float)
+    corrections.correct_dnl = False
+    fit.model.update_model()
+    plain = np.array(fit.model.y, dtype=float)
+    assert np.max(np.abs(with_table - plain)) / np.max(plain) > 1e-3
+
+
+def test_the_dnl_answer_does_not_move():
+    """With the table armed, the graph fit and the numpy fit agree."""
+    fit_graph = make_fit()
+    fit_scipy = make_fit()
+    channels = np.arange(N, dtype=float)
+    table = 1.0 + 0.05 * np.sin(2.0 * np.pi * channels / 37.0)
+    for fit in (fit_graph, fit_scipy):
+        fit.model.corrections.correct_dnl = True
+        fit.model.corrections._lintable = table.copy()
+    fit_graph.run()
+    run_with_scipy(fit_scipy)
+    a = fit_graph.model.parameters_all_dict["tL1"].value
+    b = fit_scipy.model.parameters_all_dict["tL1"].value
+    assert a == pytest.approx(b, rel=1e-4)
+    assert a == pytest.approx(3.1, abs=0.1)
 
 
 def test_a_background_curve_refuses_the_graph():

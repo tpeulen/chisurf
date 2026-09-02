@@ -122,6 +122,43 @@
 * **Fixed in passing**: `pto_inspector`'s manifest guard `rglob`-ed into
   `chimol/test/renders/`, validating a *render* baseline as a plugin manifest
   and failing on a dozen fields it never claimed to have.
+* **The beam path is off `NodeScene`/`NodeView`** — the last item from
+  [lightpath-cmtk-editor](handover/lightpath-cmtk-editor.md).
+  `lightpath_simulator/gui/tool.py` now builds `NodeGraphWidget` +
+  `BeampathContent`; `node_types.py` lost the five Qt widget-factory
+  functions it existed to hold and is now Qt-free, registry-only. Verified
+  by node/edge/port inventory against the pre-port `before` capture (8
+  nodes, 7 edges, all port names identical once the port-index convention is
+  translated) plus control counts (7 buttons, 9 controls, 14 tables, both
+  sides). One thing this found that generalises: **cmtk keeps a node's pixel
+  size fixed regardless of zoom** (`fit_to_content`'s own docstring), so
+  fitting a dense, plot-heavy graph to its panel only shrinks the *gaps*
+  between nodes, never the nodes — the fit can be mathematically correct and
+  still force overlap. `_build_default_path` now pans a 1:1 view
+  (`_centre_view`) instead of fitting, same as the Qt version's
+  `view.centerOn` did. `node_types.py` struck from
+  `test/chiplot_native_allowlist.txt` (it stopped using `.native` before
+  this change; the allowlist entry had just gone stale). Remaining on the
+  old scene: `mmfdb_admin/gui/tool.py`'s interactive `NodeEditorWidget` —
+  a different consumer, not covered here.
+  **Correction, same day**: the first cut of `_centre_view` looked broken —
+  no spectra anywhere in a screenshot — for two compounding reasons, not
+  one. First, the smoke-tested screenshot had no backend behind it (ZMQ
+  timeout), so no node had a spectrum to draw at all — expected, and true of
+  the `before` capture too. Second, wiring in a real in-process RPC client
+  (`InProcessClient` + `ServiceDispatcher`, the pattern in
+  `test_headless.py::test_lightpath_api_client_unwraps_rpc_envelope`) showed
+  spectra populate correctly, but the default centre point (the splitter)
+  pushed the *only two nodes with anything to plot* — the source and the
+  sample, since nothing downstream has a component assigned yet — off the
+  left edge. Re-centred on the sample instead. Caught a second, genuine
+  instance of the handover's own "fit before show" trap while at it:
+  `_centre_view` read `graph_widget.width()/height()` before the panel had
+  ever been laid out (Qt's `100x30` default) in a test that built the graph
+  before `.show()`; real callers always `.show()` synchronously right after
+  construction so this had not misfired yet, but the fallback (refuse
+  anything under 200px, use a plausible panel size instead) closes it
+  regardless of call order.
 
 ## 2026-08-31
 * **The last algorithm twin goes: the surrogate feature extractor.** ChiSurf's
@@ -38225,3 +38262,21 @@ side of the line.
   known-issues: the shared bounds transform stalls LM when bounds span
   decades (ub=1e9 defaults) — graph and director stall identically, so it
   is the transform, not the seam; engine fix queued with phase 6.
+
+- **2026-09-02 — DNL joins the graph; `_lifetime_objective`'s last
+  eligibility refusal is lifted (PRD-105 phase 3).** `TcspcDecay` gained
+  `set_linearization`: the measured channel-width table multiplies the
+  finished curve after the constant background and before the
+  non-negativity clamp — `Corrections.linearize`'s exact slot. The table
+  is configuration, not a port (its window parameters are fixed; it
+  derives from a reference measurement, not from fitted parameters), read
+  once at build with the `reverse` orientation already resolved by
+  `lintable`; an empty table disables the stage at zero measured cost.
+  Parity 1e-12 against `update_model` with a real non-flat table in both
+  orientations; graph and director answers agree at 1e-4. A DNL-armed
+  TCSPC fit — a configuration that previously *always* fell to the
+  director — runs 15.2 → 2.1 ms (7.2×). The builder now refuses only what
+  the node genuinely lacks: a measured background curve, a non-periodic
+  convolution mode. Also fixed two stale PRD-105 entries while flipping
+  the box: the saturation item still described the pre-overrule refusal,
+  and the DEER-arithmetic box had never been checked.
