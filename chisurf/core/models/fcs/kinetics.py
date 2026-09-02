@@ -38,6 +38,8 @@ from chisurf.core.fluorescence.fcs.saturation import (
     saturated_curve_shape,
 )
 from chisurf.core.models.fcs.mdf import compute_brightness, set_output_parameter
+
+import IMP.bff as _bff
 from chisurf.core.models.model import ModelCurve
 
 
@@ -671,6 +673,70 @@ class FCSKineticsModel(ModelCurve):
             raise ValueError(f"saturation_mode must be one of {self._SATURATION_MODES}, got {v!r}")
         self._saturation_mode = v
         self.update()
+
+    # -- Graph-compilable "full" saturation path -----------------------------
+    #
+    # The numerical volume integration (`saturated_curve_shape`) is the one
+    # part of this model that cannot be an equation string.  It becomes a
+    # producer node (`IMP.bff.FcsSaturationCurve`) exactly as the MDF shape
+    # becomes `FcsMdfCurve`: the node publishes the *shape* ``g_sat``, and
+    # the compiled equation multiplies only the terms that genuinely are
+    # formulas onto it (amplitude ``1/N``, background factor, baseline ``b``).
+    #
+    # The photokinetic scheme (dark/excitation matrices, brightness, grid
+    # resolution, wavelength) is a fixed configuration set on the node once at
+    # build time — not ports — so freeing one of those parameters puts it in
+    # ``model.parameters`` with no port to carry it, and the graph refuses
+    # (unclaimable-port rule).  The quantities a fit actually varies (power,
+    # extinction, w0, z0, D, N, b, bg) are the node's *ports*.
+    #
+    # The equation variable ``g_sat`` is linked to the node's output port.
+    # Only "full" mode with ``active=True`` takes this path; the analytical
+    # Gaussian (no power) and "fast" bunching mode stay eval-only.
+
+    FCS_SAT_VARIABLE = "g_sat"
+
+    @property
+    def _count_rate_constant(self):
+        """The dataset's total mean count rate, or ``None`` when absent."""
+        meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
+        cr = resolve_total_mean_count_rate(meta)
+        return float(cr) if cr is not None and cr > 0 else None
+
+    @property
+    def func(self) -> str:
+        """The compound equation over the node's shape, in bff's spelling."""
+        sat = self.saturation
+        cr = self._count_rate_constant
+        if cr is not None and sat.bg > 0:
+            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+        else:
+            amplitude = "1.0/N"
+        return "b + %s*%s" % (amplitude, self.FCS_SAT_VARIABLE)
+
+    @property
+    def _expression(self):
+        """Non-``None`` marks the model as graph-compilable (see ``func``).
+
+        Only "full" mode with active saturation takes the graph route; the
+        analytical Gaussian and "fast" bunching stay eval-only.
+        """
+        if (self.saturation_mode == "full"
+                and self.saturation.active
+                and hasattr(_bff, "FcsSaturationCurve")):
+            return self.func
+        return None
+
+    @property
+    def _parameters_equation(self):
+        """The equation's own variables — not the producer node's ports.
+
+        ``N``, ``b`` and ``bg`` are the equation variables; ``power``,
+        ``extinction``, ``w0``, ``z0`` and ``D`` are the node's ports and are
+        carried separately by the producer hook.
+        """
+        sat = self.saturation
+        return [sat._N, sat._b, sat._bg]
 
     def _update_model(self, **kwargs) -> None:
         """Evaluate the photokinetic FCS model."""

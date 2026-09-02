@@ -583,6 +583,13 @@ def graph_objective(fit, model, allow_priors: bool = False):
         # closed-form diffusion modes use. `_fcs_mdf_objective` is where the
         # two part company.
         return _fcs_mdf_objective(fit, model, free)
+    if _is_fcs_kinetics_full_model(model):
+        # A fourth family: FCS kinetics in "full" saturation mode. The
+        # numerical volume integration (bff's FcsSaturationCurve) is a
+        # producer node in front of the same Expression -> ChiSquared,
+        # exactly as the mdf FCS shape is. `_fcs_kinetics_full_objective`
+        # is where the two part company.
+        return _fcs_kinetics_full_objective(fit, model, free)
     return _single_objective(fit, model, free)
 
 
@@ -731,6 +738,109 @@ def _fcs_mdf_objective(fit, model, free):
     node, out_port, carried = built
     return _single_objective(fit, model, free,
                              producer_ports={FCS_MDF_VARIABLE: out_port},
+                             extra_carried=carried,
+                             extra_keepalive=node)
+
+
+def _is_fcs_kinetics_full_model(model) -> bool:
+    """Whether *model* is an FCS kinetics model in "full" saturation mode.
+
+    The "full" mode performs a numerical volume integration (bff's
+    ``FcsSaturationCurve``) that cannot be an equation string. The other two
+    modes -- "fast" (Gaussian * bunching) and no-power (analytical Gaussian)
+    -- are closed-form and take the ordinary equation route.
+
+    Saturation mode is *structural*: it is in the equation string (via
+    ``_expression`` returning ``None`` for non-full modes) and therefore in
+    ``_graph_cache_key``, so switching it cannot leave a graph built for one
+    branch in place.
+    """
+    try:
+        from chisurf.core.models.fcs.kinetics import FCSKineticsModel
+    except Exception:                              # pragma: no cover
+        return False
+    return (isinstance(model, FCSKineticsModel)
+            and model.saturation_mode == "full"
+            and model.saturation.active)
+
+
+def _fcs_kinetics_full_producer(fit, model):
+    """The `IMP.bff.FcsSaturationCurve` node in front of a kinetics equation.
+
+    The saturated shape is a *numerical kernel* -- a steady-state solve on a
+    2D (r, z) grid plus a spatial autocorrelation -- so it is the one part of
+    this model that cannot be a string. It becomes a producer node instead,
+    exactly as the MDF shape does (`_fcs_mdf_producer`), and everything
+    downstream stays the compiled expression:
+
+        FcsSaturationCurve -> Expression -> ChiSquared -> Minimizer
+
+    **What the node publishes is the shape, not the curve.** The baseline
+    ``b``, the amplitude ``1/N`` and the background factor multiply the shape
+    *after* the node, so they stay variables of the expression, where they
+    compose correctly.
+
+    **The photokinetic scheme is baked in.** The dark/excitation matrices,
+    brightness, grid resolution and wavelength are configuration set once at
+    build time -- not ports -- so they survive across the optimiser's
+    evaluations without being re-set. Freeing one of those parameters puts it
+    in ``model.parameters`` with no port to carry it, and the graph refuses
+    (unclaimable-port rule).
+
+    Returns ``(node, output_port, carried)`` or ``None``.
+    """
+    if not hasattr(_bff, "FcsSaturationCurve"):
+        return None            # an older build; the director path still fits
+    sat = model.saturation
+    tau_ms = np.ascontiguousarray(
+        np.asarray(fit.data.x, dtype=np.float64).ravel())
+    if tau_ms.size == 0:
+        return None
+    try:
+        node = _bff.FcsSaturationCurve("fcs_saturation")
+        node.build_ports()
+        # Seconds, as the kernel takes them; the equation's own ``x`` stays
+        # the data's milliseconds.
+        node.set_axis_array(tau_ms * 1e-3)
+        # The photokinetic scheme: dark rates (Hz), excitation cross-sections,
+        # brightness — set once, not re-set per evaluation.
+        dark = np.asarray(sat.dark_matrix_hz, dtype=float).ravel()
+        exc = np.asarray(sat.exc.rate_matrix(), dtype=float).ravel()
+        bright = np.asarray(sat.brightness.array, dtype=float).ravel()
+        node.set_scheme(list(dark), list(exc), sat.n_states, list(bright))
+        node.set_quadrature(120, 40)  # the model's own grid resolution
+        node.set_wavelength(float(sat.wavelength_m))
+        node.set_include_bunching(True)
+        node.add_output_port("fcs_saturation", _bff.Port([0.0], False, True))
+    except Exception:
+        return None
+    # Port names match the model's FittingParameter names (power, extinction,
+    # w0, z0, D) so `_claim` matches them with the free parameters. N, b, bg
+    # are equation variables, not node ports.
+    carried = [
+        (sat._power, node.get_input_port("power")),
+        (sat._extinction, node.get_input_port("extinction")),
+        (sat._w_r, node.get_input_port("w0")),
+        (sat._w_z, node.get_input_port("z0")),
+        (sat._D, node.get_input_port("D")),
+    ]
+    # Set the node's port values from the model's current parameter values.
+    # Fixed parameters are constants that hold their value at build time;
+    # free parameters are overwritten by the optimiser, but setting them now
+    # means the first evaluation (before the optimiser writes) is correct.
+    for p, port in carried:
+        port.value = float(p.value)
+    return node, node.get_output_port("fcs_saturation"), carried
+
+
+def _fcs_kinetics_full_objective(fit, model, free):
+    """A kinetics FCS model in "full" mode: ``FcsSaturationCurve -> Expression -> ChiSquared``."""
+    built = _fcs_kinetics_full_producer(fit, model)
+    if built is None:
+        return None
+    node, out_port, carried = built
+    return _single_objective(fit, model, free,
+                             producer_ports={model.FCS_SAT_VARIABLE: out_port},
                              extra_carried=carried,
                              extra_keepalive=node)
 
