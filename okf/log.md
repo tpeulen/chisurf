@@ -38317,3 +38317,17 @@ side of the line.
   Python evaluations inside the run; census 13/42, zero disagreements.
   Deliberate remainders (engine nodes, not expressions): `FcsMdf`-backed
   node for the `"mdf"` mode, kinetics `"full"` over the saturation kernel.
+
+- **2026-09-02 — PRD-105 phase 3 complete whole: the "nested optimisers"
+  item dissolved on re-verification.** The survey claimed
+  `DeerGaussianModel`/`DeerRiceModel` and `pch/fida.py` run
+  `scipy.optimize.least_squares` inside `update_model`. Verified false:
+  the DEER calls live in `_pr_bootstrap`, reached only from
+  `compute_uncertainty` — a bootstrap confidence band on P(r), where a
+  re-fit per noisy replica is the method, not an optimiser inside an
+  objective — and `fida_fit` is a Fretica-parity library entry
+  (`FPCHFidaFit`) with zero callers; `FidaModel.update_model` is
+  optimiser-free. Nothing to delete. Every model family now has a graph
+  or a written verdict; the PRD frontmatter reads phases 0–3 complete.
+  Noted as a later batching opportunity: the DEER band runs 120 scipy LM
+  fits in Python.
