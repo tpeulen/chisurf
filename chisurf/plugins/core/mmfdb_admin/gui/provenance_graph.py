@@ -191,10 +191,18 @@ def mmfdb_graph_to_node_editor_graph(graph: dict[str, Any]) -> dict[str, Any]:
         color = relation_color(rel)
 
         edge_entry = {
+            # Both zero: ``source_port`` indexes the source node's *outputs*
+            # and ``target_port`` its target's *inputs*, and every node this
+            # function builds has exactly one of each. It said ``1`` for the
+            # output, which is a flat index over inputs-then-outputs -- the
+            # convention the old QGraphicsScene happened to use, and not the
+            # one ``node_editor/json_schema.md`` documents. A reader that
+            # follows the schema finds no output 1 and drops the edge, so the
+            # provenance graph rendered as nodes with nothing joining them.
             "source": s_key,
-            "source_port": 1,  # out port index
+            "source_port": 0,
             "target": t_key,
-            "target_port": 0,  # in port index
+            "target_port": 0,
             "config": {
                 "edge_id": re.get("edge_id"),
                 "relationship_type": rel,

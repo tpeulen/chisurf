@@ -100,10 +100,20 @@ def test_declaring_plugins_have_a_gui_or_say_they_do_not():
 
 
 def test_manifests_on_disk_parse_with_the_new_key():
-    """Every shipped manifest still validates after the field was added."""
+    """Every shipped manifest still validates after the field was added.
+
+    ``rglob`` reaches into test data as well as into plugins, and a file called
+    ``manifest.json`` under a plugin's ``test/renders/`` is a *render* manifest
+    -- a list of the scenes a baseline covers -- that has never claimed to be a
+    plugin manifest and never will. Validating it reports a dozen missing
+    fields for a file nothing loads, which is a failure that says nothing about
+    the plugins.
+    """
     bad = []
     for path in PLUGINS.rglob("manifest.json"):
         if "{{" in str(path):  # the cookiecutter template
+            continue
+        if "test" in path.parts and "renders" in path.parts:
             continue
         errors = validate_manifest(json.loads(path.read_text()))
         if errors:

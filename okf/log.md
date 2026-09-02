@@ -1,5 +1,55 @@
 # Update Log
 
+## 2026-09-02
+* **The node editor moves off PyQt onto cmtk, and the reference was chosen by
+  measurement rather than by reputation.** All five ImGui node editors on Dear
+  ImGui's *Useful Extensions* page were cloned into `junk/` and run through
+  cmtk's `tools/autoport`, counting what a port would actually cost:
+  thedmd/imgui-node-editor 8.7 kloc with 96 templates, 114 virtuals and three
+  files of `imgui_internal` (133 porter flags); Fattorino/ImNodeFlow retained
+  and template-driven (85 templates, 71 smart pointers), so a port is a
+  rewrite; Azzinoth/VisualNodeSystem an application framework pulling in glm
+  and jsoncpp; rokups/ImNodes unmaintained since 2022 and too thin.
+  **Nelarius/imnodes** wins on the axis that matters — dependency-free, public
+  ImGui API plus `ImDrawList`, and the widest feature set that stays small.
+  `cmtk/nodes.py` is a re-implementation of it (its API names, layout
+  arithmetic, cubic-bezier control points and palette), plus the pan/zoom
+  canvas taken from the candidate that lost. 28 tests; cmtk 1301 passed.
+* **The zoom scales the canvas and not the glyphs, and that is stated rather
+  than glossed.** Both cmtk painters report a fixed glyph cell, so
+  `push_font(font, size)` changes no measurement and a node's pixel size is
+  identical at every zoom. `fit_to_content` therefore solves
+  `extent = zoom x origin_span + node_size` instead of dividing by the whole
+  extent, which would leave the outermost nodes off screen.
+* **Two cmtk seams were wrong, and both produced a wrong picture rather than an
+  exception.** The drawlist's channel splitter recorded `text_width` and
+  `line_height` as if they were drawing calls, so every widget inside a channel
+  measured `None`; it also answered `hasattr` for every name, which made
+  `painter.py`'s helpers take a fast path the host did not have and raised at
+  *merge* time, nowhere near the widget that queued it. And `end_group` updated
+  the layout's last item but not the context's, so `get_item_rect_min`/`max`
+  after a group described the last widget inside the group instead of the
+  group. Fixed in `~/dev/cmtk` (`2ae83b7`).
+* **The port index had two conventions, and the disagreement was silent and
+  total.** `json_schema.md` says `source_port` indexes a node's `outputs`;
+  `scene.py` indexed one flat list of inputs-then-outputs, and
+  `mmfdb_admin/gui/provenance_graph.py` wrote `"source_port": 1` to match it.
+  A reader following the schema finds no output 1 and drops the edge, so the
+  provenance graph rendered as four nodes with **nothing joining them** — all
+  the nodes present, every edge gone. The converter now writes `0`, and
+  `GraphDocument.from_dict` logs each edge it drops with the reason.
+* **What landed on the ChiSurf side**: `node_editor/document.py` (the graph as
+  a plain object with schema v1 I/O and the string-to-int id mapping),
+  `cmtk_control.py` (the editor as a cmtk control — one implementation for the
+  Qt host, a browser host and a headless test), and `widget.py`
+  (`NodeGraphWidget`, twelve lines of Qt around it). 16 new tests, none of them
+  needing a display. **The three consumers are not switched over yet** — the
+  open front, with the traps in measuring it, is in
+  [okf/subsystems/node-editor.md](subsystems/node-editor.md).
+* **Fixed in passing**: `pto_inspector`'s manifest guard `rglob`-ed into
+  `chimol/test/renders/`, validating a *render* baseline as a plugin manifest
+  and failing on a dozen fields it never claimed to have.
+
 ## 2026-08-31
 * **The last algorithm twin goes: the surrogate feature extractor.** ChiSurf's
   `surrogate.py` carried its own `_feature_kernel` beside the compiled one. On
