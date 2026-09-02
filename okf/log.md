@@ -38081,3 +38081,27 @@ side of the line.
   70 PDA tests green. Census-fixture hazard recorded: the silent passes
   (MFD no-op, ICS zeros, FIDA wrong axis) are worse than the construction
   errors; the census should check for a non-degenerate curve.
+
+- 2026-09-02 (performance directive; PDDEM 9×) — **Owner standing rule:
+  every unit reports performance, and performance only improves.** Baselines
+  re-measured after today's waves: the canonical TCSPC lifetime `fit.run()`
+  is **1.89 ms** (3.26 → 2.26 → 1.89 across the three waves) at **zero**
+  Python model evaluations; the scoreboard's movable compute per LM
+  iteration fell **1192 → 587 → ~222 ms** over two days (84–85% of all model
+  compute now inside C++). The scoreboard's top movable row was then
+  **PDDEMModel at 65.7 ms/LM-iter — 29% of everything movable** — and the
+  profile showed why: `lifetime_spectrum` called the pair kernel once per
+  FRET rate (96 calls/evaluation on the standard axis, each on a (1,1) grid
+  where numpy per-call overhead dwarfs the arithmetic) and re-read every
+  parameter property per iteration. `pddem_rates` vectorises the pair grid
+  over a leading rate axis — one broadcast, per-rate keep-mask assembly the
+  only remaining (trivial) loop. **7.84 → 0.86 ms/curve (9.1×)**; scoreboard
+  row 78,444 → 6,785 µs/LM-iter (11.6×). Bit-for-bit parity pinned by
+  `test/tcspc/test_pddem_rates.py` (`assert_array_equal`, ragged
+  zero-amplitude/zero-lifetime cases included — an ORDER test, since a
+  reordering would change no value). Done Python-first per the DEER
+  precedent; whether a bff producer node is still worth it now waits on the
+  next scoreboard, where PDDEM is no longer the top row. Note for scoreboard
+  reads: the totals line is noisy run to run (and one of today's runs shared
+  the machine with a test suite) — trust the per-row numbers and repeats,
+  as the benchmark's own docstring instructs.

@@ -117,6 +117,122 @@ def rescale_w_bg(
     return sum_nom / sum_denom if sum_denom != 0.0 else 0.0
 
 
+def pddem_rates(
+        decayA: np.ndarray,
+        decayB: np.ndarray,
+        ks: np.ndarray,
+        px: np.ndarray,
+        pm: np.ndarray,
+        pAB: np.ndarray,
+        weights: np.ndarray,
+) -> np.ndarray:
+    """The PDDEM spectrum for a whole FRET-rate spectrum, in one call.
+
+    Rate-vectorised :func:`pddem`: the caller used to invoke the pair kernel
+    once per rate of the FRET-rate spectrum -- 96 calls per model evaluation
+    on the standard distance axis, each on a (1, 1) pair grid where numpy's
+    per-call overhead dwarfs the arithmetic, plus a fresh read of every
+    parameter property per iteration. That loop was 29% of *all* movable
+    model compute on the 2026-09-02 scoreboard. Here the pair grid gains a
+    leading rate axis and the whole spectrum is one broadcast; only the
+    per-rate keep-mask assembly remains a (trivial) loop, because each
+    rate's kept components interleave with its own pure-A/pure-B tail and
+    the tail lengths are rate-independent while the kept counts are not.
+
+    Bit-for-bit the concatenation of ``pddem(decayA, decayB, [kAB*r, kBA*r],
+    ...) * weight`` over the rates, in the same order -- pinned by
+    ``test_pddem_rates_matches_the_per_rate_loop``.
+
+    Parameters
+    ----------
+    decayA, decayB : numpy.ndarray
+        Interleaved (amplitude, lifetime) spectra of the two pure dyes.
+    ks : numpy.ndarray
+        ``(n, 2)`` transfer-rate pairs ``(kAB, kBA)``, one row per rate of
+        the FRET-rate spectrum.
+    px, pm, pAB : numpy.ndarray
+        Excitation and emission probabilities and the pure-AB pair, exactly
+        :func:`pddem`'s.
+    weights : numpy.ndarray
+        One weight per rate; each rate's whole sub-spectrum (pure components
+        included) is scaled by it, as the caller's loop did.
+
+    Returns
+    -------
+    numpy.ndarray
+        The interleaved (amplitude, lifetime) spectrum, rate-major.
+    """
+    eps = 1e-9
+    ks = np.asarray(ks, dtype=float).reshape(-1, 2)
+    weights = np.asarray(weights, dtype=float)
+    n_rates = ks.shape[0]
+    nA = decayA.shape[0] // 2
+    nB = decayB.shape[0] // 2
+
+    kAB = ks[:, 0][:, None, None]
+    kBA = ks[:, 1][:, None, None]
+    pxA, pxB = px[0], px[1]
+    pmA, pmB = pm[0], pm[1]
+
+    piA = (pAB[0] * (1.0 - pAB[1])) / (1.0 - pAB[0] * pAB[1])
+    piB = (pAB[1] * (1.0 - pAB[0])) / (1.0 - pAB[0] * pAB[1])
+    piAB = 1.0 - piA - piB
+
+    cA = np.asarray(decayA[0::2], dtype=float)[:nA][None, :, None]
+    tauA = np.asarray(decayA[1::2], dtype=float)[:nA][None, :, None]
+    cB = np.asarray(decayB[0::2], dtype=float)[:nB][None, None, :]
+    tauB = np.asarray(decayB[1::2], dtype=float)[:nB][None, None, :]
+
+    pair_ok = (cA != 0.0) & (cB != 0.0) & (tauA != 0.0) & (tauB != 0.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        itauA = np.where(tauA != 0.0, 1.0 / np.where(tauA != 0.0, tauA, 1.0), 0.0)
+        itauB = np.where(tauB != 0.0, 1.0 / np.where(tauB != 0.0, tauB, 1.0), 0.0)
+
+        root = np.sqrt((itauA - itauB + kAB - kBA) ** 2 + 4 * kAB * kBA)
+        l1 = 0.5 * (-itauA - itauB - kAB - kBA + root)
+        l2 = l1 - root
+
+        common = piAB * cA * cB / (l1 - l2 + eps)
+        shape = (n_rates,) + np.broadcast(cA, cB).shape[1:]
+        amplitude = np.empty(shape + (2,), dtype=float)
+        amplitude[..., 0] = common * (
+            pmA * (pxA * (-l2 - itauA - kAB) + pxB * kBA)
+            + pmB * (pxA * kAB + pxB * (-l2 - itauB - kBA))
+        )
+        amplitude[..., 1] = common * (
+            pmA * (pxA * (l1 + itauA + kAB) - pxB * kBA)
+            + pmB * (-pxA * kAB + pxB * (l1 + itauB + kBA))
+        )
+        lifetime = np.empty_like(amplitude)
+        lifetime[..., 0] = np.broadcast_to(-1.0 / l1, shape)
+        lifetime[..., 1] = np.broadcast_to(-1.0 / l2, shape)
+
+    keep = (np.abs(amplitude) > 1e-10) & pair_ok[..., None]
+
+    # The pure components are rate-independent in value; only their weight
+    # changes per rate. Computed once, appended per rate.
+    pure_a = pmA * pxA * piA * cA[0, :, 0]
+    keep_a = np.abs(pure_a) > 1e-10
+    pure_a, tail_tau_a = pure_a[keep_a], tauA[0, :, 0][keep_a]
+    pure_b = pmB * pxB * piB * cB[0, 0, :]
+    keep_b = np.abs(pure_b) > 1e-10
+    pure_b, tail_tau_b = pure_b[keep_b], tauB[0, 0, :][keep_b]
+
+    amplitudes, lifetimes = [], []
+    for i in range(n_rates):
+        ki = keep[i]
+        w = weights[i]
+        amplitudes += [amplitude[i][ki] * w, pure_a * w, pure_b * w]
+        lifetimes += [lifetime[i][ki], tail_tau_a, tail_tau_b]
+
+    c = np.concatenate(amplitudes) if amplitudes else np.empty(0)
+    tau = np.concatenate(lifetimes) if lifetimes else np.empty(0)
+    d = np.empty(2 * c.size, dtype=np.float64)
+    d[0::2] = c
+    d[1::2] = tau
+    return d
+
+
 def pddem(
         decayA: np.ndarray,
         decayB: np.ndarray,

@@ -242,18 +242,22 @@ class PDDEMModel(FRETModel):
         rate_spectrum = self.fret_rate_spectrum
 
         p, rates = rate_spectrum[::2], rate_spectrum[1::2]
-        decays = []
-        for i, r in enumerate(rates):
-            tmp = chisurf.core.fluorescence.tcspc.pddem(
-                decayA, decayB,
-                self.pddem.fABBA * r,
-                self.pddem.px,
-                self.pddem.pm,
-                self.pddem.pureAB
-            )
-            tmp[0::2] *= p[i]
-            decays.append(tmp)
-        lt = np.concatenate(decays)
+        # One vectorised call for the whole rate spectrum. The per-rate loop
+        # this replaces invoked the pair kernel 96 times per evaluation on
+        # the standard distance axis -- each call on a (1, 1) grid where
+        # numpy's per-call overhead dwarfs the arithmetic -- and re-read
+        # every parameter property per iteration; it was 29% of all movable
+        # model compute on the 2026-09-02 scoreboard. Bit-for-bit the same
+        # spectrum, pinned by test_pddem_rates_matches_the_per_rate_loop.
+        fABBA = self.pddem.fABBA
+        lt = chisurf.core.fluorescence.tcspc.pddem_rates(
+            decayA, decayB,
+            np.asarray(rates, dtype=float)[:, None] * fABBA[None, :],
+            self.pddem.px,
+            self.pddem.pm,
+            self.pddem.pureAB,
+            p,
+        )
         if chisurf.core.settings.cs_settings['fret']['bin_lifetime']:
             n_lifetimes = chisurf.core.settings.cs_settings['fret']['lifetime_bins']
             discriminate_amplitude = chisurf.core.settings.cs_settings['fret']['discriminate_amplitude']
