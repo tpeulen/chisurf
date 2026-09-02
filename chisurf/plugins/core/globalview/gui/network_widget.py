@@ -32,6 +32,60 @@ __all__ = ["ParameterNetworkWidget"]
 
 logger = logging.getLogger(__name__)
 
+#: The pixel box a layout is fitted into before it becomes a document.
+LAYOUT_EXTENT: tuple = (900.0, 620.0)
+
+
+def _to_pixels(positions, spread: float) -> list:
+    """Fit layout coordinates into a pixel box, keeping their aspect ratio.
+
+    Parameters
+    ----------
+    positions : sequence
+        ``(x, y)`` per node, **in the layout algorithm's own units**.
+    spread : float
+        Multiplier on the fitted extent. Above 1 the graph grows past the box
+        and is read by panning, which is how a crowded network is pulled apart
+        without recomputing its layout.
+
+    Returns
+    -------
+    list
+        ``(x, y)`` per node, in grid pixels.
+
+    Notes
+    -----
+    This is the step that was missing, and its absence is not subtle: every
+    layout in :mod:`chisurf.core.graph` returns coordinates in roughly
+    ``-1..1``, so used raw the whole network occupies two grid units and
+    every node is drawn on top of every other. Fit-to-content then computes a
+    zoom from a two-unit span, hits its clamp, and leaves a single pile of
+    discs in the middle of the panel -- which is exactly what it did.
+
+    The canvas this replaces called ``_fit_to_canvas`` for the same reason.
+    Fitting to a *fixed* box rather than to the widget is deliberate: the
+    editor has its own fit-to-content and its own zoom, so the box only has to
+    put the nodes a sensible distance apart, and a layout that changed shape
+    when the panel was resized would move every node under the user.
+    """
+    points = [(float(x), float(y)) for x, y in positions]
+    if not points:
+        return []
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    span_x = max(xs) - min(xs)
+    span_y = max(ys) - min(ys)
+    if span_x < 1e-9 and span_y < 1e-9:
+        # One node, or a degenerate layout: spreading it is meaningless and
+        # dividing by the span is a crash.
+        return [(0.0, index * 90.0) for index, _ in enumerate(points)]
+
+    scale = min(
+        LAYOUT_EXTENT[0] / span_x if span_x > 1e-9 else float("inf"),
+        LAYOUT_EXTENT[1] / span_y if span_y > 1e-9 else float("inf"),
+    ) * max(float(spread), 0.05)
+    return [((x - min(xs)) * scale, (y - min(ys)) * scale) for x, y in points]
+
 
 class ParameterNetworkWidget(QtWidgets.QWidget):
     """The network, drawn by cmtk, behind the API ``tool.py`` already calls.
@@ -147,8 +201,8 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
             anyway, and refits only when asked.
         """
         del keep_view
-        scaled = [(float(x) * spread, float(y) * spread) for x, y in positions]
-        self.control.set_document(document_from_arrays(scaled, edges, names, kinds),
+        placed = _to_pixels(positions, spread)
+        self.control.set_document(document_from_arrays(placed, edges, names, kinds),
                                   fit=True)
         self._selected = []
         self.host.update()
