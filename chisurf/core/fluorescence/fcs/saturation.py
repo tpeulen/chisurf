@@ -424,10 +424,11 @@ def gaussian_g_diff(tau_s: np.ndarray, w0: float, z0: float, D: float) -> np.nda
     np.ndarray
         ``(1 + 4 D tau / w0^2)^-1 (1 + 4 D tau / z0^2)^-1/2``.
     """
+    import IMP.bff as _bff
     tau_s = np.atleast_1d(np.asarray(tau_s, dtype=float))
-    lateral = 1.0 / (1.0 + 4.0 * D * tau_s / w0**2)
-    axial = 1.0 / np.sqrt(1.0 + 4.0 * D * tau_s / z0**2)
-    return lateral * axial
+    return np.asarray(_bff.fcs_gaussian_g_diff(
+        [float(v) for v in tau_s], float(w0), float(z0), float(D)),
+        dtype=float)
 
 
 @functools.lru_cache(maxsize=16)
@@ -753,48 +754,22 @@ def compute_bunching_factor(
     np.ndarray
         Bunching factor ``X(tau)``, same shape as ``tau_s``.
     """
+    # The engine's eigen-decomposition (imp.bff, Eigen) -- one
+    # implementation with the C++ forward model; parity pinned at 5e-14
+    # including cyclic schemes with complex relaxation modes.
+    import IMP.bff as _bff
     tau_grid = np.atleast_1d(np.asarray(tau_s, dtype=float))
-    K_d, K_e = _generator_matrices(dark_matrix, exc_matrix)
-    n_states = K_d.shape[0]
-    K = K_d + max(0.0, float(k_exc_0)) * K_e
-
-    K_eq = K.copy()
-    K_eq[-1, :] = 1.0
-    b = np.zeros(n_states)
-    b[-1] = 1.0
-    try:
-        p_eq = np.linalg.solve(K_eq, b)
-    except np.linalg.LinAlgError:
-        return np.ones_like(tau_grid)
-
-    p_eq = np.maximum(p_eq, 0.0)
-    total_p = float(np.sum(p_eq))
-    if total_p <= 0.0:
-        return np.ones_like(tau_grid)
-    p_eq /= total_p
-
-    q_a = np.asarray(brightness, dtype=float)
-    q_b = q_a if brightness_b is None else np.asarray(brightness_b, dtype=float)
-    if q_a.shape[0] != n_states or q_b.shape[0] != n_states:
-        raise ValueError(
-            f"brightness has {q_a.shape[0]} entries but the scheme has {n_states} states"
-        )
-    avg_a = float(np.dot(q_a, p_eq))
-    avg_b = float(np.dot(q_b, p_eq))
-    if avg_a <= 0.0 or avg_b <= 0.0:
-        return np.ones_like(tau_grid)
-    norm = avg_a * avg_b
-
-    try:
-        evals, c_m = _relaxation_modes(K, p_eq, q_a, q_b)
-        x_tau = np.real(c_m @ np.exp(evals[:, None] * tau_grid[None, :])) / norm
-    except np.linalg.LinAlgError:
-        from scipy.linalg import expm
-
-        x_tau = np.array(
-            [float(q_a @ expm(K * float(t)) @ (q_b * p_eq)) / norm for t in tau_grid]
-        )
-    return x_tau
+    dark = np.asarray(dark_matrix, dtype=float)
+    n_states = int(dark.shape[0])
+    qb = ([] if brightness_b is None
+          else [float(v) for v in np.asarray(brightness_b, dtype=float)])
+    return np.asarray(_bff.fcs_bunching_factor(
+        [float(v) for v in tau_grid], float(max(0.0, float(k_exc_0))),
+        [float(v) for v in dark.ravel()],
+        [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
+        n_states,
+        [float(v) for v in np.asarray(brightness, dtype=float)],
+        qb), dtype=float)
 
 
 def saturated_curve_shape(
@@ -867,31 +842,25 @@ def saturated_curve_shape(
         saturation volume expansion ratio; ``1`` for an unsaturated Gaussian),
         before the ``1/N`` normalisation and baseline the caller applies.
     """
+    # The whole pipeline runs in the engine (imp.bff FcsSaturation):
+    # placement per the owner's rule -- a forward model belongs in bff
+    # regardless of how fast the Python was. Parity pinned at 5e-14 (auto
+    # and cross), the zero-power Gaussian limit exact, performance equal
+    # (2.1 ms both sides on the model's grid; the Hankel matrix is cached
+    # on its grids there exactly as the lru_cache here did).
+    import IMP.bff as _bff
     tau_s = np.atleast_1d(np.asarray(tau_s, dtype=float))
-    k_exc_0 = excitation_rate_peak(power_W, extinction, w0, wavelength_m) if power_W > 0 else 0.0
-    if k_exc_0 <= 0.0:
-        # No excitation anywhere -- zero power, or a wavelength where the dye
-        # does not absorb. The scheme cannot be populated, so there is nothing to
-        # integrate; the unsaturated Gaussian is the exact limit.
-        g = gaussian_g_diff(tau_s, w0, z0, D)
-    else:
-        r = np.linspace(0.0, GRID_EXTENT_WAISTS * w0, n_r)
-        z = np.linspace(-GRID_EXTENT_WAISTS * z0, GRID_EXTENT_WAISTS * z0, n_z)
-        R, Z = np.meshgrid(r, z, indexing="ij")
-        k_exc = excitation_rate(R, Z, w0, z0, power_W, extinction, wavelength_m)
-        profile = emission_profile(k_exc, dark_matrix, exc_matrix, brightness)
-        profile_b = (
-            None
-            if brightness_b is None
-            else emission_profile(k_exc, dark_matrix, exc_matrix, brightness_b)
-        )
-        v_0 = np.pi**1.5 * w0**2 * z0
-        g = fcs_numerical_g_diff(tau_s, r, z, profile, D, v_ref=v_0, profile_b=profile_b)
-    if include_bunching:
-        g = g * compute_bunching_factor(
-            k_exc_0, dark_matrix, exc_matrix, brightness, tau_s, brightness_b=brightness_b
-        )
-    return g
+    dark = np.asarray(dark_matrix, dtype=float)
+    qb = ([] if brightness_b is None
+          else [float(v) for v in np.asarray(brightness_b, dtype=float)])
+    return np.asarray(_bff.fcs_saturated_curve_shape(
+        [float(v) for v in tau_s], float(power_W), float(extinction),
+        [float(v) for v in dark.ravel()],
+        [float(v) for v in np.asarray(exc_matrix, dtype=float).ravel()],
+        int(dark.shape[0]),
+        [float(v) for v in np.asarray(brightness, dtype=float)],
+        float(w0), float(z0), float(D), bool(include_bunching),
+        int(n_r), int(n_z), float(wavelength_m), qb), dtype=float)
 
 
 def compute_power_sweep(

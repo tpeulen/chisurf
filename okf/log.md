@@ -38175,3 +38175,32 @@ side of the line.
   kinetics/FCS tests green. With the MDF half (110 → 5.3 ms/curve, in bff)
   landed this morning, the ticket closes whole: kernels that measured slow
   moved, kernels that measured fast stayed with the number that says why.
+
+- 2026-09-02 (the saturation port lands after all — placement is not
+  conditional on speed) — **Owner ruling on the earlier measured refusal:
+  "sat curve shape should be in bff, doesn't matter that it is fast enough,
+  that is sth that belongs to bff."** The rule, sharpened and recorded: a
+  measurement sets a port's *priority*, never its *placement* — the
+  DEER-style refusal-with-a-number applies to generic numerics, not to
+  domain forward models. So `imp.bff` gained `FcsSaturation.h/.cpp`: the
+  whole saturated-FCS pipeline — excitation-rate scaling, per-grid-point
+  steady state (Eigen PartialPivLU with the constraint row), emission
+  profile, cylindrical integrals, the reciprocal-space correlation (Hankel
+  matrix **cached on its grids** exactly as the numpy `lru_cache` was, real
+  DFT along z, the factored separable propagator), and the bunching factor
+  via `Eigen::EigenSolver` (complex relaxation modes of cyclic schemes
+  handled; the sum real). A machine-precision `bessel_j0` came with it —
+  the periodic trapezoid on \(\frac1\pi\int_0^\pi\cos(x\sin\theta)d\theta\)
+  converges geometrically, 64 nodes = 4.4e-16 vs the reference to x=35 —
+  because a truncated polynomial would have put a 1e-7 floor under every
+  parity test downstream. **Parity 5e-14** (auto and cross), the zero-power
+  Gaussian limit exact, bunching exact including complex modes;
+  **performance equal, 2.13 ms numpy vs 2.14 ms engine** on the model's
+  grid — the placement moved, the speed did not. chisurf's three fit-path
+  orchestrators (`saturated_curve_shape`, `compute_bunching_factor`,
+  `gaussian_g_diff`) forward; the numpy building blocks stay for the
+  analysis utilities (power sweep, calculator plugin) and double as the
+  A/B reference (`test/fluorescence/test_fcs_saturation_engine.py`).
+  342 model+fluorescence tests green. One unity-build trap for the record:
+  IMP jumbo-compiles module sources, so an anonymous-namespace `kPi`
+  collides across .cpps — file-local constants need file-local names.
