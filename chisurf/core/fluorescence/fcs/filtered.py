@@ -106,18 +106,30 @@ def species_filtered_correlation(
     n_bins: int = 8,
     n_casc: int = 25,
     labels=None,
+    method: str = "wahl",
 ) -> SpeciesFilteredCorrelation:
     """Species auto-/cross-correlations weighted by lifetime filters.
 
     Applies the FLCS lifetime filters as per-photon weights and computes every
-    species auto- and cross-correlation with ``tttrlib.Correlator``. This is the
+    species auto- and cross-correlation in ONE pass over the photon stream with
+    ``tttrlib.Correlator.species_matrix_correlation``. This is the
     channel-aware generalisation of the 2D-FLC application path
     (``flc_2d.fit.dynamics.filtered_correlation``): with a per-channel filter
     table each detector's photons get that detector's filter.
 
+    Every species pair correlates the *same* arrival times and differs only in
+    the per-photon weights, so the two weight-independent halves of the
+    multi-tau kernel -- coarsening the time axis and the pointer walk that
+    finds each photon's partners -- are shared by all pairs and are done once
+    upstream; only the innermost product carries the species dimension. The
+    ``n(n+1)/2`` separate correlator passes this replaced re-did both per pair.
+    The result is bit-identical to that composition single-threaded, not merely
+    close (the coarsening's only weight-dependent step is a zero-drop, which
+    cannot change the estimator).
+
     The per-photon channel-aware weighting mirrors ``tttrlib.Correlator``'s
     native ``set_filter`` (which maps ``{routing_channel: micro_time -> weight}``
-    onto the photons); it is done here via ``set_weights`` so the same code path
+    onto the photons); it is done here via weight streams so the same code path
     serves both species auto- and cross-correlations (where the two sides need
     *different* species filters, which a single ``set_filter`` map cannot express).
 
@@ -138,6 +150,10 @@ def species_filtered_correlation(
         Multi-tau correlator settings.
     labels : sequence of str, optional
         Species labels.
+    method : str, optional
+        Correlation method (``"wahl"``, ``"felekyan"``, ``"laurence"``). Only
+        ``"wahl"`` has the single-pass kernel; the others are composed pair by
+        pair upstream — correct, but without the batching win.
 
     Returns
     -------
@@ -145,29 +161,34 @@ def species_filtered_correlation(
     """
     import tttrlib
 
+    if not hasattr(tttrlib.Correlator, "species_matrix_correlation"):
+        raise RuntimeError(
+            "tttrlib.Correlator.species_matrix_correlation is missing: the installed "
+            "tttrlib predates the batched species-matrix (fFCS) entry point. "
+            "Rebuild tttrlib (`pixi run build-tttrlib`)."
+        )
+
     macro = np.ascontiguousarray(macro_times, dtype=np.uint64)
     streams = species_weight_streams(filters, micro_times, routing_channels)
     n_species = len(streams)
+    weight_matrix = np.ascontiguousarray(np.vstack(streams), dtype=np.float64)
 
-    def _corr(wa, wb):
-        c = tttrlib.Correlator()
-        c.n_bins = int(n_bins)
-        c.n_casc = int(n_casc)
-        c.set_macrotimes(macro, macro)
-        c.set_weights(wa, wb)
-        c.run()
-        x = np.asarray(c.get_x_axis(), dtype=float) * macro_time_resolution_s
-        g = np.asarray(c.get_corr_normalized(), dtype=float)
-        return x, g
+    x_axis, matrix = tttrlib.Correlator.species_matrix_correlation(
+        macro, weight_matrix, int(n_bins), int(n_casc), str(method)
+    )
+    lag = np.asarray(x_axis, dtype=float) * macro_time_resolution_s
 
-    lag = None
     auto: dict = {}
     cross: dict = {}
     for i in range(n_species):
-        lag, auto[i] = _corr(streams[i], streams[i])
-    for i in range(n_species):
-        for j in range(i + 1, n_species):
-            _, cross[(i, j)] = _corr(streams[i], streams[j])
+        for j in range(i, n_species):
+            # packed upper-triangular, row-major: (0,0), (0,1), ..., (1,1), ...
+            row = matrix[i * n_species - i * (i - 1) // 2 + (j - i)]
+            if i == j:
+                auto[i] = np.asarray(row, dtype=float)
+            else:
+                cross[(i, j)] = np.asarray(row, dtype=float)
+
     labels = list(labels) if labels is not None else [f"species_{i}" for i in range(n_species)]
     return SpeciesFilteredCorrelation(lag_s=lag, auto=auto, cross=cross, labels=labels)
 
