@@ -289,52 +289,84 @@ class FilterSettingsModel:
         return s
 
     def _changepoint_selection(self, tttr, mode: str) -> np.ndarray:
-        """BOCPD / Kalman burst detection -> per-photon keep mask."""
-        from chisurf.core.fluorescence import burst as burstmod
-        from chisurf.core.fluorescence.burst.utils import create_array_with_ones
+        """BOCPD / Kalman burst detection -> per-photon keep mask.
+
+        Both searches run in the tttrlib engine, on the photon stream itself.
+        The panel used to hand them per-channel *timestamp arrays*, which forced
+        the changepoint modules down their "no TTTR given" path: that rebuilds a
+        synthetic TTTR from the timestamps (so micro times and the real routing
+        channels are gone), bins with ``np.histogram(range=(0, tmax))`` -- whose
+        bin width is ``tmax / ceil(tmax / dt)``, not the ``dt`` that was asked
+        for -- and recovers photon indices by ``searchsorted`` on float times.
+        Measured against the engine on ``m000.spc`` those three together moved
+        the selected-photon mask by ~20 % (Jaccard 0.78); with the binning
+        aligned the two agree bin-for-bin.
+        """
+        from chisurf.core.fluorescence.burst.bocpd import bocpd_filter
+        from chisurf.core.fluorescence.burst.kalman import kalman_filter
 
         n = len(tttr)
         channel_list = _parse_int_list(self.channel_numbers)
+        used = [int(c) for c in tttr.get_used_routing_channels()]
         if not channel_list:
-            channel_list = list(tttr.get_used_routing_channels())
-        time_unit = tttr.header.macro_time_resolution
-        timestamps = np.asarray(tttr.macro_times) * time_unit
+            channel_list = used
+
         channels = np.asarray(tttr.routing_channels)
-        ts_list = []
-        for ch in channel_list:
-            cts = timestamps[channels == ch]
-            if len(cts) == 0:
-                return np.ones(n, dtype=bool)
-            ts_list.append(cts)
+        keep = np.isin(channels, np.asarray(channel_list, dtype=channels.dtype))
+        if not keep.any():
+            return np.ones(n, dtype=bool)
+
+        # Restricting the search to a subset of channels means searching a
+        # sub-stream and mapping its photon indices back, rather than dropping
+        # the channel information the engine uses to couple the detectors.
+        restricted = sorted(set(channel_list)) != sorted(set(used))
+        if restricted:
+            index = np.nonzero(keep)[0].astype(np.int64)
+            search_tttr = tttr[index]
+        else:
+            index = None
+            search_tttr = tttr
 
         dt = float(self.trace_bin_width) / 1000.0
         if mode == "bocpd":
-            bursts, *_ = burstmod.bocpd_burst_detection_multi(
-                ts_list,
+            sub_mask = bocpd_filter(
+                search_tttr,
+                min_ph=int(self.min_ph),
                 dt=dt,
                 prior_count=float(self.bocpd_prior_count),
                 prior_duration=float(self.bocpd_prior_duration),
                 changepoint_prob=float(self.bocpd_changepoint_prob),
                 max_run=256,
-                min_counts=int(self.min_ph),
+                per_channel=True,
             )
-            start_stop = burstmod.bocpd.convert_bursts_to_start_stop(bursts, tttr)
         else:  # kalman
-            bursts, *_ = burstmod.kalman_burst_detection_multi(
-                ts_list,
+            sub_mask = kalman_filter(
+                search_tttr,
+                min_ph=int(self.min_ph),
                 dt=dt,
                 q=float(self.kalman_q),
                 r_scale=float(self.kalman_r_scale),
                 z_thresh=float(self.kalman_z_thresh),
                 min_len=int(self.kalman_min_len),
                 merge_gap=int(self.kalman_merge_gap),
-                min_counts=int(self.min_ph),
+                per_channel=True,
             )
-            start_stop = burstmod.kalman.convert_bursts_to_start_stop(bursts, tttr)
-
-        if len(start_stop) == 0:
+        sub_mask = np.asarray(sub_mask).astype(bool)
+        if not sub_mask.any():
+            # Nothing detected: keep everything, as this panel always has.
             return np.ones(n, dtype=bool)
-        return np.asarray(create_array_with_ones(start_stop, n)).astype(bool)
+        if index is None:
+            return sub_mask
+        # A burst found in the sub-stream spans every photon between its first
+        # and last photon of the *full* stream, including photons of the
+        # channels the search was not run on -- which is what selecting a burst
+        # interval meant before the sub-stream existed.
+        from chisurf.core.math.signal import find_bursts
+
+        mask = np.zeros(n, dtype=bool)
+        for s, e in find_bursts(sub_mask.astype(np.int8)):
+            mask[index[s]:index[e] + 1] = True
+        return mask
 
     def selected(self) -> np.ndarray | None:
         if self._tttr is None:

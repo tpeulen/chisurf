@@ -324,6 +324,15 @@ def is_sentinel_file_reference(value: object) -> bool:
     empty object — so a caller that reads the header of "the first file" silently
     reads the header of nothing.
 
+    The cell reaches this function in whichever spelling the reader produced,
+    and that is not one spelling. A ``First File`` column whose *every* value
+    parses as a number is typed numerically, so the sentinel arrives as
+    ``0.0``/``np.float64(0.0)`` rather than ``"0"``; a column that is typed as
+    text but has empty sentinel cells arrives as ``nan``. Matching only the
+    string ``"0"`` therefore recognised the sentinel in some tables and not in
+    others — and the ones it missed were loaded, which is how an *empty* TTTR
+    gets cached under the key ``0.0``. Anything numerically zero is a sentinel.
+
     Parameters
     ----------
     value : object
@@ -334,7 +343,13 @@ def is_sentinel_file_reference(value: object) -> bool:
     bool
     """
     text = str(value).strip()
-    return text in {"", "0"} or text.lower() == "nan"
+    if text == "" or text.lower() == "nan":
+        return True
+    try:
+        return float(text) == 0.0
+    except ValueError:
+        # A measurement name, which is the overwhelmingly common case.
+        return False
 
 
 def load_tttrs_for_dataframe(

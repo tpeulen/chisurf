@@ -1,5 +1,6 @@
-# BVA module
-from chisurf.core.fluorescence.burst.bva import compute_static_bva_line, compute_bva
+# BVA module -- the shot-noise reference line only; the analysis itself is
+# tttrlib.BVA, driven from the burst_bva plugin one batched call per measurement.
+from chisurf.core.fluorescence.burst.bva import compute_static_bva_line
 
 # BOCPD module — thin wrapper around tttrlib C++ engine
 from chisurf.core.fluorescence.burst.bocpd import (
@@ -10,8 +11,11 @@ from chisurf.core.fluorescence.burst.bocpd import (
 )
 import chisurf.core.fluorescence.burst.bocpd
 
-# Kalman module
+# Kalman module -- kalman_filter/kalman_burst_search forward to the tttrlib
+# engine; the names below them are the Python fallback that module keeps.
 from chisurf.core.fluorescence.burst.kalman import (
+    kalman_filter,
+    kalman_burst_search,
     Burst,
     KalmanBurstResult,
     KalmanBurstDetector,

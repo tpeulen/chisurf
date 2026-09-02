@@ -788,7 +788,19 @@ def read_burst_analysis(
     """
 
     def update_tttr_dict(data_path, tttrs: dict[str, tttrlib.TTTR] = dict()):
-        """Load TTTR files not yet in the cache dictionary.
+        """Load the TTTR file each distinct ``First File`` value names.
+
+        One pass over the *distinct* names rather than over the burst rows: a
+        measurement of 20 000 bursts names one file 20 000 times, and only the
+        first of those is a load.
+
+        Sentinel rows are skipped. A ``.bur`` table is ``2n+1`` interleaved and
+        every other row carries ``"0"`` instead of a measurement name; tttrlib
+        does not raise on the resulting non-existent path -- it prints a note and
+        returns an *empty* object whose header reports a negative macro-time
+        resolution. Caching that under the key ``"0"`` puts an empty measurement
+        into a mapping whose whole purpose is to answer "which photons does this
+        burst refer to".
 
         Parameters
         ----------
@@ -802,13 +814,14 @@ def read_burst_analysis(
         dict
             Updated cache dictionary.
         """
-        for ff, fl in zip(df['First File'], df['Last File']):
-            try:
-                tttr = tttrs[ff]
-            except KeyError:
-                fn = str(data_path / ff)
-                tttr = tttrlib.TTTR(fn, tttr_file_type)
-                tttrs[ff] = tttr
+        from chisurf.core.fluorescence.burst.photons import is_sentinel_file_reference
+
+        # dict.fromkeys, not set(): first-appearance order, so the first entry
+        # is the first real measurement of the table.
+        for ff in dict.fromkeys(np.asarray(df['First File']).tolist()):
+            if ff in tttrs or is_sentinel_file_reference(ff):
+                continue
+            tttrs[ff] = tttrlib.TTTR(str(data_path / str(ff)), tttr_file_type)
         return tttrs
 
     from chisurf.core.fio.fluorescence.burst_tree import is_container_path

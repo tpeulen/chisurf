@@ -116,12 +116,20 @@ def read_burst_analysis(
         fresh = [c for c in column_names(group) if c not in column_names(table)]
         table.append_columns(take_columns(group, fresh))
 
+    # One pass over the *distinct* file names, not over the burst rows: a
+    # measurement of 20 000 bursts names one file 20 000 times. Sentinel rows
+    # ("0") are skipped -- tttrlib does not raise on that non-existent path, it
+    # returns an empty object, and caching one here would put an empty
+    # measurement into the mapping the BVA engine slices bursts out of.
+    from chisurf.core.fluorescence.burst.photons import is_sentinel_file_reference
+
     tttrs: Dict[str, tttrlib.TTTR] = {}
-    for ff in np.asarray(table['First File']):
-        if ff not in tttrs:
-            # ``ff`` is a filename string; coerce defensively so a stray numeric
-            # value can't raise ``PosixPath / float`` on the path join.
-            tttrs[ff] = tttrlib.TTTR(str(data_path / str(ff)), tttr_file_type)
+    for ff in dict.fromkeys(np.asarray(table['First File']).tolist()):
+        if ff in tttrs or is_sentinel_file_reference(ff):
+            continue
+        # ``ff`` is a filename string; coerce defensively so a stray numeric
+        # value can't raise ``PosixPath / float`` on the path join.
+        tttrs[ff] = tttrlib.TTTR(str(data_path / str(ff)), tttr_file_type)
 
     return table, tttrs
 

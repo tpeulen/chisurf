@@ -14,13 +14,6 @@ description is JSON Schema, which chisurf already renders, so the GUI for a
 burst search is built with no algorithm-specific code::
 
     from chisurf.core import tttrlib_registry
-
-logger = logging.getLogger(__name__)
-
-#: Fraction of the stream above which a "burst" result is not a burst result.
-#: Real single-molecule data selects some tens of percent; selecting nearly
-#: everything means the search degenerated rather than found something.
-IMPLAUSIBLE_COVERAGE = 0.7
     from chisurf.gui.autoform import AutoForm
 
     view = tttrlib_registry.entry_form_view("burst_search", "maxtree")

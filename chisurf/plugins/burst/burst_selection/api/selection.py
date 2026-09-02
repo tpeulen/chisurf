@@ -209,9 +209,10 @@ def _run_burst_search(
         # used to live in chisurf.core.fluorescence.burst.kalman. The settings
         # and the mode name are unchanged, so saved projects keep working.
         #
-        # A tttrlib too old to publish the registry falls back to the numba
-        # implementation rather than failing, so an installation where it used
-        # to work keeps working.
+        # ``is_available`` tests the *registry*, which is what the generic
+        # ``algorithm=`` call below goes through. A tttrlib too old to publish
+        # it still has the search itself, so the fallback calls that method
+        # directly rather than reimplementing the recursion in Python.
         kalman_settings = settings.kalman_filter
         min_counts = burst_detection.min_photons if burst_detection else 60
         if tttrlib_search.is_available():
@@ -230,32 +231,20 @@ def _run_burst_search(
                 ),
             )
             return np.asarray(selection, dtype=bool)
-        channel_list = settings.channels
-        if len(channel_list) < 1:
-            channel_list = list(tttr.get_used_routing_channels())
-        time_unit = tttr.header.macro_time_resolution
-        timestamps = tttr.macro_times * time_unit
-        channels = tttr.routing_channels
-        timestamps_list = []
-        for channel in channel_list:
-            channel_timestamps = timestamps[channels == channel]
-            timestamps_list.append(channel_timestamps)
-            if len(channel_timestamps) == 0:
-                return np.zeros(n, dtype=bool)
-        bursts, _, _, _, _ = kalman_mod.kalman_burst_detection_multi(
-            timestamps_list,
-            dt=kalman_settings.dt,
-            q=kalman_settings.q,
-            r_scale=kalman_settings.r_scale,
-            z_thresh=kalman_settings.z_thresh,
-            min_len=kalman_settings.min_len,
-            merge_gap=kalman_settings.merge_gap,
-            min_counts=min_counts,
+        return np.asarray(
+            kalman_mod.kalman_filter(
+                tttr,
+                min_ph=min_counts,
+                dt=kalman_settings.dt,
+                q=kalman_settings.q,
+                r_scale=kalman_settings.r_scale,
+                z_thresh=kalman_settings.z_thresh,
+                min_len=kalman_settings.min_len,
+                merge_gap=kalman_settings.merge_gap,
+                per_channel=True,
+            ),
+            dtype=bool,
         )
-        start_stop = kalman_mod.convert_bursts_to_start_stop(bursts, tttr)
-        if len(start_stop) > 0:
-            return np.asarray(create_array_with_ones(start_stop, n), dtype=bool)
-        return np.zeros(n, dtype=bool)
 
     if used_filter == BurstFilterMode.CUSUM:
         cusum_settings = settings.cusum_filter
