@@ -37999,3 +37999,15 @@ side of the line.
   expensive half — the curve read off the node's output port so even that
   one evaluation goes — stays on the board ticket with a scoped hand-off
   note (`n0` is the trap). 1004 fitting tests green.
+
+- 2026-09-02 (T-20260901-15 closes — the DEER arithmetic) — **`_gcv_score`
+  stops recomputing the alpha-independent products.** `A.T@A`, `L.T@L` and
+  `A.T@b` hoist out of the 24-alpha GCV grid, and the hat-matrix trace is
+  `sum((A @ inv) * A)` instead of forming the full `(n, n)` `A @ inv @ A.T`
+  to read its diagonal. Measured on a 256×96 system, 20 repetitions each
+  way: 34.8 → 9.6 ms per `select_alpha`, **3.6×**, same alpha selected,
+  scores identical to 1e-12. Per the ticket's own instruction this was done
+  in Python *before* deciding a port — and the number decides it: what
+  remains is `np.linalg.inv` and gemms, i.e. LAPACK/BLAS already, so a C++
+  port of `DeerTikhonovModel` buys nothing and is **not** taken. With the
+  MDF half landed this morning, T-20260901-15 is closed whole.

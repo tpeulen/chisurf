@@ -32,20 +32,26 @@ def second_derivative_operator(n: int) -> np.ndarray:
     return L
 
 
-def _gcv_score(A: np.ndarray, b: np.ndarray, L: np.ndarray, alpha: float) -> float:
-    """GCV functional for the unconstrained Tikhonov solution at ``alpha``."""
+def _gcv_score(A: np.ndarray, b: np.ndarray, alpha: float,
+               AtA: np.ndarray, LtL: np.ndarray, Atb: np.ndarray) -> float:
+    """GCV functional for the unconstrained Tikhonov solution at ``alpha``.
+
+    ``AtA``, ``LtL`` and ``Atb`` are alpha-independent and are computed once
+    by the caller: recomputing them inside the 24-alpha grid was most of a
+    `select_alpha` call (board `T-20260901-15`).
+    """
     n = A.shape[0]
-    AtA = A.T @ A
-    LtL = L.T @ L
     try:
         inv = np.linalg.inv(AtA + alpha ** 2 * LtL)
     except np.linalg.LinAlgError:
         return np.inf
     # Influence (hat) matrix H = A (AtA + a^2 LtL)^-1 A^T; only its trace and
-    # the residual of the corresponding solution are needed.
-    solve = inv @ (A.T @ b)
+    # the residual of the corresponding solution are needed. The trace is
+    # sum((A @ inv) * A) -- the same number as trace(A @ inv @ A.T) without
+    # forming the (n, n) hat matrix just to read its diagonal.
+    solve = inv @ Atb
     resid = A @ solve - b
-    trace_h = np.trace(A @ inv @ A.T)
+    trace_h = float(np.sum((A @ inv) * A))
     denom = (n - trace_h) ** 2
     if denom <= 0:
         return np.inf
@@ -57,7 +63,10 @@ def select_alpha(A: np.ndarray, b: np.ndarray, L: np.ndarray,
     """Return the GCV-optimal regularisation weight ``alpha`` over a log grid."""
     if alphas is None:
         alphas = np.logspace(-4, 1, 24)
-    scores = [_gcv_score(A, b, L, a) for a in alphas]
+    AtA = A.T @ A
+    LtL = L.T @ L
+    Atb = A.T @ b
+    scores = [_gcv_score(A, b, a, AtA, LtL, Atb) for a in alphas]
     return float(alphas[int(np.argmin(scores))])
 
 
