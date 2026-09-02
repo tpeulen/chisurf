@@ -94,6 +94,31 @@ class NodeContentRenderer:
         "mode": ["A", "B", "C"],
     }
 
+    def node_shape(self, node: GraphNode) -> tuple:
+        """How this node is drawn: a titled box, or a labelled disc.
+
+        Parameters
+        ----------
+        node : GraphNode
+            The node about to be drawn.
+
+        Returns
+        -------
+        tuple
+            ``(shape, label, radius)``. ``shape`` is a
+            :class:`cmtk.nodes.NodeShape`; ``label`` is the text under a disc
+            and is ignored for a box, which titles itself; ``radius`` may be
+            ``None`` to take the style's.
+
+        Notes
+        -----
+        Both are node-link diagrams. They differ in whether a node has an
+        interior worth showing: a beam-path component *is* its controls and
+        its spectrum, so it is a box; a parameter is a name and a number, and
+        two hundred of them are only readable as marks.
+        """
+        return (nodes.NodeShape.BOX, "", None)
+
     def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
         """The title-bar colour this node should have, if not the default.
 
@@ -128,7 +153,8 @@ class NodeContentRenderer:
         Returns
         -------
         tuple or None
-            ``(colour, thickness)``, or ``None`` to take the editor's palette.
+            ``(colour, thickness)``, optionally with a third element asking
+            for an arrowhead; ``None`` to take the editor's palette.
 
         Notes
         -----
@@ -290,8 +316,20 @@ class GraphControl:
         nodes wherever the first graph's were -- and the saved positions in the
         file would be silently ignored.
         """
+        # The *style* survives, the rest does not. A caller that restyled the
+        # editor -- straight links, a quieter grid, a different palette -- did
+        # so to say what kind of graph this is, and that does not change when
+        # a new graph of the same kind is loaded. Building a fresh context and
+        # dropping the style meant the first load looked right and every one
+        # after it silently reverted to the defaults.
+        style = self.editor.style if self.editor is not None else None
+        snap = (self.editor.snap_to_grid, self.editor.stick_to_nodes) \
+            if self.editor is not None else None
+
         self.document = document
-        self.editor = nodes.EditorContext()
+        self.editor = nodes.EditorContext(style=style)
+        if snap is not None:
+            self.editor.snap_to_grid, self.editor.stick_to_nodes = snap
         self._fit_pending = bool(fit)
         self._sync_positions()
 
@@ -365,14 +403,17 @@ class GraphControl:
                 source, target = document.node(edge.source), document.node(edge.target)
                 if source is None or target is None:
                     continue
-                style = self.content.link_style(edge)
-                colour, thickness = style if style is not None else (None, None)
+                style = self.content.link_style(edge) or ()
+                colour = style[0] if len(style) > 0 else None
+                thickness = style[1] if len(style) > 1 else None
+                arrow = bool(style[2]) if len(style) > 2 else False
                 nodes.link(
                     document.link_id(index),
                     document.pin_id(source.id, edge.source_port, True),
                     document.pin_id(target.id, edge.target_port, False),
                     colour=colour,
                     thickness=thickness,
+                    arrow=arrow,
                 )
 
         self._pull_positions()
@@ -403,14 +444,39 @@ class GraphControl:
         """
         document = self.document
         number = document.node_number(node.id)
+        shape, label, radius = self.content.node_shape(node)
         title_colour = self.content.node_style(node)
         if title_colour is not None:
             # Pushed around the whole node, not just the title bar: the body is
             # drawn at end_node(), which reads the palette then, so a pop
             # before that would paint every node in the default colour.
             nodes.push_color_style(nodes.Col.TITLE_BAR, title_colour)
-        nodes.begin_node(number)
+        nodes.begin_node(number, shape=shape, label=label, radius=radius)
         im.push_item_width(NODE_ITEM_WIDTH)
+
+        if shape == nodes.NodeShape.DISC:
+            # Returns **before** the title bar, and that placement is the whole
+            # of it: a disc labels itself underneath, so letting the title bar
+            # run as well draws the name twice, a few pixels apart, in two
+            # different colours. It reads as a font-rendering artefact rather
+            # than as two draws, which is why it survived a look.
+            #
+            # Nothing else is submitted either. A disc reserves its own space,
+            # and anything drawn between begin and end is measured into its
+            # rect -- which is how a disc silently stops being round.
+            for index, _port in enumerate(node.inputs):
+                nodes.begin_input_attribute(document.pin_id(node.id, index, False),
+                                            nodes.PinShape.NONE)
+                nodes.end_input_attribute()
+            for index, _port in enumerate(node.outputs):
+                nodes.begin_output_attribute(document.pin_id(node.id, index, True),
+                                             nodes.PinShape.NONE)
+                nodes.end_output_attribute()
+            im.pop_item_width()
+            nodes.end_node()
+            if title_colour is not None:
+                nodes.pop_color_style()
+            return False
 
         nodes.begin_node_title_bar()
         im.text(node.title)

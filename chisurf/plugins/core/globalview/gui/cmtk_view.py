@@ -37,6 +37,7 @@ import logging
 import typing
 
 from cmtk import im
+from cmtk import nodes as cmtk_nodes
 
 from chisurf.gui.widgets.node_editor.cmtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import (
@@ -48,6 +49,8 @@ from chisurf.gui.widgets.node_editor.model import PortSpec
 
 __all__ = [
     "EDGE_COLOURS",
+    "apply_network_style",
+    "draw_legend",
     "GlobalViewContent",
     "KIND_COLOURS",
     "KIND_TITLE",
@@ -78,20 +81,53 @@ KIND_TITLE: dict = {
 
 #: Title-bar colour per kind, matching ``graph_canvas.KIND_COLOURS`` so the two
 #: graphs in ChiSurf keep reading as one idea.
+#:
+#: These are the *light* stop of each of the old canvas' gradients, because
+#: :func:`cmtk.nodes` shades a disc around the colour it is given rather than
+#: between two stops -- handing it the dark stop would produce a disc darker
+#: than the one it replaces.
 KIND_COLOURS: dict = {
-    NODE_FIT: (41, 98, 173, 255),
-    NODE_GROUP: (180, 95, 6, 255),
-    NODE_PARAM_FIXED: (96, 108, 116, 255),
-    NODE_PARAM_LINKED: (46, 125, 74, 255),
-    NODE_PARAM_FREE: (108, 60, 140, 255),
+    NODE_FIT: (66, 165, 245, 255),
+    NODE_GROUP: (255, 152, 0, 255),
+    NODE_PARAM_FIXED: (144, 164, 174, 255),
+    NODE_PARAM_LINKED: (102, 187, 106, 255),
+    NODE_PARAM_FREE: (171, 71, 188, 255),
 }
 
-#: The three edge kinds, as ``(colour, thickness)``.
+#: The three edge kinds, as ``(colour, thickness, arrowhead)``.
+#:
+#: Only the link gets a head, and that is the point: in a parameter network
+#: the *direction* of a link is the information -- which parameter follows
+#: which -- while ownership and base edges are symmetric statements about
+#: membership. A head on all three says something untrue about two of them.
 EDGE_COLOURS: dict = {
-    "ownership": ((120, 126, 134, 150), 1.5),
-    "link": ((90, 180, 250, 255), 3.0),
-    "base": ((90, 96, 104, 110), 1.0),
+    "ownership": ((120, 126, 134, 160), 1.4, False),
+    "link": ((0, 200, 235, 255), 2.6, True),
+    "base": ((86, 92, 100, 110), 1.0, False),
 }
+
+#: Disc radius per kind. Owners are larger because they are the things you
+#: navigate by; a network is read outward from its fits.
+KIND_RADIUS: dict = {
+    NODE_FIT: 15.0,
+    NODE_GROUP: 15.0,
+    NODE_PARAM_FIXED: 10.0,
+    NODE_PARAM_LINKED: 11.0,
+    NODE_PARAM_FREE: 11.0,
+}
+
+#: What the legend calls each kind.
+KIND_LABELS: dict = {
+    NODE_FIT: "fit",
+    NODE_GROUP: "group",
+    NODE_PARAM_FREE: "free parameter",
+    NODE_PARAM_LINKED: "linked parameter",
+    NODE_PARAM_FIXED: "fixed parameter",
+}
+
+#: Legend order: owners first, then parameters by how much freedom they have.
+LEGEND_ORDER: tuple = (NODE_FIT, NODE_GROUP, NODE_PARAM_FREE,
+                       NODE_PARAM_LINKED, NODE_PARAM_FIXED)
 
 #: Pin names. Every node carries exactly one of each, because a link here joins
 #: two *nodes* rather than two of a node's several outputs -- a parameter has
@@ -220,81 +256,123 @@ def graph_result_to_document(
     return document
 
 
-class GlobalViewContent(NodeContentRenderer):
-    """Node bodies for the parameter network: what the parameter currently is.
+def apply_network_style(editor: typing.Any) -> None:
+    """Make the editor look like a diagram rather than like a dataflow graph.
 
-    Attributes
+    Parameters
     ----------
-    show_values : bool
-        Draw each parameter's value in its body. Off makes the graph a pure
-        topology picture, which is what a network of two hundred parameters
-        wants.
+    editor : cmtk.nodes.EditorContext
+        The editor to restyle, in place.
+
+    Notes
+    -----
+    Three changes, and each is about what this graph *is*:
+
+    * **Straight links.** The node editor's curve always leaves rightwards and
+      arrives leftwards, which reads well when a graph flows left to right. A
+      network laid out by Kamada-Kawai has nodes wherever the algorithm put
+      them, so half the edges run right to left and each of those curves has to
+      loop back on itself. A screen of loops hides the shape the layout was
+      computing.
+    * **A quieter grid.** The grid is a background here, not a workspace to
+      align things on; at the editor's default weight it competes with the
+      thin ownership edges, which are the same width and nearly the same
+      colour.
+    * **No node outline.** Discs draw their own rim.
+    """
+    style = editor.style
+    style.link_straight = True
+    style.flags &= ~cmtk_nodes.StyleFlags.NODE_OUTLINE
+    style.colors[cmtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
+    style.colors[cmtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
+    style.colors[cmtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
+    # A disc is its own connector, so the pointer must be able to catch it
+    # anywhere on the mark rather than on a dot that is not drawn.
+    style.pin_hover_radius = 14.0
+
+
+def draw_legend(document: GraphDocument, box: tuple) -> None:
+    """Draw the colour key, in the editor's top-left corner.
+
+    Parameters
+    ----------
+    document : GraphDocument
+        The graph, so the key lists only the kinds actually on screen.
+    box : tuple
+        The editor's screen-space rect, ``(x, y, w, h)``.
+
+    Notes
+    -----
+    Only the kinds present. A key with five entries in front of a graph that
+    has two of them is a key you have to read past rather than one that
+    answers a question, and it takes the corner a node could be in.
+
+    Drawn by the caller *after* ``end_node_editor`` rather than by the editor,
+    because it is not part of the graph: it does not pan, it does not zoom, and
+    it must not be caught by a box selection.
+    """
+    present = [k for k in LEGEND_ORDER
+               if any(int(n.config.get("kind", -1)) == k for n in document.nodes)]
+    if not present:
+        return
+
+    draw = im.get_window_draw_list()
+    row = draw.calc_text_size("X")[1] + 3.0
+    width = max(draw.calc_text_size(KIND_LABELS[k])[0] for k in present) + 34.0
+    x, y = box[0] + 8.0, box[1] + 8.0
+    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0),
+                         (18, 20, 24, 205), 4.0)
+    draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0),
+                  (70, 76, 86, 180), 4.0)
+    for index, kind in enumerate(present):
+        centre_y = y + 4.0 + row * index + row * 0.5
+        draw.add_circle_filled((x + 14.0, centre_y), 5.0, KIND_COLOURS[kind])
+        draw.add_text((x + 24.0, centre_y - row * 0.5 + 1.0),
+                      (216, 220, 228, 255), KIND_LABELS[kind])
+
+
+class GlobalViewContent(NodeContentRenderer):
+    """Marks, not boxes: the parameter network reads as a diagram.
+
+    Every node here is a **disc** with its name under it, which is what the
+    canvas this replaces drew and what a network of two hundred parameters
+    needs. A titled box per parameter is mostly padding: it spends five rows
+    saying what a coloured dot and a label say, and twenty of them fill a
+    screen that should hold two hundred.
+
+    The value is not in the node, therefore. It is in the tooltip and in the
+    parameter table beside the graph, which is where a number is readable.
     """
 
-    def __init__(self, show_values: bool = True) -> None:
+    def __init__(self, show_values: bool = False) -> None:
+        #: Kept for callers that want the value drawn under the name. Off,
+        #: because two lines of label under every disc is what made the boxes
+        #: unreadable in the first place.
         self.show_values = bool(show_values)
 
-    def draw_body(self, node: GraphNode, read_only: bool) -> bool:
-        """Draw one node's body.
-
-        Parameters
-        ----------
-        node : GraphNode
-            The fit, group or parameter.
-        read_only : bool
-            Draw but do not accept. The network is a *view* of live fits, so
-            this is normally ``True``: the value shown is owned by the fitting
-            model, and editing it here without going through the model's own
-            setter would be a second path into state that has one.
-
-        Returns
-        -------
-        bool
-            ``True`` when the user changed something.
-        """
-        kind = int(node.config.get("kind", NODE_PARAM_FREE))
-        im.text(KIND_TITLE.get(kind, "node"))
-
-        if kind in (NODE_FIT, NODE_GROUP):
-            fit_name = node.config.get("fit_name")
-            if fit_name:
-                im.text(str(fit_name))
-            return False
-
-        if self.show_values:
-            value = node.config.get("value")
-            im.text(f"= {value:.6g}" if isinstance(value, (int, float)) else "= -")
-        if node.config.get("is_linked") and node.config.get("link_name"):
-            # Named as well as drawn: the arrow says *that* it follows
-            # something, and at any useful zoom it does not say what.
-            im.text(f"-> {node.config['link_name']}")
-        return False
-
-
-    def port_label(self, node: GraphNode, port: typing.Any, is_output: bool) -> str:
-        """No label: every node here has the same one input and one output.
+    def node_shape(self, node: GraphNode) -> tuple:
+        """Every node is a disc, sized by what kind it is.
 
         Parameters
         ----------
         node : GraphNode
             The node.
-        port : PortSpec
-            The port.
-        is_output : bool
-            Which side it is on.
 
         Returns
         -------
-        str
-            Always empty. A parameter has one identity, not a set of ports, so
-            the pins exist only to give a link somewhere to land -- and
-            "in [param]" written on every node twice is two rows per node
-            saying what the arrow already says.
+        tuple
+            ``(shape, label, radius)``.
         """
-        return ""
+        kind = int(node.config.get("kind", NODE_PARAM_FREE))
+        label = node.title
+        if self.show_values:
+            value = node.config.get("value")
+            if isinstance(value, (int, float)):
+                label = f"{node.title} = {value:.4g}"
+        return (cmtk_nodes.NodeShape.DISC, label, KIND_RADIUS.get(kind, 11.0))
 
     def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
-        """Colour the title bar by what kind of node this is.
+        """Colour the disc by what kind of node this is.
 
         Parameters
         ----------
@@ -319,6 +397,43 @@ class GlobalViewContent(NodeContentRenderer):
         Returns
         -------
         tuple or None
-            ``(colour, thickness)``.
+            ``(colour, thickness, arrowhead)``.
         """
         return EDGE_COLOURS.get(str(edge.config.get("kind", "ownership")))
+
+    def port_label(self, node: GraphNode, port: typing.Any, is_output: bool) -> str:
+        """No label: a disc has no room for one and no need of it.
+
+        Parameters
+        ----------
+        node : GraphNode
+            The node.
+        port : PortSpec
+            The port.
+        is_output : bool
+            Which side it is on.
+
+        Returns
+        -------
+        str
+            Always empty. The pins exist to give a link somewhere to land; a
+            parameter has one identity, not a set of ports.
+        """
+        return ""
+
+    def draw_body(self, node: GraphNode, read_only: bool) -> bool:
+        """Nothing: a disc has no interior.
+
+        Parameters
+        ----------
+        node : GraphNode
+            The node.
+        read_only : bool
+            Unused.
+
+        Returns
+        -------
+        bool
+            Always ``False``.
+        """
+        return False

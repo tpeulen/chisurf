@@ -15,6 +15,7 @@ cmtk = pytest.importorskip("cmtk")
 from chisurf.gui.widgets.node_editor.cmtk_control import GraphControl  # noqa: E402
 from chisurf.plugins.core.globalview.gui.cmtk_view import (  # noqa: E402
     EDGE_COLOURS,
+    apply_network_style,
     KIND_COLOURS,
     NODE_FIT,
     NODE_GROUP,
@@ -121,11 +122,73 @@ def test_each_edge_kind_is_drawn_differently():
     Drawing them alike is not a cosmetic loss: it is a claim the picture makes
     that the model does not.
     """
-    assert len({colour for colour, _w in EDGE_COLOURS.values()}) == 3
+    assert len({colour for colour, _w, _a in EDGE_COLOURS.values()}) == 3
     content = GlobalViewContent()
     document = graph_result_to_document(_result())
     styles = {content.link_style(e) for e in document.edges}
     assert len(styles) == 3
+
+
+def test_only_a_link_gets_an_arrowhead():
+    """Direction is the information for a link and meaningless for the others.
+
+    Ownership and base edges are symmetric statements about membership; a head
+    on them says something untrue.
+    """
+    assert EDGE_COLOURS["link"][2] is True
+    assert EDGE_COLOURS["ownership"][2] is False
+    assert EDGE_COLOURS["base"][2] is False
+
+
+def test_every_node_is_a_disc_and_owners_are_the_larger_ones():
+    """Marks, not boxes -- and a network is read outward from its fits."""
+    from cmtk import nodes as cmtk_nodes
+
+    content = GlobalViewContent()
+    document = graph_result_to_document(_result())
+    for node in document.nodes:
+        shape, label, radius = content.node_shape(node)
+        assert shape == cmtk_nodes.NodeShape.DISC
+        assert label == node.title
+        assert radius is not None
+    fit = next(n for n in document.nodes if n.config["kind"] == NODE_FIT)
+    param = next(n for n in document.nodes if n.config["kind"] == NODE_PARAM_FREE)
+    assert content.node_shape(fit)[2] > content.node_shape(param)[2]
+
+
+def test_a_disc_label_is_drawn_once():
+    """The disc labels itself, so the title bar must not run as well.
+
+    Both drawing produces the name twice a few pixels apart in two different
+    colours, which reads as a font-rendering artefact rather than as two
+    draws -- so it survives a look at the screenshot.
+    """
+    from cmtk.testing import RecordingPainter
+
+    document = graph_result_to_document(_result(), {
+        0: (0.0, 0.0), 1: (0.0, 300.0), 2: (260.0, -120.0),
+        3: (260.0, 40.0), 4: (260.0, 220.0), 5: (260.0, 360.0),
+    })
+    control = GraphControl(document, read_only=True, content=GlobalViewContent())
+    apply_network_style(control.editor)
+    control.set_document(document, fit=False)
+    painter = RecordingPainter()
+    control.draw(painter, 0, 0, 900, 520)
+
+    assert sum(1 for call in painter.calls if call[0] == "text") == len(document.nodes)
+
+
+def test_restyling_survives_loading_another_graph():
+    """A caller's styling says what kind of graph this is, not which graph.
+
+    Rebuilding the editor context on load dropped it, so the first graph
+    looked right and every one after it silently reverted to the defaults.
+    """
+    document = graph_result_to_document(_result())
+    control = GraphControl(document, read_only=True, content=GlobalViewContent())
+    apply_network_style(control.editor)
+    control.set_document(graph_result_to_document(_result()), fit=False)
+    assert control.editor.style.link_straight is True
 
 
 def test_hiding_fixed_parameters_hides_their_edges_too():

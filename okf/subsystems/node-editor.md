@@ -14,6 +14,45 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02, latest — globalview draws marks, not boxes, and looks like the
+canvas it replaces. Read this first.**
+
+The first port drew every parameter as a titled box and it was unreadable: a
+box per parameter is mostly padding, and twenty fill a screen that should hold
+two hundred. `cmtk.nodes` grew `NodeShape.DISC` — a shaded circle with its
+label on a plate underneath — and four things came with it, each because the
+disc exposed something the editor could only say one way:
+
+* `PinShape.NONE` — the pin is hit-tested and takes links, it is just not
+  drawn. A disc is its own connector.
+* `Style.link_straight` — the editor's curve always leaves rightwards and
+  arrives leftwards, so in a Kamada-Kawai layout half the edges loop back on
+  themselves and the loops hide the shape the layout computed.
+* `link(arrow=True)` — a head, pointed along the curve's tangent at the tip.
+  Only the *link* edge gets one: ownership and base edges are symmetric
+  statements about membership and a head on them says something untrue.
+* `GraphControl.set_document` **preserves the style**. It used to build a
+  fresh `EditorContext`, so the first graph looked right and every graph
+  loaded after it silently reverted to the defaults.
+
+**The defect worth remembering from this round**: the disc branch in
+`_draw_node` was placed *after* the title bar, so every label was drawn twice
+— once by the title bar and once by the disc, a few pixels apart, in two
+different colours. It reads as a font-rendering artefact rather than as two
+draws, which is exactly why it survived being looked at. `RecordingPainter`
+and counting `text` calls is what found it, and
+`test_a_disc_label_is_drawn_once` is what keeps it found.
+
+`apply_network_style(editor)` is the one call that makes an editor look like a
+diagram: straight links, quiet grid, no node outline, a wider pin hover radius
+so the pointer catches the mark rather than an undrawn dot. `draw_legend` is
+called by the host *after* `end_node_editor`, because the key is not part of
+the graph — it does not pan, does not zoom, and must not be box-selected.
+
+**Still open, unchanged from below**: both tool windows (`globalview/gui/tool.py`,
+`lightpath_simulator/gui/tool.py`) still build the old canvases.
+
+
 **2026-09-02, latest — globalview's graph is ported, and the content renderer
 grew the three hooks that made it possible. Read this first.**
 

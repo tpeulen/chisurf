@@ -30,6 +30,18 @@
   than grid units (or the stick reaches further the more you zoom out), and a
   multi-node drag snaps once for the node under the pointer and moves the
   selection as one. Grid alignment is a separate switch, off by default.
+* **globalview looks like the canvas it replaces again.** The first port drew
+  every parameter as a titled box, which is unreadable at network sizes, so
+  `cmtk.nodes` grew `NodeShape.DISC` -- a shaded circle with a plated label
+  underneath -- plus `PinShape.NONE`, straight link routing, and arrowheads on
+  the one edge kind whose direction is information. `GraphControl.set_document`
+  now keeps the caller's style: it used to build a fresh context, so the first
+  graph looked right and every one loaded after it reverted to the defaults.
+  **The defect worth remembering**: the disc branch sat *after* the title bar,
+  so every label was drawn twice a few pixels apart in two different colours --
+  which reads as a font-rendering artefact rather than as two draws, and
+  survived being looked at. Counting `text` calls on a `RecordingPainter` found
+  it.
 * **globalview's parameter network is ported too**, and doing it grew the
   content renderer three hooks -- `node_style`, `link_style`, `port_label` --
   which between them are what lets one editor serve graphs that mean different
