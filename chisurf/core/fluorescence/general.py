@@ -206,16 +206,62 @@ def distance_to_fret_rate_constant(
     return 3. / 2. * kappa2 * 1. / tau0 * (forster_radius / r) ** 6.0
 
 
-def kappa2_to_distance_ratio(*args, **kwargs):
-    """Moved to IMP.bff. See chisurf/okf/references/imp-ecosystem.md.
+def kappa2_to_distance_ratio(
+        k2_amp: np.ndarray,
+        k2_val: np.ndarray,
+        n_bins: int = 32
+) -> tuple:
+    """Transform a κ² distribution to an R_app/R_DA distance-ratio distribution.
+
+    Moved to IMP.bff. See chisurf/okf/references/imp-ecosystem.md.
 
     Kappa-squared belongs to IMP.bff, whole: its purpose is an R0/distance
     correction used when scoring a structure, so it follows its consumer
     rather than its input. This thin forwarder keeps the ChiSurf call sites
     working; it needs IMP, which is optional here.
+
+    The relationship is R_app/R_DA = (⟨κ²⟩/κ²)^(1/6): lower κ² gives a
+    larger apparent distance, higher κ² a smaller one. ``IMP.bff``'s
+    ``kappa2_distance_ratio_transform`` applies the change of variable with
+    its Jacobian, resamples onto a uniform axis by linear interpolation, and
+    returns one flat buffer -- the axis (``n_bins``), the interpolated
+    weights (``n_bins``), then ⟨κ²⟩ as a trailing value -- which this
+    forwarder splits into the ``(r_ratio, weights, k2_mean)`` tuple callers
+    expect.
+
+    Parameters
+    ----------
+    k2_amp : array-like
+        Amplitudes/weights of the κ² distribution (must be non-negative).
+    k2_val : array-like
+        κ² values (must be strictly positive).
+    n_bins : int
+        Number of bins for the output linear axis (default 32).
+
+    Returns
+    -------
+    tuple of (r_ratio, weights, k2_mean)
+        r_ratio : array
+            R_app/R_DA linearly spaced ratio bin centers.
+        weights : array
+            Interpolated weights on the linear axis.
+        k2_mean : float
+            Mean κ² value ⟨κ²⟩.
+
+    Raises
+    ------
+    ValueError
+        If inputs are invalid (e.g. κ² ≤ 0 or mismatched shapes).
     """
-    from IMP.bff.spectroscopy.kappa2 import kappa2_to_distance_ratio as _f
-    return _f(*args, **kwargs)
+    from IMP.bff import kappa2_distance_ratio_transform as _f
+
+    k2_amp = np.asarray(k2_amp, dtype=np.float64)
+    k2_val = np.asarray(k2_val, dtype=np.float64)
+    buf = np.asarray(_f(k2_amp, k2_val, n_bins), dtype=np.float64)
+    r_ratio = buf[:n_bins]
+    weights = buf[n_bins:2 * n_bins]
+    k2_mean = float(buf[2 * n_bins])
+    return r_ratio, weights, k2_mean
 
 
 def _fast_convolve_loop(r_da, amp_r_da, r_ratio, weights_ratio, r_edges):
@@ -271,10 +317,73 @@ def _fast_convolve_loop(r_da, amp_r_da, r_ratio, weights_ratio, r_edges):
     ).astype(float)
 
 
-def convolve_distance_with_k2_ratio(*args, **kwargs):
-    """Moved to IMP.bff. See kappa2_to_distance_ratio."""
-    from IMP.bff.spectroscopy.kappa2 import convolve_distance_with_k2_ratio as _f
-    return _f(*args, **kwargs)
+def convolve_distance_with_k2_ratio(
+    r_da: np.ndarray,
+    amp_r_da: np.ndarray,
+    r_ratio: np.ndarray,
+    weights_ratio: np.ndarray,
+    n_bins: int = 256,
+    use_fast: bool = True
+) -> tuple:
+    """Convolve a distance distribution with a κ² ratio distribution.
+
+    Computes R_app = R_DA x (R_app/R_DA) via multiplicative convolution.
+
+    This is data reduction over ChiSurf-owned distance/amplitude arrays, not
+    a structure- or spectroscopy-model computation, so unlike
+    :func:`kappa2_to_distance_ratio` it stays here rather than in
+    ``IMP.bff``: :func:`_fast_convolve_loop`, right above, is the kernel.
+    ``kappa2_to_distance_ratio`` supplies ``r_ratio``/``weights_ratio``.
+
+    Parameters
+    ----------
+    r_da : array
+        R_DA distance values.
+    amp_r_da : array
+        Amplitudes/weights for the R_DA distribution.
+    r_ratio : array
+        R_app/R_DA ratio values.
+    weights_ratio : array
+        Weights for the ratio distribution.
+    n_bins : int
+        Number of bins for the output histogram.
+    use_fast : bool
+        Use the binned loop (:func:`_fast_convolve_loop`) rather than the
+        exact outer product; only relevant once there are enough points for
+        the outer product to be the slower path.
+
+    Returns
+    -------
+    tuple of (r_app, amp_app)
+        r_app : array
+            Apparent distance values (non-empty bin centers only).
+        amp_app : array
+            Amplitudes for the apparent distance distribution.
+    """
+    r_da = np.asarray(r_da, dtype=np.float64)
+    amp_r_da = np.asarray(amp_r_da, dtype=np.float64)
+    r_ratio = np.asarray(r_ratio, dtype=np.float64)
+    weights_ratio = np.asarray(weights_ratio, dtype=np.float64)
+
+    if use_fast and len(r_da) * len(r_ratio) > 1000:
+        r_min = np.min(r_da) * np.min(r_ratio)
+        r_max = np.max(r_da) * np.max(r_ratio)
+        r_edges = np.linspace(r_min, r_max, n_bins + 1)
+
+        r_app_hist = _fast_convolve_loop(r_da, amp_r_da, r_ratio, weights_ratio, r_edges)
+        r_app_centers = 0.5 * (r_edges[:-1] + r_edges[1:])
+    else:
+        # Outer product approach -- exact but slower.
+        r_app_2d = r_da[:, None] * r_ratio[None, :]
+        amp_2d = amp_r_da[:, None] * weights_ratio[None, :]
+
+        r_app_hist, r_app_edges = np.histogram(
+            r_app_2d.ravel(), bins=n_bins, weights=amp_2d.ravel()
+        )
+        r_app_centers = 0.5 * (r_app_edges[:-1] + r_app_edges[1:])
+
+    mask = r_app_hist > 1e-10 * np.max(r_app_hist) if np.max(r_app_hist) > 0 else r_app_hist > 0
+    return r_app_centers[mask], r_app_hist[mask]
 
 
 def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float:

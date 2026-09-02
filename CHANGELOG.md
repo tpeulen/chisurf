@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **κ² orientation-factor Monte-Carlo now runs in the compiled `IMP.bff` engine** instead of scalar Python loops, and two dependent bugs are fixed with it: `chisurf.core.fluorescence.general.kappa2_to_distance_ratio` and `convolve_distance_with_k2_ratio` imported a module path that never existed and raised on every call (nothing exercised them, so nothing said so); and the kappa² distribution calculator's "known δ" cone model (`rAD_known=True`) crashed with a shape-mismatch error the moment it was used, because its grid sweep returned a 2-D array that a downstream weighted-mean computed as a matrix product instead of a sum. Both are fixed and covered by new tests.
+
 ### Added
 
 - **Lumis Quest left prototype stage.** The dark manifold's ruins are worth entering: every collapsed premises can be **salvaged** once for a crafting reagent, deterministic per cell so a reload cannot reroll the find (this also fixes a crash — the action key called salvage methods that did not exist). The battle screen is a **place** now instead of two flat rectangles: a banded sky, a silhouetted treeline and ground tiled with the land's own terrain art, all read off where Iris stands and which side of the manifold she is on. And with the model off, a page's keeper now speaks **from the page they keep** — its opening claim and a seeded "Did you know?" — instead of the shared greeting bank.

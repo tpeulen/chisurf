@@ -90,3 +90,19 @@ def test_the_advertised_rpc_method_runs():
 def test_an_unknown_model_is_refused_rather_than_guessed():
     with pytest.raises(ValueError, match="model_type"):
         compute_kappa2_dist(model_type="wobble", **ANISOTROPIES)
+
+
+def test_the_cone_model_with_a_known_delta_also_averages_two_thirds():
+    """``rAD_known=True`` takes the deterministic beta1/phi grid sweep path.
+
+    This used to crash: the grid's kappa^2 values came back as a 2D
+    ``(n_beta1, n_phi)`` array, and pairing it with a same-shaped weights
+    array through ``np.dot`` computes a matrix product on non-square shapes
+    (raising ``ValueError: shapes ... not aligned``) rather than the
+    weighted sum the caller means. The grid sweep now returns its values
+    flat, matching the random-sampling path, so ``np.dot`` is a plain
+    weighted sum again.
+    """
+    result = compute_kappa2_dist(model_type="cone", rAD_known=True, **ANISOTROPIES)
+    assert result["k2_mean"] == pytest.approx(2.0 / 3.0, abs=0.05)
+    assert result["k2_sd"] > 0.05, "a restrained-delta cone model should carry real spread"
