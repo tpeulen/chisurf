@@ -38392,3 +38392,15 @@ side of the line.
   hard-crashing bug where `math/optimization/__init__.py` never
   re-exported `OptimizationCancelled`, breaking every import of
   `chisurf.core.fitting.fit`/`minimizer`.
+
+- **2026-09-02 — PRD-126 closed: kappa2.py's 794 lines (9 functions)
+  forward to IMP.bff's kappa2 surface.** `kappasq_all_delta_new` deleted
+  as dead code (zero callers, a different and buggy parametrization than
+  `kappasq_all_delta`). Found and fixed along the way: `general.py`'s two
+  `IMP.bff` forwarders imported a nonexistent module path
+  (`IMP.bff.spectroscopy.kappa2`) and always raised; `kappa2_dist`'s
+  `rAD_known=True` cone model crashed on every use from a 2-D-array
+  `np.dot` bug. Engine's two Monte-Carlo samplers rewired onto tttrlib's
+  centralized RNG (imp.bff commit `da571e3`, vendored `Random.h`).
+  Parity: moments + KS-test vs. pre-port Python at matched seed — a
+  kappa² MC output is a distribution, not a point value.
