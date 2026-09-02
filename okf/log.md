@@ -38351,3 +38351,27 @@ side of the line.
   PRD-105's resume point and phase heads map rows to PRDs; the imp.bff
   consolidation commit remains deliberately unsliced (the stream lands
   whole).
+
+- **2026-09-02 — PRD-130 closed: GopichSzabo stops rebuilding its engine
+  per evaluation.** `EngineCache` persists one `tttrlib.GopichSzabo()` per
+  `(n_states, n_colors)`, dropping 139 constructions to 1 on a real fit;
+  the eigendecomposition guard trims to a bare cond-number check (was
+  building and discarding a whole unused eigenbasis), its real
+  degenerate-scheme refusal unchanged. `fit()` on `bff.Minimizer` blocked:
+  the C++ optimiser needs per-burst residuals, `GopichSzabo` returns one
+  batched total scalar — next step is a tttrlib API addition, recorded in
+  prd-130.md.
+
+- **2026-09-02 — PRD-127 closed: two PDA/PCH reference copies relocated
+  to `test/`, the third corrected as not-a-duplicate.** `pch.convolve_pch`
+  and `pda3c.likelihood.burst_log_likelihood_reference` had zero
+  production callers — both real forwarders (`pch_mixture`/
+  `pch_open_system`, `burst_log_likelihood`) already existed — so both
+  moved to `test/` as named frozen references. `mfd/histogram.py`'s
+  per-burst nested sum turned out **not** to duplicate `tttrlib.Pda`: the
+  engine computes one global S1S2 histogram from a fixed background/pF
+  triple, this function is conditioned per burst on that burst's own
+  spans, with no engine entry point at that granularity — the PRD's own
+  premise was corrected rather than forced into a mismatched forwarder.
+  S1S2 cache defect (`2c3930b11`) re-verified intact and outside this
+  PRD's files.
