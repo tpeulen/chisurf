@@ -343,6 +343,24 @@ def _member_objective(fit, model, name):
     if len(set(names)) != len(names):
         return None            # two equation variables share a name
 
+    # A model may evaluate over axes of its own instead of (or beside) the
+    # data's ``x`` -- an image-correlation carpet is a function of three lag
+    # grids, and none of them is the flattened index its DataCurve carries.
+    # The protocol is a ``graph_axes()`` method returning name -> flat float
+    # array, each exactly as long as the data; ``None`` says the axes cannot
+    # be produced right now (no carpet metadata), which refuses the graph.
+    extra_axes = {}
+    axes_method = getattr(model, "graph_axes", None)
+    if callable(axes_method):
+        try:
+            extra_axes = axes_method()
+        except Exception:
+            return None
+        if extra_axes is None:
+            return None
+        if set(extra_axes) & set(names):
+            return None        # an axis shadowing a parameter is ambiguous
+
     data = fit.data
     y = np.ascontiguousarray(data.y, dtype=np.float64)
     ey = np.ascontiguousarray(data.ey, dtype=np.float64)
@@ -356,9 +374,11 @@ def _member_objective(fit, model, name):
         variables = list(curve.get_variable_names())
     except Exception:
         return None            # the engine cannot compile it; eval() can
-    if "x" not in variables:
-        return None            # no axis: not a curve model
-    if any(v != "x" and v not in names for v in variables):
+    used_axes = [v for v in variables if v in extra_axes]
+    if "x" not in variables and not used_axes:
+        return None            # no axis at all: not a curve model
+    if any(v != "x" and v not in names and v not in extra_axes
+           for v in variables):
         return None
 
     # One port per equation variable, at the value it holds now. Read once,
@@ -380,9 +400,20 @@ def _member_objective(fit, model, name):
     # x])`, `set_data(list(y), list(ey))` -- convert 1536 doubles into Python
     # floats before a single one is stored, which measured as most of the
     # cost of building the graph at all.
-    axis = _bff.Port([0.0])
-    axis.set_values_array(x)
-    curve.add_input_port("x", axis)
+    axes_alive = []
+    if "x" in variables:
+        axis = _bff.Port([0.0])
+        axis.set_values_array(x)
+        curve.add_input_port("x", axis)
+        axes_alive.append(axis)
+    for axis_name in used_axes:
+        arr = np.ascontiguousarray(extra_axes[axis_name], dtype=np.float64)
+        if arr.ndim != 1 or arr.size != y.size:
+            return None        # the curve would not line up with the data
+        port = _bff.Port([0.0])
+        port.set_values_array(arr)
+        curve.add_input_port(axis_name, port)
+        axes_alive.append(port)
     out = _bff.Port([0.0], False, True)
     curve.add_output_port(name + "_model", out)
 
@@ -396,7 +427,7 @@ def _member_objective(fit, model, name):
     chi2.add_input_port("model", model_in)
     chi2.add_output_port(name, _bff.Port(0.0, False, True))
     chi2.add_output_port("residuals", _bff.Port([0.0], False, True))
-    return chi2, carried, (curve, axis, out, model_in)
+    return chi2, carried, (curve, axes_alive, out, model_in)
 
 
 def _wire_links(pending, owner_port) -> bool:
@@ -1412,7 +1443,14 @@ def _graph_cache_key(fit, model):
     """
     try:
         free = getattr(model, "parameters", [])
-        return (id(model), id(fit.data), tuple(id(p) for p in free),
+        # The equation string is part of the structure: a model may
+        # regenerate it from its configuration (the image-correlation model
+        # does, on its geometry toggle), and a graph compiled for the other
+        # string computes a different model at the same parameter values.
+        func = getattr(model, "func", None)
+        return (id(model), id(fit.data),
+                func if isinstance(func, str) else None,
+                tuple(id(p) for p in free),
                 getattr(fit, "xmin", None), getattr(fit, "xmax", None))
     except Exception:
         return None

@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 
 import chisurf as cs
-from chisurf.core.experiments.ics.data import IcsTiming
+from chisurf.core.experiments.ics.data import IcsTiming, lag_time
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.ics.models import ics_gaussian_2d, image_correlation
@@ -413,24 +413,41 @@ class _IcsModelBase(ModelCurve):
         """
         raise NotImplementedError
 
+    def _carpet_grids(self):
+        """Return the broadcast ``(xi3, psi3, delta3)`` lag grids, or ``None``.
+
+        Reads the carpet metadata, refreshes the fixed timing from it, and
+        broadcasts the spatial lag grids over the frame-lag axis so the model
+        can be evaluated on the whole carpet in one call.
+
+        Returns
+        -------
+        tuple or None
+            ``(xi3, psi3, delta3)`` with the spatial grids of shape
+            ``(n_lags, ny, nx)`` and the frame-lag grid of shape
+            ``(n_lags, 1, 1)``, or ``None`` when the data carry no carpet.
+        """
+        meta, _ = _ics_meta(self.fit)
+        xi, psi, frame_lags = _lag_grids(meta)
+        if xi is None:
+            return None
+        self._seed_timing_from_meta()
+        xi3 = np.broadcast_to(xi[None, ...], (frame_lags.size,) + xi.shape)
+        psi3 = np.broadcast_to(psi[None, ...], (frame_lags.size,) + psi.shape)
+        delta3 = frame_lags[:, None, None]
+        return xi3, psi3, delta3
+
     def update_model(self, **kwargs) -> None:
         """Evaluate the model over the whole carpet and store 3D and 1D forms."""
-        meta, data = _ics_meta(self.fit)
-        xi, psi, frame_lags = _lag_grids(meta)
+        _, data = _ics_meta(self.fit)
+        grids = self._carpet_grids()
 
-        if xi is None:
+        if grids is None:
             self.model_carpet = None
             self.y = np.zeros_like(getattr(data, "y", np.zeros(0)), dtype=float)
             return
 
-        self._seed_timing_from_meta()
-
-        # Broadcast the spatial lag grids over the frame-lag axis so the model
-        # is evaluated on the whole carpet in one call.
-        xi3 = np.broadcast_to(xi[None, ...], (frame_lags.size,) + xi.shape)
-        psi3 = np.broadcast_to(psi[None, ...], (frame_lags.size,) + psi.shape)
-        delta3 = frame_lags[:, None, None]
-
+        xi3, psi3, delta3 = grids
         carpet = np.asarray(self._compute(xi3, psi3, delta3), dtype=float)
         carpet = np.broadcast_to(carpet, xi3.shape) if carpet.shape != xi3.shape else carpet
         self.model_carpet = carpet
@@ -488,6 +505,90 @@ class ImageCorrelationModel(_IcsModelBase):
             two_d=bool(self.two_d),
         )
 
+    # --- the graph route: the same model as one compiled expression --------
+    #
+    # `image_correlation` transcribed into the expression the fitting graph
+    # compiles (`Expression -> ChiSquared`), over three precomputed axes
+    # (`graph_axes`). Every optional term is written unconditionally because
+    # each is *exactly* neutral at its default -- `a_T = 0` makes the triplet
+    # factor exactly 1, and at `N_imm = 0` the two amplitude spellings are
+    # algebraically identical -- so only the geometry toggle changes the
+    # string. The scan timing is folded into the tau axis and must stay
+    # fixed; a freed timing parameter has no port and refuses the graph,
+    # which is the correct fallback.
+
+    @property
+    def func(self) -> str:
+        """The carpet equation over the ``xi``/``psi``/``tau`` axes."""
+        n_m = "max(abs(N), 1e-12)"
+        n_i = "abs(N_imm)"
+        wr2 = "max(abs(w_r), 0.001)**2"
+        msd = "(4.0*abs(D)*tau**alpha)"
+        dx = "(pxl_size*xi*0.001 - v_x*tau - sx*0.001)"
+        dy = "(pxl_size*psi*0.001 - v_y*tau - sy*0.001)"
+        decay = f"(1.0/(1.0 + {msd}/{wr2}))"
+        if not self.two_d:
+            decay += f"/sqrt(1.0 + {msd}/max(abs(w_z), 0.001)**2)"
+        triplet = ("(1.0 + (aT/max(1.0 - aT, 1e-12))"
+                   "*exp(-tau/(max(abs(tauT), 1e-9)*0.001)))")
+        spatial = f"exp(-({dx}**2 + {dy}**2)/({wr2} + {msd}))"
+        mobile = f"({triplet}*{decay}*{spatial})"
+        immobile = ("exp(-((pxl_size*xi*0.001 - sx*0.001)**2"
+                    " + (pxl_size*psi*0.001 - sy*0.001)**2)"
+                    "/max(abs(w_imm), 0.001)**2)")
+        gamma = "0.5" if self.two_d else "0.35355339059327373"
+        return (f"offset + {gamma}/max({n_m} + {n_i}, 1e-12)**2"
+                f"*({n_m}*{mobile} + {n_i}*{immobile})")
+
+    @property
+    def _expression(self):
+        """Non-``None`` marks the model as graph-compilable (see ``func``)."""
+        return self.func
+
+    @property
+    def _parameters_equation(self):
+        """The parameters behind the equation's variables, ports at build."""
+        return [
+            self.transport._n, self.transport._D, self.transport._alpha,
+            self.transport._offset,
+            self.imaging._pixel_size, self.imaging._w_r, self.imaging._w_z,
+            self.blinking._tauT, self.blinking._aT,
+            self.immobile._n_imm, self.immobile._w_imm,
+            self.immobile._sx, self.immobile._sy,
+            self.flow._vx, self.flow._vy,
+        ]
+
+    def graph_axes(self):
+        """Return the flattened ``xi``/``psi``/``tau`` axes, or ``None``.
+
+        The same grids `update_model` evaluates on, in the same ravel order,
+        with the lag time computed from the *fixed* scan timing exactly as
+        :func:`~chisurf.core.models.ics.models.image_correlation` does.
+
+        Returns
+        -------
+        dict or None
+            ``{"xi": ..., "psi": ..., "tau": ...}`` as flat float arrays, or
+            ``None`` when the data carry no carpet metadata.
+        """
+        grids = self._carpet_grids()
+        if grids is None:
+            return None
+        xi3, psi3, delta3 = grids
+        im = self.imaging
+        tau = lag_time(
+            xi3, psi3, delta3,
+            pixel_duration_us=im.pixel_duration,
+            line_duration_ms=im.line_duration,
+            frame_duration_ms=im.frame_duration,
+        )
+        tau = np.broadcast_to(np.asarray(tau, dtype=float), xi3.shape)
+        return {
+            "xi": np.ascontiguousarray(xi3, dtype=np.float64).ravel(),
+            "psi": np.ascontiguousarray(psi3, dtype=np.float64).ravel(),
+            "tau": np.ascontiguousarray(tau, dtype=np.float64).ravel(),
+        }
+
 
 class IcsGaussian2DModel(_IcsModelBase):
     """Anisotropic 2D-Gaussian spatial-correlation model (structure sizing).
@@ -511,3 +612,44 @@ class IcsGaussian2DModel(_IcsModelBase):
             xi, psi, amplitude=gp.amplitude, pixel_size=im.pixel_size,
             sigma_1=gp.sigma_1, sigma_2=gp.sigma_2, angle=gp.angle,
             x_offset=gp.x_offset, y_offset=gp.y_offset, offset=gp.offset)
+
+    # --- the graph route (see ImageCorrelationModel for the pattern) --------
+
+    @property
+    def func(self) -> str:
+        """`ics_gaussian_2d` transcribed for the graph, over ``xi``/``psi``."""
+        xr = "(xi*pxl_size - x_off)"
+        yr = "(psi*pxl_size - y_off)"
+        u = f"(({xr}*cos(angle) + {yr}*sin(angle))/max(abs(sigma1), 1.0))"
+        v = f"((-{xr}*sin(angle) + {yr}*cos(angle))/max(abs(sigma2), 1.0))"
+        return f"offset + abs(A0)*exp(-{u}**2 - {v}**2)"
+
+    @property
+    def _expression(self):
+        """Non-``None`` marks the model as graph-compilable (see ``func``)."""
+        return self.func
+
+    @property
+    def _parameters_equation(self):
+        """The parameters behind the equation's variables, ports at build."""
+        gp = self.gaussian
+        return [gp._a0, gp._s1, gp._s2, gp._angle, gp._xo, gp._yo,
+                gp._offset, self.imaging._pixel_size]
+
+    def graph_axes(self):
+        """Return the flattened ``xi``/``psi`` lag axes, or ``None``.
+
+        Returns
+        -------
+        dict or None
+            ``{"xi": ..., "psi": ...}`` as flat float arrays in the carpet's
+            ravel order, or ``None`` when the data carry no carpet metadata.
+        """
+        grids = self._carpet_grids()
+        if grids is None:
+            return None
+        xi3, psi3, _ = grids
+        return {
+            "xi": np.ascontiguousarray(xi3, dtype=np.float64).ravel(),
+            "psi": np.ascontiguousarray(psi3, dtype=np.float64).ravel(),
+        }

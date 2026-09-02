@@ -5117,3 +5117,23 @@ session touches the AV import path). The fix belongs to the PRD-117/PRD-100
 stream: point `chisurf/core/structure/av/` at the new C++ surface, whatever
 `avbuilder`/`avmodel` now export, and re-run the AV parity set — not a rename
 to guess at from outside.
+
+## Bounded LM stalls when the bounds span decades (2026-09-02)
+
+Found while writing `test/fitting/test_graph_fit_ics.py`: the 2D-Gaussian ICS
+fit from a *close* start (A0 0.4→truth 0.5, widths within 15%) stops at
+chi2r ≈ 600 with `bounds_on=True` under the group's default ranges (A0 up to
+1e9, widths to 1e5) — and converges to chi2r ≈ 1.0 in a handful of steps the
+moment the bounds are switched off (unbounded scipy reference: 6 evaluations
+to truth). The graph path and the director path stall **identically**, so
+this is the shared bounds transform, not the fitting seam: a sin/sqrt-style
+reparameterisation of a huge interval puts kilometre-scale Jacobian columns
+beside metre-scale ones and the LM step collapses.
+
+Consequence: any model whose parameter groups declare defensive
+decade-spanning bounds (most declare `ub=1e9`) can silently under-converge —
+the fit *finishes*, with a plausible-looking curve. The fix is engine-level
+(the bound handling in the minimiser both paths share), queued with the
+PRD-105 phase-6 cleanliness pass. Until then: judge suspicious fits by
+re-running with `bounds_on=False`, and prefer physically tight bounds over
+defensive wide ones in new parameter groups.

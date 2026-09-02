@@ -28,7 +28,7 @@ make `Expression → ChiSquared` the right objective.
 
 | family | verdict | first action |
 |---|---|---|
-| **ICS** | → imp.bff, via `Expression` | Generalise `_member_objective` to N array ports; the model is one closed-form expression over three pre-broadcast lag grids. Best payoff-to-work in the set, and the builder change lands every future multi-axis parse model too. |
+| **ICS** | **shipped 2026-09-02** — fits through the graph | `_member_objective` now takes model-declared axes (`graph_axes()` → name→flat array, each as long as the data), and both ICS models expose their compute as a generated expression over `xi`/`psi`/`tau` — one unconditional string, because every optional term is *exactly* neutral at its default (`a_T=0` → triplet factor 1; at `N_imm=0` the two amplitude spellings are algebraically identical); only `two_d` regenerates it, and the graph cache key now carries the equation string so the flip cannot reuse the 3D graph. Timing is folded into the `tau` axis: freeing a timing parameter refuses the graph (unclaimable port), the correct fallback. Parity ≤3e-16 engine-vs-numpy across 3D/2D × full/neutral; node curve = `update_model` at 1e-12 (`test/fitting/test_graph_fit_ics.py`). Measured: converging RICS fit 128→30 ms (4.3×), early-stop STICS 5.5→4.2 ms, Python evaluations per run 28→1, per-iteration 0.19→0.004 ms. Census: both models flip to yes (12/42), and the census now curve-checks *expression* graphs too (previously only decay graphs — parse-family "yes" rows were unverified). |
 | **PCH / FIDA** | stays — kernels already tttrlib's | No node: the kernel sits beside the photon-counting code that produces the histogram, and a bff twin would be a second implementation for no measured gain. Do fix `FidaModel`'s silent acceptance of a non-integer count axis, and file the `pch_mixture` upstream bug its wrapper documents. |
 | **PDA2c** | split, later — and the cache fix came first | The physics (parameters → probability spectrum, ~4k lines of numpy) is a clean bff candidate; the S1S2 engine is tttrlib's and correctly so; the projection/statistic stays chisurf's choice. A `graph_objective` path is wrong as things stand — the objective is a projected matrix under Poisson deviance, not `(y−d)/ey`. **Fixed on sight (2026-09-02): the per-residual callback reassignment** that defeated `tttrlib::Pda`'s bin cache — ~(n_max+1)(n_max+2)/2 director crossings per residual, measured 6× per residual at n_max=120 — now keyed on `(axis, gamma, R0)`, rebuilding only when a fitted nuisance actually moves the projection. |
 | **MFD 2D** | stays numpy — blocked on the objective, not the curve | The strongest bff candidate after ICS, but its histogram source scores bursts through more than one marginal, so a `ChiSquared` downstream would be numerically fine and statistically wrong (the `MaxEntLifetimeModel` failure mode). Settle the statistic first; also stop `update_model`'s silent no-op without a payload, which makes the census report a phantom. |
@@ -48,8 +48,12 @@ the honest failure.
 
 # Where to pick this up
 
-1. The ICS `_member_objective` generalisation (N array ports) — smallest
-   step, widest door.
-2. The census's non-degenerate-curve column.
+1. ~~The ICS `_member_objective` generalisation~~ — done 2026-09-02 (see the
+   ICS row). The door it opened: any model can now declare its own evaluation
+   axes via `graph_axes()`, which is what the FCS composition layer (step 2
+   of the FCS row) and future multi-axis parse models build on.
+2. The census's non-degenerate-curve column (the ICS fixture gap is closed —
+   the census builds a real carpet for the family now — but `Mfd2DModel`'s
+   no-op and `FidaModel`'s meaningless axis still read as "buildable").
 3. `FidaModel`'s axis refusal; the `pch_mixture` upstream filing.
 4. The MFD statistic decision, before any MFD port.

@@ -38204,3 +38204,24 @@ side of the line.
   342 model+fluorescence tests green. One unity-build trap for the record:
   IMP jumbo-compiles module sources, so an anonymous-namespace `kPi`
   collides across .cpps — file-local constants need file-local names.
+
+- **2026-09-02 — ICS fits through the graph; the builder takes model-declared
+  axes (PRD-105 phase 3).** `_member_objective` no longer assumes one `x`
+  port: a model may expose `graph_axes()` (name → flat array, each exactly
+  data-length) and evaluate over its own axes — the door every future
+  multi-axis model walks through. Both ICS models
+  (`ImageCorrelationModel`, `IcsGaussian2DModel`) generate their compute as
+  one expression string over `xi`/`psi`/`tau`: every optional term is
+  exactly neutral at its default, so only the `two_d` geometry toggle
+  regenerates the string, and `_graph_cache_key` now carries the equation
+  so a toggle flip cannot reuse the stale graph. Scan timing folds into
+  the `tau` axis; freeing a timing parameter refuses the graph by the
+  ordinary unclaimed-port rule. Parity ≤3e-16 engine-vs-numpy (3D/2D ×
+  full/neutral), node-vs-`update_model` 1e-12; measured: converging RICS
+  fit 128→30 ms (4.3×), Python evaluations per run 28→1, per-iteration
+  0.19→0.004 ms (`test/fitting/test_graph_fit_ics.py`). Census (imp.bff)
+  gained a carpet fixture and now curve-checks *expression* graphs, not
+  only decay graphs — 12/42 build, zero disagreements. Side find, in
+  known-issues: the shared bounds transform stalls LM when bounds span
+  decades (ub=1e9 defaults) — graph and director stall identically, so it
+  is the transform, not the seam; engine fix queued with phase 6.
