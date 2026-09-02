@@ -38418,3 +38418,21 @@ side of the line.
   covered by PRD-122's commit) and a stale `chisurf.core.graph` /
   `parameter.py` mismatch already mid-fix as uncommitted work elsewhere
   in the shared tree — left untouched here, not this PRD's to land.
+
+- **2026-09-02 — PRD-120 closed: the shared bounds transform no longer
+  stalls LM on decade-spanning bounds.** Root cause was in a third repo
+  (`imp`/`imp.bff`, `Minimizer.cpp`), not chisurf: `fdjac2`'s
+  forward-difference Jacobian step used `eps*|xi|` in the internal
+  (sin-transformed) coordinate for every bounded parameter, and a
+  two-sided bound's transform derivative scales with the box half-width
+  — for a decade-spanning bound the internal-relative step probes the
+  external parameter by an amount set by the box width, not the
+  parameter's own scale, and the linearised LM step stops predicting
+  anything. Fix (`Minimizer::fdjac2_step`, imp.bff commit `21dfad4`):
+  for two-sided bounds, take whichever of the internal step and an
+  externally-relative step is smaller in magnitude. ICS 2D-Gaussian
+  chi2r 608 → 1.03, matching unbounded scipy; a first, simpler attempt
+  (always prefer the external step) regressed a TCSPC fixture, fixed by
+  the smaller-of-two rule. `test/fitting/` 1013 passed / 23 pre-existing
+  unrelated failures (verified by reverting and reproducing the same
+  set); `test/models/` 334 passed / 3 pre-existing.
