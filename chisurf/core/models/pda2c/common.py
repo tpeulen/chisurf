@@ -304,6 +304,44 @@ def pda_observation_time(fit) -> float:
         return 1.0
 
 
+def _corrected_axis_constants(model) -> tuple:
+    """The two model values the corrected axes close over, sanitised."""
+    gamma = float(getattr(getattr(model, "nuisance", None), "gamma", 1.0) or 1.0)
+    if not np.isfinite(gamma) or gamma <= 0.0:
+        gamma = 1.0
+    R0 = float(
+        getattr(getattr(model, "fret_parameters", None), "forster_radius", 52.0) or 52.0
+    )
+    return gamma, R0
+
+
+def assign_pda_histogram_function(pda_obj, model, axis: str) -> None:
+    """Assign the axis-projection callback only when it would change.
+
+    ``tttrlib.Pda`` caches the per-cell callback result precisely so the
+    Python projection is not called once per S1S2 cell per evaluation -- and
+    ``set_callback`` invalidates that cache whenever the callback *object*
+    changes. Assigning a fresh closure on every residual (what this replaces)
+    therefore rebuilt the cache each iteration: ~(n_max+1)(n_max+2)/2
+    Python->C++ director crossings per residual, ~45,000 at n_max = 300, for
+    a projection that had not changed. The once-per-iteration rule, violated
+    in the one place the engine had built machinery to satisfy it.
+
+    The closure's behaviour is fully determined by ``(axis, gamma, R0)`` --
+    the corrected axes capture the two model values *at build time* -- so
+    that triple is the cache key. When gamma or the Foerster radius is a
+    *fitted* parameter the key changes between iterations and the callback is
+    honestly rebuilt (the cache must not serve bins projected with the old
+    gamma); when they are fixed, the assignment happens once per fit.
+    """
+    key = (axis,) + (_corrected_axis_constants(model) if axis in ("E", "R")
+                     else ())
+    if getattr(pda_obj, "_chisurf_histogram_key", None) == key:
+        return
+    pda_obj.histogram_function = build_pda_histogram_function(model, axis)
+    pda_obj._chisurf_histogram_key = key
+
+
 def build_pda_histogram_function(model, axis: str):
     """Return the ``tttrlib.Pda.histogram_function`` for a named PDA axis.
 
@@ -331,12 +369,7 @@ def build_pda_histogram_function(model, axis: str):
         as ``tttrlib.Pda`` calls it.
     """
     if axis in ("E", "R"):
-        gamma = float(getattr(getattr(model, "nuisance", None), "gamma", 1.0) or 1.0)
-        if not np.isfinite(gamma) or gamma <= 0.0:
-            gamma = 1.0
-        R0 = float(
-            getattr(getattr(model, "fret_parameters", None), "forster_radius", 52.0) or 52.0
-        )
+        gamma, R0 = _corrected_axis_constants(model)
 
         def histogram_function(ch1, ch2, _g=gamma, _r0=R0, _axis=axis):
             """Return the corrected FRET efficiency (or distance) for S1S2 counts."""
@@ -571,7 +604,7 @@ def get_pda_distribution(fit, kw_hist: dict | None = None) -> list:
 
     kw = dict(kw_hist or {})
     axis = kw.pop("histogram", "S1/(S0+S1)")
-    pda.histogram_function = build_pda_histogram_function(model, axis)
+    assign_pda_histogram_function(pda, model, axis)
 
     pda_meta = getattr(getattr(fit, "data", None), "pda", None)
     if not isinstance(pda_meta, dict):
@@ -651,8 +684,8 @@ def pda_1d_residuals_from_s1s2(
     if settings is None:
         settings = resolve_fit_settings(getattr(fit, "model", None), kw_hist)
     kw_hist = settings.kw_hist
-    pda_obj.histogram_function = build_pda_histogram_function(
-        getattr(fit, "model", None), settings.axis
+    assign_pda_histogram_function(
+        pda_obj, getattr(fit, "model", None), settings.axis
     )
 
     try:

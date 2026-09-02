@@ -38055,3 +38055,29 @@ side of the line.
   the count at zero. Gap 2 of the compute/display line is closed; gap 3
   (the data arrays are still copied into `ChiSquared`) is the last one.
   1087 fitting+tcspc tests green.
+
+- 2026-09-02 (T-20260901-09 — verdicts written; and PDA2c's cache defeat
+  fixed on sight) — **Every family outside the decay now has a written
+  verdict** in `okf/references/graph-eligibility-verdicts.md`: ICS → bff via
+  a generalised multi-axis `Expression` builder (best payoff/work);
+  PCH/FIDA stay (kernels already tttrlib's — a bff twin would be a second
+  implementation); PDA2c splits later (spectrum → bff, S1S2 engine stays
+  tttrlib, projection/statistic stays chisurf) and is NOT a
+  `graph_objective` candidate as-is (its objective is a projected matrix
+  under deviance, not `(y−d)/ey`); MFD 2D blocked on its statistic, not its
+  curve; stopped-flow deferred deliberately (the cost is LSODA, not the
+  crossing); FCS in two steps with `T-20260902-11` as step 1. Structural
+  fact recorded: `graph_objective` never inspects any of them — they all
+  fail the one-line parse test, so reaching each needs an objective-side
+  node, not a relaxed refusal. **Fixed immediately, the survey's live
+  find**: PDA2c assigned a fresh histogram callback on every residual,
+  which `tttrlib::Pda.set_callback` treats as a new projection —
+  invalidating exactly the per-cell cache built so the Python callback is
+  NOT called once per S1S2 cell per evaluation. ~(n_max+1)(n_max+2)/2
+  director crossings per residual; measured 6× per residual at n_max=120
+  (quadratic in n_max). Now keyed on `(axis, gamma, R0)` — rebuilt only
+  when a fitted nuisance actually moves the projection, which is the
+  correctness half the blind reassignment was accidentally providing.
+  70 PDA tests green. Census-fixture hazard recorded: the silent passes
+  (MFD no-op, ICS zeros, FIDA wrong axis) are worse than the construction
+  errors; the census should check for a non-degenerate curve.
