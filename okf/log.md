@@ -38375,3 +38375,20 @@ side of the line.
   premise was corrected rather than forced into a mismatched forwarder.
   S1S2 cache defect (`2c3930b11`) re-verified intact and outside this
   PRD's files.
+
+- **2026-09-02 — PRD-122's Richardson-Lucy row closes by deletion; the
+  other two reopen on re-verification.** `math/linalg`/`math/optimization`'s
+  `solve_richardson_lucy` had zero callers and no faithful engine target
+  (`tttrlib.richardson_lucy_2d/3d` are image/PSF-shaped, not a generic
+  matrix operator) — deleted, guard test added. The PRD's premise on the
+  other two rows didn't hold up: rdf.py's polymer distributions are still
+  full numpy (the graph side's `_bff.PolymerDistances` is a second,
+  parity-pinned implementation, not a forward — "ising_chain already
+  forwards" was wrong), and nusiance.py's `"full"`-mode `np.convolve` can't
+  forward to `sconv`, tttrlib's only generic convolution primitive, because
+  it computes a trapezoidal integral where the current code computes a
+  rectangular one — verified numerically, a new owner-decision row
+  (decision 7 in prd-105.md). Found and fixed in passing: pre-existing,
+  hard-crashing bug where `math/optimization/__init__.py` never
+  re-exported `OptimizationCancelled`, breaking every import of
+  `chisurf.core.fitting.fit`/`minimizer`.
