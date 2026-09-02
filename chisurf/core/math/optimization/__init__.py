@@ -4,6 +4,13 @@ from chisurf.core.math.optimization.leastsqbound import (
     leastsqbound,
 )
 
+# ``nnls.solve_nnls`` (an amplitude-Tikhonov wrapper around
+# ``scipy.optimize.nnls``, on the *normal* equations rather than the augmented
+# system) used to live here. Removed 2026-09-02: zero callers anywhere in the
+# tree, and it was a third spelling of a regularisation weight on top of the
+# two real ones -- non-negative regularised inversion now has exactly one
+# surface, :mod:`chisurf.core.fitting.inversion`.
+
 # ``solve_richardson_lucy`` (a generic matrix-operator Richardson-Lucy) used to
 # live here, wrapping an identically-named function in
 # :mod:`chisurf.core.math.linalg`. Removed 2026-09-02 (PRD-122): zero callers

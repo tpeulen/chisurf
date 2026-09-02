@@ -22,7 +22,13 @@ Two regularization strategies are provided:
   used as the default for the small/log-binned matrices that 2D-FLC produces.
 
 The regularization weight ``reg`` can be given explicitly or selected automatically with
-an L-curve (``reg=None``).
+an L-curve (``reg=None``). Note the convention: ``reg`` here is the **power** of the
+penalty (``reg * ||L c||^2``, so the augmented block is ``sqrt(reg) * L``), which is
+:attr:`~chisurf.core.fitting.inversion.SmoothnessWeight.POWER` at the inversion seam --
+*not* the amplitude spelling the DEER inversion uses for its ``alpha``. The two differ
+by a square, which over a log-spaced weight sweep is the difference between two
+completely different regularization paths, so the non-negative solves below name the
+convention rather than open-coding the stacking factor.
 
 References
 ----------
@@ -37,6 +43,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from chisurf.core.fitting.inversion import (
+    SmoothnessWeight,
+    difference_operator,
+    tikhonov_nnls,
+)
 from chisurf.core.math.regularization import LCurveData
 
 __all__ = [
@@ -367,24 +378,48 @@ def lcurve_1d(
 
 
 def _penalty_matrix(n: int, order: int) -> np.ndarray:
-    """Return the smoothness penalty operator of the given difference order (``rows x n``)."""
-    if order <= 0 or n <= order:
-        return np.eye(n)
-    D = np.eye(n)
-    for _ in range(order):
-        D = np.diff(D, axis=0)
-    return D
+    """Return the smoothness penalty operator of the given difference order (``rows x n``).
+
+    Parameters
+    ----------
+    n : int
+        Number of lifetime-grid points.
+    order : int
+        Difference order; ``0`` (or a grid too short) gives the identity.
+
+    Returns
+    -------
+    numpy.ndarray
+        The ``(n - order, n)`` difference operator.
+    """
+    return difference_operator(n, order)
 
 
 def _solve_reg_L(Wd: np.ndarray, wy: np.ndarray, L: np.ndarray, reg: float, method: str):
-    """Solve ``min ||Wd c - wy||^2 + reg ||L c||^2`` (optionally with ``c >= 0``)."""
-    if method == "nnls":
-        from scipy.optimize import nnls
+    """Solve ``min ||Wd c - wy||^2 + reg ||L c||^2`` (optionally with ``c >= 0``).
 
-        A = np.vstack([Wd, np.sqrt(reg) * L])
-        b = np.concatenate([wy, np.zeros(L.shape[0])])
-        coef, _ = nnls(A, b, maxiter=40 * Wd.shape[1])
-        return coef
+    Parameters
+    ----------
+    Wd, wy : numpy.ndarray
+        Weighted design and target.
+    L : numpy.ndarray
+        Penalty operator.
+    reg : float
+        Penalty **power** (:attr:`SmoothnessWeight.POWER`).
+    method : str
+        ``"nnls"`` for the non-negative solve, anything else for the
+        closed-form generalized Tikhonov solution.
+
+    Returns
+    -------
+    numpy.ndarray
+        The coefficient vector.
+    """
+    if method == "nnls":
+        return tikhonov_nnls(
+            Wd, wy, reg, convention=SmoothnessWeight.POWER, L=L,
+            max_iter=40 * Wd.shape[1],
+        )
     # closed-form generalized Tikhonov
     G = Wd.T @ Wd + reg * (L.T @ L)
     return np.linalg.solve(G, Wd.T @ wy)
@@ -467,9 +502,24 @@ def _ilt_2d_tikhonov(
 
 
 def _ilt_2d_nnls(M: np.ndarray, E: np.ndarray, W: np.ndarray, reg: float | None) -> np.ndarray:
-    """Strict non-negative 2D ILT on the Kronecker system (slower, exact)."""
-    from scipy.optimize import nnls
+    """Strict non-negative 2D ILT on the Kronecker system (slower, exact).
 
+    Parameters
+    ----------
+    M : numpy.ndarray
+        Centred correlation matrix.
+    E : numpy.ndarray
+        IRF-convolved exponential basis.
+    W : numpy.ndarray
+        Per-element weights.
+    reg : float or None
+        Penalty **power** on the amplitude of ``P``; heuristic when ``None``.
+
+    Returns
+    -------
+    numpy.ndarray
+        The ``(n_comp, n_comp)`` non-negative 2D spectrum.
+    """
     n_data, n_comp = E.shape
     sw = np.sqrt(W).ravel()
     D = np.kron(E, E) * sw[:, None]  # (n_data^2, n_comp^2)
@@ -477,9 +527,10 @@ def _ilt_2d_nnls(M: np.ndarray, E: np.ndarray, W: np.ndarray, reg: float | None)
     if reg is None:
         s = np.linalg.svd(E, compute_uv=False)
         reg = float((s.max() ** 2) ** 2 * 1e-3)
-    A = np.vstack([D, np.sqrt(reg) * np.eye(n_comp * n_comp)])
-    bb = np.concatenate([b, np.zeros(n_comp * n_comp)])
-    p, _ = nnls(A, bb, maxiter=10 * n_comp * n_comp)
+    p = tikhonov_nnls(
+        D, b, reg, convention=SmoothnessWeight.POWER,
+        L=np.eye(n_comp * n_comp), max_iter=10 * n_comp * n_comp,
+    )
     return p.reshape(n_comp, n_comp)
 
 

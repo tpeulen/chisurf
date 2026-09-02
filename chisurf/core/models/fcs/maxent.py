@@ -216,16 +216,21 @@ def _kernel_svd(tau: np.ndarray, td_grid: np.ndarray, s: float):
 
 
 def _maxent_engine_solve(A, g_data, stdev, m_prior, alpha, num_iter):
-    """One weighted, prior-aware MEM solve in tttrlib's shared engine.
+    """One weighted, prior-aware MEM solve through the inversion seam.
 
-    The Skilling-Bryan engine behind ``maxent_invert`` and
-    ``solve_tcspc_mem_lifetime``, through ``maxent_invert_weighted`` (added
-    2026-09-02). Same objective as the QuickFit-style loop above --
-    maximise ``alpha*S(p; m) - chi2_w/2``, the engine's
-    ``sum_i w_i (Ap-b)_i^2 - nu^2 S`` with ``w_i = 1/sigma_i^2`` and
-    ``nu = sqrt(2*alpha)`` -- and it *converges* where the loop runs a
-    fixed count. The A/B in ``test/models/test_fcs_maxent_engine.py`` pins
-    the agreement.
+    Same objective as the QuickFit-style loop above -- minimise
+    ``chi2_w/2 - alpha*S(p; m)``, which is
+    :attr:`~chisurf.core.fitting.inversion.EntropyWeight.HALF_CHI2` -- and
+    it *converges* where the loop runs a fixed count. The seam owns the
+    ``alpha -> nu`` translation so this caller cannot drift from the others;
+    the A/B in ``test/models/test_fcs_maxent_engine.py`` pins the agreement.
+
+    Note the weighting this receives: ``fcs_maxent`` has always clamped and
+    renormalised the caller's weights to a mean standard deviation of ~1
+    (the QuickFit convention), so ``alpha`` is defined against *those*
+    sigmas, not the data's absolute noise scale. That renormalisation stays
+    upstream of this call, and is why an absolute-sigma parity check on this
+    route would be testing the convention rather than the solve.
 
     **Deliberately NOT the default.** Measured 2026-09-02 on the well-posed
     A/B fixture (96x48): engine 11.1-14.5 ms vs the loop's 4.8-7.6 ms per
@@ -236,20 +241,20 @@ def _maxent_engine_solve(A, g_data, stdev, m_prior, alpha, num_iter):
     route, available and pinned, until either the engine gains a cheaper
     fixed-nu path or the owner accepts the cost for the dedup.
     """
-    import tttrlib
+    from chisurf.core.fitting.inversion import EntropyWeight, maxent
+
     A = np.ascontiguousarray(A, dtype=np.float64)
     inv_sigma2 = 1.0 / (np.asarray(stdev, dtype=np.float64) ** 2)
-    nu = float(np.sqrt(2.0 * float(alpha)))
-    p = np.asarray(tttrlib.maxent_invert_weighted(
-        A.ravel(),
+    p = maxent(
+        A,
         np.asarray(g_data, dtype=np.float64),
-        inv_sigma2,
-        np.asarray(m_prior, dtype=np.float64),
-        nu,
-        int(A.shape[0]), int(A.shape[1]),
-        max(int(num_iter), 500),
-        1e-4,
-    ), dtype=np.float64)
+        float(alpha),
+        convention=EntropyWeight.HALF_CHI2,
+        weights=inv_sigma2,
+        prior=np.asarray(m_prior, dtype=np.float64),
+        max_iter=max(int(num_iter), 500),
+        tol=1e-4,
+    )
     return p, A @ p
 
 

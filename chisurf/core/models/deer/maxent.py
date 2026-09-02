@@ -4,19 +4,49 @@ An alternative to Tikhonov regularisation: recover a non-negative ``P(r)`` from
 the intramolecular form factor ``K @ P = V`` by maximising the Shannon–Jaynes
 entropy ``S = -sum_i p_i log(p_i / m_i)`` subject to the data, i.e. minimising
 
-    Q(P) = chi2(P) / 2 - alpha * S(P),   P >= 0.
+    Q(P) = chi2(P) / 2 - alpha * S(P),   P >= 0,   sum(P) = 1.
 
-The exponential (Cambridge-style) fixed-point update ``p = m * exp(-grad/alpha)``
-keeps the solution positive automatically. The regularisation weight ``alpha``
-is chosen from an L-curve corner (residual norm vs. distribution roughness),
-reusing :func:`chisurf.core.math.regularization.discrete_lcurve_corner`.
+That is the ``1/2 chi2 - alpha S`` spelling of the weight, i.e.
+:attr:`~chisurf.core.fitting.inversion.EntropyWeight.HALF_CHI2` at the
+inversion seam, *with* the probability-simplex constraint. The solve runs in
+the shared compiled engine; the weight selection (a discrepancy criterion or
+an L-curve corner) stays here.
 
-Self-contained (numpy/scipy only).
+This module carried its own damped exponential fixed-point iteration
+(``p = m * exp(-grad/alpha)``, renormalised) until 2026-09-02. It did not
+converge to the minimiser of the objective above at the weights this module
+actually sweeps: measured against an independent optimiser on a 120x60
+dipolar problem, the iteration at its shipped settings overshot the optimal
+``Q`` by **+187%** at ``alpha = 0.1``, **+990%** at ``0.01`` and **+4760%**
+at ``0.001``, agreeing only near ``alpha = 1``. Since the automatic weight
+grid is ``logspace(-3, 1.3)``, most of every sweep was scored on
+badly-solved inversions. The engine lands within 0.1% of the same referee
+across that whole grid.
+
+**It costs time, and the cost is the honest reason to read this twice.**
+Re-measured on that same 120x60 fixture: the engine is *slower* per solve
+(61 ms against 14 ms at ``alpha = 1e-3``, 16 ms against 0.6 ms at
+``alpha = 1``, where the old iteration hit its tolerance almost at once),
+and end-to-end ``maxent_distance_distribution`` is **2.1x slower** (414 ms
+against 196 ms for the discrepancy sweep, 450 ms against 223 ms for the
+L-curve sweep). That is a regression in wall-clock, taken deliberately:
+unlike the FCS MEM loop -- which is *correct* and merely runs a fixed count,
+and whose default therefore stays put under the owner's standing decision --
+this iteration was returning a different answer than the objective it
+documents, so the trade here is a wrong answer for a slower right one, not
+speed for tidiness.
+
+One user-visible consequence beyond the fix: with the sweep now scored on
+properly-solved inversions, ``method='lcurve'`` selects a different corner
+(``alpha = 0.18`` against ``0.0017`` on the fixture above). The
+``'discrepancy'`` default is unaffected (``alpha = 0.001`` either way).
 """
 
 from __future__ import annotations
 
 import numpy as np
+
+from chisurf.core.fitting.inversion import EntropyWeight, maxent
 
 from .tikhonov import second_derivative_operator
 
@@ -48,39 +78,35 @@ def maxent_inversion(
     prior : numpy.ndarray, optional
         Prior masses ``m`` (the entropy reference measure); uniform when ``None``.
     p_init : numpy.ndarray, optional
-        Warm-start masses for the iteration; the prior ``m`` is used when ``None``.
+        Accepted for call compatibility and ignored: the engine does not take
+        a warm start, and warm-starting the iteration this replaced made it
+        *worse* rather than better (it walked away from a good point), which
+        is part of how its non-convergence was found.
     n_iter, damping, tol : int, float, float
-        Iteration budget, update damping and convergence tolerance.
+        Iteration budget and convergence tolerance for the engine.
+        ``damping`` belonged to the replaced fixed point and is ignored.
+
+    Returns
+    -------
+    numpy.ndarray
+        Non-negative masses summing to one, of shape ``(nr,)``.
     """
     K = np.asarray(kernel, dtype=float)
-    b = np.asarray(b, dtype=float)
+    b = np.asarray(b, dtype=float).ravel()
     nr = K.shape[1]
-    w = np.broadcast_to(np.asarray(weights, dtype=float), b.shape)
 
     m = (np.ones(nr) / nr) if prior is None else np.clip(prior, 1e-12, None)
     m = m / m.sum()
-    if p_init is None:
-        p = m.copy()
-    else:
-        p = np.clip(np.asarray(p_init, dtype=float), 1e-12, None)
-        p = p / p.sum()
-    KtW = K.T * w  # (nr, nt)
 
-    for _ in range(int(n_iter)):
-        grad = KtW @ (K @ p - b)          # data-misfit gradient
-        expo = -grad / max(alpha, 1e-12)
-        expo -= expo.max()                # overflow guard
-        p_new = m * np.exp(expo)
-        s = p_new.sum()
-        if s <= 0 or not np.isfinite(s):
-            break
-        p_new /= s
-        p_next = (1.0 - damping) * p + damping * p_new
-        if np.max(np.abs(p_next - p)) < tol:
-            p = p_next
-            break
-        p = p_next
-    return p
+    return maxent(
+        K, b, max(float(alpha), 1e-12),
+        convention=EntropyWeight.HALF_CHI2,
+        weights=weights,
+        prior=m,
+        normalise=True,
+        max_iter=max(int(n_iter), 500),
+        tol=float(tol),
+    )
 
 
 def maxent_distance_distribution(

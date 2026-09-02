@@ -184,26 +184,6 @@ def _require_design_builders():
         ) from exc
 
 
-def _tttrlib():
-    """Return the photon library, or say what is missing.
-
-    MEM compute lives there; ChiSurf keeps the design matrices and the nuisance
-    search around it.
-    """
-    try:
-        import tttrlib
-    except ImportError as error:  # pragma: no cover - depends on the install
-        raise RuntimeError(
-            "MaxEnt needs the photon library, which is not importable"
-        ) from error
-    if not hasattr(tttrlib, "tcspc_run_mem"):
-        raise RuntimeError(
-            "the installed photon library has no MEM optimiser "
-            "(tcspc_run_mem); rebuild it"
-        )
-    return tttrlib
-
-
 def _build_Fi_distances(
     decay: np.ndarray,
     lamp: np.ndarray,
@@ -342,50 +322,10 @@ def _build_Fi_lifetimes(
 
 
 
-def _quadpr_bound(C: np.ndarray, d: np.ndarray, lower_bound: float) -> np.ndarray:
-    """Small bound-constrained QP solver ``min 0.5 x^T C x + d^T x``.
-
-    The only constraints are lower bounds ``x >= lower_bound``. We use a
-    simple active-set strategy: repeatedly solve the unconstrained system on
-    the currently-free variables and clamp any components that violate the
-    bound until the active set stops growing.
-    """
-
-    C = np.asarray(C, dtype=float)
-    d = np.asarray(d, dtype=float).ravel()
-    n = d.size
-    if C.shape != (n, n):
-        raise ValueError("C must be square with shape (n, n)")
-
-    # Ensure symmetry; the quadratic form only depends on the symmetric part.
-    C = 0.5 * (C + C.T)
-    lb = float(lower_bound)
-
-    x = np.zeros(n, dtype=float)
-    active = np.zeros(n, dtype=bool)
-
-    for _ in range(50):
-        free = ~active
-        if np.any(free):
-            C_ff = C[np.ix_(free, free)]
-            d_f = d[free]
-            try:
-                x_f = -np.linalg.solve(C_ff, d_f)
-            except np.linalg.LinAlgError:
-                x_f = -np.linalg.lstsq(C_ff, d_f, rcond=None)[0]
-            x[free] = x_f
-
-        # Enforce the bound on the active set explicitly.
-        x[active] = lb
-
-        viol = x < lb
-        new_active = viol & ~active
-        if not np.any(new_active):
-            break
-        active |= viol
-
-    x = np.maximum(x, lb)
-    return x
+# The bound-constrained QP that used to sit here (`_quadpr_bound`, a clamping
+# active-set sweep) is gone: it had no callers left once the MEM optimiser
+# moved into the photon library, whose `quadpr_bound` is the same routine and
+# is the one the optimiser actually runs.
 
 
 def _run_mem(
@@ -401,12 +341,23 @@ def _run_mem(
 ) -> Dict[str, Any]:
     """Run the MEM optimiser on a prepared quadratic form.
 
-    The optimiser itself is :func:`tttrlib.tcspc_run_mem`. ChiSurf carried a
-    NumPy transcription of it until 2026-08-31; on a 120-lifetime grid the two
-    returned the same solution to the last printed digit (chi2r 1.040852,
-    identical ``p``) with the compiled one **3.1x** faster (70 ms against
-    222 ms), so the copy was deleted. It mattered more than 3x sounds: this is
-    the *inner* solve of the nuisance search, which calls it hundreds of times.
+    Reaches the optimiser through
+    :func:`chisurf.core.fitting.inversion.maxent_normal_equations`, the one
+    seam every regularised inversion in the tree goes through. ``nu`` here is
+    the weight in the optimiser's own
+    :attr:`~chisurf.core.fitting.inversion.EntropyWeight.RUN_MEM` units --
+    the objective ``chi2 - nu*S/2`` -- which is *not* the ``1/2 chi2 -
+    alpha*S`` spelling the FCS and DEER inversions use; declaring it keeps
+    the two from being swapped silently.
+
+    ChiSurf carried a NumPy transcription of the optimiser until 2026-08-31;
+    on a 120-lifetime grid the two returned the same solution to the last
+    printed digit (chi2r 1.040852, identical ``p``) with the compiled one
+    **3.1x** faster (70 ms against 222 ms), so the copy was deleted. It
+    mattered more than 3x sounds: this is the *inner* solve of the nuisance
+    search, which calls it hundreds of times. The outer search over
+    timeshift/background/scatter is ChiSurf's own and has no upstream
+    equivalent, so it stays here.
 
     Parameters
     ----------
@@ -435,13 +386,12 @@ def _run_mem(
         ``p``, ``chisq``, ``S``, ``Q``, ``history``, the ``*_esm`` companions,
         ``nu`` and ``niter``.
     """
-    H = np.asarray(H, dtype=float)
-    g0 = np.asarray(g0, dtype=float).ravel()
-    m = np.asarray(m, dtype=float).ravel()
+    from chisurf.core.fitting.inversion import EntropyWeight, maxent_normal_equations
 
-    result = _tttrlib().tcspc_run_mem(
-        H.ravel().tolist(), g0.tolist(), m.tolist(),
-        float(const_chi2), float(nu), int(max_iter), float(tol), float(min_prob),
+    result = maxent_normal_equations(
+        H, g0, m, float(const_chi2), float(nu),
+        convention=EntropyWeight.RUN_MEM,
+        max_iter=int(max_iter), tol=float(tol), min_prob=float(min_prob),
     )
 
     chisq, S, Q = float(result.chisq), float(result.S), float(result.Q)
@@ -454,15 +404,15 @@ def _run_mem(
         progress_cb(niter, chisq, S, Q, float("nan"))
 
     return {
-        "p": np.asarray(result.p, dtype=float),
+        "p": result.p,
         "chisq": chisq,
         "S": S,
         "Q": Q,
         "history": history,
-        "p_esm": np.asarray(result.p_esm, dtype=float),
-        "chisq_esm": float(result.chisq_esm),
-        "S_esm": float(result.S_esm),
-        "Q_esm": float(result.Q_esm),
+        "p_esm": result.p_esm,
+        "chisq_esm": result.chisq_esm,
+        "S_esm": result.S_esm,
+        "Q_esm": result.Q_esm,
         "nu": float(nu),
         "niter": niter,
     }

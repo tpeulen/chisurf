@@ -5,31 +5,46 @@ problem
 
     P = argmin_{P >= 0} || A @ P - b ||^2 + alpha^2 || L @ P ||^2
 
-with ``L`` the second-derivative operator, via :func:`scipy.optimize.nnls` on
-the augmented system ``[A; alpha*L] P = [b; 0]``. The regularisation weight
-``alpha`` is chosen by generalised cross-validation (GCV) on a log grid, using
-the (unconstrained) Tikhonov influence matrix as a robust, cheap heuristic.
+with ``L`` the second-derivative operator. Note the **squared** weight: DEER
+writes ``alpha`` as the amplitude of the augmented block ``[A; alpha*L]``, not
+as the power of the penalty, which is
+:attr:`~chisurf.core.fitting.inversion.SmoothnessWeight.AMPLITUDE` at the
+inversion seam. The regularisation weight ``alpha`` is chosen by generalised
+cross-validation (GCV) on a log grid, using the (unconstrained) Tikhonov
+influence matrix as a robust, cheap heuristic.
 
-Self-contained (numpy/scipy only).
+The solve itself is the shared one in
+:mod:`chisurf.core.fitting.inversion`; what stays here is DEER's weight
+selection and the distance-axis bookkeeping.
 """
 
 from __future__ import annotations
 
 import numpy as np
-from scipy.optimize import nnls
 from scipy.integrate import trapezoid
+
+from chisurf.core.fitting.inversion import (
+    SmoothnessWeight,
+    difference_operator,
+    tikhonov_nnls,
+)
 
 
 def second_derivative_operator(n: int) -> np.ndarray:
-    """Return the ``(n-2, n)`` discrete second-derivative matrix ``L``."""
-    if n < 3:
-        return np.eye(n)
-    L = np.zeros((n - 2, n), dtype=float)
-    for i in range(n - 2):
-        L[i, i] = 1.0
-        L[i, i + 1] = -2.0
-        L[i, i + 2] = 1.0
-    return L
+    """Return the ``(n-2, n)`` discrete second-derivative matrix ``L``.
+
+    Parameters
+    ----------
+    n : int
+        Number of distance-grid points.
+
+    Returns
+    -------
+    numpy.ndarray
+        The roughness operator, or the ``(n, n)`` identity on a grid too
+        short to carry a second difference.
+    """
+    return difference_operator(n, order=2)
 
 
 def _gcv_score(A: np.ndarray, b: np.ndarray, alpha: float,
@@ -126,13 +141,9 @@ def solve_tikhonov(A: np.ndarray, b: np.ndarray, alpha: float,
     numpy.ndarray
         Non-negative solution ``P`` of shape ``(nr,)``.
     """
-    nr = A.shape[1]
-    if L is None:
-        L = second_derivative_operator(nr)
-    aug_A = np.vstack([A, alpha * L])
-    aug_b = np.concatenate([b, np.zeros(L.shape[0])])
-    p, _ = nnls(aug_A, aug_b)
-    return p
+    return tikhonov_nnls(
+        A, b, float(alpha), convention=SmoothnessWeight.AMPLITUDE, L=L, order=2
+    )
 
 
 def tikhonov_distance_distribution(
