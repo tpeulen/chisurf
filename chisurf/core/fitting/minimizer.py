@@ -290,6 +290,17 @@ else:  # pragma: no cover - environment without IMP.bff
 
 
 
+#: The variable an mdf FCS equation reads its diffusion shape from. It is a
+#: producer port, not a parameter: `FcsMdfCurve` writes it.
+FCS_MDF_VARIABLE = "g_mdf"
+#: The quadrature the FCS models evaluate the Enderlein MDF at, which is a
+#: property of the *model* rather than of the graph -- the numpy path calls
+#: `enderlein.g_diff` with exactly these, so the two agree bit for bit.
+FCS_MDF_N_GRID = 121
+FCS_MDF_SPAN = 30.0
+FCS_MDF_N_HERM = 40
+
+
 # --------------------------------------------------------------- the graph
 
 def _smooth_prior_present(model) -> bool:
@@ -307,7 +318,7 @@ def _smooth_prior_present(model) -> bool:
     return False
 
 
-def _member_objective(fit, model, name):
+def _member_objective(fit, model, name, producer_ports=None, extra_carried=None):
     """`Expression -> ChiSquared` for one dataset, or ``None``.
 
     Builds the half of the graph that belongs to a single curve: the compiled
@@ -326,13 +337,28 @@ def _member_objective(fit, model, name):
         A parse model whose equation this library can compile.
     name : str
         Node name, unique within the graph the caller is assembling.
+    producer_ports : dict, optional
+        Equation variable name -> an upstream node's output port. Unlike
+        ``graph_axes()`` (a flat array copied in once), a producer variable
+        is *linked* -- the caller has already built a node in front of this
+        one (the mdf FCS shape, ``_fcs_mdf_producer``), and the compiled
+        expression reads its output live instead of holding a copy. Used the
+        same way ``extra_axes`` is: presence in ``variables`` satisfies the
+        "at least one axis" requirement, and a variable naming neither an
+        equation parameter, an axis nor a producer still refuses.
+    extra_carried : list, optional
+        ``(parameter, port)`` pairs the caller has already wired to a node
+        of its own (the mdf shape node's ``w0``/``wem``/``D``/``diam``
+        ports) -- carried through to the caller's port-claiming exactly as
+        an equation-variable pair is, even though the port belongs to a
+        different node than the one built here.
 
     Returns
     -------
     tuple or None
         ``(chi2, carried, keepalive)``. *carried* is one
         ``(parameter, port)`` pair per equation variable the compiled
-        expression kept, in equation order.
+        expression kept, in equation order, plus *extra_carried*.
     """
     expression = getattr(model, "_expression", None)
     equation_parameters = getattr(model, "_parameters_equation", None)
@@ -361,6 +387,8 @@ def _member_objective(fit, model, name):
         if set(extra_axes) & set(names):
             return None        # an axis shadowing a parameter is ambiguous
 
+    producer_ports = producer_ports or {}
+
     data = fit.data
     y = np.ascontiguousarray(data.y, dtype=np.float64)
     ey = np.ascontiguousarray(data.ey, dtype=np.float64)
@@ -375,15 +403,16 @@ def _member_objective(fit, model, name):
     except Exception:
         return None            # the engine cannot compile it; eval() can
     used_axes = [v for v in variables if v in extra_axes]
-    if "x" not in variables and not used_axes:
-        return None            # no axis at all: not a curve model
+    used_producers = [v for v in variables if v in producer_ports]
+    if "x" not in variables and not used_axes and not used_producers:
+        return None            # no axis or producer at all: not a curve model
     if any(v != "x" and v not in names and v not in extra_axes
-           for v in variables):
+           and v not in producer_ports for v in variables):
         return None
 
     # One port per equation variable, at the value it holds now. Read once,
     # here -- inside the fit nothing Python owns is consulted again.
-    carried = []
+    carried = list(extra_carried or [])
     for p in equation_parameters:
         if p.name not in variables:
             continue           # the equation dropped this variable
@@ -413,6 +442,11 @@ def _member_objective(fit, model, name):
         port = _bff.Port([0.0])
         port.set_values_array(arr)
         curve.add_input_port(axis_name, port)
+        axes_alive.append(port)
+    for var_name in used_producers:
+        port = _bff.Port([0.0])
+        port.link = producer_ports[var_name]
+        curve.add_input_port(var_name, port)
         axes_alive.append(port)
     out = _bff.Port([0.0], False, True)
     curve.add_output_port(name + "_model", out)
@@ -541,14 +575,31 @@ def graph_objective(fit, model, allow_priors: bool = False):
         # same misfit. What differs is a link in the spectrum chain, and
         # `_spectrum_chain` is where the two part company.
         return _lifetime_objective(fit, model, free)
+    if _is_fcs_mdf_model(model):
+        # A third family that is not one compiled equation: the "mdf"
+        # diffusion mode is a numerical kernel (bff's FcsMdfCurve), so the
+        # equation-string route this file otherwise takes is replaced by one
+        # producer node in front of the same Expression -> ChiSquared the
+        # closed-form diffusion modes use. `_fcs_mdf_objective` is where the
+        # two part company.
+        return _fcs_mdf_objective(fit, model, free)
     return _single_objective(fit, model, free)
 
 
-def _single_objective(fit, model, free):
-    """One dataset: ``Expression -> ChiSquared -> Minimizer``."""
+def _single_objective(fit, model, free, producer_ports=None,
+                      extra_carried=None, extra_keepalive=None):
+    """One dataset: ``Expression -> ChiSquared -> Minimizer``.
+
+    *producer_ports*/*extra_carried*/*extra_keepalive* are the mdf FCS
+    producer's hook (`_fcs_mdf_objective`): an equation variable backed by an
+    upstream node's output port instead of the data, the parameters that node
+    owns, and the node instance itself, which must outlive the minimiser it
+    feeds -- Python holds the only reference to it once this function returns.
+    """
     if _masked(fit) and not _mask_is_representable(fit):
         return None
-    built = _member_objective(fit, model, "chi2")
+    built = _member_objective(fit, model, "chi2", producer_ports=producer_ports,
+                              extra_carried=extra_carried)
     if built is None:
         return None
     chi2, carried, keepalive = built
@@ -575,11 +626,113 @@ def _single_objective(fit, model, free):
     m.set_parameter_ports(parameter_ports)
     m.set_objective(chi2, "residuals")
     # The graph holds the only reference to these once this function returns.
-    m._graph = (chi2, carried, keepalive)
+    m._graph = (chi2, carried, keepalive, extra_keepalive)
     # What a Sampler needs to drive the same graph: the objective node, the
     # ports in `free` order, and the scalar-chi2 output port's name.
     m._sampler_surface = (chi2, parameter_ports, "chi2")
     return m, free
+
+
+def _is_fcs_mdf_model(model) -> bool:
+    """Whether *model*'s diffusion term is the Enderlein MDF kernel.
+
+    Duck-typed on the two classes that own it: `MdfFCSModel`, which is the
+    kernel and nothing else, and `GeneralFCSModel` while its
+    ``diffusion_mode`` is ``"mdf"`` -- the other three modes are closed-form
+    and take the ordinary equation route. The mode is *structural*: it is in
+    the equation string and therefore in `_graph_cache_key`, so switching it
+    cannot leave a graph built for the other branch in place.
+    """
+    try:
+        from chisurf.core.models.fcs.general import GeneralFCSModel
+        from chisurf.core.models.fcs.mdf import MdfFCSModel
+    except Exception:                              # pragma: no cover
+        return False
+    if isinstance(model, MdfFCSModel):
+        return True
+    return (isinstance(model, GeneralFCSModel)
+            and model.diffusion_mode == "mdf")
+
+
+def _fcs_mdf_producer(fit, model):
+    """The `IMP.bff.FcsMdfCurve` node in front of an mdf FCS equation.
+
+    The MDF shape is a *numerical kernel* -- a double axial integral, one
+    trapezoid times a Gauss--Hermite quadrature -- so it is the one part of
+    this model that cannot be a string. It becomes a producer node instead,
+    exactly as a FRET decay's photophysics does (`_spectrum_chain`), and
+    everything downstream of it stays the compiled equation the closed-form
+    diffusion modes already use:
+
+        FcsMdfCurve -> Expression -> ChiSquared -> Minimizer
+
+    **What the node publishes is the shape, not the curve.** The bunching and
+    anticorrelation factors multiply *g* and the baseline is added after them,
+    so a node that folded ``b`` or ``1/N`` in could not have those terms
+    downstream; ``N``, ``b`` and the count-rate background factor stay
+    variables of the expression, where they compose correctly.
+
+    **The optics are baked in, and that is what makes freeing one refuse.**
+    `MdfOptics` is a fixed calibration, so its five values are set on the node
+    once rather than carried as ports. A user who unfixes one puts a
+    parameter in ``model.parameters`` that no port carries, and
+    `_single_objective`'s unclaimable-port rule refuses the graph -- the same
+    refusal any other model gets for a free parameter its equation dropped,
+    reached without a special case.
+
+    Returns ``(node, output_port, carried)`` or ``None``.
+    """
+    if not hasattr(_bff, "FcsMdfCurve"):
+        return None            # an older build; the director path still fits
+    try:
+        from chisurf.core.models.fcs.mdf import MdfFCSModel
+    except Exception:                              # pragma: no cover
+        return None
+    if isinstance(model, MdfFCSModel):
+        physical, optics_group = model.physical, model.optics
+    else:
+        physical, optics_group = model.mdf_physical, model.mdf_optics
+
+    tau_ms = np.ascontiguousarray(
+        np.asarray(fit.data.x, dtype=np.float64).ravel())
+    if tau_ms.size == 0:
+        return None
+    optics = optics_group.as_optics()
+    try:
+        node = _bff.FcsMdfCurve("mdf_shape")
+        node.build_ports()
+        # Seconds, as the kernel takes them; the equation's own ``x`` stays
+        # the data's milliseconds, which is what the relaxation terms use.
+        node.set_axis_array(tau_ms * 1e-3)
+        node.set_optics(float(optics.excitation_wavelength),
+                        float(optics.emission_wavelength),
+                        float(optics.refractive_index),
+                        float(optics.pinhole_radius))
+        # The resolution `MdfFCSModel` and `GeneralFCSModel` call
+        # `enderlein.g_diff` with; changing it here would change the model.
+        node.set_quadrature(FCS_MDF_N_GRID, FCS_MDF_SPAN, FCS_MDF_N_HERM)
+        node.set_length_scale(1e-3)   # the ports carry nanometres
+        node.set_normalize(True)
+        node.add_output_port("mdf_shape", _bff.Port([0.0], False, True))
+    except Exception:
+        return None
+    carried = [(physical._w0, node.get_input_port("w0")),
+               (physical._wem, node.get_input_port("wem")),
+               (physical._D, node.get_input_port("D")),
+               (physical._diam, node.get_input_port("diam"))]
+    return node, node.get_output_port("mdf_shape"), carried
+
+
+def _fcs_mdf_objective(fit, model, free):
+    """An mdf FCS model: ``FcsMdfCurve -> Expression -> ChiSquared``."""
+    built = _fcs_mdf_producer(fit, model)
+    if built is None:
+        return None
+    node, out_port, carried = built
+    return _single_objective(fit, model, free,
+                             producer_ports={FCS_MDF_VARIABLE: out_port},
+                             extra_carried=carried,
+                             extra_keepalive=node)
 
 
 def _publish_curve(m, model, x) -> bool:

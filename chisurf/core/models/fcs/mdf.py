@@ -32,6 +32,10 @@ from chisurf.core.models.fcs.relaxation import BunchingTerms
 #: Avogadro constant for the concentration output (1/mol).
 NA = 6.02214076e23
 
+#: The equation variable the Enderlein MDF shape arrives on in the graph
+#: route: a producer node writes it, so it is not a fitting parameter.
+MDF_SHAPE_VARIABLE = "g_mdf"
+
 
 class MdfPhysical(FittingParameterGroup):
     """Free physical parameters of the Enderlein Gauss-Lorentz MDF.
@@ -265,6 +269,49 @@ class MdfFCSModel(ModelCurve):
 
         self.x = tau_ms
         self.y = b + (bg_factor / N) * g
+
+    # --- the graph route: the kernel is a node, the rest is one equation
+    #
+    # The Enderlein shape is a numerical kernel, so unlike a parse model this
+    # equation does not contain it: `g_mdf` is a *variable* an
+    # `IMP.bff.FcsMdfCurve` producer node writes, and the equation only
+    # multiplies the terms that genuinely are formulas onto it (the bunching
+    # factors, the amplitude, the baseline). `w0`, `wem`, `D` and `diam` are
+    # that node's ports and are therefore absent from
+    # :attr:`_parameters_equation`; the optics are a fixed calibration folded
+    # into the node, so freeing one refuses the graph (unclaimable port).
+
+    def _count_rate_constant(self):
+        """The dataset's total mean count rate, or ``None`` when absent."""
+        meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
+        cr = resolve_total_mean_count_rate(meta)
+        return float(cr) if cr is not None and cr > 0 else None
+
+    @property
+    def func(self) -> str:
+        """The compound equation over the node's shape, in bff's spelling."""
+        factors = [MDF_SHAPE_VARIABLE]
+        factors += [
+            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i)
+            for i in range(1, len(self.bunching) + 1)]
+        cr = self._count_rate_constant()
+        if cr is not None:
+            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+        else:
+            amplitude = "1.0/N"
+        return "b + (%s)*%s" % (amplitude, "*".join(factors))
+
+    @property
+    def _expression(self):
+        """Non-``None`` marks the model as graph-compilable (see ``func``)."""
+        return self.func
+
+    @property
+    def _parameters_equation(self):
+        """The equation's own variables -- not the producer node's ports."""
+        out = [self.physical._N, self.physical._b, self.physical._bg]
+        out += self.bunching._ba + self.bunching._bt
+        return out
 
     def equation_html(self) -> str:
         """Render the currently active compound fitting equation as HTML.

@@ -54,6 +54,11 @@ from chisurf.core.models.fcs.mdf import (
 from chisurf.core.models.fcs.relaxation import AnticorrTerms, BunchingTerms
 from chisurf.core.models.model import ModelCurve
 
+#: The equation variable the Enderlein MDF shape arrives on in the graph
+#: route. It is written by a producer node, so it is deliberately not a
+#: fitting parameter; the objective builder binds it to that node's port.
+_MDF_SHAPE_VARIABLE = "g_mdf"
+
 
 class GaussDiffusion(FittingParameterGroup):
     """Classic 3-D-Gaussian-PSF diffusion term (absolute D), optional two-focus.
@@ -500,8 +505,10 @@ class GeneralFCSModel(ModelCurve):
     # reconfigured model. Every optional factor is exactly neutral at its
     # default (`diam = 0` and `bg = 0` both make their factor exactly 1),
     # so nothing branches inside one configuration. The `"mdf"` mode is a
-    # numerical kernel (`enderlein.g_diff`, bff's FcsMdf), not a formula --
-    # it returns no expression and the fit takes the director path.
+    # numerical kernel (`enderlein.g_diff`, bff's FcsMdf), not a formula, so
+    # its shape arrives on a variable an `FcsMdfCurve` producer node writes
+    # rather than as algebra; everything downstream of the shape is the same
+    # equation as in the closed-form modes.
 
     def _count_rate_constant(self):
         """The dataset's total mean count rate, or ``None`` when absent."""
@@ -512,10 +519,18 @@ class GeneralFCSModel(ModelCurve):
         return float(cr) if cr is not None and cr > 0 else None
 
     def _diffusion_expression(self):
-        """The active diffusion shape over ``x`` (tau, ms), or ``None``."""
+        """The active diffusion shape over ``x`` (tau, ms), or ``None``.
+
+        Every mode but ``"mdf"`` is a closed form and returns its algebra.
+        ``"mdf"`` returns the *variable* the Enderlein shape arrives on: it
+        is a numerical kernel, so a producer node computes it and the
+        equation only multiplies the terms that are formulas onto it. The
+        variable is bound to that node's output port by the objective
+        builder, which is why it is not among :attr:`_parameters_equation`.
+        """
         mode = self.diffusion_mode
         if mode == "mdf":
-            return None
+            return _MDF_SHAPE_VARIABLE
         lat = "1.0/(1.0 + 4.0*{D}*(x*0.001)/(w_r*0.001)**2)"
         axi = "1.0/sqrt(1.0 + 4.0*{D}*(x*0.001)/(w_z*0.001)**2)"
         two = "exp(-(diam*0.001)**2/((w_r*0.001)**2 + 4.0*{D}*(x*0.001)))"
@@ -531,7 +546,12 @@ class GeneralFCSModel(ModelCurve):
 
     @property
     def func(self) -> str | None:
-        """The full compound equation for the graph, or ``None`` (mdf)."""
+        """The full compound equation for the graph, or ``None``.
+
+        Identical in every diffusion mode: the shape, times each relaxation
+        factor, scaled and offset. Only the *shape* differs -- algebra in the
+        closed-form modes, the producer variable in ``"mdf"``.
+        """
         g = self._diffusion_expression()
         if g is None:
             return None
@@ -559,7 +579,15 @@ class GeneralFCSModel(ModelCurve):
         """The active mode's parameters plus the relaxation terms' own."""
         mode = self.diffusion_mode
         if mode == "mdf":
-            return []
+            # The waists, D and the two-focus separation are the *node's*
+            # ports, not the equation's variables; the objective builder
+            # carries them. What is left is what the equation multiplies the
+            # node's shape by.
+            p = self.mdf_physical
+            out = [p._N, p._b, p._bg]
+            out += self.bunching._ba + self.bunching._bt
+            out += self.anticorr._aca + self.anticorr._act
+            return out
         group = {"two_focus": self.two_focus,
                  "species": self.species}.get(mode, self.gauss)
         out = [group._N, group._w_r, group._w_z, group._b, group._diam,
