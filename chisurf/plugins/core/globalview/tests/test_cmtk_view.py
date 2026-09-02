@@ -261,3 +261,23 @@ def test_no_node_carries_a_port_label():
     node = document.nodes[0]
     assert content.port_label(node, node.inputs[0], False) == ""
     assert content.port_label(node, node.outputs[0], True) == ""
+
+
+def test_the_size_slider_scales_every_mark_but_keeps_their_ratio():
+    """Owners stay larger than parameters at every slider position.
+
+    Setting one absolute radius for every mark would flatten away the
+    difference a network is read by.
+    """
+    content = GlobalViewContent()
+    document = graph_result_to_document(_result())
+    fit = next(n for n in document.nodes if n.config["kind"] == NODE_FIT)
+    param = next(n for n in document.nodes if n.config["kind"] == NODE_PARAM_FREE)
+
+    small = (content.node_shape(fit)[2], content.node_shape(param)[2])
+    content.radius_scale = 2.0
+    large = (content.node_shape(fit)[2], content.node_shape(param)[2])
+
+    assert large[0] == small[0] * 2.0
+    assert large[1] == small[1] * 2.0
+    assert large[0] > large[1]

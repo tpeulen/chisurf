@@ -346,6 +346,9 @@ class GlobalViewContent(NodeContentRenderer):
     parameter table beside the graph, which is where a number is readable.
     """
 
+    #: Multiplier on every mark's radius, driven by the tool's size slider.
+    radius_scale: float = 1.0
+
     def __init__(self, show_values: bool = False) -> None:
         #: Kept for callers that want the value drawn under the name. Off,
         #: because two lines of label under every disc is what made the boxes
@@ -371,7 +374,8 @@ class GlobalViewContent(NodeContentRenderer):
             value = node.config.get("value")
             if isinstance(value, (int, float)):
                 label = f"{node.title} = {value:.4g}"
-        return (cmtk_nodes.NodeShape.DISC, label, KIND_RADIUS.get(kind, 11.0))
+        radius = KIND_RADIUS.get(kind, 11.0) * self.radius_scale
+        return (cmtk_nodes.NodeShape.DISC, label, radius)
 
     def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
         """Colour the disc by what kind of node this is.
@@ -439,3 +443,54 @@ class GlobalViewContent(NodeContentRenderer):
             Always ``False``.
         """
         return False
+
+
+def document_from_arrays(positions, edges, names, kinds) -> GraphDocument:
+    """Build a document from the four parallel arrays the tool already has.
+
+    Parameters
+    ----------
+    positions : sequence
+        ``(x, y)`` per node, in the layout algorithm's units.
+    edges : sequence
+        ``(source_index, target_index)`` pairs.
+    names, kinds : sequence
+        Per-node label and ``NODE_*`` code.
+
+    Returns
+    -------
+    GraphDocument
+
+    Notes
+    -----
+    The tool computes its own layout and hands over arrays rather than a
+    ``GraphResult``, so this is the second door into the same room as
+    :func:`graph_result_to_document`. Kept separate rather than made to
+    convert: inventing a ``GraphResult`` to throw away would put a third shape
+    between the tool and the graph.
+    """
+    document = GraphDocument()
+    for index, name in enumerate(names):
+        kind = int(kinds[index]) if index < len(kinds) else NODE_PARAM_FREE
+        x, y = positions[index] if index < len(positions) else (0.0, index * 90.0)
+        document.add_node(GraphNode(
+            node_id=str(index), node_type="parameter", title=str(name),
+            inputs=[PortSpec(name=PORT_IN, is_output=False, port_type="param")],
+            outputs=[PortSpec(name=PORT_OUT, is_output=True, port_type="param")],
+            config={"kind": kind}, pos=(float(x), float(y)),
+        ))
+
+    owners = {NODE_FIT, NODE_GROUP}
+    for source, target in edges:
+        if not (0 <= source < len(names) and 0 <= target < len(names)):
+            continue
+        source_kind, target_kind = int(kinds[source]), int(kinds[target])
+        if source_kind in owners and target_kind in owners:
+            kind = "base"
+        elif source_kind in owners or target_kind in owners:
+            kind = "ownership"
+        else:
+            kind = "link"
+        document.add_edge(GraphEdge(str(source), 0, str(target), 0,
+                                    config={"kind": kind}))
+    return document

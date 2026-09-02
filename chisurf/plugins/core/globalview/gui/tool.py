@@ -3,7 +3,7 @@ r"""Global View: the parameter network of every open fit, and the links in it.
 The window is a standard ChiSurf dock tool — a canonical toolbar over a
 :class:`~chisurf.gui.widgets.dock_area.DockArea` — so its panels can be split,
 tabbed, torn apart and remembered like every other tool's. The network itself is
-drawn by :class:`~chisurf.plugins.core.globalview.gui.graph_canvas.ParameterGraphCanvas`,
+drawn by :class:`~chisurf.plugins.core.globalview.gui.network_widget.ParameterNetworkWidget`,
 on the shared node-link marks the state-scheme diagram uses.
 
 What replaced what, and why: the graph used to be a ``pyqtgraph.GraphItem``
@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional
 
-from chinet import graph as cg
+from chisurf.core import graph as cg
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
@@ -41,7 +41,7 @@ from chisurf.plugins.core.globalview.gui.adapter import (
     compute_layout,
     graph_result_to_graph,
 )
-from chisurf.plugins.core.globalview.gui.graph_canvas import ParameterGraphCanvas
+from chisurf.plugins.core.globalview.gui.network_widget import ParameterNetworkWidget
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -141,7 +141,7 @@ class GraphWizard(ChisurfDockTool):
         self.dock_area.setContextMenuMode("basic")
         self.setCentralWidget(self.dock_area)
 
-        self.graph_widget = ParameterGraphCanvas(self)
+        self.graph_widget = ParameterNetworkWidget(self)
         self.dock_area.addTab(self.graph_widget, DOCK_NETWORK, close_mode="hide")
 
         self.parameters_form = self._build_parameters_panel()
@@ -366,7 +366,7 @@ class GraphWizard(ChisurfDockTool):
     def _apply_node_size(self, value: float) -> None:
         """Repaint the canvas at a new node radius."""
         self.graph_widget.node_radius = float(value)
-        self.graph_widget.update()
+        self.graph_widget.update_graph()
 
     # ── dock layout persistence ───────────────────────────────────────
 
@@ -652,12 +652,12 @@ class GraphWizard(ChisurfDockTool):
         group_list: Optional[List[Any]] = None,
         **kwargs,
     ):
-        """Build the chinet graph and resolve every node to its live object.
+        """Build the node graph and resolve every node to its live object.
 
         Returns
         -------
         tuple
-            ``(G, node_objects, edges)``. The chinet graph is what the layout
+            ``(G, node_objects, edges)``. The node graph is what the layout
             algorithms consume, but its edges are **undirected** and come back
             renumbered low-to-high — so a link's follower → master direction is
             lost the moment it enters the graph, and drawing arrows from it

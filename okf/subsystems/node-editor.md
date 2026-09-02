@@ -14,6 +14,40 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02, latest — globalview is WIRED. The beam path is not.**
+
+`globalview/gui/tool.py` builds `ParameterNetworkWidget` now, not
+`ParameterGraphCanvas`. The swap was one import and one constructor because
+the new widget presents the canvas' *own* surface — `set_graph`, `refit`,
+`node_radius`, `selected_nodes_idx`, and the three signals — over the cmtk
+control. It is deliberately a surface and not a subclass: the canvas is a
+`QWidget` that paints itself, this is a host around a toolkit-free control,
+and all they share is what the tool asks of them.
+
+Verified by opening the real `GraphWizard` offscreen, feeding it a graph and
+screenshotting it: legend, discs, arced edges with the arrowhead, minimap,
+and the size slider scaling every mark while keeping owners larger than
+parameters.
+
+**Two things left there**, both small and both unverified because they need a
+live fit:
+
+1. `linkRequested` / `linkRemovalRequested` are declared and never emitted.
+   The wiring is `is_link_created` → `report_link(follower, master)` and
+   `is_link_destroyed` → `linkRemovalRequested`, in `_on_select`'s neighbour.
+   Until that lands, links can be *drawn* in the panel but the fit model is
+   not told.
+2. `document_from_arrays` gives every node one in and one out pin, so the
+   editor will accept a link between any two marks — including two fits.
+   `GraphControl._accepts` rejects same-kind ports and self-links, and that
+   is all; a parameter-to-fit link should be refused too.
+
+**The beam path is still on the old canvas**: `lightpath_simulator/gui/tool.py`
+builds `NodeScene`. Its `propagate_graph` becomes `document.to_dict()` → RPC →
+merge each `states[node_id]` into `document.node(id).config`; there is no proxy
+to cross and no `_update_plot` callback to call any more.
+
+
 **2026-09-02, latest — the edges are the diagram's, read out of the diagram's
 own source rather than approximated. Read this first.**
 
