@@ -70,7 +70,7 @@ def fit_matrix_threaded(
     n_workers = max(1, int(n_workers))
     if n_workers == 1:
         fitter = Fit2x(settings, model=model)
-        params[:] = fitter.fit_many(data[rows], x0, fixed)
+        params[:] = fitter.fit_many(data[rows], x0, fixed).stacked
         return params
 
     chunks = [c for c in np.array_split(rows, n_workers) if len(c)]
@@ -80,7 +80,7 @@ def fit_matrix_threaded(
     def work(i):
         params[offsets[i]:offsets[i + 1]] = fitters[i].fit_many(
             data[chunks[i]], x0, fixed
-        )
+        ).stacked
 
     with ThreadPoolExecutor(len(chunks)) as pool:
         list(pool.map(work, range(len(chunks))))

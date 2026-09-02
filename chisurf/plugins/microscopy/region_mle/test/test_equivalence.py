@@ -92,7 +92,14 @@ def test_the_estimator_returns_the_same_parameters_for_the_same_histograms():
     for index, name in enumerate(column_names(histograms)):
         vv_vh = np.asarray(column_values(histograms, index), dtype=float)
         result = fit2x.fit(vv_vh, initial_values=x0, fixed=fixed)
-        assert result.x[0] == pytest.approx(taus[index], rel=1e-9), (
+        # The tolerance guards the *estimator*, not the build: a changed model,
+        # a changed objective or a changed start vector moves tau by percent.
+        # ``rel=1e-9`` instead pinned the last bits of a nonlinear optimiser's
+        # output, so recompiling tttrlib (different FMA contraction, different
+        # step at the same optimum) reddened this test at |Δ| ~ 2e-8 while the
+        # estimator was untouched — a guard that fails for a reason it was not
+        # written to detect stops being read.
+        assert result.x[0] == pytest.approx(taus[index], rel=1e-6), (
             f"{name}: the estimator now returns {result.x[0]} where it "
             f"returned {taus[index]} before the split"
         )

@@ -333,6 +333,102 @@ class Fit2xResult:
         return bool(self.result("converged", 0.0))
 
 
+@dataclasses.dataclass
+class Fit2xBatch:
+    """What one GIL-released batch of ``fit2x`` fits produced, row by row.
+
+    The batch kernel harvests the *same* outputs per row as the scalar fit — the
+    fitted parameters, the objective, and the estimator's derived result columns
+    (``r_scatter``, ``r_experimental``, ``converged``, ...). Returning only the
+    parameters, as this facade used to, silently turned two populated columns of
+    a per-region/per-burst table into ``NaN`` the moment a caller switched to the
+    batch path, which is exactly the kind of divergence a batch entry point must
+    not have.
+
+    Attributes
+    ----------
+    model_kind : Fit2xModel
+        Which estimator produced the batch.
+    x : numpy.ndarray
+        ``(n_rows, n_free)`` fitted parameters, columns ordered as
+        :func:`parameter_names_of`.
+    twoIstar : numpy.ndarray
+        ``(n_rows,)`` ``2I*`` goodness of fit.
+    results : numpy.ndarray
+        ``(n_rows, n_results)`` result columns, named by :attr:`result_names`.
+    result_names : tuple of str
+        Column names of :attr:`results`, from the tttrlib registry.
+    fixed : numpy.ndarray
+        The fix mask that was applied to every row.
+    """
+
+    model_kind: Fit2xModel
+    x: np.ndarray
+    twoIstar: np.ndarray
+    results: np.ndarray
+    result_names: tuple[str, ...]
+    fixed: np.ndarray
+
+    def result(self, name: str, default: float = float("nan")) -> np.ndarray:
+        """Return a named result column for every row, or ``default`` when absent.
+
+        Parameters
+        ----------
+        name : str
+            Result-column name, e.g. ``"r_scatter"``.
+        default : float, optional
+            Value returned for every row when this estimator has no such column.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_rows,)`` values.
+        """
+        try:
+            return np.asarray(self.results[:, self.result_names.index(name)], dtype=float)
+        except (ValueError, IndexError):
+            return np.full(self.x.shape[0], default, dtype=float)
+
+    def row(self, i: int) -> Fit2xResult:
+        """Return row *i* as the very :class:`Fit2xResult` a scalar fit returns.
+
+        This is what makes a batch drop-in: a caller keeps the result-handling it
+        already had rather than re-deriving each column from a bare matrix, so
+        there is only one place that knows what a fit's output *is*.
+
+        Parameters
+        ----------
+        i : int
+            Row index within the batch.
+
+        Returns
+        -------
+        Fit2xResult
+            The row's result. :attr:`Fit2xResult.model_curve` is ``None`` — the
+            batch kernel does not keep per-row model histograms.
+        """
+        return Fit2xResult(
+            model_kind=self.model_kind,
+            x=np.asarray(self.x[i], dtype=np.float64),
+            results=np.asarray(self.results[i], dtype=np.float64),
+            result_names=self.result_names,
+            twoIstar=float(self.twoIstar[i]),
+            fixed=self.fixed,
+            model_curve=None,
+        )
+
+    @property
+    def stacked(self) -> np.ndarray:
+        """``(n_rows, n_free + 1)`` parameters followed by ``2I*``."""
+        return np.concatenate(
+            (self.x, np.asarray(self.twoIstar, dtype=np.float64)[:, None]), axis=1
+        )
+
+    def __len__(self) -> int:
+        """Number of rows in the batch."""
+        return int(self.x.shape[0])
+
+
 class Fit2x:
     """A reusable ``fit2x`` maximum-likelihood lifetime estimator.
 
@@ -490,15 +586,15 @@ class Fit2x:
     def fit_many(
         self,
         data: np.ndarray,
-        initial_values: Sequence[float],
+        initial_values: Sequence[float] | np.ndarray,
         fixed: Sequence[int] | None = None,
-    ) -> np.ndarray:
+    ) -> Fit2xBatch:
         """Fit a whole matrix of decays in one GIL-released C++ call.
 
-        Every row of ``data`` is fitted from the same start values, looping in
-        C++ with the Python GIL released for the *whole* batch — so several
-        threads each calling ``fit_many`` on a chunk run in true parallel
-        (unlike per-row :meth:`fit`, whose per-call GIL handoff does not scale).
+        Every row of ``data`` is fitted, looping in C++ with the Python GIL
+        released for the *whole* batch — so several threads each calling
+        ``fit_many`` on a chunk run in true parallel (unlike per-row :meth:`fit`,
+        whose per-call GIL handoff does not scale).
 
         Every estimator supports this: the batch loop is part of the fit
         interface rather than something each model had to provide, so there is no
@@ -508,36 +604,49 @@ class Fit2x:
         ----------
         data : numpy.ndarray
             ``(n_rows, 2*n_channels)`` matrix of VV/VH-format histograms.
-        initial_values : sequence of float
-            Shared start values for every row — the free parameters named in
-            :func:`parameter_names_of` for this estimator (``[tau, gamma, r0, rho]``
-            for fit23; ``[tau1, gamma, tau2, A2, offset]`` for fit24;
-            ``[tau1, tau2, tau3, tau4, gamma]`` for fit25).
+        initial_values : sequence of float or numpy.ndarray
+            The free parameters named in :func:`parameter_names_of` for this
+            estimator (``[tau, gamma, r0, rho]`` for fit23; ``[tau1, gamma, tau2,
+            A2, offset]`` for fit24; ``[tau1, tau2, tau3, tau4, gamma]`` for
+            fit25). Either one start vector shared by every row, or an
+            ``(n_rows, n_free)`` matrix giving each row its own — a per-row start
+            is what lets a caller batch rows that would otherwise need separate
+            calls only because they begin from different guesses.
         fixed : sequence of int, optional
             Per-parameter fix mask applied to every row (default all-free).
 
         Returns
         -------
-        numpy.ndarray
-            ``(n_rows, n_parameters + 1)`` array of the fitted parameters
-            followed by the ``2I*`` fit quality per row.
+        Fit2xBatch
+            Fitted parameters, ``2I*`` and the estimator's derived result columns
+            per row. :meth:`Fit2xBatch.row` hands back the same
+            :class:`Fit2xResult` a scalar :meth:`fit` would have produced.
         """
         data_arr = np.ascontiguousarray(data, dtype=np.float64)
         if data_arr.ndim != 2:
             raise ValueError("data must be a 2-D (n_rows, 2*n_channels) matrix")
+        n_rows = int(data_arr.shape[0])
         x0_free = np.ascontiguousarray(initial_values, dtype=np.float64)
+        n_free = x0_free.shape[-1] if x0_free.ndim else x0_free.size
         fixed_arr = (
-            np.zeros(x0_free.size, dtype=np.int16)
+            np.zeros(n_free, dtype=np.int16)
             if fixed is None
             else np.ascontiguousarray(fixed, dtype=np.int16)
         )
+        if x0_free.ndim == 2:
+            if x0_free.shape[0] != n_rows:
+                raise ValueError(
+                    f"per-row initial_values has {x0_free.shape[0]} rows but data has {n_rows}"
+                )
+            packed = [v for row in x0_free for v in self._parameters(row)]
+        else:
+            packed = self._parameters(x0_free)
 
         batch = self._fit.fit_many(
             self._problem, data_arr.ravel().tolist(),
-            int(data_arr.shape[0]), int(data_arr.shape[1]),
-            self._parameters(x0_free), self._constraints(fixed_arr))
+            n_rows, int(data_arr.shape[1]),
+            packed, self._constraints(fixed_arr))
 
-        n_rows = data_arr.shape[0]
         parameters = np.asarray(batch.parameters, dtype=np.float64).reshape(
             n_rows, self._n_parameters)
         # Report the parameters this facade *names*, which is not always all of
@@ -546,7 +655,17 @@ class Fit2x:
         # by position. Returning it would shift every column a caller indexes by
         # :func:`parameter_names_of`.
         n_named = len(parameter_names_of(self.model))
-        out = np.empty((n_rows, n_named + 1), dtype=np.float64)
-        out[:, :n_named] = parameters[:, :n_named]
-        out[:, n_named] = np.asarray(batch.objective, dtype=np.float64)
-        return out
+        results = np.asarray(batch.results, dtype=np.float64)
+        n_results = len(self._result_names)
+        results = (
+            results.reshape(n_rows, n_results) if n_results and results.size
+            else np.empty((n_rows, 0), dtype=np.float64)
+        )
+        return Fit2xBatch(
+            model_kind=self.model,
+            x=np.ascontiguousarray(parameters[:, :n_named]),
+            twoIstar=np.asarray(batch.objective, dtype=np.float64),
+            results=results,
+            result_names=self._result_names,
+            fixed=fixed_arr,
+        )

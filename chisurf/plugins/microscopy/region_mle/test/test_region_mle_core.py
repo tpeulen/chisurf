@@ -91,27 +91,67 @@ def test_segments_and_fits_two_simulated_molecules():
     assert np.allclose(np.sort(tau), np.sort(sim.true_taus), atol=0.6)
 
 
-def test_batch_fit_matches_per_molecule():
-    # keep_curves=False batches every molecule through one fit_many call;
-    # keep_curves=True fits per molecule (to also return model curves). Same result.
+def _labels_with_an_empty_region(sim):
+    """The two real molecules plus a region drawn over bare background.
+
+    A per-region map is only as trustworthy as its worst region, and the worst
+    region is one the fit cannot answer for. Segmenting a clean simulation never
+    produces one, so it is drawn: a third label on a patch with (almost) no
+    photons, which is fitted anyway once ``min_photons`` is dropped.
+    """
+    labels = np.array(_regions(sim), copy=True)
+    labels[0:4, 0:4] = int(labels.max()) + 1
+    return labels
+
+
+@pytest.mark.parametrize("with_a_failing_region", [False, True])
+def test_batch_fit_matches_per_molecule(with_a_failing_region):
+    """``keep_curves=False`` batches; ``keep_curves=True`` loops. Same table.
+
+    Every numeric column is compared, not a chosen four: the batch path used to
+    hard-code ``r_scatter``/``r_experimental`` to NaN because it unpacked the
+    batch as a bare 5-tuple, and a test that only looked at ``tau``/``gamma``/
+    ``rho``/``2I*`` could not see two columns of the region table going blank.
+
+    The parametrised half adds a region the fit fails on — the case where a batch
+    kernel diverges from a loop, and where a dropped or reordered row would
+    silently attach one molecule's lifetime to another's centroid.
+    """
     sim = _sim()
+    common = dict(clsm=sim.clsm, dt=sim.dt, period=sim.laser_period)
+    overrides = (
+        dict(regions=_labels_with_an_empty_region(sim), min_photons=0)
+        if with_a_failing_region else {}
+    )
     batch = fit_regions(
-        sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period,
-        keep_curves=False,
+        sim.tttr, _settings(sim, **overrides), keep_curves=False, **common
     )
     serial = fit_regions(
-        sim.tttr, _settings(sim), clsm=sim.clsm, dt=sim.dt, period=sim.laser_period,
-        keep_curves=True,
+        sim.tttr, _settings(sim, **overrides), keep_curves=True, **common
     )
-    assert batch.n_molecules == serial.n_molecules == len(MOLECULES)
-    for col in ("tau", "gamma", "rho", "2I*"):
-        np.testing.assert_allclose(
-            numeric_column(batch.dataframe, col),
-            numeric_column(serial.dataframe, col), atol=1e-6
+    assert batch.n_molecules == serial.n_molecules
+    assert batch.n_molecules == len(MOLECULES) + int(with_a_failing_region)
+    assert column_names(batch.dataframe) == column_names(serial.dataframe)
+    for col in column_names(batch.dataframe):
+        left, right = numeric_column(batch.dataframe, col), numeric_column(serial.dataframe, col)
+        np.testing.assert_array_equal(
+            left, right, err_msg=f"column {col!r} differs between the batch and the loop"
         )
     # The batch path skips the per-molecule model curves; the serial path keeps them.
     assert batch.model_curves == []
-    assert len(serial.model_curves) == len(MOLECULES)
+    assert len(serial.model_curves) == batch.n_molecules
+    # The derived anisotropies really are reported by the batch, not blanked —
+    # the whole column used to be NaN whichever region it described.
+    assert np.isfinite(numeric_column(batch.dataframe, "r_scatter")).any()
+    if with_a_failing_region:
+        # ...and the drawn region really did fail, or this proves nothing. A
+        # region with no photons is the estimator's clearest failure: it hands
+        # the start value straight back and reports no anisotropy. Both paths
+        # must say that about the *same* row — which is what the column-wise
+        # comparison above has just checked.
+        rows = np.isnan(numeric_column(batch.dataframe, "r_scatter"))
+        assert rows.any(), "the drawn region was fitted successfully"
+        assert numeric_column(batch.dataframe, "tau")[rows] == pytest.approx(2.0)
 
 
 def test_the_standard_workflow_finds_the_simulated_molecules():

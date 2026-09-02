@@ -23,6 +23,8 @@ import time
 import numpy as np
 import pytest
 
+from chisurf.core.datastore import numeric_column
+
 _FLIM_PTU = pathlib.Path(
     "/Users/tpeulen/dev/tttr-data/imaging/pq/Microtime200_HH400/beads.ptu"
 )
@@ -87,7 +89,7 @@ def run_benchmark(ptu_path=_FLIM_PTU, workers=None):
 
             timings[label] = _time(_run)
             r = res_holder["r"]
-            taus[label] = r.dataframe["tau"].to_numpy()
+            taus[label] = numeric_column(r.dataframe, "tau")
             n_fit[label] = r.n_pixels_fit
     finally:
         pm._MIN_ROWS_FOR_THREADS = orig

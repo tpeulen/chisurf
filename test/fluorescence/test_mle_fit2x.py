@@ -125,18 +125,25 @@ def test_fit_many_is_general_and_matches_scalar_fits():
 
     # fit23: shape (n_rows, 4 params + 2I*)
     f23 = Fit2x(settings, model=Fit2xModel.FIT23)
-    b23 = f23.fit_many(rows, [2.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
+    batch23 = f23.fit_many(rows, [2.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
+    b23 = batch23.stacked
     assert b23.shape == (3, 5)
     scalar = f23.fit(data, initial_values=[2.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
     assert b23[0, 0] == pytest.approx(scalar.tau, rel=1e-6)
     assert np.allclose(b23[0], b23[1]) and np.allclose(b23[0], b23[2])
+    # The batch harvests the estimator's derived results too -- a batch that
+    # returned only parameters silently blanked r_scatter/r_experimental for
+    # every caller that switched to it.
+    assert batch23.row(0).r_scatter == pytest.approx(scalar.r_scatter, rel=1e-9)
+    assert batch23.row(0).r_experimental == pytest.approx(scalar.r_experimental, rel=1e-9)
+    assert np.isfinite(batch23.result("r_scatter")).all()
 
     # fit24: previously raised NotImplementedError; now runs the native batch
     # kernel and returns 5 params + 2I*. (Convergence quality depends on the
     # data being bi-exponential; here we only pin that the batch path works and
     # is row-consistent — parity with the scalar fit is covered in tttrlib.)
     f24 = Fit2x(settings, model=Fit2xModel.FIT24)
-    b24 = f24.fit_many(rows, [1.0, 0.0, 3.0, 0.5, 0.0], fixed=[0, 1, 0, 0, 1])
+    b24 = f24.fit_many(rows, [1.0, 0.0, 3.0, 0.5, 0.0], fixed=[0, 1, 0, 0, 1]).stacked
     assert b24.shape == (3, 6)
     assert np.allclose(b24[0], b24[1], equal_nan=True)
     assert np.allclose(b24[0], b24[2], equal_nan=True)
@@ -154,3 +161,106 @@ def test_fitter_is_reusable_across_calls():
     r2 = fitter.fit(data, initial_values=[3.0, 0.0, 0.38, 1.0], fixed=[0, 1, 1, 0])
     # Same fitter object, consistent estimate regardless of the start value.
     assert abs(r1.tau - r2.tau) < 0.2
+
+
+def _flat_irf_settings(n: int = 64, dt: float = 0.032) -> Fit2xSettings:
+    """Instrument settings with a narrow Gaussian IRF, for parity fixtures."""
+    t = np.arange(n) * dt
+    pulse = np.exp(-0.5 * ((t - 0.4) / 0.08) ** 2)
+    pulse = pulse / pulse.sum()
+    return Fit2xSettings(dt=dt, period=n * dt, irf=assemble_vv_vh(pulse, pulse), g_factor=1.0)
+
+
+@pytest.mark.skipif(not HAVE_TTTRLIB, reason="tttrlib not available")
+def test_batch_is_row_identical_to_the_per_row_loop_including_failures():
+    """The claim every per-pixel / per-region map rests on.
+
+    A batch entry point that dropped, reordered or silently re-derived a row
+    would not fail — it would misalign one pixel's lifetime onto another's
+    coordinates, or blank a column. The rows that matter are the ones the
+    per-row loop does *not* fit cleanly: an empty histogram, a single photon, one
+    polarisation missing, counts so large the objective goes non-finite. Those
+    are where a batch kernel usually diverges, so they are what is compared —
+    bit for bit, not approximately, and against ``fit()`` on the same row.
+    """
+    n, dt = 64, 0.032
+    t = np.arange(n) * dt
+    fitter = Fit2x(_flat_irf_settings(n, dt), model=Fit2xModel.FIT23)
+    x0, fixed = [2.0, 0.01, 0.38, 1.0], [0, 0, 1, 1]
+
+    decay = np.exp(-t / 3.0)
+    good = assemble_vv_vh(
+        np.random.default_rng(1).poisson(200 * decay, n),
+        np.random.default_rng(2).poisson(60 * decay, n),
+    )
+    cases = {
+        "well-behaved": good,
+        # 2I* == -0.0, parameters returned unmoved from the start vector.
+        "no photons at all": np.zeros(2 * n),
+        # tau runs away to ~5e6 ns; r_scatter saturates at 1.
+        "a single photon": np.eye(2 * n)[10] * 1.0,
+        "parallel channel only": assemble_vv_vh(good[:n], np.zeros(n)),
+        # tau ~4e8 ns and a negative anisotropy: nonsense, and it must be the
+        # *same* nonsense in both paths, because it lands in a pixel of a map.
+        "perpendicular channel only": assemble_vv_vh(np.zeros(n), good[n:]),
+        # 2I* is NaN here — the sentinel most likely to be dropped by a batch.
+        "counts large enough that 2I* is not finite": good * 1e9,
+        "negative counts": -good,
+        "a NaN in the histogram": np.where(np.arange(2 * n) == 5, np.nan, good),
+    }
+    names = list(cases)
+    matrix = np.vstack([np.asarray(cases[k], dtype=float) for k in names])
+
+    per_row = [
+        fitter.fit(matrix[i], initial_values=x0, fixed=fixed) for i in range(len(names))
+    ]
+    batch = fitter.fit_many(matrix, initial_values=x0, fixed=fixed)
+
+    assert len(batch) == len(names), "the batch lost or invented rows"
+    for i, name in enumerate(names):
+        one, many = per_row[i], batch.row(i)
+        np.testing.assert_array_equal(
+            many.x, one.x, err_msg=f"{name}: parameters differ between the paths"
+        )
+        np.testing.assert_array_equal(
+            many.results, one.results, err_msg=f"{name}: results differ"
+        )
+        assert (many.twoIstar == one.twoIstar) or (
+            np.isnan(many.twoIstar) and np.isnan(one.twoIstar)
+        ), f"{name}: 2I* differs ({many.twoIstar} vs {one.twoIstar})"
+
+    # At least one row must actually be a failure, or this test proves nothing
+    # about failures.
+    assert np.isnan(batch.twoIstar).any()
+    assert np.isnan(batch.result("r_scatter")).any()
+
+
+@pytest.mark.skipif(not HAVE_TTTRLIB, reason="tttrlib not available")
+def test_batch_accepts_one_start_vector_per_row():
+    """Rows that differ only in where they start still belong in one batch.
+
+    Without this a caller with a per-row start value — a burst fitted from its
+    sub-population's pooled lifetime, say — has to fall back to the per-row loop
+    for a reason that has nothing to do with the fit.
+    """
+    n, dt = 64, 0.032
+    t = np.arange(n) * dt
+    fitter = Fit2x(_flat_irf_settings(n, dt), model=Fit2xModel.FIT23)
+    fixed = [0, 0, 1, 1]
+
+    rows, starts = [], []
+    for seed, tau in ((3, 1.5), (4, 3.5), (5, 0.7)):
+        decay = np.exp(-t / tau)
+        rng = np.random.default_rng(seed)
+        rows.append(assemble_vv_vh(rng.poisson(300 * decay, n), rng.poisson(90 * decay, n)))
+        starts.append([tau * 0.8, 0.01, 0.38, 1.0])
+    matrix = np.vstack(rows)
+
+    batch = fitter.fit_many(matrix, initial_values=np.asarray(starts), fixed=fixed)
+    for i in range(3):
+        one = fitter.fit(matrix[i], initial_values=starts[i], fixed=fixed)
+        np.testing.assert_array_equal(batch.row(i).x, one.x)
+        assert batch.row(i).twoIstar == one.twoIstar
+
+    with pytest.raises(ValueError, match="per-row initial_values"):
+        fitter.fit_many(matrix, initial_values=np.asarray(starts[:2]), fixed=fixed)

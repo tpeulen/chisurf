@@ -11,6 +11,7 @@ from .fit2x import (
     HAVE_TTTRLIB,
     parameter_names_of,
     Fit2x,
+    Fit2xBatch,
     Fit2xModel,
     Fit2xResult,
     Fit2xSettings,
@@ -22,6 +23,7 @@ from .setup import DetectorSetup, parse_detector_setup
 __all__ = [
     "HAVE_TTTRLIB",
     "Fit2x",
+    "Fit2xBatch",
     "Fit2xModel",
     "Fit2xResult",
     "Fit2xSettings",

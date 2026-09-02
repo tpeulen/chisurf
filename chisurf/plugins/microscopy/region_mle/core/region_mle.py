@@ -829,7 +829,13 @@ def fit_regions(
 
     # Pass 2: fit. When the model curves are not needed, fit the whole batch in one
     # GIL-released C++ call (``fit_many``); otherwise fit per molecule so each
-    # realised model histogram can be returned for plotting.
+    # realised model histogram can be returned for plotting — the batch kernel
+    # keeps parameters and results, not per-row model histograms.
+    #
+    # Either way the row below is a ``Fit2xResult`` read the same way, so the two
+    # paths cannot drift in what they report: the batch used to be unpacked as a
+    # bare 5-tuple and hard-code ``r_scatter``/``r_experimental`` to NaN, which
+    # silently blanked two columns of the region table for every batch run.
     batch = None
     if kept and not keep_curves:
         matrix = np.vstack([k[1] for k in kept])
@@ -841,15 +847,13 @@ def fit_regions(
     curves: list[np.ndarray] = []
     for j, (prop, vv_vh, n_p, n_s) in enumerate(kept):
         if batch is not None:
-            tau, gamma, r0, rho, twoistar = (float(v) for v in batch[j])
-            r_scatter = r_experimental = float("nan")
-            model_curve = None
+            res = batch.row(j)
         else:
             res = fit2x.fit(vv_vh, initial_values=x0, fixed=fixed, include_model=keep_curves)
-            tau, gamma, r0, rho = (float(res.x[k]) for k in range(4))
-            twoistar = float(res.twoIstar)
-            r_scatter, r_experimental = res.r_scatter, res.r_experimental
-            model_curve = res.model_curve
+        tau, gamma, r0, rho = (float(res.x[k]) for k in range(4))
+        twoistar = float(res.twoIstar)
+        r_scatter, r_experimental = res.r_scatter, res.r_experimental
+        model_curve = res.model_curve
 
         cy, cx = prop.centroid
         wy, wx = prop.centroid_weighted
