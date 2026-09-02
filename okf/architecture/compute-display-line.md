@@ -10,11 +10,13 @@ timestamp: '2026-09-01T00:00:00Z'
 # Where to pick this up
 
 The sequenced worklist for closing the remaining distance from this rule is
-[PRD-105](../prds/prd-105.md) (2026-09-02): phase 0 is the seam's own defects
-(the `Node` director-lifetime segfault `T-20260901-13`, BUG-10, one
-expression engine), then the two gaps below, then the sampler loop, graph
-eligibility per model family, the duplication register, and the chatty burst
-paths. Work it through the board tickets it names.
+[PRD-105](../prds/prd-105.md). State as of 2026-09-02 evening: phases 0–2
+are complete, phase 1's measured gaps are all closed or measured-and-queued
+(see below), and phase 3 is complete except the FCS composition layer and
+the nested-optimiser deletions. What remains on the PRD: phases 4–6
+(duplication register, batching the chatty burst paths, the
+all-three-repos cleanliness pass) and the queued owner decisions it lists.
+Work it through the board tickets it names.
 
 # The rule
 
@@ -115,56 +117,61 @@ class whether it builds a graph **and** whether that graph's curve is the one
 # How far the code is from the rule, measured
 
 Not an impression — `fit.run()` timed, and the Python model evaluations
-inside it counted (2026-09-01, `arm64` env, 512 channels):
+inside it counted. Re-measured **2026-09-02 evening** (`arm64` env, 512
+channels; the 2026-09-01 columns kept for the distance travelled):
 
-| fit | total | optimise | error estimate | rest | Python `update_model()` calls per `run()` |
-|---|---|---|---|---|---|
-| parse | 0.50 ms | 60% | 4% | 36% | **2** |
-| TCSPC lifetime | 3.26 ms | 41% | **32%** | 27% | **7** (5 of them for the error estimate) |
-| TCSPC VV | 4.51 ms | 44% | **34%** | 22% | **8** (6 for the error estimate) |
-| FRET (Gaussian) | 24.3 ms | 80% | 12% | 8% | **9** (7 for the error estimate) |
+| fit | total 09-01 | total 09-02 | `update_model()`/`run()` 09-01 → 09-02 |
+|---|---|---|---|
+| parse | 0.50 ms | 0.51 ms | 2 → **1** (the display refresh) |
+| TCSPC lifetime | 3.26 ms | 2.06 ms | 7 → **0** |
+| TCSPC VV | 4.51 ms | ~8–16 ms* | 8 → **0** |
+| FRET (Gaussian) | 24.3 ms | 7.11 ms | 9 → **0** |
 
-The optimisation column is rule-compliant: zero crossings per iteration.
-**This table predates `T-20260901-10`** (2026-09-01, later the same day),
-which closed the error-estimate column: the Jacobian is now differenced over
-the graph in C++ (`Minimizer::compute_covariance` / `compute_jacobian`, an
-absolute-floor step `eps*max(|x|, 1)` chosen for exactly the near-zero
-parameter that defeats MINPACK's relative step), all seven consumers moved
-with it, and the count is **2 Python `update_model()` calls per `run()`
-whatever the model** (was 7/8/9); the error estimate fell from 32–34% of a
-fit to 0–2%. Re-measuring the table is a [PRD-105](../prds/prd-105.md)
-phase-1 deliverable.
+The crossing count is the rule's column, and it is **zero for every decay
+fit**: parameters go in through the ports, the curve and the autoscaled
+`n0` come off the node (`_publish_curve`), and nothing Python owns is
+consulted between `run()`'s first and last line. (*The VV row's wall time
+is fixture- and iteration-count-sensitive across sessions — the same
+fixture measured paired on 2026-09-02 gives graph 15.9 ms vs director
+136.1 ms, an 8.5× win — so read the crossings column, not row-to-row wall
+time.) Two families that could not build a graph at all on 2026-09-01 now
+do: both ICS models (model-declared axes, `graph_axes()`) and any decay
+with pile-up or a DNL table armed.
 
 ## The named gaps
 
 1. **~~The covariance falls back to a numpy Jacobian.~~ Closed,
-   `T-20260901-10`** — see above. `chisurf/core/math/optimization/leastsqbound.py`
-   (794 lines) and the `lltf` plugin's copy (365) were deleted with it; the
-   frozen reference lives at `imp.bff/test/minimizer/reference_leastsqbound.py`.
-   One residue: the `ResidualNode` fallback this created for every
-   graph-less model exposes a director-lifetime segfault, board
-   `T-20260901-13` — the first item of PRD-105 phase 0.
+   `T-20260901-10`.** `leastsqbound.py` (794 lines) and the `lltf` copy
+   (365) deleted; frozen reference at
+   `imp.bff/test/minimizer/reference_leastsqbound.py`. The director
+   segfault it exposed was fixed in phase 0 (`T-20260901-13`, the
+   `%pythonappend` keepalive).
 
-2. **The model curve is recomputed for display rather than read.** The graph
-   is private to the fit by design (a port written from C++ is not seen
-   through `Parameter._frozen_value`), so the answer is written back through
-   the ordinary setters and `model.update_model()` re-runs ChiSurf's own
-   pipeline. For a lifetime model that pipeline calls tttrlib too, and the
-   parity tests pin the two equal to ~1e-15 — but it is still a second
-   composition of the same kernels, computed a second time, for a curve the
-   graph already holds on an output port.
+2. **~~The model curve is recomputed for display rather than read.~~
+   Closed, `T-20260901-11`** (2026-09-02, both halves): the ports are set
+   to the solution, the node re-evaluated in C++, and the curve **and**
+   `n0` read off together — publishing the curve without `n0` was the trap,
+   because the autoscaled amplitude is computed *by* the evaluation.
+   Zero `update_model()` calls per decay `run()`, pinned by test.
 
-3. **The data are duplicated.** A `DataCurve` holds `x`, `y`, `ey` as numpy
-   and `ChiSquared.set_data_arrays` copies them into the node. One copy per
-   fit is cheap, but "the data stay local" is not literally true while there
-   are two copies and Python owns one of them.
+3. **The data are duplicated — measured 2026-09-02, and the number says
+   leave it.** `ChiSquared.set_data_arrays` costs **0.6 µs of a 252.7 µs
+   graph build** (0.2%) at 512 channels and 19.4 µs at 65k, once per
+   `run()` (consumers share `_cached_graph`). The end-state — `DataCurve`
+   wrapping an engine-owned buffer — would invert buffer ownership across
+   the whole application (the 2×N `d` storage, the write-lock discipline,
+   pickling, every view) for sub-microsecond gains. Buffer plumbing is
+   generic infrastructure, where refusal-with-a-number remains the
+   sanctioned method (the saturation overrule reached forward models, not
+   this). **Queued as an owner decision in PRD-105**: literal engine
+   ownership is an architecture statement, not a performance one, and only
+   the owner can want it at that price.
 
-## What has not been asked yet
+## Every family has now been asked
 
-The models outside the decay families — DEER, ICS, PCH/FIDA, PDA2C/3C, MFD,
-and the structure model — have not been examined against this rule at all.
-Board tickets `T-20260901-08` (the FRET distance distributions that still
-have no node) and `T-20260901-09` (everything outside the decay families)
-carry the work. The first question for each is not "port it" but *what is the
-curve, and whose is it* — which is the [`imp-ecosystem`](../references/imp-ecosystem.md)
-rule again, one layer down.
+The question "what is the curve, and whose is it" has been answered for
+every model family: the decay families are on the graph, ICS joined via
+model-declared axes, and DEER, PCH/FIDA, PDA2c, MFD, stopped-flow and FCS
+each carry a written verdict in
+[graph-eligibility-verdicts](../references/graph-eligibility-verdicts.md)
+— including the deliberate stays and what would change them.

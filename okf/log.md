@@ -38280,3 +38280,18 @@ side of the line.
   convolution mode. Also fixed two stale PRD-105 entries while flipping
   the box: the saturation item still described the pre-overrule refusal,
   and the DEER-arithmetic box had never been checked.
+
+- **2026-09-02 — PRD-105 phase 1 closed: Gap 3 measured, the concept
+  re-measured and rewritten.** The data-duplication gap was measured before
+  being ported: `ChiSquared.set_data_arrays` costs 0.6 µs of a 252.7 µs
+  graph build (0.2%) at 512 channels, 19.4 µs at 65k, once per `run()` —
+  while the end-state (engine-owned buffers under `DataCurve`) would invert
+  buffer ownership across the whole application. Buffer plumbing is generic
+  infrastructure, where refusal-with-a-number remains the sanctioned method,
+  so the port is queued as PRD-105 owner decision 6 instead of taken.
+  `compute-display-line.md` re-measured: every decay fit now makes **zero**
+  Python `update_model` calls per `run()` (parse: one, the display
+  refresh); FRET Gaussian 24.3 → 7.11 ms since 2026-09-01; VV paired
+  graph-vs-director 15.9 vs 136.1 ms (8.5×); gaps 1–2 struck; the
+  "not asked yet" section replaced by the family-verdicts cross-link —
+  every family now has a graph or a written verdict.
