@@ -30,6 +30,18 @@
   than grid units (or the stick reaches further the more you zoom out), and a
   multi-node drag snaps once for the node under the pointer and moves the
   selection as one. Grid alignment is a separate switch, off by default.
+* **The edges are the diagram's now, read out of the diagram's source.** Two
+  rounds went on approximating what "looks like the old one" meant -- boxes
+  instead of marks, then straight lines instead of arcs -- and both were
+  settled in minutes by opening `graph_canvas.py`'s `curved_edge` and
+  `draw_arrow_head`. `cmtk.nodes` gained `LinkRouting.ARC`: rim to rim along
+  the line joining the two centres, a bow of 12% of the chord clamped to
+  10-22px with control points 60% of the way to the bowed mid-point, and an
+  arrowhead aimed from the *last control point* at a 30-degree half angle. One
+  `_link_curve()` feeds drawing, hover and the arrowhead, because three
+  descriptions of where a link is are three things to keep in step.
+  **The lesson**: when the brief is "make it look like the old one", open the
+  old one's drawing code first.
 * **globalview looks like the canvas it replaces again.** The first port drew
   every parameter as a titled box, which is unreadable at network sizes, so
   `cmtk.nodes` grew `NodeShape.DISC` -- a shaded circle with a plated label

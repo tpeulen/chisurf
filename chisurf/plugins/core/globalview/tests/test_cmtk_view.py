@@ -188,7 +188,7 @@ def test_restyling_survives_loading_another_graph():
     control = GraphControl(document, read_only=True, content=GlobalViewContent())
     apply_network_style(control.editor)
     control.set_document(graph_result_to_document(_result()), fit=False)
-    assert control.editor.style.link_straight is True
+    assert control.editor.style.link_routing == "arc"
 
 
 def test_hiding_fixed_parameters_hides_their_edges_too():

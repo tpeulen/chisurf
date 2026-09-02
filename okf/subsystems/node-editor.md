@@ -14,6 +14,43 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02, latest — the edges are the diagram's, read out of the diagram's
+own source rather than approximated. Read this first.**
+
+The lesson worth carrying: *when the brief is "make it look like the old one",
+open the old one's drawing code.* Two rounds were spent guessing — first boxes
+instead of marks, then straight lines instead of arcs — and both were settled
+in minutes by reading `chisurf/gui/widgets/graph_canvas.py`'s `curved_edge`
+and `draw_arrow_head`. The three concepts it encodes are now in
+`cmtk.nodes` as `LinkRouting.ARC`:
+
+1. **Rim to rim.** `p0 = centre_i + u * r_from`, `p3 = centre_j - u * r_to`,
+   along the line joining the centres. This is what removes the horizontal
+   stub: a pin-routed edge always leaves sideways, so a node directly *above*
+   another is joined by a curve that goes out to the right, turns round and
+   comes back.
+2. **A bow of 12% of the chord, clamped to 10–22px**, with the control points
+   **60%** of the way from each end toward the bowed mid-point. Proportional
+   because a constant offset makes a short edge a semicircle and a long one
+   look straight; clamped because unclamped makes a long edge a loop. The 60%
+   is what makes the curve leave and arrive along its own tangent.
+3. **The arrowhead is aimed from the last control point**, 30° half-angle,
+   `10 + width/2` long. Aim it from the other node's centre and it points
+   somewhere the line does not arrive from.
+
+A mutual pair is pushed 7px aside and bowed wider, or A→B and B→A land on each
+other and read as one edge.
+
+`_link_curve()` feeds the drawing, the hover test *and* the arrowhead. Three
+descriptions of where a link is would be three things to keep in step, and the
+one that drifts makes a link clickable somewhere it is not drawn —
+`test_hover_follows_the_arc_and_not_the_pins` asserts hover at the curve's own
+mid-point, which for a bowed arc is off the chord.
+
+**Still open, unchanged**: both tool windows (`globalview/gui/tool.py`,
+`lightpath_simulator/gui/tool.py`) still build the old canvases.
+
+
 **2026-09-02, latest — globalview draws marks, not boxes, and looks like the
 canvas it replaces. Read this first.**
 

@@ -268,12 +268,14 @@ def apply_network_style(editor: typing.Any) -> None:
     -----
     Three changes, and each is about what this graph *is*:
 
-    * **Straight links.** The node editor's curve always leaves rightwards and
+    * **Rim-to-rim arcs.** The node editor's curve leaves a pin rightwards and
       arrives leftwards, which reads well when a graph flows left to right. A
       network laid out by Kamada-Kawai has nodes wherever the algorithm put
-      them, so half the edges run right to left and each of those curves has to
-      loop back on itself. A screen of loops hides the shape the layout was
-      computing.
+      them, so a node directly above another is joined by a curve that goes out
+      sideways, turns around and comes back. An arc runs along the line joining
+      the two centres, stops at each rim, and bows slightly -- which separates
+      edges that would otherwise be drawn on top of each other and gives the
+      eye something to follow between two distant marks.
     * **A quieter grid.** The grid is a background here, not a workspace to
       align things on; at the editor's default weight it competes with the
       thin ownership edges, which are the same width and nearly the same
@@ -281,7 +283,7 @@ def apply_network_style(editor: typing.Any) -> None:
     * **No node outline.** Discs draw their own rim.
     """
     style = editor.style
-    style.link_straight = True
+    style.link_routing = cmtk_nodes.LinkRouting.ARC
     style.flags &= ~cmtk_nodes.StyleFlags.NODE_OUTLINE
     style.colors[cmtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
     style.colors[cmtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
