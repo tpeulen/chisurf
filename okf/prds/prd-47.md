@@ -3,12 +3,23 @@ type: PRD
 prd: "47"
 title: "PRD-47: Relocate Spectroscopy Physics into an External Biophysical Modeling Framework"
 description: Consolidate duplicated fluorescence-spectroscopy physics so an external biophysical modeling framework becomes the single home, reducing ChiSurf to fitting-model glue, GUI, and data-IO that calls into it.
-status: draft
-phase: "cross-cutting"
+status: superseded
+phase: "superseded by PRD-105 (2026-09-02)"
 resource: chisurf/core/fluorescence/
 tags: [prd, core]
 timestamp: '2026-07-05T00:00:00Z'
 ---
+
+# Superseded
+
+Superseded by [PRD-105](prd-105.md) on 2026-09-02. Same goal — the engine
+(tttrlib + the biophysical modeling framework) owns the physics, chisurf is
+the application — but this PRD predates the fit graph, the C++ minimizer, and
+the model kernels that landed 2026-09-01/02. Its "Python staging layer" route
+is obsolete: kernels now land in C++ directly, gated by a parity A/B against
+the chisurf copy, and the copy is deleted in the same change. The inventory
+below remains useful as a checklist; the sequencing and method live in
+PRD-105.
 
 # Summary
 The same fluorescence-spectroscopy physics (decay convolution, FRET conversions, distributions, Förster-radius math, anisotropy, phasor, FCS curve algebra) is implemented in several repositories at once, so code paths drift and fixes land in only one place. This PRD makes an external biophysical modeling framework (via its Python staging layer) the single home for spectroscopy physics: delete ChiSurf copies that already exist upstream, relocate ChiSurf-only physics that belongs upstream, and keep fitting-model parameter groups, plugin GUIs, and data-IO in ChiSurf but delegate numerics upstream. Photon-stream processing (burst search, PDA, raw correlation) stays with `tttrlib`, deliberately outside the modeling framework. A thin import seam (`chisurf/core/fluorescence/_backend.py`) plus a numeric-equivalence test gates every swap so there is no behavioural regression.

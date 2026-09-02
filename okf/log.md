@@ -37753,3 +37753,32 @@ side of the line.
   rejected instead of falling through to the plain Gaussian, which is the actual
   silent-substitution bug — and the property tests that would catch a wrong
   answer rather than a missing symbol.
+
+- 2026-09-02 (engine and car — the record, and the plan) — **The engine
+  migration of 2026-09-01/02 happened, and this log had no record of it.**
+  The work is logged in imp.bff's `okf/log.md` (entries 2026-09-01 (2)–(18),
+  2026-09-02 (21)–(27)) and in board tickets `T-20260901-02/-03/-06/-10/-12/-14`
+  and `T-20260902-01/-02/-03`; recorded here so a chisurf-only reader stops
+  believing none of it exists. In one line each: one bounded
+  Levenberg–Marquardt in bff where the stack had three (chisurf's 794-line
+  `leastsqbound.py` deleted, the covariance/Jacobian differenced over the
+  graph in C++, **2** Python `update_model()` calls per `run()` whatever the
+  model); TCSPC decays, the spectrum chain and `GlobalFitModel` are one C++
+  graph (4.35x on a lifetime fit); the factor graph delegates to bff (and the
+  A/B found bff's `is_complete` wrong for exactly the shape every global fit
+  has); WLC/Ising/Gaussian-mixture kernels ported (the WLC A/B found bff had
+  computed `exp(x)` where the paper has `I0(x)` since it was transcribed);
+  `bench_models.py` now ranks remaining movable compute by the non-native
+  share (movable total 1192 → 587 ms; two models are 96% of what is left).
+  **The plan that sequences the rest is new: [PRD-105](prds/prd-105.md)** —
+  engine (tttrlib + imp.bff) and car (chisurf), phase 0 = the seam's own
+  defects (director-lifetime segfault `T-20260901-13`, BUG-10, one expression
+  engine), then the compute/display gaps, the sampler loop (the largest
+  uncrossed boundary, ~10⁵–10⁶ crossings per MCMC run against an
+  `imp.bff.Sampler` that already exists), graph eligibility per model family
+  with written refusals, a 14-row duplication register, and the chatty
+  per-burst paths. Governance repaired in the same change: `prds/index.md`
+  gained its three missing rows (89, 90, 91) plus PRD-105; PRD-47 (the 2026-07
+  statement of the same goal, pre-graph) is superseded by PRD-105;
+  `architecture/compute-display-line.md` gap 1 marked closed with a
+  pick-this-up pointer at PRD-105. Board ticket `T-20260902-08`.
