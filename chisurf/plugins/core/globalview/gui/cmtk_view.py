@@ -355,6 +355,27 @@ class GlobalViewContent(NodeContentRenderer):
         #: unreadable in the first place.
         self.show_values = bool(show_values)
 
+    def accepts_link(self, source: GraphNode, target: GraphNode) -> bool:
+        """Only a parameter may follow a parameter.
+
+        Parameters
+        ----------
+        source, target : GraphNode
+            The two marks the user drew between.
+
+        Returns
+        -------
+        bool
+            ``False`` when either end is a fit or a group. Every mark here
+            carries one in and one out pin so a link can land anywhere on it,
+            which without this check lets two *fits* be wired together -- an
+            edge the parameter model has no meaning for, drawn in a panel whose
+            whole job is to show what follows what.
+        """
+        owners = {NODE_FIT, NODE_GROUP}
+        return (int(source.config.get("kind", -1)) not in owners
+                and int(target.config.get("kind", -1)) not in owners)
+
     def node_shape(self, node: GraphNode) -> tuple:
         """Every node is a disc, sized by what kind it is.
 

@@ -94,6 +94,22 @@ class NodeContentRenderer:
         "mode": ["A", "B", "C"],
     }
 
+    def accepts_link(self, source: GraphNode, target: GraphNode) -> bool:
+        """Whether a link between these two nodes means anything.
+
+        Parameters
+        ----------
+        source, target : GraphNode
+            The two ends the user drew between.
+
+        Returns
+        -------
+        bool
+            ``True`` unless the host says the pair is meaningless. The port
+            *types* are checked separately; this is about the nodes.
+        """
+        return True
+
     def node_shape(self, node: GraphNode) -> tuple:
         """How this node is drawn: a titled box, or a labelled disc.
 
@@ -272,12 +288,21 @@ class GraphControl:
         content: typing.Optional[NodeContentRenderer] = None,
         on_change: typing.Optional[typing.Callable] = None,
         on_select: typing.Optional[typing.Callable] = None,
+        on_link: typing.Optional[typing.Callable] = None,
+        on_unlink: typing.Optional[typing.Callable] = None,
     ) -> None:
         self.document = document if document is not None else GraphDocument()
         self.read_only = bool(read_only)
         self.content = content if content is not None else NodeContentRenderer()
         self.on_change = on_change
         self.on_select = on_select
+        #: Called with ``(source_node_id, target_node_id)`` when the user draws
+        #: a link, and with the edge when they break one. A host whose *model*
+        #: owns the relation -- globalview's links belong to the fits, not to
+        #: the picture -- takes these and does not let the document change
+        #: itself, or the graph and the model disagree until the next reload.
+        self.on_link = on_link
+        self.on_unlink = on_unlink
 
         self.editor = nodes.EditorContext()
         self.show_minimap = True
@@ -542,14 +567,23 @@ class GraphControl:
             if source is not None and target is not None:
                 edge = GraphEdge(source[0].id, source[1], target[0].id, target[1])
                 if self._accepts(edge):
-                    changed |= document.add_edge(edge)
+                    if self.on_link is not None:
+                        # The host owns the relation: it is told, and it decides
+                        # what the graph becomes. Adding the edge here as well
+                        # would draw a link the model has not accepted.
+                        self.on_link(source[0].id, target[0].id)
+                    else:
+                        changed |= document.add_edge(edge)
 
         destroyed = nodes.is_link_destroyed(self.editor)
         if destroyed is not None:
             edge = document.edge_for_link(destroyed)
             if edge is not None:
-                document.remove_edge(edge)
-                changed = True
+                if self.on_unlink is not None:
+                    self.on_unlink(edge.source, edge.target)
+                else:
+                    document.remove_edge(edge)
+                    changed = True
 
         return changed
 
@@ -584,8 +618,22 @@ class GraphControl:
         in_port = target.port(edge.target_port, False)
         if out_port is None or in_port is None:
             return False
+        # A host may mark node kinds that cannot be joined at all. globalview
+        # gives every mark one in and one out pin so a link can land anywhere,
+        # which without this would let two *fits* be wired together -- an edge
+        # the parameter model has no meaning for.
+        if not self.content.accepts_link(source, target):
+            return False
         if out_port.port_type != in_port.port_type:
             return False
+        if self.on_link is not None:
+            # The host arbitrates, so the one-edge-per-input rule below does
+            # not apply. It must not: a graph whose edges mean several things
+            # -- globalview's marks each carry one pin and already have an
+            # *ownership* edge into it -- would have every input occupied
+            # before the user drew anything, and no link could ever be made.
+            return True
+
         # One edge per input. A second one is not a merge, it is the first one
         # being silently ignored by everything downstream.
         return not any(

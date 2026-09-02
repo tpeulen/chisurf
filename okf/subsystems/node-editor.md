@@ -29,18 +29,27 @@ screenshotting it: legend, discs, arced edges with the arrowhead, minimap,
 and the size slider scaling every mark while keeping owners larger than
 parameters.
 
-**Two things left there**, both small and both unverified because they need a
-live fit:
+**Both of the loose ends listed here before are closed**, and closing them
+found a third:
 
-1. `linkRequested` / `linkRemovalRequested` are declared and never emitted.
-   The wiring is `is_link_created` → `report_link(follower, master)` and
-   `is_link_destroyed` → `linkRemovalRequested`, in `_on_select`'s neighbour.
-   Until that lands, links can be *drawn* in the panel but the fit model is
-   not told.
-2. `document_from_arrays` gives every node one in and one out pin, so the
-   editor will accept a link between any two marks — including two fits.
-   `GraphControl._accepts` rejects same-kind ports and self-links, and that
-   is all; a parameter-to-fit link should be refused too.
+* `GraphControl` takes `on_link`/`on_unlink`. When a host supplies them the
+  control **reports and does not mutate** — globalview's links belong to the
+  fit model, and adding the edge in the panel too would draw a relation the
+  model has not accepted, the two disagreeing until the next refresh.
+  Verified against the real `GraphWizard`: `linkRequested` fires with
+  `(follower, master)`.
+* `NodeContentRenderer.accepts_link(source, target)` refuses a pair of nodes
+  the host says cannot be joined; globalview refuses anything touching a fit
+  or a group.
+* **The one that would have shipped broken**: the editor's "one edge per
+  input" rule made linking *impossible* here. Every mark carries one in-pin
+  and already has an **ownership** edge into it, so every input was occupied
+  before the user drew anything. The rule is skipped when `on_link` is set —
+  the host arbitrates, so the editor must not also.
+
+What is left is only checking it against a live fit: whether the tool's
+`on_link_requested` slot does the right thing with the pair, which no test
+here can say.
 
 **The beam path is still on the old canvas**: `lightpath_simulator/gui/tool.py`
 builds `NodeScene`. Its `propagate_graph` becomes `document.to_dict()` → RPC →

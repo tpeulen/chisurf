@@ -58,6 +58,8 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         self.control = GraphControl(
             content=self._content,
             on_select=self._on_select,
+            on_link=self._on_link,
+            on_unlink=self._on_unlink,
         )
         apply_network_style(self.control.editor)
         # Read-only in the sense that node *config* is not edited here; links
@@ -182,12 +184,37 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
         ]
         self.selectionChanged.emit(list(self._selected))
 
-    def report_link(self, follower: int, master: int) -> None:
-        """Announce a link the user drew.
+    def _on_link(self, source_id: str, target_id: str) -> None:
+        """Announce a link the user drew, as the tool's ``(follower, master)``.
 
         Parameters
         ----------
-        follower, master : int
-            Node indices.
+        source_id, target_id : str
+            Document node ids, which here are the array indices as strings.
+
+        Notes
+        -----
+        The editor reports ``(output, input)``, and an output is the end the
+        drag left. In this panel the thing being *followed* is what the arrow
+        points away from, so the master is the source and the follower is the
+        target -- the same order ``graph_result_to_document`` derives a link
+        edge in, and the order the tool's slot expects.
+
+        The signal is all that happens. The link belongs to the fit model, so
+        the panel must not add the edge itself: it would draw a relation the
+        model has not accepted, and the two would disagree until the next
+        refresh.
         """
-        self.linkRequested.emit(int(follower), int(master))
+        if source_id.isdigit() and target_id.isdigit():
+            self.linkRequested.emit(int(target_id), int(source_id))
+
+    def _on_unlink(self, source_id: str, target_id: str) -> None:
+        """Announce a link the user broke.
+
+        Parameters
+        ----------
+        source_id, target_id : str
+            Document node ids. The follower is the target, as above.
+        """
+        if target_id.isdigit():
+            self.linkRemovalRequested.emit(int(target_id))

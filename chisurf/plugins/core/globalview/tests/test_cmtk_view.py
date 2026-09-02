@@ -281,3 +281,45 @@ def test_the_size_slider_scales_every_mark_but_keeps_their_ratio():
     assert large[0] == small[0] * 2.0
     assert large[1] == small[1] * 2.0
     assert large[0] > large[1]
+
+
+def test_a_fit_cannot_be_linked_to_a_fit():
+    """Every mark carries one in and one out pin, so this needs saying.
+
+    Without the check the editor happily wires two fits together -- an edge
+    the parameter model has no meaning for, in a panel whose whole job is to
+    show what follows what.
+    """
+    content = GlobalViewContent()
+    document = graph_result_to_document(_result())
+    fits = [n for n in document.nodes if n.config["kind"] == NODE_FIT]
+    params = [n for n in document.nodes if n.config["kind"] != NODE_FIT]
+
+    assert content.accepts_link(fits[0], fits[1]) is False
+    assert content.accepts_link(fits[0], params[0]) is False
+    assert content.accepts_link(params[0], params[1]) is True
+
+
+def test_a_drawn_link_is_reported_and_not_drawn():
+    """The relation belongs to the fit model, so the panel only reports it.
+
+    Adding the edge here as well would draw a link the model has not accepted,
+    and the two would disagree until the next refresh.
+    """
+    from cmtk.testing import RecordingPainter
+
+    document = graph_result_to_document(_result())
+    reported: list = []
+    control = GraphControl(document, content=GlobalViewContent(),
+                           on_link=lambda s, t: reported.append((s, t)))
+    control.set_document(document, fit=False)
+    control.draw(RecordingPainter(), 0, 0, 900, 520)
+
+    before = len(document.edges)
+    control.editor._link_created = (
+        document.pin_id("2", 0, True), document.pin_id("5", 0, False),
+    )
+    control._apply_interactions()
+
+    assert reported == [("2", "5")], "the host was not told"
+    assert len(document.edges) == before, "the panel drew a link the model has not seen"
