@@ -215,6 +215,44 @@ def _kernel_svd(tau: np.ndarray, td_grid: np.ndarray, s: float):
     return out
 
 
+def _maxent_engine_solve(A, g_data, stdev, m_prior, alpha, num_iter):
+    """One weighted, prior-aware MEM solve in tttrlib's shared engine.
+
+    The Skilling-Bryan engine behind ``maxent_invert`` and
+    ``solve_tcspc_mem_lifetime``, through ``maxent_invert_weighted`` (added
+    2026-09-02). Same objective as the QuickFit-style loop above --
+    maximise ``alpha*S(p; m) - chi2_w/2``, the engine's
+    ``sum_i w_i (Ap-b)_i^2 - nu^2 S`` with ``w_i = 1/sigma_i^2`` and
+    ``nu = sqrt(2*alpha)`` -- and it *converges* where the loop runs a
+    fixed count. The A/B in ``test/models/test_fcs_maxent_engine.py`` pins
+    the agreement.
+
+    **Deliberately NOT the default.** Measured 2026-09-02 on the well-posed
+    A/B fixture (96x48): engine 11.1-14.5 ms vs the loop's 4.8-7.6 ms per
+    solve across alpha = 1e-3..0.5 -- the engine's bound-QP per outer
+    iteration costs more than the loop's SVD-space Newton steps. Under the
+    owner's performance rule a 2-3x regression cannot land silently, so the
+    fast loop stays the default and this stays the single-implementation
+    route, available and pinned, until either the engine gains a cheaper
+    fixed-nu path or the owner accepts the cost for the dedup.
+    """
+    import tttrlib
+    A = np.ascontiguousarray(A, dtype=np.float64)
+    inv_sigma2 = 1.0 / (np.asarray(stdev, dtype=np.float64) ** 2)
+    nu = float(np.sqrt(2.0 * float(alpha)))
+    p = np.asarray(tttrlib.maxent_invert_weighted(
+        A.ravel(),
+        np.asarray(g_data, dtype=np.float64),
+        inv_sigma2,
+        np.asarray(m_prior, dtype=np.float64),
+        nu,
+        int(A.shape[0]), int(A.shape[1]),
+        max(int(num_iter), 500),
+        1e-4,
+    ), dtype=np.float64)
+    return p, A @ p
+
+
 def fcs_maxent(
         tau: np.ndarray,
         g: np.ndarray,

@@ -38105,3 +38105,27 @@ side of the line.
   reads: the totals line is noisy run to run (and one of today's runs shared
   the machine with a test suite) — trust the per-row numbers and repeats,
   as the benchmark's own docstring instructs.
+
+- 2026-09-02 (the MEM engine route — built, measured, and NOT defaulted) —
+  **The owner asked whether the MEM loop is already in tttrlib: it is** —
+  the shared Skilling–Bryan engine (`MaxEntQp.h`) behind `maxent_invert`
+  and `solve_tcspc_mem_lifetime`, whose `run_mem` always took a prior and
+  per-point weights. tttrlib gained `maxent_invert_weighted` (`d2739150e`)
+  exposing both, and the objective mapping is exact: chisurf's QuickFit
+  loop maximises α·S(p;m) − χ²_w/2 ⇔ the engine's Σwᵢ(Ap−b)ᵢ² − ν²S with
+  wᵢ=1/σᵢ² and ν=√(2α). The A/B (`test/models/test_fcs_maxent_engine.py`,
+  with the deleted-candidate loop transcribed as the frozen reference)
+  pins: the engine's solution scores at least as well on the loop's own
+  objective, and reconstructions agree on well-posed problems. **But the
+  performance rule caught a regression before it landed**: the engine
+  costs 11.1–14.5 ms per solve on the well-posed 96×48 fixture against the
+  SVD-space loop's 4.8–7.6 ms (α 1e-3..0.5) — the bound-QP per outer
+  iteration is the cost — and 19 ms against 6.3 ms on the scoreboard
+  fixture. So the routing was REVERTED: chisurf's default stays the
+  cached-SVD loop at 6.0–6.3 ms/curve (the day's best), and
+  `_maxent_engine_solve` stays beside it — available, pinned, documented
+  as deliberately-not-default with the numbers — until either MaxEntQp
+  gains a cheaper fixed-ν path or the owner accepts the 2–3× for the
+  single-implementation win. This is the directive working as intended:
+  the route exists in the right repo, the regression did not ship, and
+  the decision is the owner's with measurements attached.
