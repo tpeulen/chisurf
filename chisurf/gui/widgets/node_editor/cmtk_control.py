@@ -94,6 +94,75 @@ class NodeContentRenderer:
         "mode": ["A", "B", "C"],
     }
 
+    def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
+        """The title-bar colour this node should have, if not the default.
+
+        Parameters
+        ----------
+        node : GraphNode
+            The node about to be drawn.
+
+        Returns
+        -------
+        tuple or None
+            ``(r, g, b, a)``, or ``None`` to take the editor's palette.
+
+        Notes
+        -----
+        A hook rather than a field on the node, because the colour is a
+        *rendering* decision about a kind of node and the document is what gets
+        serialised. Writing it into the config would put a palette in every
+        saved file, and changing the palette would then leave every existing
+        file painted the old way.
+        """
+        return None
+
+    def link_style(self, edge: typing.Any) -> typing.Optional[tuple]:
+        """The colour and thickness this edge should have, if not the default.
+
+        Parameters
+        ----------
+        edge : GraphEdge
+            The edge about to be drawn.
+
+        Returns
+        -------
+        tuple or None
+            ``(colour, thickness)``, or ``None`` to take the editor's palette.
+
+        Notes
+        -----
+        Exists because a graph whose edges mean different things cannot say so
+        in one colour. A dataflow graph does not need this -- every edge means
+        the same -- but a parameter network has ownership, links and base
+        edges, and drawing them alike is a claim the picture makes and the
+        model does not.
+        """
+        return None
+
+    def port_label(self, node: GraphNode, port: typing.Any, is_output: bool) -> str:
+        """The text drawn beside a pin.
+
+        Parameters
+        ----------
+        node : GraphNode
+            The node the port belongs to.
+        port : PortSpec
+            The port.
+        is_output : bool
+            Which side it is on.
+
+        Returns
+        -------
+        str
+            The name, with the declared type appended when there is one.
+            Return ``""`` to draw no label at all -- which is right for a graph
+            where every node has the same one input and one output, since the
+            label then costs a row per node and says nothing that the shape of
+            the graph does not already say.
+        """
+        return f"{port.name} [{port.port_type}]" if port.port_type else port.name
+
     def draw_body(self, node: GraphNode, read_only: bool) -> bool:
         """Draw one node's contents and report whether anything changed.
 
@@ -296,10 +365,14 @@ class GraphControl:
                 source, target = document.node(edge.source), document.node(edge.target)
                 if source is None or target is None:
                     continue
+                style = self.content.link_style(edge)
+                colour, thickness = style if style is not None else (None, None)
                 nodes.link(
                     document.link_id(index),
                     document.pin_id(source.id, edge.source_port, True),
                     document.pin_id(target.id, edge.target_port, False),
+                    colour=colour,
+                    thickness=thickness,
                 )
 
         self._pull_positions()
@@ -330,6 +403,12 @@ class GraphControl:
         """
         document = self.document
         number = document.node_number(node.id)
+        title_colour = self.content.node_style(node)
+        if title_colour is not None:
+            # Pushed around the whole node, not just the title bar: the body is
+            # drawn at end_node(), which reads the palette then, so a pop
+            # before that would paint every node in the default colour.
+            nodes.push_color_style(nodes.Col.TITLE_BAR, title_colour)
         nodes.begin_node(number)
         im.push_item_width(NODE_ITEM_WIDTH)
 
@@ -345,7 +424,7 @@ class GraphControl:
             # interleaving them.
             for index, port in enumerate(node.inputs):
                 nodes.begin_input_attribute(document.pin_id(node.id, index, False))
-                im.text(self._port_label(port))
+                im.text(self.content.port_label(node, port, False))
                 nodes.end_input_attribute()
 
             if node.config:
@@ -355,7 +434,7 @@ class GraphControl:
 
             for index, port in enumerate(node.outputs):
                 nodes.begin_output_attribute(document.pin_id(node.id, index, True))
-                im.text(self._port_label(port))
+                im.text(self.content.port_label(node, port, True))
                 nodes.end_output_attribute()
         else:
             # Collapsed still submits the pins, or every link to this node
@@ -372,26 +451,9 @@ class GraphControl:
 
         im.pop_item_width()
         nodes.end_node()
+        if title_colour is not None:
+            nodes.pop_color_style()
         return changed
-
-    @staticmethod
-    def _port_label(port) -> str:
-        """The text drawn beside a pin.
-
-        Parameters
-        ----------
-        port : PortSpec
-            The port.
-
-        Returns
-        -------
-        str
-            The name, with the type appended when there is one. An untyped
-            port shows only its name -- the default used to be the literal
-            word "spectral", which appeared beside every port of every
-            untyped graph.
-        """
-        return f"{port.name} [{port.port_type}]" if port.port_type else port.name
 
     def _apply_interactions(self) -> bool:
         """Turn this frame's editor events into edits of the document.

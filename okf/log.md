@@ -30,6 +30,17 @@
   than grid units (or the stick reaches further the more you zoom out), and a
   multi-node drag snaps once for the node under the pointer and moves the
   selection as one. Grid alignment is a separate switch, off by default.
+* **globalview's parameter network is ported too**, and doing it grew the
+  content renderer three hooks -- `node_style`, `link_style`, `port_label` --
+  which between them are what lets one editor serve graphs that mean different
+  things. `cmtk.nodes.link` takes a per-link colour: a parameter network's
+  edges are three different claims (ownership, a link, a base edge) and drawing
+  them alike is a claim the picture makes that the model does not. Edge kinds
+  are *derived from what the endpoints are* rather than transmitted, so they
+  cannot disagree with the graph. Hover and selection still override a caller's
+  colour, or styling could hide the feedback that says which edge you are on.
+  10 tests. `tool.py` still builds the old canvas; the three signals it needs
+  rewired are named in the OKF concept.
 * **The beam path's node bodies are rewritten on cmtk.** `BeampathContent`
   draws the three-layer spectrum -- input, output, and the component's own
   characteristic, each normalised separately because they are different

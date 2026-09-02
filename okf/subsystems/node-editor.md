@@ -14,6 +14,53 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02, latest — globalview's graph is ported, and the content renderer
+grew the three hooks that made it possible. Read this first.**
+
+`NodeContentRenderer` now has four overridables, and between them they are what
+lets one editor serve graphs that mean different things:
+
+| hook | what it decides |
+|---|---|
+| `draw_body(node, read_only)` | what is inside a node |
+| `node_style(node)` | its title-bar colour |
+| `link_style(edge)` | an edge's colour and thickness |
+| `port_label(node, port, is_output)` | the text beside a pin, `""` for none |
+
+`node_style`/`link_style` are hooks rather than fields on the document on
+purpose: a colour is a *rendering* decision about a kind of thing, and the
+document is what gets serialised. Writing it into the config would put a
+palette into every saved file, and changing the palette would leave every
+existing file painted the old way.
+
+**globalview**: `globalview/gui/cmtk_view.py`. `graph_result_to_document`
+turns the RPC's `GraphResult` into a `GraphDocument`, recovering each edge's
+*kind* from what its two endpoints are — owner↔owner is a base edge,
+owner↔parameter is ownership, parameter↔parameter is a link. Derived rather
+than transmitted, so it cannot disagree with the graph. Node ids are the
+adapter's `node_idx`, so a selection resolves back without a second mapping to
+keep in step. 10 tests.
+
+**Still open on globalview**, and this is the whole remainder:
+
+1. **`gui/tool.py` (1047 lines) still builds `ParameterGraphCanvas`.** The
+   swap needs three signals rewired: `selectionChanged` (now
+   `GraphControl.on_select`), `linkRequested` (now `is_link_created`, which
+   already reports `(output, input)` in a fixed order however the user
+   dragged), and `linkRemovalRequested` (now `is_link_destroyed`). The
+   canvas's `n_selected_nodes = 2` master/follower dance has no equivalent
+   and does not need one — a link is made by dragging pin to pin.
+2. **The parameter tables are still `QTableWidget`.** This is where the user's
+   "may need additional table features in cmtk" lands. `cmtk.widgets.tables`
+   has `DataTable` with sizing policies, resize, reorder, multi-sort, hiding
+   and frozen panes; what it is missing for this panel is **editable cells**
+   bound to a model attribute. Check that before writing anything: the port is
+   there and only the write path may be absent.
+3. **`graph_canvas.py` also serves the state-scheme diagram**, so deleting it
+   is not part of retiring globalview's use of it. Check `grep -rn
+   "graph_canvas"` before removing anything.
+
+
 **2026-09-02, later — four defects fixed and the beam path's node bodies are
 written. Read this before the older list below, which it partly retires.**
 
