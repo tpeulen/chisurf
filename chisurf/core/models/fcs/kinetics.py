@@ -636,7 +636,6 @@ class FCSKineticsModel(ModelCurve):
         super().__init__(fit, **kwargs)
         self._saturation_mode = "full"
         self.saturation = KineticSaturationTerms(name="kinetic_saturation", fit=fit)
-        self._sat_cache: tuple[tuple, np.ndarray] | None = None
         self._updating_model = False
         self.find_parameters()
 
@@ -718,35 +717,28 @@ class FCSKineticsModel(ModelCurve):
                 tau_s,
             )
         else:
-            key = (
-                tuple(tau_ms),
-                sat.power,
-                sat.wavelength_nm,
-                sat.extinction,
-                tuple(np.asarray(sat.dark_matrix_hz).ravel()),
-                tuple(np.asarray(sat.exc.rate_matrix()).ravel()),
-                tuple(np.asarray(sat.brightness.array).ravel()),
-                sat.w_r_nm,
-                sat.w_z_nm,
-                sat.D_um2s,
+            # No cache: the full pipeline was measured at 1.0 ms per
+            # evaluation (2026-09-02, cache-busted, the model's own grid) --
+            # the steady-state solve is one batched np.linalg.solve and the
+            # propagator one einsum, both BLAS-bound. The one-entry
+            # exact-match cache this replaces only ever fired on redraws,
+            # missed on every LM step that moved a saturation parameter,
+            # and its 10-field key was machinery guarding a millisecond.
+            # The same measurement is what refused a C++ port of
+            # saturation.py (T-20260902-11).
+            g = saturated_curve_shape(
+                tau_s,
+                power_W=sat.power,
+                extinction=sat.extinction,
+                dark_matrix=sat.dark_matrix_hz,
+                exc_matrix=sat.exc.rate_matrix(),
+                brightness=sat.brightness.array,
+                w0=w0,
+                z0=z0,
+                D=D_m2_s,
+                include_bunching=True,
+                wavelength_m=sat.wavelength_m,
             )
-            if self._sat_cache is not None and self._sat_cache[0] == key:
-                g = self._sat_cache[1]
-            else:
-                g = saturated_curve_shape(
-                    tau_s,
-                    power_W=sat.power,
-                    extinction=sat.extinction,
-                    dark_matrix=sat.dark_matrix_hz,
-                    exc_matrix=sat.exc.rate_matrix(),
-                    brightness=sat.brightness.array,
-                    w0=w0,
-                    z0=z0,
-                    D=D_m2_s,
-                    include_bunching=True,
-                    wavelength_m=sat.wavelength_m,
-                )
-                self._sat_cache = (key, g)
 
         meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
         mean_cr_total = resolve_total_mean_count_rate(meta)

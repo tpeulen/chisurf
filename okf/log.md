@@ -38156,3 +38156,22 @@ side of the line.
   unchanged; 42 tttrlib maxent validations + 6 chisurf A/B/prior tests
   green. Pre-existing red noted, not mine: `guide.schema.json` stale
   against another stream's in-flight generator edit.
+
+- 2026-09-02 (T-20260902-11 closes — the saturation port is REFUSED with the
+  number, and the cache it justified is deleted) — Per the perf directive the
+  port was measured before it was written: `saturated_curve_shape` (full
+  mode, 3-state scheme, the model's own 120×40 grid, cache-busted) runs at
+  **1.0 ms per evaluation** — the steady-state solve is one batched
+  `np.linalg.solve` and the propagator one einsum, both BLAS-bound, so a C++
+  twin of `saturation.py` would duplicate ~1100 lines for no measurable
+  gain. Same verdict as DeerTikhonov, same method: the measurement is the
+  written reason. The PSF closed forms stay in Python as *cited twins* of
+  tttrlib's `SimGrid` profiles (which serve the photon simulator) — one
+  comment on each side, never a third copy. **`_sat_cache` deleted**: the
+  one-entry exact-match cache with its 10-field key only ever fired on
+  redraws and missed on every LM step that moved a saturation parameter —
+  machinery guarding a millisecond. Model-level full-mode update measured at
+  **1.72 ms with the cache gone and the power moving every step**; 7
+  kinetics/FCS tests green. With the MDF half (110 → 5.3 ms/curve, in bff)
+  landed this morning, the ticket closes whole: kernels that measured slow
+  moved, kernels that measured fast stayed with the number that says why.
