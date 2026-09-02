@@ -5102,3 +5102,18 @@ Fixed there. The general shape is the risk: **a `.native` call is a bet on
 which backend chiplot happens to have**, and it is invisible to the import
 guard because it reaches pyqtgraph without importing it.
 `test/chiplot_native_allowlist.txt` is the list of remaining bets.
+
+## `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
+
+`chisurf/core/structure/av/__init__.py:75` imports
+`IMP.bff.av.compute.compute_av`, but imp-tricks no longer carries an
+`IMP/bff/` portion (its `src/IMP/` holds only cgmol/finite/speciation/swarm)
+and imp.bff's `pyext/src` was emptied by the PRD-117 stream (`avbuilder.i`,
+`avmodel.i` went to C++), so the Python subpackage the wrapper imports is
+gone. Fails: `test/models/test_fret_structure.py` (both tests) and, likely
+related, `test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`.
+Pre-existing before the 2026-09-02 PRD-105 session (verified: nothing in that
+session touches the AV import path). The fix belongs to the PRD-117/PRD-100
+stream: point `chisurf/core/structure/av/` at the new C++ surface, whatever
+`avbuilder`/`avmodel` now export, and re-run the AV parity set — not a rename
+to guess at from outside.
