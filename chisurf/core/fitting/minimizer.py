@@ -551,6 +551,48 @@ def _single_objective(fit, model, free):
     return m, free
 
 
+def _publish_curve(m, model, x) -> bool:
+    """Publish the fitted curve off the graph's output port, or say no.
+
+    The expensive half of T-20260901-11. After the parameter write-back the
+    graph's decay node already holds (almost) the fitted curve -- "almost"
+    because MINPACK's last evaluation is not guaranteed at the solution and
+    the covariance step perturbed the ports -- so the ports are set to the
+    solution once, the node re-evaluated **in C++**, and the curve and the
+    autoscaled amplitude read off. That replaces the one remaining Python
+    ``update_model()`` of a decay fit (233 us of 2.26 ms TCSPC, 554 us of
+    6.21 ms FRET).
+
+    ``n0`` is the trap this function must not fall into: the autoscaled
+    amplitude is *computed by the evaluation*, so publishing the curve
+    without also publishing ``n0`` leaves the displayed amplitude stale
+    while the curve looks right. Both are read off the node together.
+
+    Scoped to the decay path (``m._decay``): the parse path's evaluation is
+    microseconds, and a group's members write back through their own
+    models. Returns ``False`` -- and the caller runs ``update_model()`` --
+    whenever anything is not exactly as this function expects.
+    """
+    node = getattr(m, "_decay", None)
+    surface = getattr(m, "_sampler_surface", None)
+    if node is None or surface is None:
+        return False
+    try:
+        _, ports, _ = surface
+        for port, value in zip(ports, x):
+            port.value = float(value)
+        node.update()
+        curve = np.asarray(node.get_output_port("decay").value, dtype=float)
+        if curve.ndim != 1 or curve.size != np.asarray(model.y).size:
+            return False
+        if node.get_autoscale():
+            model.convolve._n0.value = float(node.get_n0())
+        model.y = curve
+        return True
+    except Exception:
+        return False
+
+
 def _claim(carried, free_slot, parameter_ports, owner, pending):
     """Sort one dataset's equation ports into the optimiser's and the rest.
 
@@ -1641,23 +1683,23 @@ def minimize(
                                if free else None)
 
     if built is not None:
-        # The graph is private, so the answer has to be published: written
-        # through the ordinary parameter setters, then one model evaluation
-        # so the displayed curve and the residuals are the fitted ones. This
-        # is the only place the fit's numbers change language, and it happens
-        # once per fit rather than once per iteration.
+        # The graph is private, so the answer has to be published: the
+        # parameters through the ordinary setters, and the curve **read off
+        # the node's output port** (T-20260901-11) -- computing it a second
+        # time in Python is not a display step, it is a second composition
+        # of the same kernels, and two implementations disagree silently.
+        # This is the only place the fit's numbers change language, and it
+        # happens once per fit rather than once per iteration.
         #
         # The director path needs none of it: its residual *is* the Python
         # model, so the last thing the optimiser did was evaluate the model
         # at the answer.
         for parameter, value in zip(free, x):
             parameter.value = float(value)
-        model.update_model()
+        if not _publish_curve(m, model, x):
+            model.update_model()
         # Tell Fit.run the model already holds the fitted curve, so its own
-        # self.update() does not evaluate the model a second time -- that
-        # recompute was 233 us of a 2.26 ms TCSPC fit (T-20260901-11, the
-        # cheap half; the expensive half, reading the curve off the graph's
-        # output port instead of this update_model(), is still open).
+        # self.update() does not evaluate the model a second time.
         if fit is not None:
             fit._model_holds_the_fit = True
 

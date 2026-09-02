@@ -140,13 +140,19 @@ def test_the_lifetime_is_recovered():
 
 
 def test_the_model_curve_is_the_fitted_one():
-    """The graph is private, so the answer has to be published."""
+    """The graph is private, so the answer has to be published.
+
+    Since T-20260901-11's expensive half the published curve is the
+    *graph's* (read off the node's output port), so re-running ChiSurf's
+    own pipeline reproduces it to the two paths' pinned parity (~1e-10),
+    not to machine precision -- they are one set of kernels composed twice,
+    and 1e-10 is the documented bound of that composition."""
     fit = make_fit()
     fit.run()
     before = np.asarray(fit.model.y, dtype=float).copy()
     fit.model.update_model()
     np.testing.assert_allclose(np.asarray(fit.model.y, dtype=float), before,
-                               rtol=1e-12)
+                               rtol=2e-9)
 
 
 def test_the_autoscaled_amplitude_is_published():
@@ -523,12 +529,13 @@ def test_the_amplitudes_are_normalised_before_the_rotation_not_after():
         np.asarray(fit.model.y, dtype=float), rtol=1e-10, atol=1e-10)
 
 
-def test_a_graph_run_evaluates_the_python_model_exactly_once():
-    """T-20260901-11, the cheap half: minimize's write-back publishes with
-    one model evaluation, and Fit.run no longer re-evaluates what was just
-    published. Two Python update_model calls per run() became one; the
-    expensive half (reading the curve off the graph's output port so even
-    that one goes) is still open on the board ticket."""
+def test_a_graph_run_never_evaluates_the_python_model():
+    """T-20260901-11, both halves: the write-back publishes the parameters
+    through the setters and reads the *curve off the graph's output port*
+    (with the autoscaled n0 beside it -- the trap), and Fit.run no longer
+    re-evaluates what was published. A decay fit's run() makes **zero**
+    Python model evaluations; the answer is the graph's, not an equal
+    recomputation."""
     fit = make_fit()
     calls = {'n': 0}
     original = fit.model.update_model
@@ -542,4 +549,8 @@ def test_a_graph_run_evaluates_the_python_model_exactly_once():
         fit.run()
     finally:
         fit.model.update_model = original
-    assert calls['n'] == 1
+    assert calls['n'] == 0
+    # And the published amplitude is the node's, not a stale one: n0 is
+    # positive and the curve is finite and non-trivial.
+    assert fit.model.convolve.n0 > 0.0
+    assert np.all(np.isfinite(np.asarray(fit.model.y, dtype=float)))

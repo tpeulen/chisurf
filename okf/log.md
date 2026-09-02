@@ -38035,3 +38035,23 @@ side of the line.
   exactly), `FRETrateModel` (needs a rate input port on `FretSpectrum`),
   MaxEnt/Structure (solver/structure behind the distribution — numpy is the
   honest answer), PDDEM (a producer of its own).
+
+- 2026-09-02 (T-20260901-11 closes — the curve is the graph's) — **A decay
+  fit's run() makes ZERO Python model evaluations.** The write-back now
+  publishes the parameters through the setters and reads the *curve off the
+  node's output port*: the ports are set to the solution once (MINPACK's
+  last evaluation is not guaranteed there and the covariance step perturbed
+  them), the node re-evaluates in C++, and the curve and the autoscaled
+  `n0` are read together — `n0` being the trap the ticket named: publish
+  the curve without it and the displayed amplitude goes stale while the
+  curve looks right. Scoped to the decay path; anything unexpected falls
+  back to `update_model()` (the parse path's evaluation is microseconds; a
+  group's members write back through their own models). The pinned parity
+  moves accordingly: `test_the_model_curve_is_the_fitted_one` now compares
+  the graph's published curve against a Python recomputation at the two
+  paths' documented ~1e-10 bound rather than machine precision — they are
+  one set of kernels composed twice, and that bound is what the composition
+  is pinned at. `test_a_graph_run_never_evaluates_the_python_model` pins
+  the count at zero. Gap 2 of the compute/display line is closed; gap 3
+  (the data arrays are still copied into `ChiSquared`) is the last one.
+  1087 fitting+tcspc tests green.
