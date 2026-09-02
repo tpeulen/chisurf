@@ -14,6 +14,13 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02 — the beam path is the one consumer left on the old editor, and
+it has its own handover: [lightpath-cmtk-editor](../handover/lightpath-cmtk-editor.md).**
+Read that before touching `lightpath_simulator/gui/tool.py`; it carries the
+42-touchpoint measurement, the ordered port, and why a drop-in widget works
+for globalview and does not work here.
+
+
 **2026-09-02, latest — globalview is WIRED. The beam path is not.**
 
 `globalview/gui/tool.py` builds `ParameterNetworkWidget` now, not
