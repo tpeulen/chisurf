@@ -47,7 +47,7 @@ def test_model_actually_computes_a_decay():
     y, irf = _simulate()
     fit = build_lifetime_fit(y, bin_width=DT, irf=irf, n_components=2,
                              initial_lifetimes=TRUE_TAUS, tau_bounds=(0.05, 20.0))
-    fit.model.update_model()
+    fit.model.update()
     model_y = np.asarray(fit.model.y, dtype=float)
 
     assert model_y.max() > 10 * max(model_y.min(), 1e-12), "model is flat"

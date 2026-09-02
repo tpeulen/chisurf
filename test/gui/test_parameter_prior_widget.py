@@ -34,7 +34,7 @@ class _SimpleModel(ModelCurve):
         self.p1 = FittingParameter(name="p1", value=2.0)
         self.find_parameters()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         self.y = np.ones_like(self.x) * self.p1.value
 
 
@@ -243,7 +243,7 @@ class _GroupModel(ModelCurve):
         self.rates.append(self.k)
         self.find_parameters()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         self.y = np.ones_like(self.x) * self.k.value
 
 

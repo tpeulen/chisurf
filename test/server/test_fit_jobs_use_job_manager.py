@@ -35,7 +35,7 @@ class _Model:
         self._step_delay = step_delay
         self.parameters_all_dict = {"a": _Parameter(2.0)}
 
-    def update_model(self) -> None:
+    def _update_model(self) -> None:
         """Recompute the fit's chi2 from the current parameter value."""
         if self._step_delay:
             time.sleep(self._step_delay)
@@ -123,7 +123,7 @@ def test_a_failing_scan_is_reported_as_failed():
     def _boom() -> None:
         raise RuntimeError("model blew up")
 
-    fit.model.update_model = _boom
+    fit.model._update_model = _boom
     started = fit_service.fit_parameter_scan_start(
         _State([fit]), parameter_name="a", fit_index=0, n_steps=5,
     )
@@ -143,7 +143,7 @@ def test_a_failing_scan_still_restores_the_parameter():
     must come back regardless, not keep whichever probe value blew up.
     """
     fit = _Fit()
-    real_update = fit.model.update_model
+    real_update = fit.model._update_model
     calls = {"n": 0}
 
     def _boom_on_the_fourth_step() -> None:
@@ -153,7 +153,7 @@ def test_a_failing_scan_still_restores_the_parameter():
             raise RuntimeError("model blew up")
         real_update()
 
-    fit.model.update_model = _boom_on_the_fourth_step
+    fit.model._update_model = _boom_on_the_fourth_step
     started = fit_service.fit_parameter_scan_start(
         _State([fit]), parameter_name="a", fit_index=0, n_steps=11,
     )

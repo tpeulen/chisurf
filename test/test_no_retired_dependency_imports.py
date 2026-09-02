@@ -176,7 +176,7 @@ def _python_sources():
     ------
     pathlib.Path
     """
-    for folder in ("chisurf", "modules/chinet", "modules/ndxplorer", "test"):
+    for folder in ("chisurf", "modules/ndxplorer", "test"):
         folder_path = REPO_ROOT / folder
         if folder_path.exists():
             yield from folder_path.rglob("*.py")

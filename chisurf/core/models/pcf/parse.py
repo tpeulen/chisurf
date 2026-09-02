@@ -26,6 +26,6 @@ class ParsePCFModel(parse_module.ParseModel):
         """
         super().__init__(fit, **kwargs)
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Update the PCF distribution model."""
-        super().update_model(**kwargs)
+        super()._update_model(**kwargs)

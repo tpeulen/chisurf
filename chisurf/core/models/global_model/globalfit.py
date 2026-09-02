@@ -689,18 +689,21 @@ class GlobalFitModel(model.Model, Curve):
             f.model.finalize()
 
     def update(self) -> None:
-        """Update all local-fit models."""
+        """Update all local-fit models.
+
+        ``super().update()`` calls ``self._update_model()``, which selectively
+        recomputes only the models a parameter change reached — or every model
+        when no selective dirty-set is armed.  The explicit loop that used to
+        follow ``super().update()`` is removed: it called each local model's
+        ``update()`` a second time, which doubled the compute for every model
+        and broke the selective-update counters.
+        """
         super().update()
-        for f in self.fits:
-            f.model.update()
-        # Every local model has just been rebuilt from its current parameters,
-        # so selective updating is admissible again -- and every cached residual
-        # is stale, because every model was recomputed.
         from chisurf.core.fitting import factorgraph
         self._current_at_version = factorgraph.structure_version()
         self._residual_dirty = set(range(len(self.fits)))
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Recompute the local-fit models, optionally in parallel threads.
 
         Only the models a parameter change actually reached are recomputed, as
@@ -739,11 +742,11 @@ class GlobalFitModel(model.Model, Curve):
             return
 
         if cs.core.settings.cs_settings['optimization']['global_threaded_model_update']:
-            threads = [threading.Thread(target=f.model.update_model) for f in targets]
+            threads = [threading.Thread(target=f.model.update) for f in targets]
             for thread in threads:
                 thread.start()
             for thread in threads:
                 thread.join()
         else:
             for f in targets:
-                f.model.update_model()
+                f.model.update()

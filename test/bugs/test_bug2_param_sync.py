@@ -35,7 +35,7 @@ def test_parameter_sync_via_dispatch():
     """
     # 1. Setup a Model and Fit
     class SimpleModel(Model):
-        def update_model(self):
+        def _update_model(self):
             pass
 
     p = FittingParameter(name="p1", value=1.0)
@@ -84,7 +84,7 @@ def test_rapid_parameter_updates():
     eventually synchronize to the final value.
     """
     class SimpleModel(Model):
-        def update_model(self):
+        def _update_model(self):
             pass
 
     p = FittingParameter(name="tau", value=1.0)

@@ -18,7 +18,7 @@ import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.core.actions import record_action
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox

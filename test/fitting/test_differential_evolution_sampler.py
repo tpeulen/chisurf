@@ -127,7 +127,7 @@ def test_it_needs_no_covariance_at_all():
     """
     np.random.seed(3)
     fit = _fit(func='c+a*x**2+0*b')     # 'b' does not enter the model
-    fit.model.update_model()
+    fit.model.update()
     r = chisurf.core.fitting.sample.sample_differential_evolution(
         fit=fit, steps=300, thin=1, seed=4
     )
@@ -164,17 +164,17 @@ def test_it_beats_the_covariance_proposal_away_from_the_optimum():
         fit.model.find_parameters()
         fit.run()
         fit.model.parameter_values = [1.0, 0.6, 0.2]   # away from the optimum
-        fit.model.update_model()
+        fit.model.update()
 
         calls = [0]
         m = fit.model
-        original = m.update_model
+        original = m._update_model
 
         def counting(*a, _o=original, **k):
             calls[0] += 1
             return _o(*a, **k)
 
-        m.update_model = counting
+        m._update_model = counting
         r = sampler(fit)
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return float(ess.min()) / max(1, calls[0])
@@ -195,13 +195,13 @@ def test_it_is_competitive_on_a_collinear_posterior():
         fit = _collinear()
         calls = [0]
         m = fit.model
-        original = m.update_model
+        original = m._update_model
 
         def counting(*a, _o=original, **k):
             calls[0] += 1
             return _o(*a, **k)
 
-        m.update_model = counting
+        m._update_model = counting
         r = sampler(fit)
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return float(ess.min()) / max(1, calls[0])

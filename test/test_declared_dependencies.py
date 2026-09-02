@@ -52,7 +52,7 @@ _EXTRA_ALLOWED = {
 #: Packages of the surrounding scientific stack: separate repositories or
 #: frameworks installed alongside chisurf rather than declared by it.
 _SIBLING_PROJECTS = {
-    "chisurf", "chinet", "ndxplorer", "quest", "mmfdb", "tttrlib", "IMP", "imp",
+    "chisurf", "ndxplorer", "quest", "mmfdb", "tttrlib", "IMP", "imp",
     "chimol", "RMF", "ihm", "pymol", "pymol2", "LabelLib",
 }
 

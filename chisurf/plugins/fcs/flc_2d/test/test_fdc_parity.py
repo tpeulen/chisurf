@@ -1,10 +1,21 @@
-"""The delegated 2D-FDC must return what the numba kernels returned.
+"""The delegated 2D-FDC must keep returning the same numbers.
 
 ``flc_2d/core.py`` built the fluorescence-decay correlation matrices with numba;
 they are now the photon library's (`fdc_scan_log`, `fdc_log`, tttrlib PRD-036).
-The reference is a fixture recorded from the numba originals **before** they
-were deleted — not a live comparison, which becomes a skip the day numba leaves
-and a skip reads like a pass.
+The reference is a recorded fixture, not a live comparison — a live comparison
+becomes a skip the day the old code leaves, and a skip reads like a pass.
+
+The fixture's outputs were re-recorded once (2026-08-16) when the log-axis tick
+quantization was aligned to the reference implementation: the numba original
+quantized the real-valued edges `t_Imax^(j/L) - 1` to *nearest*, while
+`TK_Create2DFDC_04.m` compares the integer tick against the real-valued edge,
+making the effective integer edge the *floor*. Verified by running the original
+author's .m in Octave against the library (identical matrices at two factors
+and three lags; nearest moved ~0.5% of pairs), and pinned permanently upstream
+in tttrlib's `TestAgainstTheOriginalMatlab` against the original author's own
+output. What is pinned *here* is that ChiSurf's call site still gets the
+numbers the delegated path produces, including for the shapes that are easy to
+get wrong.
 
 Every assertion here is exact. The matrices are pair *counts*, accumulated as
 ``int64`` and summed across chunks, so there is no tolerance to argue about: a
@@ -13,8 +24,6 @@ difference of one is a difference.
 The method-level checks — that the cross-peaks track the simulated exchange
 rate, that a single state produces none — live upstream with the kernels
 (`tttrlib test/python/fcs/test_fdc2d_simulation.py`), where the simulator is.
-What is pinned here is that ChiSurf's call site still gets the same numbers,
-including for the shapes that are easy to get wrong.
 """
 
 from __future__ import annotations

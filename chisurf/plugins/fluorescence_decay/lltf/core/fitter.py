@@ -15,7 +15,7 @@ import numpy as np
 import scipy.optimize
 
 from .convolve import convolve_lifetime_spectrum, add_pile_up_to_model
-from .optimization.leastsqbound import leastsqbound
+from chisurf.core.fitting.minimizer import minimize
 from .scaling import scale_model_to_data
 from .settings import get_default_settings
 
@@ -964,13 +964,15 @@ class Decay:
         # Bounds for decay background (non-negative)
         bounds.append((0.0, None))
 
-        # Fit using leastsqbound
-        result = leastsqbound(
+        # bff's optimiser -- the same MINPACK `lmdif` and the same bounds
+        # transform this plugin used to carry its own 365-line copy of. The
+        # objective is a Python callable, so `minimize` takes its director
+        # path; nothing else about the fit changes.
+        params, _ier = minimize(
             lambda p: self.objective_function(p, fixed),
             params,
             args=(),
             bounds=bounds,
-            full_output=True,
             ftol=1.49012e-8,
             xtol=1.49012e-8,
             gtol=0.0,
@@ -979,8 +981,6 @@ class Decay:
             factor=1000,
             diag=None
         )
-        # leastsqbound returns (x, cov_x, infodict, mesg, ier) when full_output=True
-        params = result[0]  # x is the solution array
 
         # Extract parameters
         param_idx = 0

@@ -22,7 +22,7 @@ class DummyLinearModel(ModelCurve):
         self.p0 = FittingParameter(name="p0", value=0.5)
         self.p1 = FittingParameter(name="p1", value=1.5)
         self.find_parameters()
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         x = self.fit.data.x
         if x is None:
             x = np.arange(self.fit.data.y.size, dtype=float)

@@ -18,11 +18,24 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.core.math.optimization.leastsqbound import (
-    _MAX_RUNNING_RATIO,
-    _expected_evaluations,
-    _reported_total,
-)
+import chisurf.core.fitting.minimizer as _minimizer
+
+pytestmark = pytest.mark.skipif(not _minimizer.have_minimizer(),
+                                reason="IMP.bff carries no Minimizer")
+
+import IMP.bff as _bff                                        # noqa: E402
+
+#: `MAX_RUNNING_RATIO` in `Minimizer.cpp` -- a full bar is reserved for the
+#: completion report. Spelled out here because it is a file-local constant in
+#: C++ and not worth an export; if it moves there, this line is what fails.
+_MAX_RUNNING_RATIO = 0.99
+
+# The arithmetic moved into `IMP::bff::Minimizer` with the optimiser itself on
+# 2026-09-01, when ChiSurf's second copy of the bounded Levenberg-Marquardt was
+# deleted. The names are the C++ ones; the behaviour is the same and so is
+# every assertion below.
+_expected_evaluations = _bff.minimizer_expected_evaluations
+_reported_total = _bff.minimizer_reported_total
 
 
 def _fraction(nfev: int, expected: int) -> float:

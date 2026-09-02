@@ -1,6 +1,6 @@
 """Qt-free DEER/PELDOR fitting models (PRD-38 model/view-spec split).
 
-Native, self-contained reimplementation (numpy/scipy only) of 4-pulse DEER analysis.
+Native reimplementation (numpy only) of 4-pulse DEER analysis.
 Models operate on the time-domain trace ``V(t)`` stored as the ``DataCurve``
 ``x``/``y`` plus ``data.meta_data['deer']`` produced by
 :class:`chisurf.core.experiments.deer.DeerReader`. The physics lives in
@@ -366,8 +366,14 @@ class _DeerModelBase(ModelCurve):
         realisation (nuisance parameters held at their fitted values), and the
         pointwise ``ci``% percentile band is returned. ``None`` when the model
         does not support it or there is no data.
+
+        One C++ :class:`IMP.bff.Minimizer` is built for the whole band —
+        not one per replica — and the target data are swapped between runs
+        via a mutable container the residual closure reads.  The director
+        path (:func:`director_objective`) is the only optimisation path;
+        there is no scipy fallback.
         """
-        self.update_model()
+        self._update_model()
         r = self._r
         p_best = self._p_r
         if r is None or p_best is None:
@@ -377,15 +383,21 @@ class _DeerModelBase(ModelCurve):
             return None
         sigma = self._data_sigma()
         rng = np.random.default_rng(seed)
+
+        # Generate all replicas up-front so both paths share the same data.
+        replicas = [v_model + rng.normal(0.0, sigma, size=v_model.shape)
+                    for _ in range(int(n_boot))]
+
         reals: list[np.ndarray] = []
-        for _ in range(int(n_boot)):
-            v_b = v_model + rng.normal(0.0, sigma, size=v_model.shape)
-            try:
-                p_b = self._pr_bootstrap(v_b)
-            except Exception:
-                p_b = None
-            if p_b is not None and np.size(p_b) == np.size(p_best) and np.all(np.isfinite(p_b)):
-                reals.append(np.asarray(p_b, dtype=float))
+
+        # --- Fast path: one C++ Minimizer for the whole band ---------------
+        band = self._bootstrap_band(replicas)
+        if band is not None:
+            for v_b in replicas:
+                p_b = self._bootstrap_replica(band, v_b)
+                if p_b is not None and np.size(p_b) == np.size(p_best) and np.all(np.isfinite(p_b)):
+                    reals.append(np.asarray(p_b, dtype=float))
+
         if len(reals) < 5:
             return r, p_best, p_best, p_best
         arr = np.vstack(reals)
@@ -400,6 +412,36 @@ class _DeerModelBase(ModelCurve):
         hi = np.maximum(hi, p_best)
         return r, p_best, lo, hi
 
+    # -- band-level bootstrap infrastructure (PRD-132) -----------------------
+    def _bootstrap_band(self, replicas: list[np.ndarray]):
+        """Build one reusable optimiser for the whole bootstrap band.
+
+        Returns an opaque dict the subclass's :meth:`_bootstrap_replica`
+        consumes, or ``None`` when the fast path is unavailable (every DEER
+        model that does not override these two methods).
+
+        The dict carries:
+
+        * ``minimizer``  — a :class:`IMP.bff.Minimizer` with a
+          :class:`ResidualNode` objective whose Python callback reads the
+          target through ``target_holder[0]``;
+        * ``x0``         — starting parameter vector for each replica;
+        * ``target_holder`` — ``[v_b]`` so the residual closure can be
+          repointed without rebuilding the node;
+        * ``unpack``     — callable that turns the minimiser's flat vector
+          back into the shape parameters the subclass needs;
+        * ``pr_fn``      — callable that maps the unpacked parameters to
+          ``P(r)``.
+
+        ``graph_objective`` is attempted first and refused (DEER models are
+        not parse models); the director path is the actual route used.
+        """
+        return None       # overridden by Gaussian and Rice subclasses
+
+    def _bootstrap_replica(self, band, v_b: np.ndarray):
+        """Re-fit one replica using the pre-built *band* infrastructure."""
+        return None       # overridden by Gaussian and Rice subclasses
+
     def _get_kernel(self, t: np.ndarray, r: np.ndarray) -> np.ndarray:
         """Return a cached dipolar kernel for the current ``(t, r)`` axes."""
         key = (t.shape[0], r.shape[0], float(t[0]), float(t[-1]), float(r[0]), float(r[-1]))
@@ -408,7 +450,7 @@ class _DeerModelBase(ModelCurve):
             self._kernel_key = key
         return self._kernel
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Read ``V(t)``, build ``P(r)`` and the model trace ``self.y``."""
         t_raw, v_data = self._time_and_data()
         if t_raw is None:
@@ -445,9 +487,22 @@ class DeerGaussianModel(_DeerModelBase):
             mod_depth=mo.mod_depth, bg_model=bg.model, bg_k=bg.k, bg_d=bg.d,
             scale=mo.scale, kernel=self._get_kernel(t, r))
 
-    def _pr_bootstrap(self, v_b):
-        """Re-fit the Gaussian shape parameters to a noisy trace (nuisance fixed)."""
-        from scipy.optimize import least_squares
+    # -- C++ band bootstrap (PRD-132) ----------------------------------------
+    def _bootstrap_band(self, replicas: list[np.ndarray]):
+        """Build one C++ :class:`Minimizer` for the whole Gaussian band.
+
+        The residual closure reads the target from ``target_holder[0]`` so
+        :meth:`_bootstrap_replica` can repoint it to each noisy replica
+        without rebuilding the node or the minimiser.
+        """
+        try:
+            from chisurf.core.fitting.minimizer import (
+                director_objective, _bff,
+            )
+            if _bff is None:
+                return None
+        except Exception:
+            return None
 
         from chisurf.core.models.deer.kernel import dd_gauss_multi, deer_signal
 
@@ -469,18 +524,47 @@ class DeerGaussianModel(_DeerModelBase):
             aa = np.concatenate([[a0[0]], np.abs(x[2 * n:])]) if n > 1 else np.array([a0[0]])
             return mm, ss, aa
 
+        target_holder = [replicas[0].copy()]
+        _r_ref, _t_ref, _k_ref = r, t, k_mat
+
         def resid(x):
             mm, ss, aa = unpack(x)
-            p = dd_gauss_multi(r, mm, ss, aa)
-            vm = deer_signal(t, r, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=k_mat)
-            return vm - v_b
+            p = dd_gauss_multi(_r_ref, mm, ss, aa)
+            vm = deer_signal(_t_ref, _r_ref, p, mo.mod_depth,
+                             bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref)
+            return vm - target_holder[0]
 
         try:
-            res = least_squares(resid, x0, method="lm", max_nfev=60)
-            mm, ss, aa = unpack(res.x)
+            m, node = director_objective(resid, x0)
         except Exception:
-            mm, ss, aa = m0, s0, a0
-        return dd_gauss_multi(r, mm, ss, aa)
+            return None
+
+        m.set_initial_values([float(v) for v in x0])
+        m.maxfev = 60
+        return {
+            "minimizer": m,
+            "node": node,
+            "x0": x0,
+            "target_holder": target_holder,
+            "unpack": unpack,
+            "pr_fn": lambda mm, ss, aa: dd_gauss_multi(r, mm, ss, aa),
+            "fallback": (m0, s0, a0),
+        }
+
+    def _bootstrap_replica(self, band, v_b: np.ndarray):
+        """Re-fit one Gaussian replica using the pre-built C++ minimiser."""
+        m = band["minimizer"]
+        node = band["node"]
+        node.error = None            # clear any error from the previous run
+        band["target_holder"][0] = v_b
+        m.set_initial_values([float(v) for v in band["x0"]])
+        try:
+            m.run()
+            x = np.asarray(m.x)
+            mm, ss, aa = band["unpack"](x)
+        except Exception:
+            mm, ss, aa = band["fallback"]
+        return band["pr_fn"](mm, ss, aa)
 
 
 class DeerRiceModel(_DeerModelBase):
@@ -502,9 +586,17 @@ class DeerRiceModel(_DeerModelBase):
             mod_depth=mo.mod_depth, bg_model=bg.model, bg_k=bg.k, bg_d=bg.d,
             scale=mo.scale, kernel=self._get_kernel(t, r))
 
-    def _pr_bootstrap(self, v_b):
-        """Re-fit the Rice shape parameters to a noisy trace (nuisance fixed)."""
-        from scipy.optimize import least_squares
+    # -- C++ band bootstrap (PRD-132) ----------------------------------------
+    def _bootstrap_band(self, replicas: list[np.ndarray]):
+        """Build one C++ :class:`Minimizer` for the whole Rice band."""
+        try:
+            from chisurf.core.fitting.minimizer import (
+                director_objective, _bff,
+            )
+            if _bff is None:
+                return None
+        except Exception:
+            return None
 
         from chisurf.core.models.deer.kernel import dd_rice, deer_signal
 
@@ -515,18 +607,49 @@ class DeerRiceModel(_DeerModelBase):
         r = self._r if self._r is not None else self._build_r(t)
         k_mat = self._get_kernel(t, r)
         mo, bg, rc = self.modulation, self.background, self.rice
+        x0 = [float(rc.nu), float(rc.sigma)]
+
+        target_holder = [replicas[0].copy()]
+        _r_ref, _t_ref, _k_ref = r, t, k_mat
 
         def resid(x):
-            p = dd_rice(r, x[0], abs(x[1]))
-            vm = deer_signal(t, r, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=k_mat)
-            return vm - v_b
+            p = dd_rice(_r_ref, x[0], abs(x[1]))
+            vm = deer_signal(_t_ref, _r_ref, p, mo.mod_depth,
+                             bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref)
+            return vm - target_holder[0]
 
         try:
-            res = least_squares(resid, [rc.nu, rc.sigma], method="lm", max_nfev=50)
-            nu, sig = res.x[0], abs(res.x[1])
+            m, node = director_objective(resid, x0)
         except Exception:
-            nu, sig = rc.nu, rc.sigma
-        return dd_rice(r, nu, sig)
+            return None
+
+        m.set_initial_values(x0)
+        m.maxfev = 50
+        return {
+            "minimizer": m,
+            "node": node,
+            "x0": x0,
+            "target_holder": target_holder,
+            "fallback": (float(rc.nu), float(rc.sigma)),
+            "r": r,
+        }
+
+    def _bootstrap_replica(self, band, v_b: np.ndarray):
+        """Re-fit one Rice replica using the pre-built C++ minimiser."""
+        from chisurf.core.models.deer.kernel import dd_rice
+
+        m = band["minimizer"]
+        node = band["node"]
+        node.error = None
+        band["target_holder"][0] = v_b
+        m.set_initial_values([float(v) for v in band["x0"]])
+        try:
+            m.run()
+            x = np.asarray(m.x)
+            nu, sig = float(x[0]), abs(float(x[1]))
+        except Exception:
+            nu, sig = band["fallback"]
+        return dd_rice(band["r"], nu, sig)
 
 
 class DeerTikhonovModel(_DeerModelBase):

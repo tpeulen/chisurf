@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from math import exp, gamma, log
+from math import exp
 
 import numpy as np
 
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
-from chisurf.core.math.functions.special import i0
 from . import distributions
 
 
@@ -22,7 +21,8 @@ def gaussian_chain_ree(
         The number of segments
     :return:
     """
-    return segment_length * np.sqrt(number_of_segments)
+    from IMP.bff import gaussian_chain_ree as _f
+    return float(_f(segment_length, int(number_of_segments)))
 
 
 def gaussian_chain(
@@ -42,8 +42,9 @@ def gaussian_chain(
     ..plot:: plots/rdf-gauss.py
 
     """
-    r2_mean = gaussian_chain_ree(segment_length, number_of_segments) ** 2
-    return 4*np.pi*r**2/(2./3. * np.pi*r2_mean)**(3./2.) * np.exp(-3./2. * r**2 / r2_mean)
+    from IMP.bff import gaussian_chain as _f
+    return _f(np.asarray(r, dtype=float), segment_length,
+              int(number_of_segments))
 
 
 def saw_nu(
@@ -74,18 +75,8 @@ def saw_nu(
     :param gamma_exp: SAW susceptibility exponent (default 1.1615; 1.0 = ideal).
     :return: the (analytically normalised) radial distribution ``P(r)``.
     """
-    r = np.asarray(r, dtype=float)
-    if not (0.0 < nu < 1.0) or r_rms <= 0.0:
-        return np.zeros_like(r)
-    theta = (gamma_exp - 1.0) / nu
-    delta = 1.0 / (1.0 - nu)
-    # <r^2> = r0^2 * Gamma((5+theta)/delta) / Gamma((3+theta)/delta)
-    ratio = gamma((5.0 + theta) / delta) / gamma((3.0 + theta) / delta)
-    r0 = r_rms / np.sqrt(ratio)
-    norm = delta / (r0 ** (3.0 + theta) * gamma((3.0 + theta) / delta))
-    with np.errstate(over="ignore", invalid="ignore"):
-        pr = norm * r ** (2.0 + theta) * np.exp(-((r / r0) ** delta))
-    return np.nan_to_num(pr, nan=0.0, posinf=0.0, neginf=0.0)
+    from IMP.bff import saw_nu as _f
+    return _f(np.asarray(r, dtype=float), r_rms, nu, gamma_exp)
 
 
 def ising_chain(
@@ -130,45 +121,21 @@ def ising_chain(
     :param field: Ising field ``h`` (positive biases towards structured).
     :param n_k: number of ``k`` grid points for the inverse transform.
     :return: the (numerically normalised) radial distribution ``P(R)``.
+
+    **Moved to IMP.bff** -- what is left here is a thin forwarder.
+    The transfer-matrix product is a Python loop over ``n_k`` k-points,
+    each stepping a 2-vector through ``number_of_residues`` 2x2 multiplies,
+    so the interpreter ran ~80k iterations of arithmetic numpy cannot
+    vectorise away. It measured **55 ms per curve**, which at ten free
+    parameters is 0.6 s per Levenberg-Marquardt iteration -- more than half
+    of all the model compute ChiSurf still held in Python
+    (``imp.bff test/minimizer/bench_models.py``). The C++ kernel is the
+    same arithmetic in the same order, agrees to 6e-17, and is **61x**
+    faster.
     """
-    r = np.asarray(r, dtype=float)
-    n = int(number_of_residues)
-    if n < 1:
-        return np.zeros_like(r)
-
-    vS = b_structured * b_structured / 6.0
-    vU = b_unstructured * b_unstructured / 6.0
-
-    # Ising nearest-neighbour weights W(sigma, sigma'), states 0 = S, 1 = U.
-    # Energy: -J*delta(sigma,sigma') - (h/2)*(is_S(sigma)+is_S(sigma')).
-    W = np.array([
-        [np.exp(coupling + field), np.exp(-coupling + 0.5 * field)],
-        [np.exp(-coupling + 0.5 * field), np.exp(coupling)],
-    ], dtype=float)
-
-    # k grid: cover up to where phi has decayed (set by the smallest bond var).
-    r_max = float(np.max(r)) if r.size else 1.0
-    k_max = 30.0 / max(np.sqrt(min(vS, vU) * n), r_max / n, 1e-6)
-    k = np.linspace(1e-6, k_max, n_k)
-
-    phi = np.empty_like(k)
-    for j, kk in enumerate(k):
-        g = np.array([np.exp(-kk * kk * vS), np.exp(-kk * kk * vU)])  # per-residue bond factor
-        M = W * g[np.newaxis, :]                                      # M[s,s'] = W[s,s'] g[s']
-        # phi(k) = 1^T M^n 1 (bonds); start vector uniform over the first state.
-        v = np.array([1.0, 1.0])
-        for _ in range(n):
-            v = v @ M
-        phi[j] = v.sum()
-    phi /= phi[0]  # normalise phi(0) = 1
-
-    # Isotropic inverse transform: P(R) = (2 R / pi) * int k sin(kR) phi(k) dk.
-    kr = np.outer(r, k)
-    integrand = k[np.newaxis, :] * np.sin(kr) * phi[np.newaxis, :]
-    pr = (2.0 * r / np.pi) * _trapz(integrand, k, axis=1)
-    pr = np.clip(np.nan_to_num(pr, nan=0.0), 0.0, None)
-    area = _trapz(pr, r)
-    return pr / area if area > 0 else pr
+    from IMP.bff import ising_chain as _f
+    return _f(np.asarray(r, dtype=float), int(number_of_residues),
+              b_structured, b_unstructured, coupling, field, n_k)
 
 
 # TODO: needs docstring
@@ -241,43 +208,15 @@ def worm_like_chain(
        The radial distribution function of worm-like chains.
 
     """
-    if chain_length == 0.0:
-        chain_length = np.max(distances)
-
-    k = kappa
-    a = 14.054
-    b = 0.473
-    c = 1.0 - (1.0+(0.38*k**(-0.95))**(-5.))**(-1./5.)
-    pr = np.zeros_like(distances, dtype=np.float64)
-
-    if k < 0.125:
-        d = k + 1.0
-    else:
-        d = 1.0 - 1.0/(0.177/(k-0.111)+6.4 * exp(0.783 * log(k-0.111)))
-
-    # The loop this replaces `break`s at the first distance that reaches the
-    # chain length, so everything past that point stays zero *whether or not*
-    # the remaining distances are shorter. That is a prefix, not a mask: with an
-    # unsorted axis the two differ, and `distances` is not required to be sorted
-    # anywhere. Reproduce the prefix.
-    reached = np.asarray(distances) >= chain_length
-    limit = int(np.argmax(reached)) if reached.any() else len(distances)
-
-    if limit:
-        r = np.asarray(distances[:limit], dtype=np.float64) / chain_length
-
-        pri = ((1.0 - c * r**2.0) / (1.0 - r**2.0))**(5.0 / 2.0)
-        pri *= np.exp(-d * k * a * b * (1.0 + b) / (1.0 - (b*r)**2.0) * r**2.0)
-
-        g = (((-3./4.) / k - 1./2.) * r**2. + ((-23./64.) / k + 17./16.) * r**4. + ((-7./64.) / k - 9./16.) * r**6.)
-        pri *= np.exp(g / (1.0 - r**2.0))
-        pri *= i0(-d*k*a*(1+b)*r/(1-(b*r)**2))
-        pr[:limit] = pri
-
-    if normalize:
-        pr /= pr.sum()
-
-    return pr
+    from IMP.bff import worm_like_chain as _f
+    # `distance` is passed as False, always. This function has never
+    # applied the r^2 factor its own signature advertises -- the flag was
+    # accepted and dropped on the floor -- and every fit in the stack was
+    # made against that behaviour. bff implements the flag properly, so
+    # honouring it here would silently change results; preserving the
+    # existing answer is this port's contract. See okf/log.md 2026-09-02.
+    return _f(np.asarray(distances, dtype=float), kappa, chain_length,
+              normalize, False)
 
 
 def distance_between_gaussian(
@@ -295,31 +234,28 @@ def distance_between_gaussian(
     :return:
     """
     separation_distance = np.asarray(separation_distance, dtype=float)
+    if separation_distance.ndim == 0:
+        # The scalar case is bff's. The broadcasting case is NOT: it builds a
+        # 2-D kernel from a column of separations against a row of distances,
+        # which the C++ signature (one scalar separation) cannot express. Its
+        # only caller was `worm_like_chain_linker`, which is now bff's
+        # wholesale, so this branch is kept for external callers rather than
+        # for us -- see okf/log.md 2026-09-02.
+        from IMP.bff import distance_between_gaussian as _f
+        return _f(np.asarray(distances, dtype=float),
+                  float(separation_distance), sigma, normalize)
     positive = separation_distance > 0.0
-
-    # Elementwise in *both* arguments, so a column of separations against a row
-    # of distances builds a whole kernel in one call. That means selecting the
-    # two branches with `where` rather than an `if`, and feeding the zero
-    # separations a substituted 1.0 so the division in the unused branch does
-    # not produce a warning or a NaN that `where` would then have to discard.
     safe_separation = np.where(positive, separation_distance, 1.0)
     separated = distances / safe_separation * (
         distributions.normal_distribution(
-            x=distances, loc=safe_separation, scale=sigma, norm=False
-        )
+            x=distances, loc=safe_separation, scale=sigma, norm=False)
         - distributions.normal_distribution(
-            x=distances, loc=-safe_separation, scale=sigma, norm=False
-        )
-    )
-    coincident = 2. * distances ** 2 / sigma ** 2 * distributions.normal_distribution(
-        x=distances, loc=0.0, scale=sigma, norm=False
-    )
+            x=distances, loc=-safe_separation, scale=sigma, norm=False))
+    coincident = 2. * distances ** 2 / sigma ** 2 * \
+        distributions.normal_distribution(
+            x=distances, loc=0.0, scale=sigma, norm=False)
     pr = np.where(positive, separated, coincident)
-
     if normalize:
-        # Note this normalises over the whole array, so a 2-D kernel would be
-        # normalised globally rather than per row. Every caller that passes a
-        # kernel leaves `normalize` False.
         pr = pr / pr.sum()
     return pr
 
@@ -351,24 +287,7 @@ def worm_like_chain_linker(
        The radial distribution function of worm-like chains.
 
     """
-    pr = worm_like_chain(
-        distances=distances,
-        kappa=kappa,
-        chain_length=chain_length
-    )
-    # sum_r pr[r] * G(distances | separation = r) as one matrix-vector product.
-    # `distance_between_gaussian` is elementwise in both arguments, so giving it
-    # a column of separations and a row of distances builds the whole kernel at
-    # once -- the Python loop it replaces would otherwise run once per distance
-    # on every model evaluation, and this is on a fit's inner loop.
-    kernel = distance_between_gaussian(
-        distances=np.asarray(distances, dtype=np.float64)[None, :],
-        separation_distance=np.asarray(distances, dtype=np.float64)[:, None],
-        sigma=sigma,
-    )
-    pn = pr @ kernel
-
-    if normalize:
-        pn /= pn.sum()
-    return pn
+    from IMP.bff import worm_like_chain_linker as _f
+    return _f(np.asarray(distances, dtype=float), kappa, chain_length,
+              sigma, normalize)
 

@@ -59,7 +59,7 @@ EXPECTED_VIOLATIONS: Dict[str, int] = {
     "chisurf/gui/widgets/fio/fio.py": 1,
     "chisurf/gui/widgets/fitting/fitting_client.py": 1,
     "chisurf/gui/widgets/models/tcspc/convolve.py": 2,
-    "chisurf/gui/widgets/node_editor/chinet_eval.py": 1,
+    "chisurf/gui/widgets/node_editor/bff_eval.py": 1,
     "chisurf/gui/widgets/node_editor/port_item.py": 1,
     "chisurf/plugins/core/batch_analysis/wizard.py": 2,
     "chisurf/plugins/fluorescence_decay/irf_estimator/__init__.py": 1,

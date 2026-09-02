@@ -124,13 +124,13 @@ def test_blocked_sampler_mixes_far_better_than_the_diagonal_one():
         fit = _collinear_fit()
         calls = [0]
         model = fit.model
-        original = model.update_model
+        original = model._update_model
 
         def counting(*a, _o=original, **k):
             calls[0] += 1
             return _o(*a, **k)
 
-        model.update_model = counting
+        model._update_model = counting
         r = sampler(fit)
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return float(ess.min()) / max(1, calls[0])
@@ -169,7 +169,7 @@ def test_blocked_sampler_reports_per_block_acceptance():
     np.random.seed(2)
     fit = _global_fit(3)
     gm = posterior_model(fit)
-    gm.update_model()
+    gm.update()
     r = chisurf.core.fitting.sample.walk_mcmc_blocked(
         fit=fit, steps=400, step_size=0.02, thin=1, model=gm
     )
@@ -185,7 +185,7 @@ def test_blocked_sampler_can_target_a_group_joint_posterior():
     np.random.seed(3)
     fit = _global_fit(4)
     gm = posterior_model(fit)
-    gm.update_model()
+    gm.update()
     assert gm.n_free > fit.model.n_free
 
     r = chisurf.core.fitting.sample.walk_mcmc_blocked(
@@ -237,7 +237,7 @@ def test_a_singular_block_covariance_does_not_crash():
     # curvature in that direction is exactly zero.
     fit.model.func = 'c+a*x+0*b'
     fit.model.find_parameters()
-    fit.model.update_model()
+    fit.model.update()
     r = chisurf.core.fitting.sample.walk_mcmc_blocked(
         fit=fit, steps=200, step_size=0.02, thin=1
     )

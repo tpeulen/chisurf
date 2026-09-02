@@ -24,12 +24,12 @@ class ParseDecayModel(parse.ParseModel):
         )
 
     # TODO: needs docstring
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Recompute the model decay."""
         scatter = kwargs.get('scatter', self.generic.scatter)
         background = kwargs.get('background', self.generic.background)
         lintable = kwargs.get('lintable', self.corrections.lintable)
-        super(ParseDecayModel, self).update_model(**kwargs)
+        super(ParseDecayModel, self).update(**kwargs)
         decay = self.y
         if self.convolve.irf is not None:
             decay = self.convolve.convolve(

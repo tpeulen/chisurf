@@ -82,25 +82,21 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         if getattr(self, "limited_width", False):
             sigmas = (sigmas / 100.0) * means
 
-        def _gauss(x, loc, scale):
-            """Normal distribution (non-normalized) helper."""
-            if scale <= 0.0:
-                return np.zeros_like(x)
-            return cs.core.math.functions.distributions.normal_distribution(
-                x=x,
-                loc=loc,
-                scale=scale,
-                norm=False,
-            )
-
-        dist_args = [[float(m), float(s)] for m, s in zip(means, sigmas)]
-        p = cs.core.math.functions.distributions.combine_distributions(
-            x_axis=r,
-            dist_function=_gauss,
-            dist_args=dist_args,
-            weights=amplitudes.tolist(),
-            accumulate=True,
-            normalize=True,
+        # One call into bff for the whole mixture rather than one per
+        # component. GAUSSIAN_MIXTURE_NORMAL, not the generalised normal: with
+        # `norm=False` those are different functions -- the generalised form
+        # evaluates the standard normal at z and so drops the `1/scale`, which
+        # misweights components of unequal width against each other.
+        import IMP.bff as _bff
+        p = _bff.gaussian_distance_mixture(
+            np.asarray(r, dtype=np.float64),
+            np.asarray(means, dtype=np.float64),
+            np.asarray(sigmas, dtype=np.float64),
+            np.asarray([], dtype=np.float64),
+            np.asarray(amplitudes, dtype=np.float64),
+            _bff.GAUSSIAN_MIXTURE_NORMAL,
+            False,
+            True,
         )
         return np.vstack((r, p))
 
@@ -271,7 +267,7 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         # Default to 1D residuals for PDA Gaussian-distance models.
         self.residual_mode = "1D"
 
-    def update_model(
+    def _update_model(
         self,
         verbose: bool | None = None,
         **kwargs,

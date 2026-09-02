@@ -95,7 +95,7 @@ def test_the_node_curve_is_the_python_curve():
     model.flow._vy.value = -3.0
     for two_d in (False, True):
         model.two_d = two_d
-        model.update_model()
+        model.update()
         built = M.graph_objective(fit, model)
         assert built is not None
         m, _ = built
@@ -174,7 +174,7 @@ def test_the_gaussian2d_node_curve_is_the_python_curve():
     model.gaussian._s2.value = 310.0
     model.gaussian._xo.value = 25.0
     model.gaussian._yo.value = -40.0
-    model.update_model()
+    model.update()
     built = M.graph_objective(fit, model)
     assert built is not None
     m, _ = built

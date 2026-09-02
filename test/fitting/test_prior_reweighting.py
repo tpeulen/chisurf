@@ -266,17 +266,17 @@ def test_reweighting_evaluates_no_model_at_all():
 
     calls = [0]
     model = fit.model
-    original = model.update_model
+    original = model._update_model
 
     def counting(*a, _o=original, **k):
         calls[0] += 1
         return _o(*a, **k)
 
-    model.update_model = counting
+    model._update_model = counting
     try:
         out = rw.reweight_prior(chain, {'c': prior}, model=fit.model)
     finally:
-        model.update_model = original
+        model._update_model = original
     assert out['parameters']
     assert calls[0] == 0
 

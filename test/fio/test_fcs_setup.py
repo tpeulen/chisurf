@@ -14,7 +14,7 @@ from chisurf.core.fluorescence.fcs.channel_setups import (
     load_fcs_channel_setups,
     save_fcs_channel_setups,
 )
-from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+from chisurf.core.fio.setup_store import (
     load_mmfdb_setups,
     setup_id_for_name as _sifn_shared,
 )
@@ -188,7 +188,7 @@ def test_fcs_save_records_owner(tmp_path: Path) -> None:
             (user_id, "00000000-0000-0000-0000-000000000001", user_id),
         )
 
-        import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
+        import chisurf.core.fio.setup_store as utils
 
         orig_active = utils.resolve_active_user_id
         utils.resolve_active_user_id = lambda: user_id
@@ -549,7 +549,7 @@ def test_default_fcs_save_uses_mmfdb_no_json(tmp_path: Path) -> None:
     """Default save (no file_path) writes to MMFDB and does NOT create a JSON
     side-file at the canonical path."""
     import chisurf.core.fluorescence.fcs.channel_setups as fcs_mod
-    import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
+    import chisurf.core.fio.setup_store as utils
 
     # Point canonical file to temp location so we don't depend on real config
     orig_file = fcs_mod.FCS_CHANNEL_SETUPS_FILE

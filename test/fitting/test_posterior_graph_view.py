@@ -156,7 +156,7 @@ def test_a_parameter_the_model_ignores_is_reported():
     """
     fit = _single(func='c+a*x+b*x**2+0*d')
     fit.model.find_parameters()
-    fit.model.update_model()
+    fit.model.update()
     view = gv.structure_view(fit)
     assert any('no error estimate' in n for n in view.notes), view.notes
     ignored = [n for n in view.nodes if n.label == 'd']

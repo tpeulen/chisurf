@@ -345,7 +345,7 @@ def test_a_refused_graph_still_gets_a_covariance_without_numpy():
 
     Before the fallback was bff's, a refused model paid twice: once for the
     fit in scipy, and again for `covariance_matrix` to rebuild a Jacobian
-    through `Model.update_model()`. Now the same `Minimizer` that fitted it
+    through `Model.update()`. Now the same `Minimizer` that fitted it
     differences it, so `update_error_estimates` finds a covariance waiting
     and evaluates the Python model no more times than a graph fit does.
     """

@@ -498,7 +498,7 @@ def test_dye_shape_outputs_are_written_by_update(qapp):
     model.update()
 
     for p in (model._D, model._tauD, model._cpm, model._cpm_all):
-        assert np.isfinite(p.value), f"{p.name} was not written by update_model"
+        assert np.isfinite(p.value), f"{p.name} was not written by _update_model"
     # cpm counts the bright molecules only, cpm_all also the dark ones, so with a
     # non-zero bunching amplitude the second is the smaller number.
     assert model._cpm_all.value < model._cpm.value

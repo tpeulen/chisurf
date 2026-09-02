@@ -100,7 +100,7 @@ def median_ms(call, repeats: int = REPEATS) -> float:
 
 def measure(width: int, height: int) -> dict:
     """Time one viewport size."""
-    from chimol.cmtk.quad_painter import (
+    from cmtk.quad_painter import (
         FLOATS_PER_QUAD,
         QuadPainter,
     )

@@ -617,7 +617,7 @@ class LifetimeModel(ModelCurve):
         ref_model = getattr(self, "_reference", None)
         if ref_model is not None:
             try:
-                ref_model.update_model()
+                ref_model.update()
                 raw_ref = np.maximum(np.asarray(ref_model.y, dtype=float), 0.0)
             except Exception:
                 raw_ref = None
@@ -925,7 +925,7 @@ class LifetimeModel(ModelCurve):
             )
         return modes
 
-    def update_model(
+    def _update_model(
             self,
             shift_bg_with_irf: bool = None,
             lifetime_spectrum: np.array = None,

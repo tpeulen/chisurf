@@ -36,7 +36,7 @@ class AVDecayModel(LifetimeModel):
         >>> fit.model.corrections.lintable = lin  # doctest: +SKIP
         >>> fit.model.convolve.start = 1  # doctest: +SKIP
         >>> fit.model.convolve.stop = 4090  # doctest: +SKIP
-        >>> fit.model.update_model()  # doctest: +SKIP
+        >>> fit.model.update()  # doctest: +SKIP
         >>> fit.xmin = 510  # doctest: +SKIP
         >>> fit.xmax = 2000  # doctest: +SKIP
         >>> p.imshow(fit.model._av.density[:,:,20])  # doctest: +SKIP
@@ -137,7 +137,7 @@ class AVDecayModel(LifetimeModel):
         self.decay_changed = True
 
     # TODO: needs docstring
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Recompute the model decay."""
         decay_changed = kwargs.get('decay_changed', self.decay_changed)
         i = kwargs.get('inter', 1)
@@ -151,7 +151,7 @@ class AVDecayModel(LifetimeModel):
             )
             self._decay = counts
             self.decay_changed = False
-        super().update_model(
+        super()._update_model(
             mode='full',
             **kwargs
         )

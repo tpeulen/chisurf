@@ -63,7 +63,7 @@ def _prime(gm):
     first ``update_model`` after construction is always a full one. Tests that
     want to observe the selective path have to get past it first.
     """
-    gm.update_model()
+    gm.update()
     assert gm._current_at_version is not None
 
 
@@ -73,13 +73,13 @@ def _count_updates(fit, monkeypatch):
 
     for i, local in enumerate(fit):
         model = local.model
-        original = model.update_model
+        original = model._update_model
 
         def counting(*args, _i=i, _orig=original, **kwargs):
             counts[_i] += 1
             return _orig(*args, **kwargs)
 
-        monkeypatch.setattr(model, 'update_model', counting, raising=False)
+        monkeypatch.setattr(model, '_update_model', counting, raising=False)
     return counts
 
 
@@ -98,7 +98,7 @@ def test_a_local_parameter_only_recomputes_its_own_dataset(monkeypatch):
     values = list(gm.parameter_values)
     values[local_c.index] += 0.1
     gm.parameter_values = values
-    gm.update_model()
+    gm.update()
 
     assert counts[2] == 1
     assert [counts[i] for i in (0, 1, 3)] == [0, 0, 0]
@@ -118,7 +118,7 @@ def test_a_shared_parameter_recomputes_every_dataset(monkeypatch):
     values = list(gm.parameter_values)
     values[shared.index] += 0.05
     gm.parameter_values = values
-    gm.update_model()
+    gm.update()
 
     assert all(counts[i] == 1 for i in range(4))
 
@@ -131,7 +131,7 @@ def test_an_unchanged_vector_recomputes_nothing(monkeypatch):
 
     counts = _count_updates(fit, monkeypatch)
     gm.parameter_values = list(gm.parameter_values)
-    gm.update_model()
+    gm.update()
 
     assert all(counts[i] == 0 for i in range(3))
 
@@ -143,7 +143,7 @@ def test_a_bare_update_recomputes_everything(monkeypatch):
     gm.factor_graph
 
     counts = _count_updates(fit, monkeypatch)
-    gm.update_model()
+    gm.update()
     assert all(counts[i] == 1 for i in range(3))
 
 
@@ -160,10 +160,10 @@ def test_the_dirty_set_is_consumed_once(monkeypatch):
     values = list(gm.parameter_values)
     values[local_c.index] += 0.1
     gm.parameter_values = values
-    gm.update_model()
+    gm.update()
     assert [counts[i] for i in range(3)] == [0, 1, 0]
 
-    gm.update_model()
+    gm.update()
     assert [counts[i] for i in range(3)] == [1, 2, 1]
 
 
@@ -187,7 +187,7 @@ def test_selective_and_full_updates_give_identical_residuals():
                 mask = rng.random(values.size) < 0.4
                 values[mask] += rng.normal(0.0, 0.02, int(mask.sum()))
                 gm.parameter_values = list(values)
-                gm.update_model()
+                gm.update()
                 trace.append(np.asarray(gm.weighted_residuals, dtype=float).copy())
             stacked = np.vstack(trace)
         finally:
@@ -210,7 +210,7 @@ def test_get_wres_agrees_with_a_full_recompute():
 
     selective = chisurf.core.fitting.fit.get_wres(values, gm)
     # Force the full path: a bare update_model always recomputes everything.
-    gm.update_model()
+    gm.update()
     full = np.asarray(gm.weighted_residuals, dtype=float)
 
     assert np.array_equal(np.asarray(selective, dtype=float), full)
@@ -257,7 +257,7 @@ def test_disabling_the_setting_restores_the_full_update(monkeypatch):
         values = list(gm.parameter_values)
         values[local_c.index] += 0.1
         gm.parameter_values = values
-        gm.update_model()
+        gm.update()
         assert all(counts[i] == 1 for i in range(3))
     finally:
         opt['global_structure_aware_update'] = previous

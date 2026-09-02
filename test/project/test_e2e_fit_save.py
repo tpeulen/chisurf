@@ -26,7 +26,7 @@ class E2ELinearModel(ModelCurve):
         self.p0 = FittingParameter(name="p0", value=0.0)
         self.find_parameters()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         x = self.fit.data.x
         if x is None:
             x = np.arange(self.fit.data.y.size, dtype=float)

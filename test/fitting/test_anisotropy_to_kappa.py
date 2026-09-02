@@ -23,7 +23,7 @@ model.r_acceptor.value = 0.15
 model.r_sensitized.value = 0.02
 
 # Update the model to calculate kappa^2
-model.update_model()
+model._update_model()
 
 # Print the model information
 print(model)
@@ -63,7 +63,7 @@ for r_d, r_a, r_s in test_values:
     model.r_donor.value = r_d
     model.r_acceptor.value = r_a
     model.r_sensitized.value = r_s
-    model.update_model()
+    model._update_model()
     
     # Calculate expected value
     s2_donor = -np.sqrt(r_d / model.r0)

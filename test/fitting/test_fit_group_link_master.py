@@ -21,7 +21,7 @@ class DummyLinearModel(ModelCurve):
         if discover:
             self.find_parameters()
 
-    def update_model(self, **kwargs):  # type: ignore[override]
+    def _update_model(self, **kwargs):  # type: ignore[override]
         x = self.fit.data.x
         self.x = x
         self.y = float(self.p0.value) * np.ones_like(x)

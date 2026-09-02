@@ -99,7 +99,7 @@ def make_fit(model_class=GaussianModel, polarization="vm", distance=45.0,
 
     # The data: Poisson counts from this very model, so the distance the fit
     # is asked to recover is genuinely in them.
-    model.update_model()
+    model.update()
     clean = np.maximum(np.asarray(model.y, dtype=float), 1e-9)
     counts = np.random.default_rng(seed).poisson(clean).astype(float)
     fit.data.y = counts
@@ -138,7 +138,7 @@ def test_the_curve_is_the_same_curve(model_class, polarization, x_donly):
     are the same arithmetic rather than two arithmetics that happen to fit.
     """
     fit = make_fit(model_class, polarization=polarization, x_donly=x_donly)
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     assert built is not None, f"{model_class.__name__} no longer builds a graph"
     node = built[0]._decay
@@ -285,7 +285,7 @@ def test_a_polymer_distribution_is_a_node_with_the_same_curve(model_class):
     it before anything shipped).
     """
     fit = make_fit(model_class)
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     assert built is not None, "the polymer model must build a graph"
     node = built[0]._decay
@@ -332,7 +332,7 @@ def test_a_distance_between_gaussians_builds_the_graph():
     assert built is not None
     decay = getattr(built[0], "_decay", None)
     assert decay is not None
-    fit.model.update_model()
+    fit.model.update()
     decay.update()
     graph = np.asarray(decay.get_curve(), dtype=float)
     python = np.asarray(fit.model.y, dtype=float)

@@ -67,7 +67,7 @@ def fit(dataset):
     model.calibration._alpha.value = 0.02793
     model.state_group._distances[0].value = 54.55
     model.state_group._donor_only.value = 0.3956
-    model.update_model()
+    model.update()
     return fit
 
 
@@ -186,7 +186,7 @@ def test_one_model_covers_static_and_kinetic(dataset):
     # change nothing and the test would pass for the wrong reason.
     model.state_group._distances[0].value = 40.0
     model.state_group._distances[1].value = 70.0
-    model.update_model()
+    model.update()
     static = np.array(model.y, copy=True)
 
     rates = list(model.rate_values)
@@ -195,7 +195,7 @@ def test_one_model_covers_static_and_kinetic(dataset):
     rates[1 * n + 0] = 800.0
     model.rate_values = rates
     assert model.exchange_rate_matrix() is not None
-    model.update_model()
+    model.update()
     assert not np.allclose(static, model.y), "exchange did not change the model"
 
 
@@ -220,7 +220,7 @@ def test_states_and_rates_resize_together(dataset):
     assert len(model.state_names) == 3
     # A new state must not arrive already exchanging.
     assert model.exchange_rate_matrix() is None
-    model.update_model()
+    model.update()
     assert np.all(np.isfinite(model.y))
 
 

@@ -219,7 +219,7 @@ def test_music_follows_where_the_player_is(qapp, tmp_path):
 
     village = world.villages[0]
     col, row, width, height = village.rect
-    game.iris = [(col + width / 2) * 18.0, (row + height * 0.6) * 18.0]
+    game.player_pos = [(col + width / 2) * 18.0, (row + height * 0.6) * 18.0]
     assert game.music_context == "town"
     game.dark = True
     assert game.music_context == "underworld"
@@ -227,7 +227,7 @@ def test_music_follows_where_the_player_is(qapp, tmp_path):
     game.battle = object()
     assert game.music_context == "battle"
     game.battle = None
-    game.iris = [4.0, 4.0]
+    game.player_pos = [4.0, 4.0]
     assert game.music_context == "overworld"
     assert set(audio.CONTEXTS) >= {"town", "underworld", "battle", "overworld"}
 

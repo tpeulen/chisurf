@@ -161,13 +161,13 @@ def unload_model_irf(fit_index: typing.Optional[int] = None):
     return model_macros.unload_irf(fit=fit)
 
 @action("model.update", debounce_ms=200)
-def update_model(fit_index: typing.Optional[int] = None):
+def _update_model(fit_index: typing.Optional[int] = None):
     """Update the model's state."""
     from chisurf.macros import model as model_macros
     fit = _resolve_fit(fit_index)
     if fit is None:
         return {}
-    return model_macros.update_model(fit=fit)
+    return model_macros.update(fit=fit)
 
 @action("model.set_background_curve", schema={"idx": int, "curve_name": str})
 def set_model_background_curve(

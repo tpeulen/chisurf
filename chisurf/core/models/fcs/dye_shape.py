@@ -202,7 +202,7 @@ class DyeShapeFCSModel(ModelCurve):
         """
         self._dye_name = str(name)
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Compute the FCS curve for the selected dye and confocal volume.
 
         The model is a 3D Gaussian with one bunching term. The derived

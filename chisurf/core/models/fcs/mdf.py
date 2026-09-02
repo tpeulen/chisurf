@@ -221,7 +221,7 @@ class MdfFCSModel(ModelCurve):
         self.outputs = MdfOutputs(name="mdf_outputs", fit=fit)
         self.find_parameters()
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Evaluate the Enderlein-MDF diffusion autocorrelation into ``self.y``."""
         data = self.fit.data
         tau_ms = np.asarray(data.x, dtype=float).ravel()

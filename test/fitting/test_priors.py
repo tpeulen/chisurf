@@ -240,7 +240,7 @@ def _make_linear_fit(a_value=1.2, c_value=3.1, n_points=32):
     )
     fit.model.func = "c+a*x"
     fit.fit_range = 0, len(fit.model.y) - 1
-    fit.model.update_model()
+    fit.model.update()
     return fit
 
 

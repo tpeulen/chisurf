@@ -342,7 +342,7 @@ class Pda2cAnisotropyModel(Pda2cModelMixin, ModelCurve):
         # 1D residuals are usually preferred (histogram of r or r_exp)
         self.residual_mode = "1D"
 
-    def update_model(self, verbose: bool | None = None, **kwargs):
+    def _update_model(self, verbose: bool | None = None, **kwargs):
         """Update the model curve from current nuisance and species parameters.
 
         Parameters

@@ -34,7 +34,7 @@ class _SimpleModel(ModelCurve):
         self.p2 = FittingParameter(name="p2", value=3.0)
         self.find_parameters()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         self.y = np.ones_like(self.x) * self.p1.value
 
 

@@ -46,6 +46,10 @@ OPTIONAL = {
     "google": "optional LLM provider",
     # compiled extensions that are built separately
     "chisurf.core.structure.av.fps_": "compiled AV kernel; modelling lives in imp-tricks now",
+    # the port runtime that replaced chinet (phase 3): the parameter/project
+    # layers import it guarded because an environment that never fits
+    # anything runs without it, and they fail loudly at first use instead.
+    "IMP": "IMP.bff port runtime; separate build, deliberately optional",
 }
 
 

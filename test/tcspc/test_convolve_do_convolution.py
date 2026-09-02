@@ -89,10 +89,10 @@ def test_the_flag_reaches_the_model_decay(mode):
     model = convolve.fit.model
     convolve.mode = mode
 
-    model.update_model(lifetime_spectrum=LIFETIME_SPECTRUM)
+    model.update(lifetime_spectrum=LIFETIME_SPECTRUM)
     convolved = np.array(model.y, dtype=float)
     convolve.do_convolution = False
-    model.update_model(lifetime_spectrum=LIFETIME_SPECTRUM)
+    model.update(lifetime_spectrum=LIFETIME_SPECTRUM)
     unconvolved = np.array(model.y, dtype=float)
 
     assert not np.allclose(convolved, unconvolved)

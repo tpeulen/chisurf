@@ -21,7 +21,7 @@ import chisurf.core.settings
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.gui.widgets.general import Controller
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.core.actions import record_action
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 

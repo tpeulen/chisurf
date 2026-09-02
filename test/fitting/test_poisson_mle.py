@@ -77,7 +77,7 @@ def _make_fit(noise_model, y_data):
     fit.fit_range = 0, y_data.size
     for f in fit.grouped_fits:
         f.noise_model = noise_model
-    fit.model.update_model()
+    fit.model.update()
     return fit
 
 

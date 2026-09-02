@@ -69,7 +69,7 @@ def test_components_are_sampled_separately_and_cover_the_vector():
     np.random.seed(0)
     fit = _group(4, link=False)
     joint_model = posterior_model(fit)
-    joint_model.update_model()
+    joint_model.update()
 
     r = chisurf.core.fitting.sample.sample_independent_components(
         fit=fit, steps=1500, step_size=0.02, thin=1, model=joint_model, seed=1
@@ -87,7 +87,7 @@ def test_a_single_component_falls_back_to_the_joint_sampler():
     np.random.seed(1)
     fit = _group(3, link=True)
     joint_model = posterior_model(fit)
-    joint_model.update_model()
+    joint_model.update()
 
     r = chisurf.core.fitting.sample.sample_independent_components(
         fit=fit, steps=300, step_size=0.02, thin=1, model=joint_model
@@ -102,7 +102,7 @@ def test_merged_marginals_match_a_joint_run():
         np.random.seed(3)
         fit = _group(3, link=False)
         joint_model = posterior_model(fit)
-        joint_model.update_model()
+        joint_model.update()
         r = sampler(fit, joint_model)
         return {
             e['name']: e for e in
@@ -130,7 +130,7 @@ def test_merged_chi2_and_prior_are_exact_not_approximate():
     np.random.seed(4)
     fit = _group(3, link=False)
     joint_model = posterior_model(fit)
-    joint_model.update_model()
+    joint_model.update()
 
     r = chisurf.core.fitting.sample.sample_independent_components(
         fit=fit, steps=400, step_size=0.02, thin=1, model=joint_model, seed=7
@@ -154,7 +154,7 @@ def test_components_are_shuffled_so_no_spurious_correlation_appears():
     np.random.seed(6)
     fit = _group(4, link=False)
     joint_model = posterior_model(fit)
-    joint_model.update_model()
+    joint_model.update()
 
     r = chisurf.core.fitting.sample.sample_independent_components(
         fit=fit, steps=3000, step_size=0.02, thin=1, model=joint_model, seed=11
@@ -178,17 +178,17 @@ def test_decomposition_costs_far_fewer_model_evaluations():
         np.random.seed(9)
         fit = _group(6, link=False)
         joint_model = posterior_model(fit)
-        joint_model.update_model()
+        joint_model.update()
         calls = [0]
         for local in fit:
             m = local.model
-            original = m.update_model
+            original = m._update_model
 
             def counting(*a, _o=original, **k):
                 calls[0] += 1
                 return _o(*a, **k)
 
-            m.update_model = counting
+            m._update_model = counting
         r = sampler(fit, joint_model)
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return calls[0], float(ess.min())

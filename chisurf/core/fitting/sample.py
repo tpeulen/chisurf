@@ -781,7 +781,7 @@ def sample_differential_evolution(
     lnprior = lnprior[:n_recorded]
     chi2 = chi2[:n_recorded]
     model.parameter_values = list(start)
-    model.update_model()
+    model.update()
 
     dof = float(model.n_points - model.n_free - 1.0)
     # ``chains`` is one row per population member; the flat view stacks them.
@@ -1197,7 +1197,7 @@ def sample_independent_components(
         # other components contribute is identical across runs -- which is what
         # makes the closed-form merge below exact.
         model.parameter_values = list(reference)
-        model.update_model()
+        model.update()
         r = walk_mcmc_blocked(
             fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
             chi2max=chi2max, check_cancel=check_cancel, n_adapt=n_adapt,
@@ -1210,7 +1210,7 @@ def sample_independent_components(
             break
 
     model.parameter_values = list(reference)
-    model.update_model()
+    model.update()
 
     return _merge_components(
         results, reference, chi2_0, lnprior_0, model, seed=seed
@@ -1495,7 +1495,7 @@ def sample_marginal_shared(
         state = np.asarray(model.parameter_values, dtype=np.float64)
         state[shared_idx] = shared_values
         model.parameter_values = list(state)
-        model.update_model()
+        model.update()
         profiled = _profile_locals(groups, model)
         if profiled is None:
             return None
@@ -1524,7 +1524,7 @@ def sample_marginal_shared(
             "falling back to a joint chain"
         )
         model.parameter_values = list(reference)
-        model.update_model()
+        model.update()
         return sample_independent_components(
             fit=fit, steps=steps, step_size=step_size, temp=temp, thin=thin,
             callback=callback, check_cancel=check_cancel, n_adapt=n_adapt,
@@ -1604,7 +1604,7 @@ def sample_marginal_shared(
             break
 
     model.parameter_values = list(reference)
-    model.update_model()
+    model.update()
 
     joint = joint[:n_recorded]
     chi2 = chi2[:n_recorded]

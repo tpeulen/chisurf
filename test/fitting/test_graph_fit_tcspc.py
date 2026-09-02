@@ -84,7 +84,7 @@ def test_the_curve_is_the_same_curve():
     as a slightly different lifetime.
     """
     fit = make_fit()
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     node = built[0]._decay
     node.update()
@@ -150,7 +150,7 @@ def test_the_model_curve_is_the_fitted_one():
     fit = make_fit()
     fit.run()
     before = np.asarray(fit.model.y, dtype=float).copy()
-    fit.model.update_model()
+    fit.model.update()
     np.testing.assert_allclose(np.asarray(fit.model.y, dtype=float), before,
                                rtol=2e-9)
 
@@ -197,7 +197,7 @@ def test_pile_up_joins_the_graph_with_the_same_curve():
     corrections.measurement_time = total * (
         corrections.dead_time * 1e-9 + 2.0 / (REP_RATE * 1e6))
 
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     assert built is not None, "pile-up must not refuse the graph any more"
     node = built[0]._decay
@@ -210,7 +210,7 @@ def test_pile_up_joins_the_graph_with_the_same_curve():
 
     # The correction did something: the same fixture without it differs.
     corrections.correct_pile_up = False
-    fit.model.update_model()
+    fit.model.update()
     plain = np.array(fit.model.y, dtype=float)
     assert np.max(np.abs(python - plain)) / np.max(plain) > 1e-4
 
@@ -235,7 +235,7 @@ def test_the_dnl_table_joins_the_graph_with_the_same_curve():
 
     for reverse in (False, True):
         corrections.reverse = reverse
-        fit.model.update_model()
+        fit.model.update()
         built = M.graph_objective(fit, fit.model)
         assert built is not None, "a DNL table must not refuse the graph"
         node = built[0]._decay
@@ -247,7 +247,7 @@ def test_the_dnl_table_joins_the_graph_with_the_same_curve():
     # The correction did something: the same fixture without it differs.
     with_table = np.array(fit.model.y, dtype=float)
     corrections.correct_dnl = False
-    fit.model.update_model()
+    fit.model.update()
     plain = np.array(fit.model.y, dtype=float)
     assert np.max(np.abs(with_table - plain)) / np.max(plain) > 1e-3
 
@@ -476,7 +476,7 @@ def polarised_fit(polarization="vv", n_rotations=1, rho=2.5, seed=13,
 
     # Poisson counts from this very model, so the anisotropy the fit is
     # asked to recover is genuinely in the data.
-    model.update_model()
+    model.update()
     clean = np.maximum(np.asarray(model.y, dtype=float), 1e-9)
     counts = np.random.default_rng(seed).poisson(clean).astype(float)
     fit.data.y = counts
@@ -497,7 +497,7 @@ def test_a_polarised_model_is_the_same_curve(polarization, n_rotations):
     something a chi-square would report.
     """
     fit = polarised_fit(polarization, n_rotations)
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     assert built is not None, "a polarised decay no longer builds a graph"
     node = built[0]._decay
@@ -569,7 +569,7 @@ def test_the_amplitudes_are_normalised_before_the_rotation_not_after():
     """
     fit = polarised_fit("vv")
     fit.model.lifetimes.normalize_amplitudes = True
-    fit.model.update_model()
+    fit.model.update()
     built = M.graph_objective(fit, fit.model)
     built[0]._decay.update()
     np.testing.assert_allclose(
@@ -586,17 +586,17 @@ def test_a_graph_run_never_evaluates_the_python_model():
     recomputation."""
     fit = make_fit()
     calls = {'n': 0}
-    original = fit.model.update_model
+    original = fit.model._update_model
 
     def counting(*a, **kw):
         calls['n'] += 1
         return original(*a, **kw)
 
-    fit.model.update_model = counting
+    fit.model._update_model = counting
     try:
         fit.run()
     finally:
-        fit.model.update_model = original
+        fit.model._update_model = original
     assert calls['n'] == 0
     # And the published amplitude is the node's, not a stale one: n0 is
     # positive and the curve is finite and non-trivial.

@@ -43,7 +43,7 @@ class Tests(unittest.TestCase):
         fit.data = np.array([1.0, 2.0])
         # A subclass that implements update_model() must work.
         class GoodModel(Model):
-            def update_model(self, **kwargs):
+            def _update_model(self, **kwargs):
                 self.y = np.array([1.0, 2.0])
         instance = GoodModel(fit=fit)
         self.assertTrue(hasattr(instance, 'update'))
@@ -57,7 +57,7 @@ class Tests(unittest.TestCase):
         fit = unittest.mock.MagicMock()
         fit.data = np.array([1.0, 2.0])
         class ModelWithOnlyUpdateModel(Model):
-            def update_model(self, **kwargs):
+            def _update_model(self, **kwargs):
                 self.y = np.array([1.0, 2.0])
         instance = ModelWithOnlyUpdateModel(fit=fit)
         # update() has a default implementation; calling it should not raise

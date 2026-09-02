@@ -315,17 +315,17 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
     def test_one_update_evaluates_in_cpp_and_not_in_python(self):
         model, _ = self.build("b+a1*exp(-x/t1)")
         self.assertEqual(model.evaluation_counts, (0, 0))
-        model.update_model()
+        model.update()
         self.assertEqual(
             model.evaluation_counts, (1, 0),
-            "update_model() did not take the C++ path; the counters say "
+            "_update_model() did not take the C++ path; the counters say "
             f"{model.evaluation_counts} (cpp, python)")
 
     def test_repeated_iterations_stay_in_cpp(self):
         """A fit is thousands of these. None may drift onto the interpreter."""
         model, _ = self.build("b+a1*exp(-x/t1)+a2*exp(-x/t2)")
         for _ in range(50):
-            model.update_model()
+            model.update()
         cpp, python = model.evaluation_counts
         self.assertEqual(python, 0, f"{python} of 50 iterations fell back to eval()")
         self.assertEqual(cpp, 50)
@@ -336,7 +336,7 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         values = {"b": 0.3, "a1": 2.0, "t1": 1.5}
         for p in model._parameters_equation:
             p.value = values[p.name]
-        model.update_model()
+        model.update()
         want = 0.3 + 2.0 * np.exp(-x / 1.5)
         np.testing.assert_allclose(np.asarray(model.y), want, rtol=1e-12)
 
@@ -350,7 +350,7 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
             "p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))"
             "+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))")
         self.assertIn("xD", model._keys)
-        model.update_model()
+        model.update()
         self.assertEqual(model.evaluation_counts, (1, 0))
         y = np.asarray(model.y)
         self.assertTrue(np.all(np.isfinite(y)))
@@ -365,7 +365,7 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         """
         model, _ = self.build("b+a1*exp(-x/t1)")
         model._expression = None
-        model.update_model()
+        model.update()
         self.assertEqual(model.evaluation_counts, (0, 1))
         self.assertFalse(model.evaluates_in_cpp)
         # and the fallback still has to produce a curve; that is its job
@@ -384,7 +384,7 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         for equation in equations:
             try:
                 model, _ = self.build(equation, n=64)
-                model.update_model()
+                model.update()
             except Exception as e:
                 fell_back.append((equation, f"raised {type(e).__name__}: {e}"))
                 continue

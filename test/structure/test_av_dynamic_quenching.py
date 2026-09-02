@@ -16,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from IMP.bff.quenching.pet import (
+from IMP.bff.quenching import (
     quenching_rate_per_frame as _quenching_rate_per_frame,
 )
 

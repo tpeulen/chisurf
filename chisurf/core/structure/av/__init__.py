@@ -511,7 +511,7 @@ class DynamicAV(BasicAV):
     def dynamic(self):
         """The upstream model object, built on first use."""
         if self._dynamic is None:
-            from IMP.bff.quenching.dynamic import DynamicAccessibleVolume
+            from IMP.bff.quenching import DynamicAccessibleVolume
 
             class _AVView:
                 """This object in the ``AccessibleVolume`` shape upstream reads."""

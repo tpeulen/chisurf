@@ -33,6 +33,22 @@ def distance_between_gaussian(
     np.ndarray
         Gaussian distribution of distances. Non-finite distances carry zero
         weight, so a single NaN cannot turn the whole distribution into NaN.
+    .. warning::
+
+       **This is not the function its name suggests, and there are two others
+       with the same name that are.** This returns a plain Gaussian centred at
+       ``separation_distance``. ``chisurf.core.math.functions.distributions``
+       and ``...functions.rdf`` both define ``distance_between_gaussian`` as
+       the distribution of the *distance between two Gaussian clouds*, which
+       carries an extra ``r/separation`` factor and an antisymmetric second
+       term; on a typical axis the two are 0.93 apart in relative terms. They
+       are different functions, not copies that drifted.
+
+       It has no callers outside this module's own test. It is kept rather than
+       deleted only because that test exists; do not reach for it. Confusing
+       these two is what produced the worm-like-chain linker bug -- see
+       ``okf/log.md`` 2026-09-02 (21) in imp.bff. Renaming it to say what it
+       is (a Gaussian weight) would end the collision, and is worth doing.
     """
     result = np.exp(-(distances - separation_distance) ** 2 / (2 * sigma ** 2))
     result = np.where(np.isfinite(result), result, 0.0)

@@ -2,7 +2,6 @@ from __future__ import annotations
 from chisurf import typing
 
 import numpy as np
-import chinet as cn
 import types
 import inspect
 from typing import TYPE_CHECKING
@@ -38,12 +37,12 @@ class ParameterTransformModel(EquationCatalogueMixin, model.Model):
 
     def finalize(self):
         """Evaluate the model and finalize all parameter controllers."""
-        self.update_model()
+        self._update_model()
         for i, p in enumerate(self.parameters_all):
             if hasattr(p, 'controller') and p.controller is not None:
                 p.controller.finalize()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Evaluate the parameter transform node and lock output parameters.
 
         Outputs are temporarily unlocked for evaluation, then re-locked so

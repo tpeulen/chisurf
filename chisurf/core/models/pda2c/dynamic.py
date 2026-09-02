@@ -278,7 +278,7 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
             return 0.5
         return float(np.sum((g / s) * pG))
 
-    def update_model(self, verbose: bool | None = None, **kwargs):
+    def _update_model(self, verbose: bool | None = None, **kwargs):
         """Build the two-state dynamic probability spectrum and update the curve."""
         st = self.states
         r = chisurf.core.models.tcspc.fret.rda_axis

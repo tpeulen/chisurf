@@ -317,21 +317,28 @@ class Gaussians(FittingParameterGroup):
     @property
     def distribution(self) -> np.array:
         """Probability distribution of the distance or FRET parameter."""
-        d = list()
-        weights = self.amplitude
-        if not self.is_distance_between_gaussians:
-            args = zip(self.mean, self.sigma, self.shape)
-            pdf = cs.core.math.functions.distributions.generalized_normal_distribution
-        else:
-            args = zip(self.mean, self.sigma)
-            pdf = cs.core.math.functions.rdf.distance_between_gaussian
-        p = cs.core.math.functions.distributions.combine_distributions(
-            x_axis=rda_axis,
-            dist_function=pdf,
-            dist_args=args,
-            weights=weights,
-            normalize=True
+        # One call into bff for the whole mixture, not one per component.
+        # The loop this replaces crossed the boundary `k` times and summed the
+        # returned arrays in numpy; the kernel was already C++, but the data
+        # were not staying with it. `normalize_components` follows the branch
+        # because the reference is asymmetric between its two -- the
+        # generalised normal normalises each component (`norm` defaults True),
+        # the two-cloud form does not (`normalize` defaults False). See
+        # IMP.bff `Distributions.h`.
+        import IMP.bff as _bff
+        two_cloud = bool(self.is_distance_between_gaussians)
+        p = _bff.gaussian_distance_mixture(
+            np.asarray(rda_axis, dtype=np.float64),
+            np.asarray(self.mean, dtype=np.float64),
+            np.asarray(self.sigma, dtype=np.float64),
+            np.asarray([] if two_cloud else self.shape, dtype=np.float64),
+            np.asarray(self.amplitude, dtype=np.float64),
+            _bff.GAUSSIAN_MIXTURE_DISTANCE_BETWEEN_GAUSSIANS if two_cloud
+            else _bff.GAUSSIAN_MIXTURE_GENERALIZED_NORMAL,
+            not two_cloud,
+            True,
         )
+        d = list()
 
         d.append([p, rda_axis])
         d = np.array(d)
@@ -796,7 +803,7 @@ class FRETModel(LifetimeModel):
     @property
     def reference(self):
         """Reference decay curve for the FRET sample."""
-        self._reference.update_model()
+        self._reference.update()
         ref = np.maximum(self._reference.y, 0)
 
         ref_max = np.max(ref)

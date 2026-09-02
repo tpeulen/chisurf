@@ -35,7 +35,6 @@ HEADLESS_RUNNER = Path(__file__).resolve().with_name("_headless_runner.py")
 # Local module sources that are on PYTHONPATH rather than installed as packages.
 _EXTRA_PATHS = [
     REPO_ROOT / "modules" / "mmfdb" / "src",
-    REPO_ROOT / "modules" / "chinet",
     REPO_ROOT / "modules" / "imp-tricks" / "src",
     REPO_ROOT,
 ]

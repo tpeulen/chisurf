@@ -135,7 +135,7 @@ def change_model(function_str: str, fit_idx: Any = None) -> bool:
                 try:
                     m.update()
                 except Exception:
-                    m.update_model()
+                    m.update()
             except Exception:
                 pass
             updated_any = True

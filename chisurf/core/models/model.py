@@ -19,7 +19,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
 
     A model wraps the relationship between a set of fitting parameters and
     one or more model curves. Subclasses typically implement
-    :meth:`update_model` to compute ``self.y`` (and optionally auxiliary
+    :meth:`_update_model` to compute ``self.y`` (and optionally auxiliary
     state) from the current parameter values and experimental data
     referenced via ``self.fit``.
     """
@@ -158,7 +158,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         return _vs.ModelView(sections=tuple(sections), plots=plots)
 
     @abc.abstractmethod
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Update the internal model state from the current parameters.
 
         Subclasses must implement this method and usually:
@@ -175,7 +175,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
 
         The default implementation refreshes all nested
         :class:`FittingParameterGroup` instances and then calls
-        :meth:`update_model`. Subclasses may extend this method but should
+        :meth:`_update_model`. Subclasses may extend this method but should
         usually call ``super().update()``.
         """
         self.find_parameters()
@@ -201,7 +201,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
                 logging.warning(f"Failed to update parameter group {pg}: {e}")
                 continue
 
-        self.update_model()
+        self._update_model()
 
     def finalize(self) -> None:
         """Propagate finalization to all parameter groups.

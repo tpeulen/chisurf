@@ -42,7 +42,7 @@ class AnisotropyToKappaModel(chisurf.core.fitting.parameter.FittingParameterGrou
         self.append(self.r_sensitized)
         self.append(self.kappa_squared)
 
-    def update_model(self):
+    def _update_model(self):
         """Update the calculated kappa^2 value based on current anisotropy values."""
         try:
             # S2 = +/- sqrt(r_inf / r0)

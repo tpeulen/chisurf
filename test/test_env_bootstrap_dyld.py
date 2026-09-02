@@ -32,7 +32,7 @@ def test_import_does_not_set_dyld_library_path():
     env = dict(os.environ)
     env.pop("DYLD_LIBRARY_PATH", None)
     env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/chinet", "modules/imp-tricks/src", "."]
+        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
     )
     result = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=300, env=env
@@ -78,7 +78,7 @@ def test_icon_rendering_survives_a_prepended_dyld_library_path():
     env["DYLD_LIBRARY_PATH"] = lib
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/chinet", "modules/imp-tricks/src", "."]
+        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
     )
     result = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, timeout=300, env=env

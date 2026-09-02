@@ -152,7 +152,7 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
     # Uniform: the historical default, prior=None end to end.
     assert m.prior_kind == "uniform"
     assert m._entropy_prior(np.logspace(-2, 1, 32)) is None
-    m.update_model()
+    m.update()
     p_uniform, td = m.maxent_tauD_distribution
 
     # Lognormal prior far from the data's component: mass appears near the
@@ -163,7 +163,7 @@ def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
     prior = m._entropy_prior(td)
     assert prior is not None and prior.shape == td.shape
     assert td[np.argmax(prior)] == pytest.approx(5.0, rel=0.2)
-    m.update_model()
+    m.update()
     p_prior, td2 = m.maxent_tauD_distribution
     assert p_prior.shape == td2.shape and np.all(p_prior >= 0.0)
     # The prior moved the answer: mean log-td shifts toward the center.

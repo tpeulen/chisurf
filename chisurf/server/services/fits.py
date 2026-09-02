@@ -819,7 +819,7 @@ def fit_restore_parameters(
             restored_count += 1
 
         if hasattr(fit.model, "update_model"):
-            fit.model.update_model()
+            fit.model.update()
         if hasattr(fit.model, "finalize"):
             fit.model.finalize()
 
@@ -1664,7 +1664,7 @@ def fit_parameter_scan_start(
                 if _JOBS.should_cancel(job_id):
                     return None
                 param.value = float(v)
-                model.update_model()
+                model.update()
                 chi2 = getattr(fit, "chi2", None)
                 if chi2 is None:
                     chi2 = float("nan")
@@ -1681,7 +1681,7 @@ def fit_parameter_scan_start(
             # raise alike. The assignment comes before the re-evaluation so the
             # parameter is restored even if evaluating there raises again.
             param.value = value
-            model.update_model()
+            model.update()
 
         _JOBS.set_progress(job_id, 100)
         return {

@@ -289,7 +289,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         s = float(np.sum(g))
         return 0.5 if s <= 0.0 else float(np.sum((g / s) * pG))
 
-    def update_model(self, verbose: bool | None = None, **kwargs):
+    def _update_model(self, verbose: bool | None = None, **kwargs):
         """Build the N-state probability spectrum and update the curve."""
         st = self.states
         r = chisurf.core.models.tcspc.fret.rda_axis

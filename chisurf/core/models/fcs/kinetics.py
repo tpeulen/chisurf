@@ -672,7 +672,7 @@ class FCSKineticsModel(ModelCurve):
         self._saturation_mode = v
         self.update()
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Evaluate the photokinetic FCS model."""
         if self._updating_model:
             return

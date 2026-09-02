@@ -116,7 +116,7 @@ def test_tool_constructs(plugin_id: str, entrypoint: str):
     module, _, cls_name = entrypoint.partition(":")
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
-        ["modules/mmfdb/src", "modules/chinet", "modules/imp-tricks/src", "."]
+        ["modules/mmfdb/src", "modules/imp-tricks/src", "."]
     )
     env["QT_QPA_PLATFORM"] = "offscreen"
     env["MPLBACKEND"] = "Agg"

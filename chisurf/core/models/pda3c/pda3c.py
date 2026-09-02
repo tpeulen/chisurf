@@ -1095,7 +1095,7 @@ class Pda3cModel(ModelCurve):
 
     # -- display ---------------------------------------------------------
 
-    def update_model(self, verbose: bool = None, **kwargs):
+    def _update_model(self, verbose: bool = None, **kwargs):
         """Recompute the predicted proximity-ratio histograms.
 
         Analytic, not resampled: each displayed ratio is a *marginal* of the

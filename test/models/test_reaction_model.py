@@ -118,7 +118,7 @@ def test_reaction_model_opens_on_a_scheme_that_computes():
     assert model.n_reactions == 2
     assert model.species_names == ["A", "B"]
 
-    model.update_model()
+    model.update()
     y = np.asarray(model.y, dtype=float)
     assert y.size == np.asarray(fit.data.y).size
     assert np.all(np.isfinite(y))
@@ -128,11 +128,11 @@ def test_reaction_model_opens_on_a_scheme_that_computes():
 def test_reaction_model_rate_changes_the_relaxation():
     """A faster forward rate reaches the plateau sooner."""
     model = _make_fit().model
-    model.update_model()
+    model.update()
     slow = np.asarray(model.y, dtype=float).copy()
 
     model.rates[0].value = 10.0 * float(model.rates[0].value)
-    model.update_model()
+    model.update()
     fast = np.asarray(model.y, dtype=float)
 
     # Both relax between the same two levels, so "sooner" is a larger integral of
@@ -192,7 +192,7 @@ def test_reaction_model_autoscale_matches_the_data_integral():
     model = fit.model
     model.autoscale = True
     model._background.value = 0.0
-    model.update_model()
+    model.update()
 
     lo, hi = model._fit_window()
     assert np.sum(np.asarray(model.y)[lo:hi]) == pytest.approx(

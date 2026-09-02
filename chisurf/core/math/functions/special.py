@@ -39,27 +39,17 @@ def i0(x):
        Functions, Applied Mathematics Series, Volume 55 (Washington:
        National Bureal of Standards; reprinted 1968 by Dover Publications,
        New York), Chapter 10
+
+    Moved to IMP.bff (`SpecialFunctions.h`); this is a thin forwarder. The
+    C++ carries the same nine coefficients, **including** the transposed digit
+    in the first one (3.5156299, where Abramowitz & Stegun print 3.5156229) --
+    reproduced deliberately so the port cannot move a fitted distribution. See
+    the note in `src/SpecialFunctions.cpp`.
     """
-    ax = np.abs(x)
-    small = ax < 3.75
-
-    y = np.where(small, ax / 3.75, 0.0) ** 2
-    below = 1.0 + y * (3.5156299 + y * (
-        3.0899424 + y * (1.2067492 + y * (
-            0.2659732 + y * (0.360768e-1 + y *
-                             0.45813e-2)))))
-
-    ax_safe = np.where(small, 3.75, ax)
-    y = 3.75 / ax_safe
-    above = (np.exp(ax_safe) / np.sqrt(ax_safe)) * \
-        (0.39894228 + y * (0.1328592e-1 + y * (
-            0.225319e-2 + y * (-0.157565e-2 + y * (
-                0.916281e-2 + y * (-0.2057706e-1 + y * (
-                    0.2635537e-1 + y * (-0.1647633e-1 + y *
-                                        0.392377e-2))))))))
-
-    result = np.where(small, below, above)
-    return float(result) if np.isscalar(x) or np.ndim(x) == 0 else result
+    from IMP.bff import i0 as _i0, i0_array as _i0_array
+    if np.isscalar(x) or np.ndim(x) == 0:
+        return float(_i0(float(x)))
+    return _i0_array(np.asarray(x, dtype=float))
 
 
 def i0_array(x: np.ndarray) -> np.ndarray:
@@ -79,5 +69,10 @@ def i0_array(x: np.ndarray) -> np.ndarray:
     -----
     Retained as an alias: :func:`i0` handles arrays directly now, and this
     existed only because the scalar version could not. It had no callers.
+
+    Moved to IMP.bff; a thin forwarder, and identical to what :func:`i0`
+    dispatches to for array input -- the two were separate copies of the same
+    polynomial until 2026-09-02.
     """
-    return np.asarray(i0(np.asarray(x, dtype=float)))
+    from IMP.bff import i0_array as _f
+    return _f(np.asarray(x, dtype=float))

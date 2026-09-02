@@ -25,7 +25,7 @@ _FCS_CONFIG_CACHE = None
 def _fcs_config():
     global _FCS_CONFIG_CACHE
     if _FCS_CONFIG_CACHE is None:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import SetupTypeConfig
+        from chisurf.core.fio.setup_store import SetupTypeConfig
         _FCS_CONFIG_CACHE = SetupTypeConfig(
             setup_type=FCS_SETUP_TYPE,
             id_prefix="fcs_channel_setup",
@@ -41,7 +41,7 @@ def _fcs_config():
 # ---------------------------------------------------------------------------
 
 def _use_mmfdb(file_path: str | None = None) -> bool:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import use_mmfdb as _use
+    from chisurf.core.fio.setup_store import use_mmfdb as _use
     return _use(file_path, FCS_CHANNEL_SETUPS_FILE)
 
 
@@ -52,7 +52,7 @@ def _save_setup_row(
     user_id: str | None = None,
     is_public: bool | int | None = None,
 ) -> None:
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+    from chisurf.core.fio.setup_store import (
         save_setup_row as _save_row,
     )
     from chisurf.core.settings import cs_settings as _cs
@@ -82,7 +82,7 @@ def _save_setup_row(
 def _fcs_row_to_data(row: dict, db) -> dict:
     """Extract FCS channel setup payload from an MMFDB row, including
     child-table data (``fcs_pairs``) and typed correlator columns."""
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import json_loads
+    from chisurf.core.fio.setup_store import json_loads
 
     configuration = json_loads(row.get("configuration_json"))
     sd = configuration.get("setup_data")
@@ -164,7 +164,7 @@ def load_fcs_channel_setups(file_path: str | pathlib.Path | None = None,
     path = pathlib.Path(file_path) if file_path is not None else FCS_CHANNEL_SETUPS_FILE
 
     if _use_mmfdb(str(path) if file_path else None):
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+        from chisurf.core.fio.setup_store import (
             close_owned_db, get_db, load_mmfdb_setups, resolve_active_user_id,
         )
         db = get_db(db_path)
@@ -219,7 +219,7 @@ def save_fcs_channel_setups(setups_data: Dict[str, Any], file_path: str | pathli
     path = pathlib.Path(file_path) if file_path is not None else FCS_CHANNEL_SETUPS_FILE
 
     if _use_mmfdb(str(path) if file_path else None):
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+        from chisurf.core.fio.setup_store import (
             save_setups as _save_setups,
         )
         # Convert the setups_data to the format expected by save_setups
@@ -253,7 +253,7 @@ def _migrate_json_to_mmfdb(db, path: pathlib.Path, user_id: str | None = None) -
 
     Returns ``True`` when at least one setup was imported.
     """
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+    from chisurf.core.fio.setup_store import (
         migrate_json_to_mmfdb as _migrate,
     )
     return _migrate(db, _fcs_config(), path, user_id=user_id, save_row_fn=_save_setup_row)

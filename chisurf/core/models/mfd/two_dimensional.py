@@ -603,7 +603,7 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
             rate_matrix=self.exchange_rate_matrix(),
         )
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Recompute the predicted histogram and store it flattened.
 
         **A missing payload is a loud no-op, not a silent one.** A model built

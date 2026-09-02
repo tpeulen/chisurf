@@ -331,7 +331,7 @@ def unload_background_curve(
     fit.update()
 
 
-def update_model(
+def _update_model(
         fit: 'cs.core.fitting.fit.FitGroup' = None
 ) -> None:
     if fit is None:

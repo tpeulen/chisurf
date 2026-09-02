@@ -81,7 +81,7 @@ def test_parse_model_evaluation():
         elif p.name == "b":
             p.value = 1.0
             
-    model.update_model()
+    model.update()
     
     expected_y = 2.0 * x + 1.0
     assert np.allclose(model.y, expected_y)

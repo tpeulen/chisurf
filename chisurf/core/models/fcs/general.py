@@ -442,7 +442,7 @@ class GeneralFCSModel(ModelCurve):
             set_output_parameter(self.fit, gp._brightness, brightness)
         return gp.g_diff(tau_ms), gp.N, gp.b
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Evaluate the selected diffusion term, apply relaxation terms, into ``self.y``."""
         # Writing a derived output parameter (s, brightness) round-trips through
         # the API, which calls update_model again. Skip that nested recompute —

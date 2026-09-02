@@ -35,7 +35,6 @@ RECIPE = REPO_ROOT / "rattler-recipe" / "recipe.yaml"
 #: the sibling projects the installer adds to the runtime environment.
 _IMPORT_ROOTS = (
     REPO_ROOT,
-    REPO_ROOT / "modules" / "chinet",
     REPO_ROOT / "modules" / "ndxplorer",
     REPO_ROOT / "modules" / "quest",
     REPO_ROOT / "modules" / "mmfdb" / "src",

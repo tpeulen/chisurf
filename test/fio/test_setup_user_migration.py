@@ -241,7 +241,7 @@ def test_save_records_owner(tmp_path: Path) -> None:
     try:
         user_id = "user_default"
         import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups as dsu
-        import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils as utils
+        import chisurf.core.fio.setup_store as utils
 
         original_resolve = dsu._resolve_active_user_id
         dsu._resolve_active_user_id = lambda: user_id

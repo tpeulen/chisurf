@@ -525,7 +525,7 @@ class TestGraphService:
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.model = MagicMock()
-        fit.model.update_model = MagicMock()
+        fit.model._update_model = MagicMock()
         fit.model.finalize = MagicMock()
         p = MagicMock()
         p.name = "tau1"
@@ -552,7 +552,7 @@ class TestGraphService:
         assert p.fixed is True
         assert p.bounds == (1, 15)
         assert p.bounds_on is False
-        fit.model.update_model.assert_called_once()
+        fit.model._update_model.assert_called_once()
         fit.model.finalize.assert_called_once()
 
     def test_fit_select_by_index(self):

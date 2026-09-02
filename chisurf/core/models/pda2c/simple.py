@@ -306,7 +306,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
 
         >>> from cs.core.models.pda2c.simple import Pda2cSimpleModel  # doctest: +SKIP
         >>> m = Pda2cSimpleModel(fit)  # doctest: +SKIP
-        >>> m.update_model()         # doctest: +SKIP
+        >>> m.update()         # doctest: +SKIP
     """
 
     name = "PDA2c-discrete"
@@ -375,7 +375,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         self.pda = tttrlib.Pda(**kw_pda)
         self.residual_mode = "1D"
 
-    def update_model(
+    def _update_model(
             self,
             pch0: np.array = None,
             verbose: bool = None,

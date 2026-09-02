@@ -1167,7 +1167,7 @@ class Fit(cs.core.base.Base):
             model = self.model
         if parameter is not None:
             model.parameter_values = parameter
-            model.update_model()
+            model.update()
         wres = model.get_wres(self, **kwargs)
         return _apply_fit_mask(model, wres)
 
@@ -1255,7 +1255,7 @@ class Fit(cs.core.base.Base):
         try:
             p = self.model.parameters_all_dict[name]
             p.value = value
-            self.model.update_model()
+            self.model.update()
             self.model.finalize()
         except KeyError:
             cs.logging.error(f"Parameter '{name}' not found in model.")
@@ -1507,7 +1507,7 @@ class Fit(cs.core.base.Base):
         def cost(values) -> float:
             for parameter, value in zip(parameters, values):
                 parameter.value = float(value)
-            self.model.update_model()
+            self.model.update()
             state["n"] += 1
             if progress_callback is not None:
                 progress_callback(state["n"], None)
@@ -2337,7 +2337,7 @@ def sample_fit(
                 "global_posterior=True requires method='blocked', 'collapsed' or 'de'; "
                 "the ensemble, slice and mcmc backends sample fit.model only."
             )
-        sample_model.update_model()
+        sample_model.update()
 
     # Settings carry every sampler's knobs -- the dialog keeps them per sampler
     # so switching back and forth does not lose them -- and a sampler must not
@@ -2861,7 +2861,7 @@ def approx_grad(
     # latent whenever anything caches on "did a value change", which the
     # selective global update and the residual cache both do.
     model.parameter_values = p0
-    model.update_model()
+    model.update()
     return f0, grad
 
 
@@ -2949,7 +2949,7 @@ def covariance_matrix(
         model = fit.model
     # The graph first, when the model builds one: the same arithmetic at the
     # same step rule, but in C++ with the data already in the node, instead
-    # of `p + 1` trips through `Model.update_model()`. Every caller of this
+    # of `p + 1` trips through `Model.update()`. Every caller of this
     # function gets that -- the error estimate, the posterior view, the
     # derived-quantity propagation, the sampler preconditioners -- because
     # the choice is made here rather than at six call sites. A model the
@@ -3184,7 +3184,7 @@ def get_wres(
     """
     if len(parameter_values) > 0:
         model.parameter_values = parameter_values
-        model.update_model()
+        model.update()
     wres = model.weighted_residuals
     wres = _apply_fit_mask(model, wres)
     if include_priors:
@@ -3234,7 +3234,7 @@ def get_chi2(
     ...     @parameter_values.setter
     ...     def parameter_values(self, v):
     ...         pass
-    ...     def update_model(self):
+    ...     def _update_model(self):
     ...         pass
     >>> m = _DummyModel()
     >>> float(round(get_chi2([], m, reduced=False), 1))
@@ -3429,7 +3429,7 @@ def lnprob(
     ...     @parameter_values.setter
     ...     def parameter_values(self, v):
     ...         pass
-    ...     def update_model(self):
+    ...     def _update_model(self):
     ...         pass
     >>> class _DummyFit:
     ...     def __init__(self):

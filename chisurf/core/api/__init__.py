@@ -757,7 +757,7 @@ class ChiSurfAPI:
         try:
             p.value = float(value)
             if hasattr(fit.model, "update_model"):
-                fit.model.update_model()
+                fit.model.update()
             if hasattr(fit.model, "finalize"):
                 fit.model.finalize()
             return {"ok": True}

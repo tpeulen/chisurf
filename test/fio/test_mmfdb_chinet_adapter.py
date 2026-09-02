@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import json
 
-import chinet as cn
 import pytest
+
+import chisurf  # noqa: F401 -- puts the bundled packages on sys.path
+
+# chinet is gone from the tree; the adapter runs on the bff-backed
+# compatibility runtime, which this file also exercises end to end.
+from mmfdb.adapters import _bff_compat as cn
 from mmfdb.adapters.chinet import (
     clear_mmfdb_backend,
     load_chinet_session,
@@ -268,7 +273,7 @@ def test_store_chinet_session_fast_mode_skips_node_artifacts(tmp_path) -> None:
 
 @pytest.mark.skipif(
     not hasattr(cn.DB, "set_backend"),
-    reason="chinet >=0.3 removed the pluggable DB backend (DB.set_backend); the "
+    reason="the bff-backed runtime (like chinet >=0.3) has no pluggable DB backend; the "
     "transparent MMFDB-as-chinet-backend integration needs a redesign against the new "
     "chinet DB registry. The explicit store_/load_chinet_session path is covered above.",
 )

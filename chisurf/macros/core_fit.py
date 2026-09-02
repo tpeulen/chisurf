@@ -391,15 +391,20 @@ def _write_history_snapshot_to_archive(archive: ProjectArchive) -> None:
         archive.write_bytes(HISTORY_FILENAME, history_bytes)
 
 
-def _write_chinet_session_to_archive(archive: ProjectArchive) -> None:
+def _write_bff_session_to_archive(archive: ProjectArchive) -> None:
+    """Persist bff's default session (chinet's JSONL format) to the archive.
+
+    The node-graph session file is byte-compatible with chinet's format;
+    bff's Session reads and writes it, so old projects open unchanged.
+    """
     try:
-        import chinet
+        import IMP.bff as bff
     except (ImportError, AttributeError):
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
         session_path = pathlib.Path(tmpdir) / "session.jsonl"
-        chinet.session.save(str(session_path))
+        bff.get_session().save(str(session_path))
         archive.write_bytes("session.jsonl", session_path.read_bytes())
 
 
@@ -2121,7 +2126,7 @@ def build_project_archive(
     archive = ProjectArchive()
 
     _embed_external_file_refs(proj, archive, project_root, log)
-    _write_chinet_session_to_archive(archive)
+    _write_bff_session_to_archive(archive)
     if include_save_history_event and target_path is not None:
         _record_history(
             action_type="project_save",
@@ -2574,7 +2579,7 @@ def save_fit_project(target_path: str, fit_window=None, fit_name: str = "chisurf
 
     try:
         _embed_external_file_refs(proj, archive, project_root, log)
-        _write_chinet_session_to_archive(archive)
+        _write_bff_session_to_archive(archive)
         archive.write_text(PROJECT_JSON, json.dumps(proj.to_dict(), indent=2, sort_keys=True))
         archive.write_text("fit.json", json.dumps(proj.to_dict(), indent=2, sort_keys=True))
         _record_history(

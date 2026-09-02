@@ -15,7 +15,6 @@ def test_source_checkout_bootstraps_vendored_packages():
     """Importing ChiSurf from a checkout exposes its bundled packages."""
     expected = [
         ROOT / "modules" / "mmfdb" / "src",
-        ROOT / "modules" / "chinet",
     ]
     script = """
 import pathlib
@@ -23,7 +22,6 @@ import sys
 
 import chisurf
 from mmfdb.repository import MFDatabase
-import chinet
 
 expected = [pathlib.Path(value).resolve() for value in sys.argv[1:]]
 search_path = [pathlib.Path(value).resolve() for value in sys.path if value]

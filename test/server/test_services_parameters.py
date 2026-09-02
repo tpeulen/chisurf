@@ -57,7 +57,7 @@ class TestParametersService:
 
         model = MagicMock()
         model.parameters_all_dict = {"tau": p}
-        model.update_model = MagicMock()
+        model._update_model = MagicMock()
         model.finalize = MagicMock()
 
         fit = MagicMock()
@@ -68,7 +68,7 @@ class TestParametersService:
         result = set_parameter_value(state, parameter_name="tau", value=2.5, fit_index=0)
         assert result["ok"]
         assert p.value == 2.5
-        model.update_model.assert_called_once()
+        model._update_model.assert_called_once()
 
     def test_set_parameter_fixed(self):
         p = MagicMock()

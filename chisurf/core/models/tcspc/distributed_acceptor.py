@@ -207,7 +207,7 @@ class DistributedAcceptorModel(LifetimeModel):
                     )
         return decay
 
-    def update_model(
+    def _update_model(
         self,
         verbose: bool = None,
         scatter: float = None,

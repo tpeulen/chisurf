@@ -91,7 +91,7 @@ def _chi2r(m):
 def test_fixture_is_self_consistent():
     """At the true parameters the model must actually match the data."""
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    m.update_model()
+    m.update()
     y = np.asarray(m.y, dtype=float)
 
     assert y.max() > 10 * y.min(), "model is flat — the convolution did not run"
@@ -135,7 +135,7 @@ def test_fit_does_not_destroy_a_good_solution():
     step size resolved.
     """
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    m.update_model()
+    m.update()
     before = _chi2r(m)
 
     fit.run()

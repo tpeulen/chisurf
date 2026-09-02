@@ -41,7 +41,7 @@ def test_the_model_computes_a_finite_decay(time_axis):
     """The minimum bar: it produces something to compare against data."""
     fit = _fit_with_model(time_axis, np.exp(-time_axis / 4.0))
     model = fit.model
-    model.update_model()
+    model.update()
     y = np.asarray(model.y, dtype=float)
     assert y.shape == time_axis.shape
     assert np.all(np.isfinite(y))
@@ -149,7 +149,7 @@ def test_a_three_dimensional_decay_is_not_fitted_by_the_one_dimensional_law(time
         model._c_over_c0.fixed = False
         fit.fit_range = (0, len(time_axis) - 1)
         fit.run()
-        model.update_model()
+        model.update()
         y = np.asarray(model.y, dtype=float)
         y = y / max(y.max(), 1e-30) * truth.max()
         return float(np.sum((y - truth) ** 2))

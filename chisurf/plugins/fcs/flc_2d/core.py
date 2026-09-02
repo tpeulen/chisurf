@@ -1,8 +1,23 @@
 """
 Core 2D-FDC (Fluorescence Decay Correlation) matrix creation functions.
 
-This module implements the 2D-FDC matrix creation algorithm from MATLAB code
-TK_Create2DFDC_04.m, adapted for Python/ChiSurf integration.
+The 2D-FDC matrices are built by the photon library (``tttrlib.fdc_scan_log``
+and friends), which implements the algorithm of the original MATLAB code
+``TK_Create2DFDC_04.m`` by Toru Kondo (Schlau-Cohen lab, MIT) tick for tick,
+including its log-axis quantization (verified by running the .m in Octave
+against the library; pinned in tttrlib's
+``test_fdc2d.py::TestAgainstTheOriginalMatlab``).
+
+The method is two-dimensional fluorescence lifetime correlation (2D-FLC)
+spectroscopy, introduced by K. Ishii and T. Tahara, "Two-Dimensional
+Fluorescence Lifetime Correlation Spectroscopy. 1. Principle" and ". 2.
+Application", J. Phys. Chem. B 117(39), 11414-11422 and 11423-11432 (2013),
+doi:10.1021/jp406861u and doi:10.1021/jp406864e, and applied at
+single-molecule level in T. Kondo, J. B. Gordon, A. Pinnola, L. Dall'osto,
+R. Bassi and G. S. Schlau-Cohen, "Microsecond and millisecond dynamics in
+the photosynthetic protein LHCSR1 observed by single-molecule correlation
+spectroscopy", Proc. Natl. Acad. Sci. USA 116(23), 11247-11252 (2019),
+doi:10.1073/pnas.1821207116.
 """
 
 from __future__ import annotations

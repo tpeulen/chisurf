@@ -7,10 +7,35 @@ import json
 import math
 
 import numpy as np
-import chinet
 
 import chisurf.core.base
 import chisurf.core.decorators
+
+# The parameter runtime is IMP.bff's Port (phase 3 of removing chinet from
+# chisurf: bff absorbed chinet's Port/Node/Session and reads/writes chinet's
+# session format, so old projects open unchanged). The vendored chinet module
+# is gone; every layer that used it -- the node editor, the graph layer, the
+# model decorator, the parameter transform and the macros -- runs on bff now,
+# and a :class:`Parameter`'s backing port is an ``IMP.bff.Port``.
+#
+# IMP.bff is not a dependency of an environment that never fits anything,
+# so the import is guarded rather than hard: this module imports cleanly
+# without it and the first Parameter that needs a port says what is missing
+# (the same try/except ImportError discipline project.py applies to its
+# optional session persistence).
+try:
+    import IMP.bff as _bff
+    # A partial IMP install (data-only directories, a namespace-package stub)
+    # imports but has no runtime in it; that is "absent" for this module's
+    # purposes, not a working IMP.bff that will fail one attribute later.
+    if not hasattr(_bff, "Port"):
+        raise ImportError("IMP.bff is present but carries no Port runtime")
+except ImportError as _exc:  # pragma: no cover - env without IMP
+    # ``except ... as`` deletes its binding at the end of the block, so the
+    # error is kept under its own name for the message raised at first use.
+    _bff = None
+    _bff_import_error = _exc
+
 
 T = typing.TypeVar('T', bound='Parameter')
 
@@ -61,12 +86,12 @@ def _owning_class_name() -> typing.Optional[str]:
 
 @chisurf.core.decorators.register
 class Parameter(chisurf.core.base.Base):
-    """Scalar parameter backed by a low-level :mod:`chinet` port.
+    """Scalar parameter backed by a low-level :mod:`IMP.bff` port.
 
     A :class:`Parameter` represents a single scalar value used in a model
     or fit. The value can be
 
-    - stored directly in an underlying :class:`chinet.Port`,
+    - stored directly in an underlying :class:`IMP.bff.Port`,
     - computed dynamically from a Python callable, or
     - linked to another :class:`Parameter`.
 
@@ -94,13 +119,13 @@ class Parameter(chisurf.core.base.Base):
         edge ``target -> current``; it is rejected when *current* can already
         reach *target* through existing links.
 
-        The cycle detection itself lives in ``chinet`` -- the underlying
-        :class:`chinet.Port` enforces the DAG with Kahn's algorithm whenever a
-        link is created (see :meth:`chinet.Port.would_create_cycle`). This
+        The cycle detection itself lives in the port runtime -- the
+        underlying :class:`IMP.bff.Port` enforces the DAG with Kahn's
+        algorithm whenever a link is created (see
+        :meth:`IMP.bff.Port.would_create_cycle`). This
         method simply delegates to it on the backing ports so the logic is
         defined once. It is retained as a side-effect-free predicate for GUI
         call sites that want to validate a link *before* attempting it.
-
         Parameters
         ----------
         current : Parameter
@@ -145,9 +170,17 @@ class Parameter(chisurf.core.base.Base):
     def bounds(self) -> typing.Tuple[float, float]:
         """Lower and upper bounds of the parameter as a 2-tuple.
 
-        The values are stored on the underlying :class:`chinet.Port`.
+        The values are stored on the underlying :class:`IMP.bff.Port`.
+        ``(None, None)`` is reported while enforcement is off, as chinet's
+        port did -- bff's port reports ``(nan, nan)`` there, and the
+        difference is adapted here so consumers (and :meth:`get_state`'s
+        ``None`` -> +/-inf normalisation) never see a NaN.
         """
-        return self._port.bounds
+        if not self._port.bounded:
+            return (None, None)
+        lb, ub = self._port.bounds
+        return (None if lb != lb else float(lb),
+                None if ub != ub else float(ub))
 
     @bounds.setter
     def bounds(self, b: typing.Tuple[float, float]):
@@ -156,14 +189,12 @@ class Parameter(chisurf.core.base.Base):
 
     def _stored_bound(self, i: int, default: float) -> float:
         """Return bound *i* as stored on the port, enforced or not."""
-        b = self._port.bounds
-        if b is not None and b[i] is not None:
-            return float(b[i])
-        stored = getattr(self._port, "_bounds", None)
-        try:
-            return float(stored[i])
-        except (TypeError, IndexError, ValueError):
-            return default
+        # bff's port stores lb/ub whether or not enforcement is on and
+        # reports them through get_lower_bound()/get_upper_bound(). A NaN
+        # is bff's "not a bound" marker, so treat it as unset.
+        stored = float(self._port.get_lower_bound() if i == 0
+                       else self._port.get_upper_bound())
+        return default if stored != stored else stored
 
     @property
     def lb(self) -> float:
@@ -173,7 +204,7 @@ class Parameter(chisurf.core.base.Base):
         but there were no matching properties — so ``p.lb = 0.01`` silently
         created a dead instance attribute and the bound was never applied, while
         ``p.lb`` raised ``AttributeError``. These accessors close that gap; the
-        bounds themselves live on the underlying :class:`chinet.Port`.
+        bounds themselves live on the underlying :class:`IMP.bff.Port`.
         """
         # Port.bounds reports (None, None) while enforcement is OFF even though
         # the values are stored, which would make lb/ub a lossy round-trip. Read
@@ -226,7 +257,7 @@ class Parameter(chisurf.core.base.Base):
         # decay model evaluation, above the convolution itself.
         frozen = self.__dict__.get("_frozen_flags")
         if frozen is not None:
-            linked, callable_, bounded, lb, ub = frozen
+            linked, callable_, bounded, lb, ub, fixed_ = frozen
             if linked:
                 # A follower is written through its *port* when the master
                 # moves, which never reaches this object, so it is read fresh.
@@ -326,10 +357,32 @@ class Parameter(chisurf.core.base.Base):
         # caching reads inside a run sound.
         if "_frozen_value" in self.__dict__:
             del self.__dict__["_frozen_value"]
+
+        # Inside a run the structure is fixed and only values change, so the
+        # dispatches that decide *how* to write are answered once at freeze
+        # time rather than on every iteration. An optimiser writes each free
+        # parameter every step; this was costing four calls across the binding
+        # (read `fixed`, clear it, write, restore it) plus a property lookup
+        # for `_callable`, where a free parameter needs exactly one write.
+        #
+        # A *fixed* parameter still takes the long way below: it is written
+        # rarely, and forcing the value past its own fixedness is deliberate
+        # behaviour that is not worth duplicating here.
+        frozen = self.__dict__.get("_frozen_flags")
+        if frozen is not None and frozen[1] is None and not frozen[5]:
+            try:
+                self._port.value = float(value)
+            except (TypeError, ValueError):
+                import chisurf.logging
+                chisurf.logging.error(
+                    f"Cannot set parameter '{self.name}' value to "
+                    f"{type(value)}: {value}")
+            return
+
         if self._callable:
             return
         
-        # Ensure value is a float before passing to low-level chinet port.
+        # Ensure value is a float before passing to the low-level port.
         # This prevents access violations if a Python object (e.g. another
         # Parameter) is accidentally assigned to this property.
         try:
@@ -383,19 +436,14 @@ class Parameter(chisurf.core.base.Base):
     @property
     def is_linked(self) -> bool:
         """Whether this parameter is linked to another parameter."""
-        # In vendored chinet, Port.is_linked is a boolean property (not callable).
-        # Older versions exposed it as a method. Support both styles gracefully.
-        v = self._port.is_linked
-        if callable(v):
-            return bool(v())
-        return bool(v)
+        return bool(self._port.is_linked())
 
     @property
     def prior(self):
         """Prior probability distribution attached to this parameter.
 
         A parameter's prior generalises its bounds. The prior specification is
-        stored on the underlying :class:`chinet.Port` (as a JSON-serialisable
+        stored on the underlying :class:`IMP.bff.Port` (as a JSON-serialisable
         dict), so it travels with the port through pickling and JSON. When no
         smooth prior is set but a bound is active, the bound is reported as the
         equivalent :class:`~chisurf.core.fitting.priors.UniformPrior`, so a hard
@@ -485,6 +533,17 @@ class Parameter(chisurf.core.base.Base):
         was = bool(self._port.fixed)
         self._port.fixed = bool(v)
         if was != bool(v):
+            # A freeze stamps `fixed` into `_frozen_flags` so the write path
+            # need not ask the port on every iteration. Dropping the stamp
+            # here is what makes that sound by construction rather than by
+            # convention: every caller that toggles fixedness today does so
+            # outside a frozen block (support_plane and the evidence
+            # conditioning in engine.py both re-enter `fit.run()`, which
+            # re-freezes), but a future one that does it inside would
+            # otherwise leave the write path believing a fixed parameter is
+            # free -- and the port would then silently refuse the write.
+            self.__dict__.pop("_frozen_flags", None)
+            self.__dict__.pop("_frozen_value", None)
             # Freezing or freeing a parameter adds or removes a variable, so
             # cached factor graphs no longer describe this fit.
             _bump_fit_structure_version()
@@ -620,7 +679,7 @@ class Parameter(chisurf.core.base.Base):
             Another parameter this one should be linked to.
         lb, ub : float, optional
             Lower and upper bounds for the value stored on the underlying
-            :class:`chinet.Port`.
+            :class:`IMP.bff.Port`.
         bounds_on : bool, optional
             If *True*, the bounds are enforced on the port.
         """
@@ -656,24 +715,38 @@ class Parameter(chisurf.core.base.Base):
             self._port = port
             self._callable = None
         else:
+            if _bff is None:
+                raise ImportError(
+                    "chisurf.core.parameter requires IMP.bff, the port "
+                    "runtime that replaced chinet (phase 3 of removing "
+                    "chinet), but importing it failed: "
+                    f"{_bff_import_error}"
+                )
             if callable(value):
                 self._callable = value
-                self._port = chinet.Port(
+                self._port = _bff.Port(
                     value=np.atleast_1d(0.0).astype(np.float64),
                     name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
                 )
             else:
                 self._callable = None
-                self._port = chinet.Port(
+                self._port = _bff.Port(
                     value=np.atleast_1d(value).astype(np.float64),
                     name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
                 )
+        # chinet registered every constructed port with its global database,
+        # which is what made project saves pick parameters up. bff's Session
+        # is the registry and registers nothing by construction, so the port
+        # is added here explicitly (adding twice is a no-op; a port owned by
+        # a node is persisted with its node and deduplicated on save).
+        if _bff is not None and isinstance(self._port, _bff.Port):
+            _bff.get_session().add_port(self._port)
         self._link = link
         if isinstance(link, Parameter):
             self._port.link = link._port
         self.controller = None
         # Live prior object. Serialisable priors also mirror their spec onto the
-        # chinet Port (so they persist); callback priors live only here. Box
+        # port (so they persist); callback priors live only here. Box
         # bounds are surfaced as a UniformPrior by the :attr:`prior` property,
         # so both this slot and the port spec stay empty for pure bounds.
         self._prior = None

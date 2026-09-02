@@ -437,7 +437,7 @@ class _IcsModelBase(ModelCurve):
         delta3 = frame_lags[:, None, None]
         return xi3, psi3, delta3
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Evaluate the model over the whole carpet and store 3D and 1D forms."""
         _, data = _ics_meta(self.fit)
         grids = self._carpet_grids()

@@ -227,13 +227,13 @@ def test_many_conditionals_cost_one_curvature_evaluation():
 
     calls = [0]
     model = fit.model
-    original = model.update_model
+    original = model._update_model
 
     def counting(*a, _o=original, **k):
         calls[0] += 1
         return _o(*a, **k)
 
-    model.update_model = counting
+    model._update_model = counting
 
     engine = E.GaussianEngine(fit).add_all_targets().run()
     after_build = calls[0]
@@ -376,19 +376,19 @@ def test_a_whole_sweep_costs_no_model_evaluations():
 
     calls = [0]
     model = fit.model
-    original = model.update_model
+    original = model._update_model
 
     def counting(*a, _o=original, **k):
         calls[0] += 1
         return _o(*a, **k)
 
-    model.update_model = counting
+    model._update_model = counting
     try:
         for name in engine.form().names:
             out = engine.conditional_scan(name, points=101, span=3.0)
             assert out is not None and out['targets']
     finally:
-        model.update_model = original
+        model._update_model = original
     assert calls[0] == 0
 
 

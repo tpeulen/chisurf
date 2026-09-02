@@ -909,7 +909,7 @@ class ProteinMCModel(Model):
 
     # -- Model contract ------------------------------------------------
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Refresh the distance outputs; the trajectory is produced by sampling.
 
         Parameters

@@ -102,7 +102,7 @@ def test_tcspc_donor_reference_mode_supports_scaling_parameter():
 
         y = np.array([1.0, 2.0, 4.0])
 
-        def update_model(self):
+        def _update_model(self):
             """No-op update."""
 
     model._reference = _Reference()

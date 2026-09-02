@@ -101,7 +101,7 @@ class FidaModel(ModelCurve):
         mask = (q > 0.0) & (n > 0.0)
         return list(zip(q[mask], n[mask]))
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Compute the photon-counting histogram on the data's k grid.
 
         **Refuses a non-count axis rather than computing on it.** A FIDA

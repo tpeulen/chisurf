@@ -21,12 +21,12 @@ def refresh_gui() -> None:
     gui = getattr(cs, "cs", None)
     if gui is None:
         return
-    try:
-        import chisurf.gui
+    # Through the presentation seam, not `import chisurf.gui`: the model must
+    # not need a widget toolkit to be importable. Headless there is no
+    # presenter and this is a no-op on a `gui` that is already None.
+    from chisurf.core import presentation
 
-        chisurf.gui.run_on_gui_thread(gui.update)
-    except Exception:
-        logger.debug("GUI refresh failed", exc_info=True)
+    presentation.notify(gui.update)
 
 
 def apply_auto_fit_range(fit: Any) -> list[int] | None:

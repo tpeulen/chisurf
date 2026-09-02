@@ -30,7 +30,7 @@ class DummyModel:
         self.parameters_all_dict = {"tau": DummyParameter("tau", 3.8)}
         self.name = "TestModel"
 
-    def update_model(self):
+    def _update_model(self):
         pass
 
     def finalize(self):

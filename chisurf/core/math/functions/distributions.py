@@ -1,7 +1,6 @@
 from __future__ import annotations
 from chisurf import typing
 
-import math
 import numpy as np
 
 
@@ -33,14 +32,13 @@ def poisson_0toN(lam: float, N: int):
     >>> poisson_0toN(0.2, 5)
     array([8.18730753e-01, 1.63746151e-01, 1.63746151e-02, 1.09164100e-03,
            5.45820502e-05])
+
+    Moved to IMP.bff (`Distributions.h`); this is a thin forwarder. The two
+    implementations were compared before this was written and agreed to better
+    than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
-    # p[i] = p[i-1] * lam / i is a multiplicative scan, so cumprod produces it
-    # in the same order and with the same rounding as the loop did.
-    p = np.empty(N, dtype=np.float64)
-    p[0] = math.exp(-lam)
-    if N > 1:
-        p[1:] = p[0] * np.cumprod(lam / np.arange(1, N, dtype=np.float64))
-    return p
+    from IMP.bff import poisson_0toN as _f
+    return _f(lam, int(N))
 
 
 def normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0, norm: bool = True):
@@ -76,11 +74,13 @@ def normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0, nor
     array([0.24197072, 0.39894228, 0.24197072])
     >>> np.round(normal_distribution(x, loc=0, scale=1, norm=True), 6)
     array([0.274069, 0.451863, 0.274069])
+
+    Moved to IMP.bff (`Distributions.h`); this is a thin forwarder. The two
+    implementations were compared before this was written and agreed to better
+    than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
-    y = 1.0 / (np.sqrt(2.0 * np.pi) * scale) * np.exp(- (x - loc)**2 / (2.0 * scale**2))
-    if norm:
-        y /= y.sum()
-    return y
+    from IMP.bff import normal_distribution as _f
+    return _f(np.asarray(x, dtype=float), loc, scale, norm)
 
 
 def generalized_normal_distribution(x: np.ndarray, loc: float = 0.0, scale: float = 1.0,
@@ -122,22 +122,13 @@ def generalized_normal_distribution(x: np.ndarray, loc: float = 0.0, scale: floa
     >>> # When shape is 0, it reduces to the standard normal PDF.
     >>> np.round(generalized_normal_distribution(x, loc=0, scale=1, shape=0, norm=False), 6)
     array([0.004432, 0.129518, 0.398942, 0.129518, 0.004432])
+
+    Moved to IMP.bff (`Distributions.h`); this is a thin forwarder. The two
+    implementations were compared before this was written and agreed to better
+    than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
-    if shape == 0.0:
-        z = (x - loc) / scale
-    else:
-        if scale == 0.0:
-            return np.zeros_like(x)
-        else:
-            t = 1.0 - shape * (x - loc) / scale
-            t[t < 0.0] = np.spacing(1)
-            z = -1.0 / shape * np.log(t)
-
-    y = normal_distribution(z, norm=False)
-
-    if norm:
-        y /= y.sum()
-    return y
+    from IMP.bff import generalized_normal_distribution as _f
+    return _f(np.asarray(x, dtype=float), loc, scale, shape, norm)
 
 
 def linear_dist(x: np.ndarray, px: np.ndarray, py: np.ndarray, normalize: bool = True):
@@ -201,64 +192,6 @@ def linear_dist(x: np.ndarray, px: np.ndarray, py: np.ndarray, normalize: bool =
     if normalize:
         y /= y.sum()
     return y
-
-
-def sum_distribution(x_axis, dist_function, dist_args, weights: typing.List[float] = None,
-                     accumulate: bool = True, normalize: bool = False):
-    """
-    Generate a combined distribution by summing multiple individual distributions.
-
-    This function evaluates a given distribution function (`dist_function`) on an x-axis (`x_axis`)
-    for several sets of parameters specified in `dist_args`. Each distribution can be weighted by an
-    optional list of `weights`. When `accumulate` is True, the function returns a single distribution
-    that is the sum of all weighted distributions. Otherwise, it returns a list of individual
-    weighted distributions.
-
-    Parameters
-    ----------
-    x_axis : array-like
-        The x-axis values at which to evaluate the distributions.
-    dist_function : callable
-        The distribution function to evaluate.
-    dist_args : list of lists
-        A list where each sublist contains the arguments to be passed to `dist_function`.
-    weights : list of float, optional
-        Weights for each distribution. If None, all distributions have equal weight.
-    accumulate : bool, optional
-        If True, returns the sum of the weighted distributions; if False, returns a list of them.
-        (default is True)
-    normalize : bool, optional
-        If True, the resulting distribution(s) are normalized to sum to 1 (default is False).
-
-    Returns
-    -------
-    numpy.ndarray or list
-        A single numpy array if `accumulate` is True, or a list of numpy arrays otherwise.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> x_axis = np.linspace(0, 10, 11)
-    >>> def dummy_pdf(x, a, b):
-    ...     return a * x + b
-    >>> # Two distributions: one increasing (dummy_pdf(x,1,0)=x) and one constant (dummy_pdf(x,0,1)=1).
-    >>> result = sum_distribution(x_axis, dummy_pdf, [[1, 0], [0, 1]], weights=[1, 1], accumulate=True)
-    >>> np.allclose(result, (x_axis + 1))
-    True
-    """
-    if weights is None:
-        weights = [1.] * len(dist_args)
-    if accumulate:
-        y_values = np.zeros_like(x_axis)
-        for i, arg in enumerate(dist_args):
-            y_values += weights[i] * dist_function(x_axis, *arg)
-    else:
-        y_values = []
-        for i, arg in enumerate(dist_args):
-            y_values.append(weights[i] * dist_function(x_axis, *arg))
-    if normalize:
-        y_values /= y_values.sum()
-    return y_values
 
 
 def combine_distributions(x_axis, dist_function, dist_args, weights: typing.List[float] = None,
@@ -356,16 +289,11 @@ def distance_between_gaussian(distances: np.array, separation_distance: float, s
     >>> # With normalization, the sum equals 1
     >>> np.round(distance_between_gaussian(x, 2, 1, normalize=True).sum(), 6)
     1.0
+
+    Moved to IMP.bff (`Distributions.h`); this is a thin forwarder. The two
+    implementations were compared before this was written and agreed to better
+    than 1e-15 -- see okf/log.md 2026-09-02 (22).
     """
-    if separation_distance > 0:
-        pr = distances / separation_distance * (
-            normal_distribution(x=distances, loc=separation_distance, scale=sigma, norm=False) -
-            normal_distribution(x=distances, loc=-separation_distance, scale=sigma, norm=False)
-        )
-    else:
-        pr = 2.0 * distances**2 / sigma**2 * normal_distribution(x=distances, loc=0.0, scale=sigma, norm=False)
-    if normalize:
-        s = pr.sum()
-        if s > 0:
-            pr /= s
-    return pr
+    from IMP.bff import distance_between_gaussian as _f
+    return _f(np.asarray(distances, dtype=float),
+              float(separation_distance), sigma, normalize)

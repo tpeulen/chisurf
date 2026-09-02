@@ -53,7 +53,6 @@ _EXCLUDED_PREFIXES = ("chisurf/plugins/chimol/",)
 
 _PACKAGES = (
     _ROOT / "chisurf",
-    _ROOT / "modules" / "chinet",
     _ROOT / "modules" / "ndxplorer",
 )
 

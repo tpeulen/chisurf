@@ -1,5 +1,13 @@
 """High-level, Qt-free API for 2D fluorescence lifetime correlation (2D-FLC).
 
+Method: K. Ishii and T. Tahara, "Two-Dimensional Fluorescence Lifetime
+Correlation Spectroscopy. 1. Principle" and ". 2. Application", J. Phys.
+Chem. B 117(39), 11414-11422 and 11423-11432 (2013), doi:10.1021/jp406861u
+and doi:10.1021/jp406864e. The photon-pair pass follows the original
+implementation ``TK_Create2DFDC_04.m`` by Toru Kondo (Schlau-Cohen lab, MIT),
+see T. Kondo et al., Proc. Natl. Acad. Sci. USA 116(23), 11247-11252 (2019),
+doi:10.1073/pnas.1821207116.
+
 The pipeline has two halves:
 
 * **Lifetime resolution** -- resolve the fluorescence-lifetime species from a decay

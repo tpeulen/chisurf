@@ -18,7 +18,7 @@ import chisurf.core.settings
 import chisurf.gui.tooltip
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, fit_tooltip_html
 
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client

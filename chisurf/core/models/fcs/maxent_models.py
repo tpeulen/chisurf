@@ -188,7 +188,7 @@ class _MaxEntFCSBase(ModelCurve):
         self._l_curve_chi2 = result.chi2r
         self._l_curve_solution_norm = result.solution_norm
         self._l_curve_corner_index = result.corner_index
-        self.update_model()
+        self._update_model()
 
     def l_curve_corner_index(self) -> int | None:
         """Index of the automatically detected L-curve corner, or ``None``.
@@ -391,7 +391,7 @@ class MaxEntFCSModel(_MaxEntFCSBase):
         n_td = int(self._n_td.value) if float(self._n_td.value) > 0.0 else 80
         return self._entropy_prior(_maxent_td_grid(tau, td_min, td_max, n_td))
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Run the MaxEnt inversion and store the reconstructed correlation curve.
 
         Parameters
@@ -555,7 +555,7 @@ class MaxEntRHModel(_MaxEntFCSBase):
             )
         )
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Run the MaxEnt inversion in radius space and store the model curve.
 
         Parameters

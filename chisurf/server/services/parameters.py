@@ -41,7 +41,7 @@ def _finalize_owner(owner: Any) -> None:
     if model is None:
         return
     if hasattr(model, "update_model"):
-        model.update_model()
+        model.update()
     if hasattr(model, "finalize"):
         model.finalize()
 

@@ -1457,7 +1457,7 @@ def _lifetime_objective(fit, model, free):
     # The graph holds the only reference to these once this function returns.
     #
     # Nothing here has to publish the autoscaled `n0`: the answer is written
-    # back through the ordinary setters and `model.update_model()` then runs
+    # back through the ordinary setters and `model.update()` then runs
     # ChiSurf's own pipeline once, which recomputes and stores it. The node
     # is kept reachable as `_decay` for the same reason the rest is -- so a
     # caller can look at what was built.
@@ -1728,7 +1728,7 @@ def _covariance_at_the_solution(m, free, x, options):
     **The finite-difference covariance** (`Minimizer.compute_covariance`)
     costs ``p + 1`` evaluations, but of the *graph* -- in C++, with the data
     already in the node -- rather than ``p + 1`` trips through
-    `Model.update_model()`. It uses :func:`approx_grad`'s step rule,
+    `Model.update()`. It uses :func:`approx_grad`'s step rule,
     ``eps * max(|x|, 1)`` with ``eps = sqrt(machine eps)``, which is the
     absolute floor the optimiser's rule lacks and the reason it resolves. It
     is the same arithmetic `covariance_matrix` does and it was pinned against
@@ -1901,7 +1901,7 @@ def minimize(
         for parameter, value in zip(free, x):
             parameter.value = float(value)
         if not _publish_curve(m, model, x):
-            model.update_model()
+            model.update()
         # Tell Fit.run the model already holds the fitted curve, so its own
         # self.update() does not evaluate the model a second time.
         if fit is not None:

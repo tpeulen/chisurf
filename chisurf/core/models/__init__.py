@@ -5,12 +5,28 @@ from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models import global_model
 
 
+def _join_bff_session(node):
+    """Register a parse-built node with bff's default session.
+
+    chinet's global object database picked up every constructed node,
+    which is what let a project save find it; bff's Session is the
+    registry and registers nothing by construction (see
+    :mod:`chisurf.core.parameter`), so the node is added explicitly,
+    keyed by its uid (adding the same key twice is idempotent).
+    """
+    try:
+        import IMP.bff as bff
+    except ImportError:
+        return
+    bff.get_session().add_node(node.get_uid(), node)
+
+
 def function_to_model_decorator(**kws):
     """Create a decorator that wraps a callable into a `Model` subclass.
 
     The returned decorator turns a Python callable into a
-    :class:`chisurf.core.models.Model` subclass that is backed by a ``chinet``
-    node. Keyword arguments passed to this factory are forwarded to the
+    :class:`chisurf.core.models.Model` subclass that is backed by a
+    :class:`chisurf.core.nodes.PythonNode` (an ``IMP.bff`` node). Keyword arguments passed to this factory are forwarded to the
     model constructor.
 
     Parameters
@@ -54,7 +70,7 @@ def function_to_model_decorator(**kws):
         class ModelDecorator(Model):
 
             def __init__(self, *args, **kwargs):
-                """Initialize the model decorator with chinet node and parameters.
+                """Initialize the model decorator with a bff node and parameters.
 
                 Parameters
                 ----------
@@ -72,16 +88,16 @@ def function_to_model_decorator(**kws):
                 logging.debug(f'updating kwargs with kws')
                 kwargs.update(kws)
                 logging.debug(f'updating kwargs finished')
-                logging.debug(f'importing chinet')
-                import chinet as cn
-                logging.debug(f'importing chinet finished')
-                logging.debug(f'chinet: {cn}')
                 super(ModelDecorator, self).__init__(*args, **kwargs)
                 logging.debug(f'super called.')
-                self._node = cn.Node()
+                import chisurf.core.nodes as cn_nodes
+                self._node = cn_nodes.function_to_node(func)
+                # chinet registered every constructed node with its global
+                # database; bff's session is the registry, so the node is
+                # added here (its ports join through the FittingParameters
+                # below and deduplicate with the node on save).
+                _join_bff_session(self._node)
                 logging.debug(f'_node: {self._node}')
-                self._node.set_python_callback_function(func)
-                logging.debug(f'_node.set_python_callback_function called.')
                 logging.debug(f'func: {func}')
                 self.node_parameters = list()
                 logging.debug(f'node_parameters: {self.node_parameters}')
@@ -89,7 +105,7 @@ def function_to_model_decorator(**kws):
                 logging.debug(f'make_parameters finished.')
 
             def make_parameters(self):
-                """Create FittingParameters from the chinet node ports."""
+                """Create FittingParameters from the node's ports."""
                 ports = self._node.get_ports()
                 logging.debug(f'ports: {ports}')
                 logging.debug(f'ports.keys(): {ports.keys()}')
@@ -115,8 +131,8 @@ def function_to_model_decorator(**kws):
                     logging.debug(f'fixed: {self.parameters_all_dict[port_key].fixed}')
                 logging.debug(f'fixed output ports finished.')
 
-            def update_model(self, **kwargs):
-                """Evaluate the chinet node to compute the model output."""
+            def _update_model(self, **kwargs):
+                """Evaluate the bff node to compute the model output."""
                 logging.debug(f'update_model called.')
                 logging.debug(f'evaluating')
                 self._node.evaluate()
@@ -129,7 +145,7 @@ def function_to_model_decorator(**kws):
                 self.find_parameters()
                 logging.debug(f'find_parameters finished.')
                 logging.debug(f'update_model')
-                self.update_model()
+                self._update_model()
                 logging.debug(f'update_model finished.')
 
         return ModelDecorator

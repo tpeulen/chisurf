@@ -92,7 +92,7 @@ def test_collapsed_chain_recovers_the_joint_posterior():
     np.random.seed(0)
     fit = _linked_group(6)
     model = posterior_model(fit)
-    model.update_model()
+    model.update()
     collapsed = chisurf.core.fitting.sample.sample_marginal_shared(
         fit=fit, steps=2500, step_size=0.05, thin=1, model=model, seed=3
     )
@@ -100,7 +100,7 @@ def test_collapsed_chain_recovers_the_joint_posterior():
     np.random.seed(0)
     fit2 = _linked_group(6)
     model2 = posterior_model(fit2)
-    model2.update_model()
+    model2.update()
     joint = chisurf.core.fitting.sample.walk_mcmc_blocked(
         fit=fit2, steps=6000, step_size=0.02, thin=1, model=model2
     )
@@ -122,7 +122,7 @@ def test_collapsing_fixes_the_mixing_of_the_shared_parameter():
         np.random.seed(5)
         fit = _linked_group(6)
         model = posterior_model(fit)
-        model.update_model()
+        model.update()
         r = sampler(fit, model)
         tau = dg.autocorrelation_time(np.asarray(r['chains']))
         return float(tau[list(r['parameter_names']).index('1:a')])
@@ -140,17 +140,17 @@ def test_collapsing_wins_outright_with_several_private_parameters():
         np.random.seed(7)
         fit = _linked_group(6, func='c+b*x+a*x**2', sigma=0.03, npts=64)
         model = posterior_model(fit)
-        model.update_model()
+        model.update()
         calls = [0]
         for local in fit:
             m = local.model
-            original = m.update_model
+            original = m._update_model
 
             def counting(*a, _o=original, **k):
                 calls[0] += 1
                 return _o(*a, **k)
 
-            m.update_model = counting
+            m._update_model = counting
         r = sampler(fit, model)
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return float(ess.min()) / max(1, calls[0])
@@ -168,7 +168,7 @@ def test_the_result_is_a_full_joint_sample():
     np.random.seed(1)
     fit = _linked_group(4)
     model = posterior_model(fit)
-    model.update_model()
+    model.update()
     r = chisurf.core.fitting.sample.sample_marginal_shared(
         fit=fit, steps=800, step_size=0.05, thin=1, model=model, seed=2
     )
@@ -204,7 +204,7 @@ def test_an_unlinked_group_falls_back_to_the_component_decomposition():
     fit._model.find_parameters()
     fit.run(local_first=False)
     model = posterior_model(fit)
-    model.update_model()
+    model.update()
 
     r = chisurf.core.fitting.sample.sample_marginal_shared(
         fit=fit, steps=400, step_size=0.02, thin=1, model=model, seed=1

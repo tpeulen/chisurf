@@ -88,7 +88,7 @@ class LifetimeMixModel(LifetimeModel):
         self.find_parameters()
         for m in self.models:
             m.update()
-        self.update_model()
+        self._update_model()
 
     # TODO: needs docstring
     def finalize(self):

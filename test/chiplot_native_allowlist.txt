@@ -14,7 +14,7 @@
 #
 # What is genuinely missing, and what the porter has to add first:
 #   * axis styling  — pen/text colour, height, tick-text offset
-#     (lightpath node_types, pt_plot_widget, spectrum_view)
+#     (pt_plot_widget, spectrum_view)
 #   * curve performance — setDownsampling / setClipToView
 #     (tttr_lut_tools, lineplot)
 #   * legend text colour (spectrum_view)
@@ -22,12 +22,10 @@
 # This list only SHRINKS. When you touch one of these files, port it and strike
 # the line; adding a NEW line is a test failure, not a fix. Goal: empty.
 # See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.
-chisurf/gui/plots/lineplot/lineplot.py
 chisurf/gui/widgets/node_editor/widgets/pt_plot_widget.py
 chisurf/gui/widgets/spectrum_view.py
 chisurf/plugins/burst/burst_background/gui/sections.py
 chisurf/plugins/calculator/fcs_saturation_calc/tests/test_gui.py
-chisurf/plugins/core/lightpath_simulator/gui/node_types.py
 chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
 chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fret_line/gui/tool.py

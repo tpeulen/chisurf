@@ -40,7 +40,7 @@ def test_fida_refuses_a_decay_shaped_axis(caplog):
     fit, model = _make_fit(x, np.zeros_like(x))
 
     with caplog.at_level("WARNING"):
-        model.update_model()
+        model.update()
 
     assert model.y.size == x.size
     assert np.all(model.y == 0.0), "a refused axis must leave a flat curve, not a computed one"
@@ -54,7 +54,7 @@ def test_fida_refuses_a_gapped_integer_axis(caplog):
     fit, model = _make_fit(k, np.zeros_like(k))
 
     with caplog.at_level("WARNING"):
-        model.update_model()
+        model.update()
 
     assert np.all(model.y == 0.0)
     assert any("FIDA" in r.getMessage() for r in caplog.records)
@@ -65,7 +65,7 @@ def test_fida_computes_on_a_real_count_axis():
     k = np.arange(40, dtype=float)
     fit, model = _make_fit(k, np.zeros_like(k))
 
-    model.update_model()
+    model.update()
 
     assert model.y.size == k.size
     assert np.all(np.isfinite(model.y))

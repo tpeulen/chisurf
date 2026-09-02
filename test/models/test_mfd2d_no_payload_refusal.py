@@ -24,7 +24,7 @@ def test_update_model_warns_when_no_burst_payload_is_attached(caplog):
     before = model.y.copy()
 
     with caplog.at_level("WARNING"):
-        model.update_model()
+        model.update()
 
     assert (model.y == before).all(), "a refused update must not silently change the curve"
     messages = [r.getMessage() for r in caplog.records]
@@ -39,7 +39,7 @@ def test_the_no_op_curve_is_flat(caplog):
     model = fit.model
 
     with caplog.at_level("WARNING"):
-        model.update_model()
+        model.update()
 
     assert np.all(np.isfinite(model.y))
     assert np.ptp(model.y) == 0.0, "an un-fitted model must read as degenerate, not 'built'"

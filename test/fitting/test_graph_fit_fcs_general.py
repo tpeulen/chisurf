@@ -82,7 +82,7 @@ def test_the_node_curve_is_the_python_curve(mode):
         model.species._x_2.value = 0.3
         model.species._D_2.value = 30.0
     model.find_parameters()
-    model.update_model()
+    model.update()
     np.testing.assert_allclose(
         _node_curve(fit), np.asarray(model.y, dtype=float),
         rtol=1e-12, atol=1e-14)
@@ -91,7 +91,7 @@ def test_the_node_curve_is_the_python_curve(mode):
 def test_neutral_defaults_are_exactly_neutral():
     """No terms, diam = 0, bg = 0, no count-rate meta: the plain 3D-Gauss."""
     fit = make_fit()
-    fit.model.update_model()
+    fit.model.update()
     np.testing.assert_allclose(
         _node_curve(fit), np.asarray(fit.model.y, dtype=float),
         rtol=1e-12, atol=1e-14)
@@ -105,7 +105,7 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
     model.gauss._N.value = truth["N"]
     model.gauss._D.value = truth["D"]
     model.find_parameters()
-    model.update_model()
+    model.update()
     rng = np.random.default_rng(3)
     fit.data.y = np.asarray(model.y) + rng.normal(0.0, 1e-3, model.y.size)
 
@@ -120,19 +120,19 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
     model.find_parameters()
 
     calls = {"n": 0}
-    original = type(model).update_model
+    original = type(model)._update_model
 
     def counting(self, **kwargs):
         calls["n"] += 1
         return original(self, **kwargs)
 
-    type(model).update_model = counting
+    type(model)._update_model = counting
     try:
         assert M.graph_objective(fit, model) is not None
         fit.run()
         during = calls["n"]
     finally:
-        type(model).update_model = original
+        type(model)._update_model = original
 
     assert model.gauss.N == pytest.approx(truth["N"], rel=2e-2)
     assert model.gauss.D == pytest.approx(truth["D"], rel=2e-2)

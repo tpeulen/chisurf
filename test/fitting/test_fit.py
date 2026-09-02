@@ -101,7 +101,7 @@ class FitTests(unittest.TestCase):
         fit_range = 0, len(model.y) - 1
         fit.fit_range = fit_range
         y_model = model.parameter_dict['c'].value + model.parameter_dict['a'].value * x_data ** 2.0
-        fit.model.update_model()
+        fit.model.update()
         if test:
             self.assertEqual(
                 np.allclose(
@@ -197,7 +197,7 @@ class FitTests(unittest.TestCase):
 
         # Use a fit range that exercises the xmax-exclusive behaviour
         fit.fit_range = 0, len(fit.model.y) - 1
-        fit.model.update_model()
+        fit.model.update()
 
         # Full-length curves should match the original data length and contain NaNs outside the fit range.
         curves_full = fit.get_curves(full_length=True)

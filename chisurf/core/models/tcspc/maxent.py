@@ -245,7 +245,7 @@ class MaxEntLifetimeModel(LifetimeModel):
         except Exception:
             self._l_curve_corner_index = None
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Run MaxEnt lifetime inversion and update the model curve."""
         data = getattr(self.fit, "data", None)
         decay = np.asarray(getattr(data, "y", []), dtype=float).ravel()
@@ -469,7 +469,7 @@ class MaxEntFRETModel(FRETModel):
         except Exception:
             self._l_curve_corner_index = None
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Run MaxEnt FRET inversion and update the model curve."""
         data = getattr(self.fit, "data", None)
         decay = np.asarray(getattr(data, "y", []), dtype=float).ravel()

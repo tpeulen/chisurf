@@ -364,7 +364,7 @@ def test_read_from_fit_populates_spectrum_and_model_patterns(qapp, qtbot, monkey
         def __init__(self):
             self.y = np.ones(32)
 
-        def update_model(self, lifetime_spectrum=None):
+        def _update_model(self, lifetime_spectrum=None):
             spectrum = np.asarray(lifetime_spectrum, dtype=float)
             time = np.arange(32) * 0.05
             self.y = sum(

@@ -316,7 +316,9 @@ class TestManifestKeySchema:
         """Every declared key has a parser field, and every field is declared."""
         declared = set(_MANIFEST_SCHEMA["properties"])
         parsed = {f.name for f in dataclasses.fields(PluginManifest)}
-        assert declared == parsed
+        # ``$schema`` and ``_comment`` are editor/annotation conventions the
+        # scheme permits but the dataclass does not carry.
+        assert (declared - {"$schema", "_comment"}) == parsed
 
     def test_live_experimental_flag_is_declared(self):
         """`experimental`/`experimental_message` are read by hosts, so they are declared."""

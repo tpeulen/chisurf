@@ -107,7 +107,7 @@ class PchMultiComponentModel(ModelCurve):
         self._n[i].value = 0.0
 
     # -- compute -------------------------------------------------------------
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Compute the normalised histogram on the data's photon-count grid."""
         fit = getattr(self.fit, "selected_fit", self.fit)
         data = getattr(fit, "data", None)

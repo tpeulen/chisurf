@@ -31,17 +31,17 @@ from .test_tcspc_fit_convergence import _build, _chi2r, TRUE_AMPS, TRUE_TAUS
 
 def _jacobian(m):
     p0 = np.asarray(m.parameter_values, dtype=float)
-    m.update_model()
+    m.update()
     r0 = np.asarray(m.weighted_residuals, dtype=float)
     jac = np.zeros((len(r0), len(p0)))
     for i in range(len(p0)):
         p = p0.copy()
         p[i] += 1e-6 * max(abs(p[i]), 1.0)
         m.parameter_values = p
-        m.update_model()
+        m.update()
         jac[:, i] = (np.asarray(m.weighted_residuals, dtype=float) - r0) / (p[i] - p0[i])
     m.parameter_values = p0
-    m.update_model()
+    m.update()
     return jac
 
 
@@ -150,12 +150,12 @@ def test_scaling_all_amplitudes_leaves_the_model_unchanged():
     normalisation.
     """
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    m.update_model()
+    m.update()
     before = np.array(m.y, dtype=float, copy=True)
 
     for p in m.lifetimes._amplitudes:
         p.value = p.value * 3.7
-    m.update_model()
+    m.update()
 
     np.testing.assert_allclose(
         np.asarray(m.y, dtype=float), before, rtol=1e-10,

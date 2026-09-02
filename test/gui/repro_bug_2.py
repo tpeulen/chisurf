@@ -1,4 +1,3 @@
-import chinet
 import numpy as np
 import pytest
 from qtpy import QtCore, QtWidgets
@@ -18,7 +17,7 @@ class SimpleModel(ModelCurve):
         self.p1 = FittingParameter(name="p1", value=1.0)
         self.find_parameters()
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         self.y = np.ones_like(self.x) * self.p1.value
 
 @pytest.fixture

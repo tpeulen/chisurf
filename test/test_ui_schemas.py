@@ -199,6 +199,12 @@ def test_every_declared_field_is_in_the_scheme():
          "an unknown section type"),
         ({"nonsense": 1},
          "an unknown top-level key"),
+        ({"sections": [{"type": "custom", "key": "help",
+                        "options": {"tite": "hello"}}]},
+         "a typo in a documented custom-section option name"),
+        ({"sections": [{"type": "custom", "key": "background_run",
+                        "options": {"start_acton": "go"}}]},
+         "a typo in a background_run option name"),
     ],
 )
 def test_the_scheme_rejects_what_the_loader_would_drop(spec, why):
@@ -231,6 +237,7 @@ def test_a_valid_document_is_accepted():
     """And the other direction, so the scheme is not merely strict."""
     assert validate_view_spec({
         "_comment": "a note about this file",
+        "$schema": "https://chisurf.org/schemas/view.schema.json",
         "sections": [{
             "type": "panel", "title": "Group",
             "sections": [
@@ -245,9 +252,54 @@ def test_a_valid_document_is_accepted():
     }) == []
     assert validate_guide({
         "_comment": "a note",
+        "$schema": "https://chisurf.org/schemas/guide.schema.json",
         "steps": [
             {"title": "Intro", "text": "why", "target": {}},
             {"title": "Do it", "target": {"name": "run"},
              "await": {"hint": "press it"}},
         ],
     }) == []
+
+
+# ------------------------------------------------- starter view spec generator
+
+
+class _FakeGroup:
+    """Minimal duck-typed stand-in for FittingParameterGroup."""
+
+    def __init__(self, name=""):
+        self.name = name
+
+    @property
+    def parameters_all(self):
+        return []
+
+
+class _FakeModel:
+    """A model with two parameter-group attributes and some noise."""
+
+    def __init__(self):
+        self.generic = _FakeGroup("Generic")
+        self.lifetimes = _FakeGroup("Lifetimes")
+        self._private = _FakeGroup("should not appear")
+        self.x = 42  # not a group
+
+
+def test_starter_view_spec_is_valid():
+    """The generated starter spec follows the scheme it was generated for."""
+    from chisurf.core.dataspec.schema import generate_starter_view_spec
+
+    spec = generate_starter_view_spec(_FakeModel())
+    assert validate_view_spec(spec) == [], (
+        "generated spec does not validate: " + "; ".join(validate_view_spec(spec))
+    )
+
+
+def test_starter_view_spec_has_one_table_per_group():
+    """Each parameter-group attribute becomes exactly one table section."""
+    from chisurf.core.dataspec.schema import generate_starter_view_spec
+
+    spec = generate_starter_view_spec(_FakeModel())
+    targets = [s["target"] for s in spec["sections"]]
+    assert targets == ["generic", "lifetimes"]
+    assert all(s["type"] == "parameter_group_table" for s in spec["sections"])

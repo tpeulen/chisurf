@@ -341,7 +341,7 @@ class ReactionModel(ReactionSystem, ModelCurve):
             return xmin, n
         return xmin, min(int(xmax) + 1, n)
 
-    def update_model(self, **kwargs) -> None:
+    def _update_model(self, **kwargs) -> None:
         """Integrate the scheme onto the data's time axis and scale the signal.
 
         Parameters

@@ -10,7 +10,8 @@ import traceback
 # Core imports
 from chisurf.core.data import DataCurve
 from chisurf.macros.core_fit import save_project, load_project, add_fit
-from chinet.node import Node
+from chisurf.core import nodes as _nodes
+from chisurf.core.nodes import PythonNode as Node
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.fitting.parameter import FittingParameter
 
@@ -23,7 +24,7 @@ class SmokeLinearModel(ModelCurve):
         self.intercept = FittingParameter(name="intercept", value=0.0)
         self.find_parameters()
 
-    def update_model(self, **kw):
+    def _update_model(self, **kw):
         x = getattr(self.fit.data, "x", None)
         if x is None:
             x = np.linspace(0, 10, 100)
@@ -33,7 +34,7 @@ def run_smoke_tests():
     print("=== ChiSurf Autonomous Smoke Test Suite ===")
     
     # 1. Chinet Stress
-    print("\n[1/7] Chinet Stress Test...")
+    print("\n[1/7] Port/Node Runtime Stress Test...")
     try:
         nodes = [Node() for _ in range(500)]
         print(f"  - Created {len(nodes)} nodes successfully.")

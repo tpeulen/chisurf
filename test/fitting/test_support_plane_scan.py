@@ -36,7 +36,7 @@ def make_fit(n_points: int = 32):
     )
     fit.model.func = 'c+a*x**2'
     fit.fit_range = 0, len(fit.model.y) - 1
-    fit.model.update_model()
+    fit.model.update()
     fit.run()
     return fit
 
@@ -72,7 +72,7 @@ def make_noisy_fit(sign: float = 1.0, n_points: int = 64):
     )
     fit.model.func = 'c+a*x**2'
     fit.fit_range = 0, len(fit.model.y) - 1
-    fit.model.update_model()
+    fit.model.update()
     fit.run()
     return fit
 

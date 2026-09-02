@@ -37,7 +37,7 @@ class DummyLinearModel(ModelCurve):
         self.p1 = FittingParameter(name="p1", value=2.0)
         self.find_parameters()
 
-    def update_model(self, **kwargs):  # type: ignore[override]
+    def _update_model(self, **kwargs):  # type: ignore[override]
         x = self.fit.data.x
         if x is None:
             x = np.arange(self.fit.data.y.size, dtype=float)
@@ -189,7 +189,7 @@ class _DummyModelForFinalize(ModelCurve):
         self._flag_set_state_called = False
         self._flag_finalize_called = False
 
-    def update_model(self, **kwargs):  # type: ignore[override]
+    def _update_model(self, **kwargs):  # type: ignore[override]
         # Minimal implementation: keep y array shape consistent with x
         if getattr(self, "x", None) is None:
             x = self.fit.data.x

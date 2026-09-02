@@ -23,7 +23,7 @@ class ParseFCSModel(parse_module.ParseModel):
         super().__init__(fit, **kwargs)
         # FCS-specific initial parameter values can be set here if needed
 
-    def update_model(self, **kwargs):
+    def _update_model(self, **kwargs):
         """Update the FCS correlation model."""
-        super().update_model(**kwargs)
+        super()._update_model(**kwargs)
         # FCS-specific post-processing can be added here if needed
