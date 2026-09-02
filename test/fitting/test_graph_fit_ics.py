@@ -99,7 +99,7 @@ def test_the_node_curve_is_the_python_curve():
         built = M.graph_objective(fit, model)
         assert built is not None
         m, _ = built
-        chi2, _, keepalive = m._graph
+        chi2, _, keepalive, _ = m._graph
         curve_node = keepalive[0]
         curve_node.update()
         curve = np.asarray(
@@ -118,18 +118,18 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
     model.transport._offset.value = 0.005
 
     calls = {"n": 0}
-    original = type(model).update_model
+    original = type(model)._update_model
 
     def counting(self, **kwargs):
         calls["n"] += 1
         return original(self, **kwargs)
 
-    type(model).update_model = counting
+    type(model)._update_model = counting
     try:
         fit.run()
         during = calls["n"]
     finally:
-        type(model).update_model = original
+        type(model)._update_model = original
 
     assert model.transport.n == pytest.approx(TRUTH["n"], rel=5e-2)
     assert model.transport.D == pytest.approx(
@@ -178,7 +178,7 @@ def test_the_gaussian2d_node_curve_is_the_python_curve():
     built = M.graph_objective(fit, model)
     assert built is not None
     m, _ = built
-    _, _, keepalive = m._graph
+    _, _, keepalive, _ = m._graph
     curve_node = keepalive[0]
     curve_node.update()
     curve = np.asarray(

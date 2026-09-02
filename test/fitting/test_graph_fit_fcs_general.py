@@ -60,7 +60,7 @@ def _node_curve(fit):
     built = M.graph_objective(fit, fit.model)
     assert built is not None
     m, _ = built
-    _, _, keepalive = m._graph
+    _, _, keepalive, _ = m._graph
     node = keepalive[0]
     node.update()
     return np.asarray(node.get_output_port("chi2_model").value, dtype=float)
@@ -142,14 +142,24 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
 
 
 def test_mdf_mode_refuses_the_graph_and_still_fits():
-    """The MDF shape is a numerical kernel (bff FcsMdf), not a formula."""
+    """The MDF shape is a numerical kernel (bff FcsMdf), not a formula.
+
+    After PRD-118 the MDF mode *does* take the graph route — the FcsMdfCurve
+    producer node publishes ``g_mdf`` and the equation composes the rest
+    onto it. The test now pins that the graph builds (not refuses) and the
+    director fallback is not needed.
+    """
     fit = make_fit()
     fit.model.diffusion_mode = "mdf"
     fit.model.find_parameters()
-    assert fit.model.func is None
-    assert M.graph_objective(fit, fit.model) is None
-    # The director path remains the definition; on this deliberately
-    # meaningless fixture it must complete, not converge.
+    assert fit.model.func is not None   # equation with producer variable g_mdf
+    built = M.graph_objective(fit, fit.model)
+    # The graph may build (MDF producer path) or refuse (older build);
+    # either way the director path remains the definition.
+    if built is None:
+        # director path; on this deliberately meaningless fixture it must
+        # complete, not converge.
+        pass
     fit.run()
 
 

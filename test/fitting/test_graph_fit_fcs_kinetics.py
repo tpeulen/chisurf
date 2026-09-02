@@ -67,7 +67,7 @@ def _node_curve(fit):
     built = M.graph_objective(fit, fit.model)
     assert built is not None, "graph_objective returned None for full mode"
     m, _ = built
-    chi2, _, keepalive = m._graph
+    chi2, _, keepalive, _ = m._graph
     # The Expression node's output port is named "chi2_model"
     expr_out = chi2.get_output_port("chi2_model")
     # The keepalive tuple holds the FcsSaturationCurve node

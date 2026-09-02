@@ -49,18 +49,18 @@ def test_the_graph_route_is_taken_and_python_never_evaluates_per_step():
     """The whole chain runs in C++: the Python model is not called per step."""
     fit = _collinear_fit()
     calls = {'n': 0}
-    original = fit.model.update_model
+    original = fit.model._update_model
 
     def counting_update(*a, **kw):
         calls['n'] += 1
         return original(*a, **kw)
 
-    fit.model.update_model = counting_update
+    fit.model._update_model = counting_update
     try:
         r = chisurf.core.fitting.sample.walk_mcmc_blocked(
             fit=fit, steps=2000, step_size=0.02, thin=1, seed=7)
     finally:
-        fit.model.update_model = original
+        fit.model._update_model = original
 
     assert len(r['parameter_values']) > 0
     # The graph build reads values once; the covariance seed may re-run the
