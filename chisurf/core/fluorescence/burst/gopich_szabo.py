@@ -83,13 +83,68 @@ from collections.abc import Sequence
 import numpy as np
 
 from chisurf.core.fluorescence.kinetics import (
-    equilibrium_populations,
     generator_from_rate_matrix,
     rate_matrix_from_rates,
     rates_from_rate_matrix,
 )
 
-def _engine(rate_matrix, emission):
+
+class EngineCache:
+    """Holds one ``tttrlib.GopichSzabo`` per ``(n_states, n_colors)`` structure.
+
+    A scipy optimisation loop calls :func:`log_likelihood` once per trial
+    point with a *different rate matrix every time* -- that is what an
+    optimiser does -- but ``n_states`` and ``n_colors`` are fixed for the
+    whole loop. Before this class existed, :func:`_engine` built a brand new
+    ``tttrlib.GopichSzabo()`` Python object on every single call, when only
+    :meth:`tttrlib.GopichSzabo.set_scheme` -- which every call has to make
+    anyway, to hand the engine that iteration's rates -- needed to run.
+    Construction is cheap per call and expensive in aggregate: a
+    Nelder-Mead fit routinely makes a few thousand evaluations.
+
+    The key is *structural* on purpose, the same discipline
+    ``assign_pda_histogram_function`` uses for the PDA histogram callback
+    cache: rebuild when what changes the *shape* of the problem changes
+    (state count, colour count), reuse across everything that only changes
+    the problem's *values* (the rates, the emission probabilities) --
+    :meth:`get` calls ``set_scheme`` with the current values every time
+    regardless of whether the underlying engine object is new or reused, so
+    a value change is never missed.
+
+    **Deliberately not global.** A module-level singleton would leak a
+    stale engine across unrelated calls -- including across tests: one test
+    here monkeypatches ``tttrlib.GopichSzabo`` to force a refusal, and a
+    cache surviving from an earlier test with the same ``(n_states,
+    n_colors)`` would silently hand back the *real* engine instead. Scoping
+    one cache instance to one caller (:func:`fit`, one
+    :func:`transition_time_scan` scan) keeps persistence where it earns its
+    keep -- inside one loop -- without smuggling state between callers that
+    have no relationship to each other. Passing ``None`` (the default
+    everywhere) reproduces the old build-every-call behaviour exactly.
+    """
+
+    def __init__(self):
+        self._engines: dict[tuple[int, int], object] = {}
+        #: Number of times a `tttrlib.GopichSzabo()` was actually
+        #: constructed. A test-visible counter: it must stop growing once a
+        #: structure has been seen, however many more times :meth:`get` is
+        #: called with the same ``(n_states, n_colors)``.
+        self.builds = 0
+
+    def get(self, n_states: int, n_colors: int):
+        """Return the persisted engine for this structure, building it once."""
+        import tttrlib
+
+        key = (int(n_states), int(n_colors))
+        engine = self._engines.get(key)
+        if engine is None:
+            engine = tttrlib.GopichSzabo()
+            self._engines[key] = engine
+            self.builds += 1
+        return engine
+
+
+def _engine(rate_matrix, emission, cache: EngineCache | None = None):
     r"""Return a configured ``tttrlib.GopichSzabo``, or say why it cannot be had.
 
     The likelihood and the Viterbi path are both the photon library's. They were
@@ -111,6 +166,12 @@ def _engine(rate_matrix, emission):
         ``(n_states, n_states)`` with ``[target, source]`` rates in s\ :sup:`-1`.
     emission : array_like
         ``(n_states, n_colors)`` row-stochastic emission probabilities.
+    cache : EngineCache, optional
+        When given, the engine for this ``(n_states, n_colors)`` is reused
+        across calls sharing the same cache instead of being rebuilt --
+        see :class:`EngineCache`. ``None`` (the default) rebuilds every
+        call, which is the historical behaviour and what every caller
+        outside :func:`fit` and :func:`transition_time_scan` still gets.
 
     Returns
     -------
@@ -137,20 +198,23 @@ def _engine(rate_matrix, emission):
         )
     rate_matrix = np.asarray(rate_matrix, dtype=float)
     emission = _validate_emission(emission)
-    engine = tttrlib.GopichSzabo()
+    n_states = int(rate_matrix.shape[0])
+    n_colors = int(emission.shape[1])
+    engine = cache.get(n_states, n_colors) if cache is not None else tttrlib.GopichSzabo()
     ok = engine.set_scheme(
         rate_matrix.flatten().tolist(), emission.flatten().tolist(),
-        int(rate_matrix.shape[0]), int(emission.shape[1]),
+        n_states, n_colors,
     )
     if not ok:
         raise ValueError(
             f"the compiled Gopich-Szabo engine refused a "
-            f"{int(rate_matrix.shape[0])}-state scheme"
+            f"{n_states}-state scheme"
         )
     return engine
 
 
 __all__ = [
+    "EngineCache",
     "GsFitResult",
     "PhotonBursts",
     "emission_from_efficiencies",
@@ -352,45 +416,67 @@ def transition_state_model(k_forward: float, k_backward: float, transit_time: fl
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Spectral decomposition
+# Degeneracy guard
 # ──────────────────────────────────────────────────────────────────────────────
-def _spectral(rate_matrix, emission):
-    """Return the eigenbasis quantities the likelihood kernel needs.
+def _generator_is_diagonalisable(rate_matrix, emission) -> bool:
+    """Whether the generator's spectral propagator exists and is trustworthy.
 
-    Returns ``(eigenvalues, phi, p0, u_row)`` with ``phi[c] = U^-1 diag(p_c) U``,
-    ``p0 = U^-1 p_eq`` and ``u_row = 1^T U``, all complex128; or ``None`` when
-    the decomposition is too ill-conditioned to propagate through.
+    Until 2026-09-02 this check was a side effect of :func:`_spectral`, a
+    function that built the **whole** eigenbasis this module used to
+    propagate the likelihood itself: the inverse eigenvector matrix, the
+    per-colour transformed emission tensor ``phi``, the transformed initial
+    condition ``p0`` and the row vector ``u_row``. That apparatus stopped
+    being load-bearing on 2026-08-11, when the likelihood delegated to
+    ``tttrlib``'s C++ engine (:func:`_engine`), which diagonalises the same
+    generator itself. What was left called ``_spectral`` purely for its
+    ``None``-or-not return, threw away everything it built, and made the C++
+    engine repeat the same eigendecomposition immediately after -- redundant
+    on every single evaluation of a scipy optimisation loop, which is
+    exactly the arithmetic PRD-130 measured and removed.
+
+    **What survives, and why it must.** A generator with a repeated
+    eigenvalue (the reversible no-exchange limit collapsed onto an
+    irreversible cycle, or any accidental degeneracy an optimiser can wander
+    into mid-search) has no linearly independent eigenvector basis, so
+    ``U^-1`` does not exist and any answer computed as if it did is
+    numerically fabricated, not merely imprecise --
+    ``test_a_defective_rate_matrix_backs_the_optimiser_off`` pins exactly
+    this case. That is a *live* concern, separate from the historical
+    library defect :func:`_engine`'s docstring describes (a repeated **zero**
+    eigenvalue specifically, since fixed upstream): a generic near-degenerate
+    spectrum can still occur at any rate values, the C++ engine's own
+    ``set_scheme`` refusal is not documented to catch it, and computing a
+    plausible-looking log-likelihood from an ill-conditioned inverse is
+    silently wrong in a way an optimiser cannot detect and back away from.
+    So the check keeps running before every engine call -- rates change on
+    every evaluation and the check has to see the values of *this*
+    evaluation -- but it now computes only what answering "diagonalisable,
+    well-conditioned?" requires: one eigendecomposition and one condition
+    number, nothing propagated through it.
+
+    Returns
+    -------
+    bool
+        ``True`` when the eigenvector matrix exists and is well-conditioned
+        (``cond <= _MAX_COND``); ``False`` when the spectral propagator
+        cannot be trusted and the caller should report ``-inf`` rather than
+        ask the engine.
     """
     generator = generator_from_rate_matrix(rate_matrix)
     emission = np.asarray(emission, dtype=float)
-    n = generator.shape[0]
-    if emission.shape[0] != n:
+    if emission.shape[0] != generator.shape[0]:
         raise ValueError(
-            f"emission has {emission.shape[0]} rows but the rate matrix has {n} states"
+            f"emission has {emission.shape[0]} rows but the rate matrix has "
+            f"{generator.shape[0]} states"
         )
-
-    eigenvalues, eigenvectors = np.linalg.eig(generator)
-    if np.linalg.cond(eigenvectors) > _MAX_COND:
-        # Degenerate or near-degenerate spectrum: the spectral propagator is
-        # not usable and a likelihood computed from it would be noise.
-        return None
     try:
-        inverse = np.linalg.inv(eigenvectors)
-    except np.linalg.LinAlgError:  # pragma: no cover - caught by the cond test
-        return None
-
-    # exp(K t) has non-positive real exponents for a generator; a positive real
-    # part is round-off and would overflow on a long gap.
-    eigenvalues = eigenvalues.astype(np.complex128)
-    eigenvalues.real = np.minimum(eigenvalues.real, 0.0)
-
-    populations = equilibrium_populations(rate_matrix)
-    phi = np.empty((emission.shape[1], n, n), dtype=np.complex128)
-    for c in range(emission.shape[1]):
-        phi[c] = inverse @ np.diag(emission[:, c]) @ eigenvectors
-    p0 = (inverse @ populations).astype(np.complex128)
-    u_row = eigenvectors.sum(axis=0).astype(np.complex128)
-    return eigenvalues, phi, p0, u_row
+        _, eigenvectors = np.linalg.eig(generator)
+    except np.linalg.LinAlgError:  # pragma: no cover - eig rarely fails outright
+        return False
+    # A singular eigenvector matrix reports an infinite condition number
+    # rather than raising, so the comparison below already covers the
+    # `LinAlgError` `np.linalg.inv` would raise on the old, fuller path.
+    return bool(np.linalg.cond(eigenvectors) <= _MAX_COND)
 
 
 def _validate_emission(emission) -> np.ndarray:
@@ -417,7 +503,8 @@ def _validate_emission(emission) -> np.ndarray:
 # ──────────────────────────────────────────────────────────────────────────────
 # Public likelihood
 # ──────────────────────────────────────────────────────────────────────────────
-def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
+def log_likelihood(bursts: PhotonBursts, rate_matrix, emission,
+                   *, _engine_cache: EngineCache | None = None) -> float:
     """Return the total log-likelihood of a kinetic scheme given the photons.
 
     Runs on tttrlib's C++ GopichSzabo engine, which is required: the in-tree
@@ -435,6 +522,14 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
         ``(n_states, n_colors)`` row-stochastic probability that a photon from
         each state carries each colour. Use
         :func:`emission_from_efficiencies` for the two-colour case.
+    _engine_cache : EngineCache, optional
+        Private. Callers that evaluate this function many times over a fixed
+        ``(n_states, n_colors)`` -- :func:`fit`'s optimisation loop,
+        :func:`transition_time_scan`'s scan -- pass their own
+        :class:`EngineCache` so the underlying ``tttrlib.GopichSzabo`` is
+        built once and reused. Omitted, the historical per-call engine is
+        built, which is what every other caller (including this module's
+        own tests) still gets.
 
     Returns
     -------
@@ -462,18 +557,18 @@ def log_likelihood(bursts: PhotonBursts, rate_matrix, emission) -> float:
     # decided HERE rather than by the engine, because a *setup* failure is a
     # different thing and conflating the two is how the no-exchange limit once
     # came to report "forbidden".
-    if _spectral(rate_matrix, emission) is None:
+    if not _generator_is_diagonalisable(rate_matrix, emission):
         return float("-inf")
     # Everything else is the library's. This used to fall back to an in-tree
     # numba copy kept for a library defect that rejected disconnected schemes;
     # that defect is fixed, so the copy is gone and a refusal now raises.
-    return float(_engine(rate_matrix, emission).log_likelihood(
+    return float(_engine(rate_matrix, emission, cache=_engine_cache).log_likelihood(
         bursts.times, bursts.colors, bursts.offsets
     ))
 
 
 def log_likelihood_multi(datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
-                         rate_matrix) -> float:
+                         rate_matrix, *, _engine_cache: EngineCache | None = None) -> float:
     """Return the log-likelihood of several photon sets sharing one rate matrix.
 
     This is how a three-colour measurement is fitted: the two-colour photons
@@ -489,6 +584,11 @@ def log_likelihood_multi(datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
         emission matrix. All must have the same number of states.
     rate_matrix : array_like
         The shared ``(n_states, n_states)`` rate matrix.
+    _engine_cache : EngineCache, optional
+        Private; forwarded to each :func:`log_likelihood` call. A joint fit
+        over several colour datasets keeps ``n_states`` fixed across all of
+        them, so one cache -- holding one engine per dataset's own
+        ``n_colors`` -- persists across every evaluation of every dataset.
 
     Returns
     -------
@@ -497,7 +597,7 @@ def log_likelihood_multi(datasets: Sequence[tuple[PhotonBursts, np.ndarray]],
     """
     total = 0.0
     for bursts, emission in datasets:
-        value = log_likelihood(bursts, rate_matrix, emission)
+        value = log_likelihood(bursts, rate_matrix, emission, _engine_cache=_engine_cache)
         if not np.isfinite(value):
             return float("-inf")
         total += value
@@ -580,6 +680,9 @@ class GsFitResult:
         Whether the optimiser reported convergence.
     message : str
         Optimiser message.
+    n_engine_builds : int
+        Number of ``tttrlib.GopichSzabo()`` objects constructed over the fit;
+        see :class:`EngineCache`.
     """
 
     rate_matrix: np.ndarray
@@ -593,6 +696,11 @@ class GsFitResult:
     message: str = ""
     #: Relaxation times ``-1 / Re(lambda)`` of the non-zero eigenvalues, seconds.
     relaxation_times: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    #: Number of ``tttrlib.GopichSzabo()`` C++ objects actually constructed
+    #: over the whole fit (see :class:`EngineCache`) -- 1, not one per
+    #: evaluation, since PRD-130. A test-visible measurement, not a tuning
+    #: knob.
+    n_engine_builds: int = 0
 
     @property
     def bic(self) -> float:
@@ -620,6 +728,7 @@ class GsFitResult:
             "aic": self.aic,
             "success": bool(self.success),
             "message": str(self.message),
+            "n_engine_builds": int(self.n_engine_builds),
         }
 
 
@@ -713,6 +822,12 @@ def fit(
 
     log_lo, log_hi = np.log(rate_bounds[0]), np.log(rate_bounds[1])
     calls = {"n": 0}
+    # One engine, reused for every evaluation and for the final verification
+    # call below: `n_states`/`n_colors` (the only things `EngineCache` keys
+    # on) are fixed for the whole optimisation, only the rates move. See
+    # `EngineCache` for why this is scoped to this one `fit()` call rather
+    # than shared across unrelated callers.
+    engine_cache = EngineCache()
 
     def unpack(vector):
         """Split the optimiser vector into a rate matrix and efficiencies."""
@@ -726,7 +841,8 @@ def fit(
     def objective(vector):
         """Negative log-likelihood; the optimiser minimises this."""
         matrix, efficiencies = unpack(vector)
-        value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies))
+        value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies),
+                               _engine_cache=engine_cache)
         calls["n"] += 1
         if progress is not None and calls["n"] % 20 == 0:
             progress(
@@ -757,7 +873,8 @@ def fit(
         )
 
     matrix, efficiencies = unpack(np.asarray(outcome.x, dtype=float))
-    value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies))
+    value = log_likelihood(bursts, matrix, emission_from_efficiencies(efficiencies),
+                           _engine_cache=engine_cache)
     n_parameters = n_rates + (0 if fix_efficiencies else n_states)
     if progress is not None:
         progress(1.0, "done")
@@ -772,6 +889,7 @@ def fit(
         success=bool(outcome.success),
         message=str(getattr(outcome, "message", "")),
         relaxation_times=_relaxation_times(matrix),
+        n_engine_builds=engine_cache.builds,
     )
 
 
@@ -827,10 +945,16 @@ def transition_time_scan(
     transit_times = np.asarray(transit_times, dtype=float).ravel()
     efficiencies = np.asarray(efficiencies, dtype=float).ravel()
 
+    # One cache for the whole scan: the baseline is always a 2-state scheme
+    # and every scanned point is always the 3-state transition model, so
+    # there are exactly two structures across up to 50 evaluations, not 50
+    # engine constructions -- the same `EngineCache` `fit()` uses.
+    engine_cache = EngineCache()
     baseline = log_likelihood(
         bursts,
         rate_matrix_from_rates([k_forward, k_backward], 2),
         emission_from_efficiencies(efficiencies),
+        _engine_cache=engine_cache,
     )
     out = np.full(transit_times.size, np.nan)
     for i, transit in enumerate(transit_times):
@@ -840,5 +964,6 @@ def transition_time_scan(
             )
         except ValueError:
             continue
-        out[i] = log_likelihood(bursts, matrix, emission_from_efficiencies(three))
+        out[i] = log_likelihood(bursts, matrix, emission_from_efficiencies(three),
+                                _engine_cache=engine_cache)
     return transit_times, out - baseline, float(baseline)

@@ -528,3 +528,238 @@ def test_the_delegation_returns_what_the_numba_kernels_returned():
         np.testing.assert_array_equal(
             np.asarray(gs.viterbi(sparse, rate_matrix, emission)), data["path_sparse"]
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PRD-130 — the engine persists across evaluations
+# ──────────────────────────────────────────────────────────────────────────────
+def _old_full_spectral_guard(rate_matrix, emission) -> bool:
+    """Reimplements the pre-PRD-130 ``_spectral`` guard's pass/fail answer.
+
+    ``_spectral`` built the whole eigenbasis (inverse eigenvectors, the
+    per-colour ``phi`` tensor, ``p0``, ``u_row``) purely to answer
+    "diagonalisable and well-conditioned?" and then threw all of it away --
+    the redundant computation PRD-130 removed. This function is that
+    original arithmetic, kept here only as an independent oracle so the
+    lean replacement (:func:`gs._generator_is_diagonalisable`) can be pinned
+    against it rather than against itself.
+    """
+    generator = generator_from_rate_matrix(rate_matrix)
+    emission = np.asarray(emission, dtype=float)
+    eigenvalues, eigenvectors = np.linalg.eig(generator)
+    if np.linalg.cond(eigenvectors) > gs._MAX_COND:
+        return False
+    try:
+        np.linalg.inv(eigenvectors)
+    except np.linalg.LinAlgError:  # pragma: no cover - caught by the cond test
+        return False
+    return True
+
+
+@pytest.mark.parametrize(
+    "rates,n_states",
+    [
+        ([3000.0, 1000.0], 2),
+        ([5e4, 2e4], 2),
+        ([1e3, 2e2, 5e2, 8e2, 3e2, 1.5e3], 3),
+        ([0.0, 0.0], 2),  # the static / no-exchange limit -- must pass
+    ],
+)
+def test_the_lean_guard_agrees_with_the_full_decomposition_it_replaced(rates, n_states):
+    """PRD-130 trimmed ``_spectral`` down to a bare cond-number check.
+
+    This pins that the trim changed *what is computed*, not *which schemes
+    are accepted* -- every well-posed scheme the old guard passed, the new
+    one still passes.
+    """
+    matrix = gs.rate_matrix_from_rates(rates, n_states)
+    emission = gs.emission_from_efficiencies(np.linspace(0.2, 0.8, n_states))
+    lean = gs._generator_is_diagonalisable(matrix, emission)
+    full = _old_full_spectral_guard(matrix, emission)
+    assert lean is full is True
+
+
+def test_the_lean_guard_still_refuses_the_pinned_degenerate_scheme():
+    """The guard's one real, load-bearing case must still be caught.
+
+    Same irreversible equal-rate chain as
+    ``test_a_defective_rate_matrix_backs_the_optimiser_off`` -- a repeated
+    eigenvalue, no eigenvector basis, no trustworthy spectral propagator.
+    Both the lean guard and the full decomposition it replaced must refuse
+    it; this is the case PRD-130's instructions require to keep refusing
+    loudly rather than silently.
+    """
+    chain = np.zeros((3, 3))
+    chain[1, 0] = chain[2, 1] = 1e3
+    emission = gs.emission_from_efficiencies([0.2, 0.5, 0.8])
+    assert gs._generator_is_diagonalisable(chain, emission) is False
+    assert _old_full_spectral_guard(chain, emission) is False
+    # And the behaviour a caller actually sees: -inf, not an exception, not
+    # a plausible-looking number from an ill-conditioned inverse.
+    bursts = gs.PhotonBursts.from_lists(
+        [np.array([0.0, 1e-5, 2e-5, 3e-5])],
+        [np.array([0, 1, 0, 1], dtype=np.int32)],
+        2,
+    )
+    assert gs.log_likelihood(bursts, chain, emission) == float("-inf")
+
+
+def test_persisting_the_engine_gives_identical_likelihoods_to_rebuilding():
+    """The direct old-vs-new equivalence check PRD-130 asks for.
+
+    Passing no cache reproduces the pre-PRD-130 behaviour exactly (a fresh
+    ``tttrlib.GopichSzabo()`` per call -- see ``EngineCache``'s docstring);
+    passing one persists a single engine across every value below. The two
+    must agree to the same precision the module's other cross-checks use.
+    """
+    bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 30, 150, seed=43)
+    rate_sets = [
+        (gs.rate_matrix_from_rates([3000.0, 1000.0], 2),
+         gs.emission_from_efficiencies([0.2, 0.8])),
+        (gs.rate_matrix_from_rates([500.0, 8000.0], 2),
+         gs.emission_from_efficiencies([0.35, 0.9])),
+        (gs.rate_matrix_from_rates([50.0, 50.0], 2),
+         gs.emission_from_efficiencies([0.1, 0.6])),
+        # Revisit the first structure with new values -- the point of
+        # persistence -- to check reuse, not just first-touch construction.
+        (gs.rate_matrix_from_rates([1200.0, 2400.0], 2),
+         gs.emission_from_efficiencies([0.15, 0.95])),
+    ]
+
+    rebuilt_every_call = [gs.log_likelihood(bursts, m, e) for m, e in rate_sets]
+
+    cache = gs.EngineCache()
+    persisted = [gs.log_likelihood(bursts, m, e, _engine_cache=cache) for m, e in rate_sets]
+
+    assert cache.builds == 1, "one structure (n_states=2, n_colors=2) throughout"
+    assert persisted == pytest.approx(rebuilt_every_call, abs=1e-12)
+
+
+def test_the_fit_builds_the_engine_once_across_the_scipy_loop():
+    """PRD-130's headline claim, measured independently of the module's own count.
+
+    Wraps ``tttrlib.GopichSzabo`` to count constructions and ``set_scheme``
+    calls (one per likelihood evaluation) separately, so a real scipy
+    optimisation loop is shown making many evaluations against exactly one
+    engine construction -- not trusting ``GsFitResult.n_engine_builds`` to
+    grade its own homework.
+    """
+    tttrlib = pytest.importorskip("tttrlib")
+    counts = {"builds": 0, "set_scheme": 0}
+    original = tttrlib.GopichSzabo
+
+    class _Counting(tttrlib.GopichSzabo):
+        """Counts constructions and scheme updates without changing behaviour."""
+
+        def __init__(self, *args, **kwargs):
+            counts["builds"] += 1
+            super().__init__(*args, **kwargs)
+
+        def set_scheme(self, *args, **kwargs):
+            counts["set_scheme"] += 1
+            return super().set_scheme(*args, **kwargs)
+
+    tttrlib.GopichSzabo = _Counting
+    try:
+        bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 20, 150, seed=41)
+        result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3],
+                        initial_efficiencies=[0.3, 0.7], max_iterations=80)
+    finally:
+        tttrlib.GopichSzabo = original
+
+    # `max_iterations=80` with two free rates and two free efficiencies is
+    # comfortably more than one Nelder-Mead simplex evaluation; the two
+    # extra `log_likelihood` calls the docstring's example makes plus the
+    # final verification call are folded into the same count.
+    assert counts["set_scheme"] > 20, "the fit should have evaluated many points"
+    assert counts["builds"] == 1, (
+        f"expected exactly one engine construction across the whole fit "
+        f"(n_states never changes mid-fit), got {counts['builds']}"
+    )
+    assert result.n_engine_builds == 1
+
+
+def test_a_second_fit_gets_its_own_engine_not_the_first_ones():
+    """``EngineCache`` is scoped per :func:`fit` call, not a module singleton.
+
+    A shared, global cache would hand the second fit an engine another fit
+    already configured -- harmless here because ``set_scheme`` is called
+    before every read, but exactly the sharing that made
+    ``test_a_rejected_scheme_raises_instead_of_reporting_impossible``'s
+    monkeypatch unsafe to rely on with process-wide state. Two independent
+    fits must report one build each, not the second finding the first's
+    engine already there.
+    """
+    bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 15, 120, seed=53)
+    first = gs.fit(bursts, n_states=2, max_iterations=40)
+    second = gs.fit(bursts, n_states=2, max_iterations=40)
+    assert first.n_engine_builds == 1
+    assert second.n_engine_builds == 1
+
+
+@pytest.mark.slow
+def test_the_persisted_fit_recovers_the_same_answer_as_before_persistence():
+    """A full fit's numeric answer must not move when the engine persists.
+
+    Same scenario and tolerances as
+    ``test_a_fit_recovers_simulated_rates_and_efficiencies``; this is the
+    "fit answers unchanged on the reference dataset" half of PRD-130's
+    definition of done, run against the now-default persisted path.
+    """
+    bursts = simulate_two_state(3000.0, 1000.0, [0.25, 0.75], 50e3, 300, 200, seed=7)
+    result = gs.fit(bursts, n_states=2, initial_rates=[1e3, 1e3],
+                    initial_efficiencies=[0.3, 0.7])
+    assert result.success
+    assert result.n_engine_builds == 1
+    assert result.rate_matrix[1, 0] == pytest.approx(3000.0, rel=0.15)
+    assert result.rate_matrix[0, 1] == pytest.approx(1000.0, rel=0.15)
+    assert result.efficiencies[0] == pytest.approx(0.25, abs=0.03)
+    assert result.efficiencies[1] == pytest.approx(0.75, abs=0.03)
+
+
+@pytest.mark.slow
+def test_persisting_the_engine_does_not_cost_wall_time():
+    """The timing half of PRD-130's definition of done.
+
+    Runs the same 200-evaluation sweep through both paths, interleaved and
+    repeated to dodge machine-load noise (the pattern
+    ``chisurf/core/fitting/minimizer.py`` documents for its own timings),
+    and asserts the persisted path is not slower within a generous margin --
+    the point of this measurement is the *build count*, already pinned
+    above; this only guards against persistence accidentally regressing.
+    """
+    import time
+
+    bursts = simulate_two_state(3000.0, 1000.0, [0.2, 0.8], 50e3, 40, 150, seed=61)
+    rng = np.random.default_rng(0)
+    rate_sets = [
+        (gs.rate_matrix_from_rates(rng.uniform(200.0, 8000.0, 2), 2),
+         gs.emission_from_efficiencies(np.sort(rng.uniform(0.1, 0.9, 2))))
+        for _ in range(200)
+    ]
+
+    def run_fresh():
+        for m, e in rate_sets:
+            gs.log_likelihood(bursts, m, e)
+
+    def run_persisted():
+        cache = gs.EngineCache()
+        for m, e in rate_sets:
+            gs.log_likelihood(bursts, m, e, _engine_cache=cache)
+
+    # Interleaved, min-of-many: a single timing on a loaded laptop drifts by
+    # more than the effect being measured.
+    fresh_times, persisted_times = [], []
+    for _ in range(5):
+        t0 = time.perf_counter()
+        run_fresh()
+        fresh_times.append(time.perf_counter() - t0)
+        t0 = time.perf_counter()
+        run_persisted()
+        persisted_times.append(time.perf_counter() - t0)
+
+    fresh_best = min(fresh_times)
+    persisted_best = min(persisted_times)
+    # Generous margin: the goal is "not slower", not a tight performance
+    # pin that would make this test flaky on shared CI hardware.
+    assert persisted_best <= fresh_best * 1.5 + 0.05
