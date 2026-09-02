@@ -284,34 +284,19 @@ def dihedral(
     )
 
 
-def solve_richardson_lucy(
-        p: np.array,
-        u: np.array,
-        d: np.array,
-        max_iter: int
-) -> np.ndarray:
-    """Richardson-Lucy deconvolution.
-
-    Parameters
-    ----------
-    p : numpy.ndarray
-        Point-spread matrix of shape ``(n_i, n_j)``.
-    u : numpy.ndarray
-        Current estimate of length ``n_j``; updated in place and returned.
-    d : numpy.ndarray
-        Observed data of length ``n_i``.
-    max_iter : int
-        Number of iterations.
-
-    Returns
-    -------
-    numpy.ndarray
-        The estimate ``u`` after ``max_iter`` iterations.
-    """
-    for _ in range(max_iter):
-        c = p @ u
-        u[:] = u * (d / c @ p)
-    return u
+# ``solve_richardson_lucy`` (generic matrix-operator Richardson-Lucy: p @ u
+# against an arbitrary dense ``p``) removed 2026-09-02 (PRD-122). It had no
+# caller anywhere in the tree -- only ``math.optimization.solve_richardson_lucy``
+# wrapped it, and that wrapper had no caller either. It also was not a
+# candidate for forwarding to ``tttrlib.richardson_lucy_2d/3d``, the engine
+# named as its owner in the duplication register: those kernels assume a
+# translation-invariant image/PSF pair convolved in place, not an arbitrary
+# dense operator matrix, so there was no faithful single-implementation
+# forward to make -- deletion, not delegation, closes this register row. The
+# one Richardson-Lucy implementation left in the tree is
+# :func:`chisurf.core.fluorescence.imaging.restoration.richardson_lucy`
+# (already ``tttrlib``-backed, parity-tested against scikit-image in
+# ``test/core/test_restoration.py``).
 
 
 def euler_matrix(
