@@ -92,14 +92,21 @@ def add_spectral_plot(container, layout, config):
     plot_w.setMinimumWidth(50)
     plot_w.setFixedHeight(100)
     plot_w.set_interactive(mouse=False, menu=False)
-    # pyqtgraph-specific axis cosmetics for the compact node thumbnail — reached
-    # via the backend escape hatch (chiplot has no native verb yet; a gap).
-    plot_w.native.hideAxis('left')
-    ax = plot_w.native.getAxis('bottom')
-    ax.setPen((200, 200, 200))
-    ax.setHeight(20)
-    ax.setStyle(tickTextOffset=2)
-    
+    # The thumbnail keeps its wavelength axis and drops the intensity one: the
+    # three curves are each normalised to their own peak, so a shared y scale
+    # would say something the plot does not mean.
+    #
+    # This was four `.native` calls reaching past chiplot into pyqtgraph, under
+    # a comment claiming chiplot had no verb for it. It has had
+    # `set_axis_visible` for a while, and the comment outlived the gap it
+    # described -- meanwhile chiplot's native backend stopped being pyqtgraph,
+    # so `hideAxis` raised `AttributeError` and took the whole node factory
+    # down with it. The tick pen, height and text offset have no chiplot verb
+    # and are dropped rather than reached for: they are cosmetics on a
+    # hundred-pixel thumbnail.
+    plot_w.set_axis_visible(left=False)
+
+
     toggle_btn = QtWidgets.QPushButton("Show / Hide Plot", container)
     toggle_btn.setCheckable(True)
     toggle_btn.setChecked(config.get("show_plot", True))

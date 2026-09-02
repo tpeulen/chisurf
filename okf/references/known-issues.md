@@ -5087,3 +5087,18 @@ generated, which is the fixture a plugin would be built against.
   phasor verdict from writing the definition out as a weighted sum; the MST
   verdict from SciPy's `minimum_spanning_tree` over an explicit
   mutual-reachability matrix.
+
+## `.native` calls outlive the backend they were written against
+
+**2026-09-02.** `lightpath_simulator/gui/node_types.py` reached past chiplot
+with `plot_w.native.hideAxis('left')` and three more, under a comment saying
+chiplot had no verb for it. chiplot has had `set_axis_visible` for a while, so
+the comment outlived the gap it described -- and when chiplot's native backend
+stopped being pyqtgraph, `hideAxis` became an `AttributeError` that took the
+whole node factory down with it and left the beam-path simulator unable to
+build its default path.
+
+Fixed there. The general shape is the risk: **a `.native` call is a bet on
+which backend chiplot happens to have**, and it is invisible to the import
+guard because it reaches pyqtgraph without importing it.
+`test/chiplot_native_allowlist.txt` is the list of remaining bets.
