@@ -11,18 +11,11 @@ from chisurf.core.fluorescence.burst.bocpd import (
 )
 import chisurf.core.fluorescence.burst.bocpd
 
-# Kalman module -- kalman_filter/kalman_burst_search forward to the tttrlib
-# engine; the names below them are the Python fallback that module keeps.
+# Kalman module — forwards to the tttrlib C++ engine; the Python fallback
+# was dead code (PRD-133) and has been deleted.
 from chisurf.core.fluorescence.burst.kalman import (
     kalman_filter,
     kalman_burst_search,
-    Burst,
-    KalmanBurstResult,
-    KalmanBurstDetector,
-    bin_photons as kalman_bin_photons,
-    bin_photons_multi as kalman_bin_photons_multi,
-    kalman_burst_detection,
-    kalman_burst_detection_multi
 )
 # Import with module prefix to avoid name conflict
 import chisurf.core.fluorescence.burst.kalman

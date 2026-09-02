@@ -20,12 +20,6 @@ from __future__ import annotations
 
 import numpy as np
 
-try:
-    import tttrlib as _ttl
-    _HAVE_TTTRLIB = hasattr(_ttl, 'correct_three_cube')
-except Exception:
-    _HAVE_TTTRLIB = False
-
 __all__ = [
     "matrix_from_payload",
     "apply_mixing",

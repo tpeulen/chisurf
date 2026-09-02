@@ -635,13 +635,14 @@ class IRFEstimator:
         rl_iterations: int = 500,
         regularization: int = 3
     ) -> np.ndarray:
-        """
-        Execute the full IRF estimation pipeline:
-            1. Find t0, t1 per channel using Savitzky-Golay filtering
-            2. Fit truncated exponential curves
-            3. Generate fitted exponential curves
-            4. Generate deconvolution kernel
-            5. Perform Richardson-Lucy deconvolution
+        """Execute the full IRF estimation pipeline via the tttrlib C++ engine.
+
+        The engine (``tttrlib.blind_irf_estimate``) is a hard dependency. The
+        in-tree Python pipeline (Savitzky-Golay filtering, truncated
+        exponential fitting, Richardson-Lucy deconvolution) was a fallback
+        for a build whose ``tttrlib`` predates the engine; that build is not
+        supported by the tree's pinned dependencies, so the fallback was
+        dead code and has been removed (PRD-133).
 
         Parameters
         ----------
@@ -667,34 +668,14 @@ class IRFEstimator:
         np.ndarray
             Estimated IRFs (shape: [num_samples, num_channels])
         """
-        try:
-            import tttrlib as _ttl
-            if hasattr(_ttl, 'blind_irf_estimate'):
-                data_flat = self.data.astype(np.float64).flatten().tolist()
-                irf = np.asarray(_ttl.blind_irf_estimate(
-                    data_flat, self.num_samples, self.num_channels,
-                    self.dt, rl_iterations, regularization,
-                    window_length, polyorder
-                ))
-                self.irf = irf.reshape(self.data.shape)
-                return self.irf
-        except Exception:
-            pass
-
-        self.find_t0_t1(
-            window_length=window_length,
-            polyorder=polyorder,
-            persistence=persistence,
-            threshold=threshold
-        )
-        self.fit_exponential(method=fit_method, max_iter=fit_max_iter)
-        self.generate_data_fit()
-        self.generate_kernel()
-        self.richardson_lucy_deconvolution(
-            iterations=rl_iterations,
-            regularization=regularization
-        )
-
+        import tttrlib as _ttl
+        data_flat = self.data.astype(np.float64).flatten().tolist()
+        irf = np.asarray(_ttl.blind_irf_estimate(
+            data_flat, self.num_samples, self.num_channels,
+            self.dt, rl_iterations, regularization,
+            window_length, polyorder
+        ))
+        self.irf = irf.reshape(self.data.shape)
         return self.irf
 
     def plot_raw_and_fit(self, ax=None):

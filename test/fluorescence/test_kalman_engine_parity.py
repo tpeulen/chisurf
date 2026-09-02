@@ -1,18 +1,10 @@
-"""Kalman burst search: the engine is primary, the Python recursion is the
-fallback, and the two agree in kind on a real measurement.
+"""Kalman burst search: the engine is the only path.
 
-The compiled ``tttrlib`` search became the path every caller takes
-(``chisurf.core.fluorescence.burst.kalman.kalman_filter``); the in-tree Python
-recursion is retained beneath it for a build whose ``tttrlib`` predates
-``burst_search_kalman``, and is exercised here so it cannot rot unnoticed.
-
-Parity is asserted *in kind*, not bin-for-bin, and that is a property of the
-fallback rather than a tolerance chosen to make a test pass. The Python path
-is handed per-channel float timestamps and
-
-* bins with ``np.histogram(range=(0, tmax))``, whose width is
-  ``tmax / ceil(tmax / dt)`` rather than the ``dt`` asked for, and
-* recovers photon indices by ``searchsorted`` on float seconds.
+The compiled ``tttrlib`` search (``burst_search_kalman``) is the sole
+implementation. The in-tree Python recursion was a fallback for a build whose
+``tttrlib`` predates the engine; since the tree pins its engines, the fallback
+was dead code and was deleted in PRD-133 (the fallback audit). This test now
+covers only the engine path.
 
 Run on the bundled BH SPC132 single-molecule measurement (~174 k photons, real
 burst counts) rather than a synthetic array.
@@ -44,18 +36,6 @@ def tttr():
     return tttrlib.TTTR(str(_SPC), "SPC-130")
 
 
-def test_engine_is_the_primary_path(tttr, monkeypatch):
-    """On a build with the engine, the Python recursion is never entered."""
-    assert kalman_mod.engine_is_available()
-
-    def _boom(*a, **kw):
-        raise AssertionError("fallback ran while the engine was available")
-
-    monkeypatch.setattr(kalman_mod, "_python_kalman_burst_search", _boom)
-    bursts = kalman_mod.kalman_burst_search(tttr, **_PARAMS)
-    assert bursts.ndim == 2 and bursts.shape[1] == 2
-
-
 def test_engine_bursts_are_well_formed(tttr):
     """Inclusive ``[start, stop]`` photon indices, ordered and in range."""
     bursts = kalman_mod.kalman_burst_search(tttr, **_PARAMS)
@@ -80,20 +60,10 @@ def test_mask_matches_the_burst_ranges(tttr):
     np.testing.assert_array_equal(mask, expected)
 
 
-def test_fallback_still_runs_and_agrees_in_kind(tttr, monkeypatch):
-    """Forcing the engine away exercises the retained Python recursion."""
-    monkeypatch.setattr(kalman_mod, "engine_is_available", lambda: False)
-    fallback = kalman_mod.kalman_filter(tttr, **_PARAMS)
-
-    monkeypatch.undo()
-    engine = kalman_mod.kalman_filter(tttr, **_PARAMS)
-
-    assert fallback.shape == engine.shape == (len(tttr),)
-    assert fallback.any() and engine.any()
-
-    # Same population, not the same bins: see the module docstring for why an
-    # exact comparison would be pinning the fallback's binning bug.
-    ratio = float(fallback.sum()) / float(engine.sum())
-    assert 0.2 < ratio < 5.0, (int(fallback.sum()), int(engine.sum()))
-    overlap = float((fallback & engine).sum()) / float((fallback | engine).sum())
-    assert overlap > 0.3, overlap
+def test_empty_result_when_no_bursts():
+    """An empty TTTR produces an empty burst array and an all-False mask."""
+    empty = tttrlib.TTTR()
+    bursts = kalman_mod.kalman_burst_search(empty, **_PARAMS)
+    assert bursts.shape == (0, 2)
+    mask = kalman_mod.kalman_filter(empty, **_PARAMS)
+    assert mask.shape == (0,) or np.all(~mask)

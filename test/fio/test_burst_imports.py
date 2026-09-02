@@ -49,33 +49,16 @@ def test_search_modules_call_the_engine(module, entry_point):
     assert hasattr(tttrlib.TTTR, entry_point)
 
 
-def test_kalman_entry_points_prefer_the_engine():
-    """``kalman_filter`` reaches the engine first, not the Python recursion.
+def test_kalman_has_no_python_fallback():
+    """The Python fallback was dead code (PRD-133) and has been deleted.
 
-    The recursion is still there -- it is the fallback for a tttrlib that
-    predates ``burst_search_kalman``, and deleting it is the fallback audit's
-    call, not the forwarding change's. What this pins is the *order*: on a
-    build that has the engine, the Python path must not run.
+    What this pins is that the fallback has not crept back in: the module
+    must not carry ``_python_kalman_burst_search``, ``KalmanBurstDetector``,
+    or the ``engine_is_available`` gate.
     """
-    src = inspect.getsource(burstmod.kalman.kalman_burst_search)
-    assert "burst_search_kalman" in src
-    # The fallback is retained and reachable, not deleted.
-    assert callable(burstmod.kalman.KalmanBurstDetector)
-    assert callable(burstmod.kalman.kalman_burst_detection_multi)
-    assert callable(burstmod.kalman._python_kalman_burst_search)
-
-
-def test_kalman_engine_is_used_when_available(monkeypatch):
-    """With the engine present the fallback is not entered."""
-    assert burstmod.kalman.engine_is_available()
-
-    def _boom(*a, **kw):
-        raise AssertionError("Python fallback ran while the engine was available")
-
-    monkeypatch.setattr(burstmod.kalman, "_python_kalman_burst_search", _boom)
-    tttr = tttrlib.TTTR(str(_SPC_FIXTURE), "SPC-130")
-    mask = burstmod.kalman_filter(tttr, min_ph=20, dt=1e-3, q=20.0, z_thresh=3.0)
-    assert mask.shape == (len(tttr),)
+    assert not hasattr(burstmod.kalman, "_python_kalman_burst_search")
+    assert not hasattr(burstmod.kalman, "KalmanBurstDetector")
+    assert not hasattr(burstmod.kalman, "engine_is_available")
 
 
 def test_bva_module_is_only_the_static_line():

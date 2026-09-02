@@ -33,11 +33,7 @@ from typing import Sequence, Tuple
 
 import numpy as np
 
-try:
-    import tttrlib as _ttl
-    _HAVE_TTTRLIB = hasattr(_ttl, 'fida_pch')
-except Exception:
-    _HAVE_TTTRLIB = False
+import tttrlib as _ttl
 
 
 def dvdx_gaussian(
@@ -106,38 +102,12 @@ def fida_pch(
         profile = dvdx_gaussian()
     x, w = profile
 
-    # Delegate to tttrlib C++ engine when available
-    if _HAVE_TTTRLIB:
-        species_flat = []
-        for q, n in species:
-            species_flat.extend([float(q), float(n)])
-        return np.asarray(_ttl.fida_pch(
-            k_max, species_flat, len(species), float(background)
-        ))
-
-    dx = x[1] - x[0]
-
-    m = int(max(oversample, 1) * (k_max + 1))
-    j = np.arange(m)
-    # Evaluate the PGF on exp(-2*pi*i*j/m) so that G_j = sum_k P_k xi^k is the
-    # forward DFT of P and P = ifft(G) recovers the coefficients directly.
-    xi = np.exp(-2j * np.pi * j / m)
-
-    exponent = np.zeros(m, dtype=complex)
+    species_flat = []
     for q, n in species:
-        # N * int w(x) (e^{(xi-1) q x} - 1) dx, vectorised over the circle points.
-        # shape (m, len(x)): (xi-1)[:, None] * q * x[None, :]
-        integ = (np.exp((xi[:, None] - 1.0) * (q * x[None, :])) - 1.0)
-        exponent += n * (integ * w[None, :]).sum(axis=1) * dx
-    exponent += (xi - 1.0) * background
-
-    g = np.exp(exponent)
-    p = np.real(np.fft.ifft(g))[: k_max + 1]
-    p = np.clip(p, 0.0, None)                             # kill tiny negative FFT noise
-    total = p.sum()
-    if total > 0:
-        p = p / total
-    return p
+        species_flat.extend([float(q), float(n)])
+    return np.asarray(_ttl.fida_pch(
+        k_max, species_flat, len(species), float(background)
+    ))
 
 
 def fida_residuals(
