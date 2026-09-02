@@ -489,6 +489,89 @@ class GeneralFCSModel(ModelCurve):
         self.x = tau_ms
         self.y = b + (bg_factor / N) * g
 
+    # --- the graph route: the active composition as one compiled expression
+    #
+    # The model's curve genuinely *is* an equation (`equation_html` has
+    # always written it), so the graph route regenerates the same equation
+    # in the engine's spelling: the active diffusion mode, the current
+    # bunching/anticorrelation term count and the dataset's count-rate
+    # constant are all *structural* -- any change regenerates the string,
+    # and `_graph_cache_key` carries it, so a stale graph cannot serve a
+    # reconfigured model. Every optional factor is exactly neutral at its
+    # default (`diam = 0` and `bg = 0` both make their factor exactly 1),
+    # so nothing branches inside one configuration. The `"mdf"` mode is a
+    # numerical kernel (`enderlein.g_diff`, bff's FcsMdf), not a formula --
+    # it returns no expression and the fit takes the director path.
+
+    def _count_rate_constant(self):
+        """The dataset's total mean count rate, or ``None`` when absent."""
+        meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
+        from chisurf.core.fluorescence.fcs.normalization import (
+            resolve_total_mean_count_rate)
+        cr = resolve_total_mean_count_rate(meta)
+        return float(cr) if cr is not None and cr > 0 else None
+
+    def _diffusion_expression(self):
+        """The active diffusion shape over ``x`` (tau, ms), or ``None``."""
+        mode = self.diffusion_mode
+        if mode == "mdf":
+            return None
+        lat = "1.0/(1.0 + 4.0*{D}*(x*0.001)/(w_r*0.001)**2)"
+        axi = "1.0/sqrt(1.0 + 4.0*{D}*(x*0.001)/(w_z*0.001)**2)"
+        two = "exp(-(diam*0.001)**2/((w_r*0.001)**2 + 4.0*{D}*(x*0.001)))"
+        component = f"{lat}*{axi}*{two}"
+        if mode == "species":
+            n = self.species.n_species
+            parts = [
+                "max(x_%d, 0.0)*(%s)" % (i, component.format(D="D_%d" % i))
+                for i in range(1, n + 1)]
+            total = " + ".join("max(x_%d, 0.0)" % i for i in range(1, n + 1))
+            return "(%s)/max(%s, 1e-30)" % (" + ".join(parts), total)
+        return "(%s)" % component.format(D="D")
+
+    @property
+    def func(self) -> str | None:
+        """The full compound equation for the graph, or ``None`` (mdf)."""
+        g = self._diffusion_expression()
+        if g is None:
+            return None
+        factors = [g]
+        factors += [
+            "(1.0 - ba%d + ba%d*exp(-x/bt%d))" % (i, i, i)
+            for i in range(1, len(self.bunching) + 1)]
+        factors += [
+            "(1.0 - aca%d*exp(-x/(act%d*1e-6)))" % (i, i)
+            for i in range(1, len(self.anticorr) + 1)]
+        cr = self._count_rate_constant()
+        if cr is not None:
+            amplitude = "max(0.0, (%r - bg)/%r)**2/N" % (cr, cr)
+        else:
+            amplitude = "1.0/N"
+        return "b + (%s)*%s" % (amplitude, "*".join(factors))
+
+    @property
+    def _expression(self):
+        """Non-``None`` marks the model as graph-compilable (see ``func``)."""
+        return self.func
+
+    @property
+    def _parameters_equation(self):
+        """The active mode's parameters plus the relaxation terms' own."""
+        mode = self.diffusion_mode
+        if mode == "mdf":
+            return []
+        group = {"two_focus": self.two_focus,
+                 "species": self.species}.get(mode, self.gauss)
+        out = [group._N, group._w_r, group._w_z, group._b, group._diam,
+               group._bg]
+        if mode == "species":
+            out += list(group._species)
+        else:
+            out.append(group._D)
+        out += self.bunching._ba + self.bunching._bt
+        out += self.anticorr._aca + self.anticorr._act
+        return out
+
     def equation_html(self) -> str:
         """Render the currently active compound fitting equation as HTML.
 

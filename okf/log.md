@@ -38295,3 +38295,25 @@ side of the line.
   graph-vs-director 15.9 vs 136.1 ms (8.5×); gaps 1–2 struck; the
   "not asked yet" section replaced by the family-verdicts cross-link —
   every family now has a graph or a written verdict.
+
+- **2026-09-02 — the FCS composition layer: `GeneralFCSModel` fits through
+  the graph as a regenerated expression (PRD-105, family-verdicts step 2).**
+  The model's curve genuinely *is* an equation — `equation_html` always
+  wrote it — so the graph route regenerates the same equation in the
+  engine's spelling. Diffusion mode, species count, bunching/anticorr term
+  count and the dataset's count-rate constant are all structural: each
+  regenerates the string and the cache key carries it, so the
+  `MaxEntLifetimeModel` trap (a cached graph serving a reconfigured model)
+  cannot fire. `gauss`/`two_focus`/`species` build (parity 1e-12 with the
+  two-focus factor, count-rate background factor, two bunching and one
+  anticorrelation term all armed; `diam=0` and `bg=0` are exactly neutral,
+  so one string serves each configuration with no branch); `"mdf"` refuses
+  — a numerical kernel is not a formula — and a free `bg` without
+  count-rate metadata refuses as unclaimable. The relaxation terms'
+  declared bounds are now *enforced* (`bounds_on=True`, was silently off):
+  a time constant driven to ≤0 made `apply` drop the factor — a
+  discontinuous objective the compiled expression could not follow, and
+  arguably a bug on its own. Measured: 2.75 → 1.62 ms per fit (1.7×), zero
+  Python evaluations inside the run; census 13/42, zero disagreements.
+  Deliberate remainders (engine nodes, not expressions): `FcsMdf`-backed
+  node for the `"mdf"` mode, kinetics `"full"` over the saturation kernel.
