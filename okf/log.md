@@ -37872,3 +37872,21 @@ side of the line.
   uncommitted (Sampler/TcspcDecay untracked there); today's C++ edits live
   in it and a consolidation commit is owed. Tracker: PRD-105 (now
   in-progress).
+
+- 2026-09-02 (placement rule sharpened; the MDF forward model moves to bff) —
+  **Owner refinement**: "model stuff that is model and does not
+  touch/transform data directly should be in bff" — a *forward model* goes to
+  imp.bff even when its subject is photons; *data reduction* stays tttrlib's
+  (pile-up correctly sits there, beside the convolution). Recorded in
+  `okf/references/imp-ecosystem.md` and PRD-105; board `T-20260902-11`
+  retargeted tttrlib → imp.bff. And the mandate that ends every wave: "once
+  all the migrations happened, must make the code in chisurf, bff, tttrlib
+  clean — not to pile up crap on crap" — PRD-105 phase 6 now covers all three
+  repos. **First act under the sharpened rule**: the Enderlein MDF port.
+  `IMP.bff` gained `FcsMdf.h/.cpp` (`fcs_mdf_g_diff`,
+  `fcs_mdf_effective_volume`, an in-tree `hermgauss` agreeing with numpy at
+  machine precision); chisurf's `enderlein.py` forwards and its numpy bodies
+  are deleted, with an independent transcription pinning the math at 1e-12.
+  Scoreboard: `MdfFCSModel` 110 ms/curve 93% Python → 5.3 ms/curve 96%
+  native — the `T-20260901-15` "port this one" half is closed. Remaining in
+  `T-20260902-11` (released, open): `saturation.py` + the PSF layer.

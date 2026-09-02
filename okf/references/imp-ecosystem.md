@@ -74,6 +74,18 @@ chisurf      the application                           — binds; owns no algori
 **The rule for placing a new algorithm is: what is the input?** Photons or
 curves → tttrlib. Coordinates → imp.bff. Neither, it is a workflow → chisurf.
 
+**Sharpened by the owner, 2026-09-02: a *forward model* goes to imp.bff even
+when its subject is photons.** "Model stuff that is model and does not
+touch/transform data directly should be in bff" — a function that computes a
+model curve or quantity *from parameters* and never reads or reshapes
+measured data is a model, not data reduction, so the FCS MDF/saturation
+forward models and their PSF math belong in imp.bff. What reads or transforms
+measured photons/curves stays tttrlib's, and kernel neighbourhood is a
+legitimate tiebreaker the other way: pile-up scales the model *from the
+data* and sits beside the decay convolution, so it is tttrlib's. (tttrlib's
+`SimGrid` PSF profiles serve the photon *simulator* and stay; the twin is
+cited in comments, never rewritten as a third copy.)
+
 **The tiebreaker, when input and consumer disagree, is: the consumer wins.**
 This is not a footnote; it is the rule that decides the hardest real case, and
 without it someone will "correct" κ² into tttrlib. See below.

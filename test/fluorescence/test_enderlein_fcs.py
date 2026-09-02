@@ -73,3 +73,64 @@ def test_g0_matches_inverse_n_veff():
     veff = en.effective_volume(w0, R0)
     g0 = en.g_diff(np.array([0.0]), w0, R0, diffusion=300.0, normalize=False)[0]
     np.testing.assert_allclose(g0, 1.0 / veff, rtol=1e-3)
+
+
+def test_the_engine_matches_an_independent_numpy_transcription():
+    """The math of the deleted numpy body, pinned against the engine.
+
+    ``g_diff``/``effective_volume`` forward to ``IMP.bff`` since 2026-09-02
+    (board T-20260902-11; forward models live in bff). This transcription is
+    the reference the engine must keep agreeing with -- the same role the
+    Coates transcription plays for tttrlib's pile-up kernel.
+    """
+    optics = en.Optics()
+    a = optics.pinhole_radius
+    w0, R0, D = 0.25, 0.30, 400.0
+    n_grid, span, n_herm = 121, 30.0, 40
+    tau = np.logspace(-6, -1, 21)
+
+    z_r = np.pi * max(w0 * w0, R0 * R0) * optics.refractive_index / min(
+        optics.excitation_wavelength, optics.emission_wavelength)
+    z = np.linspace(-span * z_r, span * z_r, n_grid)
+
+    def w_of(zz):
+        q = optics.excitation_wavelength * zz / (np.pi * w0 * w0 * optics.refractive_index)
+        return w0 * np.sqrt(1.0 + q * q)
+
+    def kappa_of(zz):
+        q = optics.emission_wavelength * zz / (np.pi * R0 * R0 * optics.refractive_index)
+        R2 = R0 * R0 * (1.0 + q * q)
+        return 1.0 - np.exp(-2.0 * a * a / R2)
+
+    kappa = kappa_of(z)
+    w2 = w_of(z) ** 2
+    xi, hq = np.polynomial.hermite.hermgauss(n_herm)
+
+    def raw(t, sep2=0.0):
+        t = max(t, 1e-18)
+        s = 4.0 * D * t
+        zp = z[:, None] + np.sqrt(s) * xi[None, :]
+        w_sum = w2[:, None] + w_of(zp) ** 2
+        g_lat = 1.0 / (4.0 + w_sum / (2.0 * D * t))
+        if sep2 > 0.0:
+            g_lat = g_lat * np.exp(-sep2 / (4.0 * D * t + 0.5 * w_sum))
+        inner = np.sum(hq[None, :] * kappa_of(zp) * g_lat, axis=1)
+        return float(np.trapezoid(kappa * inner, z) / s)
+
+    num0 = raw(1e-15)
+    want = np.array([raw(t) for t in tau]) / num0
+    got = en.g_diff(tau, w0, R0, D, optics=optics, n_grid=n_grid, span=span,
+                    n_herm=n_herm, normalize=True)
+    np.testing.assert_allclose(got, want, rtol=1e-12)
+
+    # Two-focus cross-correlation starts below one and keeps the same shape
+    # contract; the effective volume follows the Fretica formula.
+    got2 = en.g_diff(tau, w0, R0, D, optics=optics, n_grid=n_grid, span=span,
+                     n_herm=n_herm, normalize=True, separation=0.4)
+    want2 = np.array([raw(t, 0.16) for t in tau]) / num0
+    np.testing.assert_allclose(got2, want2, rtol=1e-12)
+
+    zf = np.linspace(-60.0 * z_r, 60.0 * z_r, 4001)
+    kf, wf2 = kappa_of(zf), w_of(zf) ** 2
+    veff = np.pi * np.trapezoid(kf, zf) ** 2 / np.trapezoid(kf * kf / wf2, zf)
+    assert en.effective_volume(w0, R0, optics) == pytest.approx(veff, rel=1e-12)

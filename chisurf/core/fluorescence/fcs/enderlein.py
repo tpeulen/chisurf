@@ -43,11 +43,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-try:  # NumPy >= 2.0 renamed trapz -> trapezoid
-    from numpy import trapezoid as _trapz
-except ImportError:  # pragma: no cover - NumPy < 2.0
-    from numpy import trapz as _trapz
-
 
 @dataclass(frozen=True)
 class Optics:
@@ -80,7 +75,12 @@ class Optics:
 
 
 def _w(z: np.ndarray, w0: float, optics: Optics) -> np.ndarray:
-    """Axial dependence of the lateral 1/e^2 beam radius ``w(z)`` (um)."""
+    """Axial dependence of the lateral 1/e^2 beam radius ``w(z)`` (um).
+
+    Display-side helper for :func:`mdf`; the fit-path twin lives in the
+    engine (``IMP.bff`` FcsMdf, and the same law backs the photon
+    simulator's Gauss-Lorentz profile in tttrlib's ``SimGrid``).
+    """
     lam = optics.excitation_wavelength
     n = optics.refractive_index
     return w0 * np.sqrt(1.0 + (lam * z / (np.pi * w0 * w0 * n)) ** 2)
@@ -120,15 +120,6 @@ def mdf(
     return kappa / (w * w) * np.exp(-2.0 * np.asarray(rho, float) ** 2 / (w * w)) / norm
 
 
-def _axial_grid(w0: float, R0: float, optics: Optics, n_grid: int, span: float):
-    """Symmetric axial integration grid ``z`` (um) spanning ``span`` Rayleigh ranges."""
-    z_r = np.pi * max(w0 * w0, R0 * R0) * optics.refractive_index / min(
-        optics.excitation_wavelength, optics.emission_wavelength
-    )
-    z_max = span * z_r
-    return np.linspace(-z_max, z_max, n_grid)
-
-
 def effective_volume(
     w0: float, R0: float, optics: Optics | None = None,
     n_grid: int = 4001, span: float = 60.0,
@@ -136,15 +127,17 @@ def effective_volume(
     r"""Effective detection volume :math:`V_\mathrm{eff}` (femtolitres-scale, um^3).
 
     :math:`V_\mathrm{eff} = \pi\,(\int \kappa\,dz)^2 / \int (\kappa^2/w^2)\,dz`
-    (Fretica ``FVeffEnderlein``), evaluated by numerical axial integration.
+    (Fretica ``FVeffEnderlein``). The integration runs in the engine
+    (``IMP.bff.fcs_mdf_effective_volume``); this wrapper only spells the
+    optics out.
     """
+    import IMP.bff as _bff
     optics = optics or Optics()
-    z = _axial_grid(w0, R0, optics, n_grid, span)
-    w = _w(z, w0, optics)
-    kappa = _kappa(z, R0, optics)
-    num = _trapz(kappa, z) ** 2
-    den = _trapz(kappa * kappa / (w * w), z)
-    return float(np.pi * num / den)
+    return float(_bff.fcs_mdf_effective_volume(
+        float(w0), float(R0),
+        float(optics.excitation_wavelength), float(optics.emission_wavelength),
+        float(optics.refractive_index), float(optics.pinhole_radius),
+        int(n_grid), float(span)))
 
 
 def g_diff(
@@ -188,46 +181,25 @@ def g_diff(
     numpy.ndarray
         The autocorrelation evaluated at each ``tau``.
     """
+    # The whole double integral runs in the engine
+    # (``IMP.bff.fcs_mdf_g_diff``): a trapezoid over the axial grid times a
+    # Gauss--Hermite quadrature in the *difference* direction
+    # (z' = z + sqrt(4 D t) xi), which resolves the propagator at any lag.
+    # This used to be the single most expensive model evaluation left in
+    # Python (110 ms/curve, 93% of it here -- board `T-20260901-15`); the
+    # engine agrees with the deleted numpy body to ~2e-15 and the reference
+    # transcription in ``test/fluorescence/test_enderlein_fcs.py`` keeps the
+    # math pinned.
+    import IMP.bff as _bff
     optics = optics or Optics()
     tau = np.atleast_1d(np.asarray(tau, dtype=float))
-    z = _axial_grid(w0, R0, optics, n_grid, span)
-    kappa = _kappa(z, R0, optics)
-    w2 = _w(z, w0, optics) ** 2
-
-    # The axial convolution with the diffusion propagator is done by Gauss--
-    # Hermite quadrature in the *difference* direction (substituting
-    # z' = z + sqrt(4 D t) xi), which resolves the propagator at any lag — a
-    # fixed z-grid fails once sqrt(4 D t) drops below the grid spacing.  The z
-    # grid only has to resolve the smooth kappa/w profile.  Absolute prefactors
-    # cancel in the g(0)-normalised shape, so they are dropped here.
-    xi, hq = np.polynomial.hermite.hermgauss(n_herm)
-    d2 = separation * separation
-
-    def _raw(t: float, sep2: float = 0.0) -> float:
-        t = max(t, 1e-18)
-        s = 4.0 * diffusion * t
-        zp = z[:, None] + np.sqrt(s) * xi[None, :]          # (nz, n_herm)
-        kzp = _kappa(zp, R0, optics)
-        wzp2 = _w(zp, w0, optics) ** 2
-        w_sum = w2[:, None] + wzp2
-        g_lat = 1.0 / (4.0 + w_sum / (2.0 * diffusion * t))
-        if sep2 > 0.0:
-            # Two-focus cross-correlation: the lateral overlap of two foci a
-            # distance d apart is attenuated by exp(-d^2 / (4 D t + (w^2+w'^2)/2)),
-            # which decays with tau and yields an ABSOLUTE D from the known d.
-            g_lat = g_lat * np.exp(-sep2 / (4.0 * diffusion * t + 0.5 * w_sum))
-        inner = np.sum(hq[None, :] * kzp * g_lat, axis=1)   # Gauss--Hermite over xi
-        return float((1.0 / s) * _trapz(kappa * inner, z))
-
-    num0 = _raw(1e-15)                                       # AUTO small-lag plateau ~ g(0)
-    out = np.empty(tau.shape, dtype=float)
-    for i, t in enumerate(tau):
-        out[i] = _raw(1e-15) if t <= 0.0 else _raw(t, d2)
-    g = out / num0                                           # shape (auto g(0)=1; cross<1)
-
-    if normalize:
-        return g
-    return g / effective_volume(w0, R0, optics)              # absolute: g(0) = 1/Veff
+    return np.asarray(_bff.fcs_mdf_g_diff(
+        [float(t) for t in tau],
+        float(w0), float(R0), float(diffusion),
+        float(optics.excitation_wavelength), float(optics.emission_wavelength),
+        float(optics.refractive_index), float(optics.pinhole_radius),
+        int(n_grid), float(span), bool(normalize), int(n_herm),
+        float(separation)), dtype=float)
 
 
 def acf(
