@@ -779,10 +779,65 @@ def _fret_distances(model, carried):
                             node.get_input_port("amplitude%d" % i)))
         return node, None
 
-    # A distribution this builder does not produce -- a worm-like chain, a
-    # self-avoiding walk, an Ising chain, a discrete set, a maximum-entropy
-    # inversion. Each is its own kernel and its own node; until it has one,
-    # the numpy path is the honest answer.
+    # The closed-form polymer models: one node with a mode, dispatching into
+    # the same PolymerChain kernels chisurf's rdf.py forwarders call -- the
+    # graph path and the numpy path evaluate one implementation
+    # (T-20260901-08; kernels landed with T-20260902-01). Ports carry what
+    # the model fits; the worm-like chain's dimensionless kappa = lp / l is
+    # derived in the node, the same derivation the model property makes.
+    from chisurf.core.models.tcspc.fret import (
+        WormLikeChainModel, SawNuModel, IsingChainModel)
+    if not hasattr(_bff, "PolymerDistances"):
+        return None, None
+
+    if owner is getattr(WormLikeChainModel, "distance_distribution", None):
+        node = _bff.PolymerDistances("distances")
+        node.set_mode("worm_like_chain_linker" if model.use_dye_linker
+                      else "worm_like_chain")
+        node.add_output_port("distances", _bff.Port([0.0], False, True))
+        node.set_axis_array(np.ascontiguousarray(
+            np.asarray(_rda_axis(), dtype=np.float64)))
+        carried.append((model._chain_length,
+                        node.get_input_port("chain_length")))
+        carried.append((model._persistence_length,
+                        node.get_input_port("persistence_length")))
+        # Carried in both modes: with the linker off the port is inert, which
+        # mirrors the model exactly -- `w` is a fitting parameter either way
+        # and the numpy path fits it inert too. Not carrying it would refuse
+        # the graph for a free parameter that changes nothing.
+        carried.append((model._sigma_linker,
+                        node.get_input_port("sigma_linker")))
+        return node, None
+
+    if owner is getattr(SawNuModel, "distance_distribution", None):
+        node = _bff.PolymerDistances("distances")
+        node.set_mode("saw_nu")
+        node.add_output_port("distances", _bff.Port([0.0], False, True))
+        node.set_axis_array(np.ascontiguousarray(
+            np.asarray(_rda_axis(), dtype=np.float64)))
+        carried.append((model._r_rms, node.get_input_port("r_rms")))
+        carried.append((model._nu, node.get_input_port("nu")))
+        return node, None
+
+    if owner is getattr(IsingChainModel, "distance_distribution", None):
+        node = _bff.PolymerDistances("distances")
+        node.set_mode("ising_chain")
+        node.add_output_port("distances", _bff.Port([0.0], False, True))
+        node.set_axis_array(np.ascontiguousarray(
+            np.asarray(_rda_axis(), dtype=np.float64)))
+        carried.append((model._n_residues, node.get_input_port("n_residues")))
+        carried.append((model._b_structured,
+                        node.get_input_port("b_structured")))
+        carried.append((model._b_unstructured,
+                        node.get_input_port("b_unstructured")))
+        carried.append((model._coupling, node.get_input_port("coupling")))
+        carried.append((model._field, node.get_input_port("field")))
+        return node, None
+
+    # A distribution this builder does not produce -- a discrete set, a
+    # maximum-entropy inversion, a structure. Each is its own decision
+    # (T-20260901-08 records them); until then, the numpy path is the
+    # honest answer.
     return None, None
 
 

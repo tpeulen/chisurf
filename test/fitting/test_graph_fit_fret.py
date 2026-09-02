@@ -258,18 +258,41 @@ def test_the_derived_efficiency_is_offered_a_slot_and_moves_in_neither_path():
 # ------------------------------------------------------------ what refuses
 
 @pytest.mark.parametrize("model_class", [
-    SingleDistanceModel, WormLikeChainModel, SawNuModel, FRETrateModel])
+    SingleDistanceModel, FRETrateModel])
 def test_a_subclass_without_a_distribution_node_refuses(model_class):
     """Each `FRETModel` subclass *is* a distance distribution.
 
-    A discrete set of distances, a worm-like chain, a self-avoiding walk, a
-    rate spectrum given outright -- each is its own kernel. Until one has a
-    node, the honest answer is the numpy path: fitting it with the base
-    model's single constant distance would converge, and would be a
-    different model.
+    A discrete set of distances (histogrammed, which is the part to
+    reproduce exactly) and a rate spectrum given outright (which skips the
+    distance-to-rate step) still have no producer. Until one has a node, the
+    honest answer is the numpy path: fitting it with the base model's single
+    constant distance would converge, and would be a different model.
     """
     fit = make_fit(model_class)
     assert _refuses(fit)
+
+
+@pytest.mark.parametrize("model_class", [
+    WormLikeChainModel, SawNuModel])
+def test_a_polymer_distribution_is_a_node_with_the_same_curve(model_class):
+    """The closed-form polymer models joined the graph (T-20260901-08).
+
+    `PolymerDistances` dispatches into the same `PolymerChain` kernels the
+    rdf.py forwarders call, so the node's curve and `update_model`'s must be
+    the same numbers -- including the worm-like chain's `distance = false`
+    contract (the flag chisurf has always dropped on the floor; honouring
+    it in the node moved the curve by half a count and the census caught
+    it before anything shipped).
+    """
+    fit = make_fit(model_class)
+    fit.model.update_model()
+    built = M.graph_objective(fit, fit.model)
+    assert built is not None, "the polymer model must build a graph"
+    node = built[0]._decay
+    node.update()
+    graph = np.asarray(node.get_output_port("decay").value, dtype=float)
+    python = np.array(fit.model.y, dtype=float)
+    np.testing.assert_allclose(graph, python, rtol=1e-8)
 
 
 def test_a_kappa_squared_spectrum_refuses_the_graph():

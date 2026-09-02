@@ -38011,3 +38011,27 @@ side of the line.
   remains is `np.linalg.inv` and gemms, i.e. LAPACK/BLAS already, so a C++
   port of `DeerTikhonovModel` buys nothing and is **not** taken. With the
   MDF half landed this morning, T-20260901-15 is closed whole.
+
+- 2026-09-02 (T-20260901-08 — the polymer distributions join the graph) —
+  **`IMP.bff.PolymerDistances`: one node, four modes** (worm-like chain ±
+  linker, SAW-ν, Ising chain), dispatching into the same `PolymerChain.h`
+  kernels chisurf's `rdf.py` forwarders call — one implementation on both
+  paths. `_fret_distances` gains three branches keyed on which class owns
+  `distance_distribution`, exactly as the Gaussian one. Two traps the census
+  caught before anything shipped: (1) the model's linker width `w` is a
+  *fitting parameter with the linker off too* — the node carries the port in
+  both modes (inert without the linker, mirroring the numpy path's own inert
+  parameter) or a free `w` refuses the whole graph; (2) the worm-like
+  chain's `distance` flag: chisurf has always dropped it on the floor, and
+  the node honouring it moved the curve by 0.53 counts — `MISMATCH` in the
+  census, fixed to the forwarder's pinned `distance=false` contract. Census:
+  **10 of 42 constructible models build a graph (was 7), 6 of 14 polarised
+  (was 5), "no model builds a graph that disagrees with its own curve."**
+  These three now also sample in C++ (sampler_bff routes through the same
+  builder). Ticket deviations recorded there: Ising is a mode, not its own
+  node — after the 61× kernel port the cost-class argument evaporated; the
+  node is a thin dispatcher either way. Still nodeless by decision:
+  `SingleDistanceModel` (the histogramming is the part to reproduce
+  exactly), `FRETrateModel` (needs a rate input port on `FretSpectrum`),
+  MaxEnt/Structure (solver/structure behind the distribution — numpy is the
+  honest answer), PDDEM (a producer of its own).
