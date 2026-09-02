@@ -1,6 +1,44 @@
 # Update Log
 
 ## 2026-09-02
+
+* **Four defects in the node editor, all found by rendering a node and looking
+  at it.** The user's report was "overlapping node name/header with content",
+  and pulling that thread found three more, every one of which produces a wrong
+  *picture* rather than an exception:
+  - the title bar covered the first body row -- imnodes' `EndNodeTitleBar`
+    moves the cursor to the content origin and the port only measured;
+  - fixing that exposed `set_cursor_screen_pos` routing through `Layout.reset`,
+    the *frame* reset, which discards the accumulated extents: a group holding
+    a cursor move measured only what came after it, so a node came out narrower
+    than its own title;
+  - **`PushItemWidth` was a one-shot.** Only the first control in a node got
+    the pushed width; every one after it filled the row, which in a node means
+    the width of the whole editor. The node stretches, fit-to-content zooms out
+    to frame it, and the graph piles into the corner. It presents as "the
+    editor is broken" and it is one missing fallback. Rebaking
+    `tests/golden/imgui_knobs.png` showed the old golden had been *pinning* the
+    defect: the entire second knob was off the image.
+  - **`implot` painted through `ctx.p`** while every `im_widgets` control paints
+    through the drawlist. The same object until something splits the drawlist
+    to draw out of order -- which a node editor does -- and then the plot is
+    painted first and the node body replayed on top. An embedded plot was
+    simply absent. `ImPlotFlags_NoLegend` was also accepted and ignored.
+* **Nodes stick to each other like windows**, modelled on chimol's
+  `_snap_to_windows`: an edge sticks to a neighbour's facing edge only where
+  the two overlap along the other axis, the tolerance is screen pixels rather
+  than grid units (or the stick reaches further the more you zoom out), and a
+  multi-node drag snaps once for the node under the pointer and moves the
+  selection as one. Grid alignment is a separate switch, off by default.
+* **The beam path's node bodies are rewritten on cmtk.** `BeampathContent`
+  draws the three-layer spectrum -- input, output, and the component's own
+  characteristic, each normalised separately because they are different
+  physical quantities -- through `implot`, with the probe chooser filtered by
+  category. What it replaces is the argument for the whole move: a function
+  patching `QComboBox.showPopup` for an opaque background, another walking
+  proxy -> scene -> view -> parent to find `propagate_graph`, and a "hack to
+  trigger node resize" reaching into a private `_build_path`. 12 tests, no
+  display needed.
 * **The node editor moves off PyQt onto cmtk, and the reference was chosen by
   measurement rather than by reputation.** All five ImGui node editors on Dear
   ImGui's *Useful Extensions* page were cloned into `junk/` and run through

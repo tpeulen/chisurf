@@ -14,6 +14,69 @@ editor is being moved off PyQt onto [cmtk](../plugins/chimol-cmtk.md).
 
 ## Where to pick this up
 
+**2026-09-02, later — four defects fixed and the beam path's node bodies are
+written. Read this before the older list below, which it partly retires.**
+
+Fixed, all four in cmtk (`~/dev/cmtk`, commits `d1f96a9` and `7ccc19f`), and
+all four found by rendering a node and *looking* rather than by a failing test:
+
+1. **The title bar covered the first body row.** The bar is the title text
+   expanded by the node padding, so its bottom edge is one padding below the
+   text; the layout cursor put the next row one *item spacing* below, which is
+   smaller. imnodes' `EndNodeTitleBar` moves the cursor to the content origin
+   for exactly this reason and the port only measured.
+2. **`set_cursor_screen_pos` discarded the group's extents**, because it routed
+   through `Layout.reset` — the *frame* reset. A group containing a cursor move
+   measured only what came after it, so fixing (1) made a node narrower than
+   its own title. There is a `Layout.move_cursor_to` now.
+3. **`PushItemWidth` behaved as a one-shot**, so only the first control in a
+   node got the pushed width and every one after it filled the row. In a panel
+   that is invisible; in a node the second control stretches the node across
+   the viewport, fit-to-content zooms out to frame it, and the whole graph
+   piles into the corner. **This is the one to remember**: it presents as "the
+   editor is broken", and the cause is one missing fallback. It also rebaked
+   `tests/golden/imgui_knobs.png`, whose old image had the entire second knob
+   off-screen — the golden was pinning the defect.
+4. **`implot` painted through `ctx.p`** while every `im_widgets` control paints
+   through the drawlist. Identical until something splits the drawlist to draw
+   out of order — which a node editor does — and then an embedded plot is
+   painted first and the node body is replayed over it. The plot was simply
+   absent. Also, `ImPlotFlags_NoLegend` was accepted and ignored, so a plot two
+   inches wide had its curves covered by a key naming them.
+
+**Nodes now stick like windows.** `EditorContext.stick_to_nodes` (on) and
+`EditorContext.snap_to_grid` (off) are separate switches: the grid is a tidy
+layout, sticking is *these two nodes touching*, and sticking wins where both
+apply. Modelled on chimol's `_snap_to_windows` — an edge sticks to a
+neighbour's facing edge only when the two overlap along the other axis, which
+is what stops a node in a distant row catching a column it is nowhere near.
+The tolerance is screen pixels converted to grid units, or the stick reaches
+further the more you zoom out until everything catches everything. A hint
+outlines what was caught. **A multi-node drag snaps once**, for the node under
+the pointer, and applies that offset to the selection — snapping each node
+separately tears the group apart.
+
+**The beam path's node bodies are done** and are the template for every other
+node type: `lightpath_simulator/gui/cmtk_view.py`, `BeampathContent`. It draws
+the three-layer spectrum (input dotted grey, output white, the component's own
+characteristic coloured on top, each normalised separately because they are
+different physical quantities) through `implot`, plus the probe chooser
+filtered by category. 12 tests, no display needed. What it replaces in
+`gui/node_types.py` is worth reading as the argument for the whole move: a
+function that patches `QComboBox.showPopup` to force an opaque background,
+another that walks proxy → scene → view → parent to find something with a
+`propagate_graph` method, and a "hack to trigger node resize" reaching into a
+node item's private `_build_path`.
+
+**Still open on the beam path**: the tool window itself
+(`lightpath_simulator/gui/tool.py`) still builds `NodeScene`/`NodeView`. The
+wiring it needs is small now — `propagate_graph` becomes
+`document.to_dict()` → RPC → merge each `states[node_id]` into
+`document.node(id).config` — because there is no proxy to cross and no
+`_update_plot` callback to call. `easy_mode.py` (1912 lines) is a separate
+dialog and does not touch the graph canvas.
+
+
 **2026-09-02 — the new editor exists, is tested, and three of four consumers
 have not been switched to it yet.** In order:
 
