@@ -1234,7 +1234,15 @@ class Fit(cs.core.base.Base):
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled
-        self.update()
+        if self.__dict__.pop("_model_holds_the_fit", False):
+            # The graph path's write-back already ran the one model
+            # evaluation, so the curve and residuals are the fitted ones;
+            # re-evaluating here recomputed the same curve (10% of a TCSPC
+            # fit, T-20260901-11). The bookkeeping half of update() still
+            # runs, and finalize() below refreshes the controllers.
+            self.model.find_parameters()
+        else:
+            self.update()
         if not cancelled:
             self.update_error_estimates()
             self.results.append(self.model.__getstate__())
@@ -2061,7 +2069,12 @@ class FitGroup(Fit):
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled
-        self.update()
+        if self.__dict__.pop("_model_holds_the_fit", False):
+            # Same as Fit.run: the joint graph's write-back already
+            # evaluated the global model once (T-20260901-11).
+            self.model.find_parameters()
+        else:
+            self.update()
         if not cancelled:
             self.update_error_estimates()
             self.results.append(self.model.__getstate__())

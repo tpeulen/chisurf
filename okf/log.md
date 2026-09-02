@@ -37974,3 +37974,16 @@ side of the line.
   `_interpolate_threshold_crossing` refuses a touch the next segment never
   confirms. Guardrails in `test/fitting/test_support_plane_threshold.py`;
   assessment.md: 30 FIXED, 0 open S1.
+
+- 2026-09-02 (T-20260901-11, the cheap half) — **A graph fit evaluates the
+  Python model once per run(), not twice.** `minimize`'s write-back already
+  runs the one publication evaluation; `Fit.run`'s unconditional
+  `self.update()` then recomputed the same curve (233 µs of a 2.26 ms TCSPC
+  fit). `minimize` now flags `fit._model_holds_the_fit` and both `Fit.run`
+  and `FitGroup.run` skip the re-evaluation when it is set (bookkeeping
+  `find_parameters()` still runs; `finalize()` still refreshes controllers;
+  the director path, which does no write-back, keeps its update). Pinned by
+  `test_a_graph_run_evaluates_the_python_model_exactly_once` (== 1). The
+  expensive half — the curve read off the node's output port so even that
+  one evaluation goes — stays on the board ticket with a scoped hand-off
+  note (`n0` is the trap). 1004 fitting tests green.

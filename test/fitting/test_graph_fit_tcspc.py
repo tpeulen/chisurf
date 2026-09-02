@@ -521,3 +521,25 @@ def test_the_amplitudes_are_normalised_before_the_rotation_not_after():
     np.testing.assert_allclose(
         np.asarray(built[0]._decay.get_curve(), dtype=float),
         np.asarray(fit.model.y, dtype=float), rtol=1e-10, atol=1e-10)
+
+
+def test_a_graph_run_evaluates_the_python_model_exactly_once():
+    """T-20260901-11, the cheap half: minimize's write-back publishes with
+    one model evaluation, and Fit.run no longer re-evaluates what was just
+    published. Two Python update_model calls per run() became one; the
+    expensive half (reading the curve off the graph's output port so even
+    that one goes) is still open on the board ticket."""
+    fit = make_fit()
+    calls = {'n': 0}
+    original = fit.model.update_model
+
+    def counting(*a, **kw):
+        calls['n'] += 1
+        return original(*a, **kw)
+
+    fit.model.update_model = counting
+    try:
+        fit.run()
+    finally:
+        fit.model.update_model = original
+    assert calls['n'] == 1

@@ -1598,6 +1598,13 @@ def minimize(
         for parameter, value in zip(free, x):
             parameter.value = float(value)
         model.update_model()
+        # Tell Fit.run the model already holds the fitted curve, so its own
+        # self.update() does not evaluate the model a second time -- that
+        # recompute was 233 us of a 2.26 ms TCSPC fit (T-20260901-11, the
+        # cheap half; the expensive half, reading the curve off the graph's
+        # output port instead of this update_model(), is still open).
+        if fit is not None:
+            fit._model_holds_the_fit = True
 
     if ier not in _SUCCESS and ier != -1:
         chisurf.logging.warning("minimize: %s" % m.message)
