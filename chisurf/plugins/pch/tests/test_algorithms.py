@@ -2,11 +2,49 @@ import numpy as np
 
 from chisurf.plugins.pch.api.algorithms import (
     compute_p1,
-    convolve_pch,
     pch_mixture,
     pch_open_system,
     pch_single_species,
 )
+
+
+def _convolve_pch_reference(p1, n, length):
+    """The deleted ``core.models.pch.pch.convolve_pch``, transcribed whole.
+
+    An ``n``-fold self-convolution of a single-molecule distribution -- the
+    *closed*-system photon-counting histogram of exactly ``n`` molecules, as
+    opposed to :func:`pch_open_system`'s Poisson-averaged occupancy. tttrlib
+    keeps its self-convolution file-static inside ``pch_open_system`` and
+    exposes no entry point for the fixed-``n`` case, so this was never a
+    duplicate of an engine call -- it is orphaned instead: nothing in
+    production calls it (``pch_model.py`` and the plugin backend go through
+    :func:`pch_open_system` / :func:`pch_mixture`). Kept here, named and
+    frozen, as PDA/PCH-dedup institutional knowledge rather than deleted.
+
+    Parameters
+    ----------
+    p1 : numpy.ndarray
+        Single-molecule distribution ``p1(k)``.
+    n : int
+        Number of independent molecules in the volume (``0`` gives a delta at
+        ``k = 0``).
+    length : int
+        Length of the photon-count axis; the convolution is truncated to it.
+
+    Returns
+    -------
+    numpy.ndarray
+        Photon-count distribution of exactly ``n`` molecules.
+    """
+    if n == 0:
+        out = np.zeros(length, dtype=float)
+        out[0] = 1.0
+        return out
+    single = np.asarray(p1, dtype=float)[:length]
+    total = single.copy()
+    for _ in range(1, n):
+        total = np.convolve(total, single)[:length]
+    return total
 
 
 def test_compute_p1_basic():
@@ -29,14 +67,14 @@ def test_pch_single_species():
 
 def test_convolve_pch():
     p1 = np.array([0.5, 0.3, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=float)
-    result = convolve_pch(p1, 2, 10)
+    result = _convolve_pch_reference(p1, 2, 10)
     assert len(result) == 10
     assert np.isclose(result.sum(), 1.0, atol=1e-6)
 
 
 def test_convolve_n0():
     p1 = np.array([0.5, 0.3, 0.2, 0.0, 0.0], dtype=float)
-    result = convolve_pch(p1, 0, 5)
+    result = _convolve_pch_reference(p1, 0, 5)
     assert result[0] == 1.0
     assert result[1:].sum() == 0.0
 

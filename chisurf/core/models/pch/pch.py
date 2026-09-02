@@ -180,39 +180,6 @@ def pch_single_species(k_vals, brightness):
     )
 
 
-def convolve_pch(p1, n, length):
-    """``n``-fold self-convolution of a single-molecule distribution.
-
-    Stays in NumPy because tttrlib keeps its convolution file-static inside
-    ``pch_open_system`` and exposes no entry point for it; :func:`numpy.convolve`
-    is the same sum in the same order, truncated the same way.
-
-    Parameters
-    ----------
-    p1 : numpy.ndarray
-        Single-molecule distribution ``p1(k)``.
-    n : int
-        Number of independent molecules in the volume (``0`` gives a delta at
-        ``k = 0``).
-    length : int
-        Length of the photon-count axis; the convolution is truncated to it.
-
-    Returns
-    -------
-    numpy.ndarray
-        Photon-count distribution of exactly ``n`` molecules.
-    """
-    if n == 0:
-        out = np.zeros(length, dtype=float)
-        out[0] = 1.0
-        return out
-    single = np.asarray(p1, dtype=float)[:length]
-    total = single.copy()
-    for _ in range(1, n):
-        total = np.convolve(total, single)[:length]
-    return total
-
-
 def pch_open_system(k_vals, brightness, avgN, maxN=30):
     r"""PCH of one species in an open volume (Poisson-distributed occupancy).
 

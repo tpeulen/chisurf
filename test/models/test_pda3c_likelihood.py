@@ -8,9 +8,78 @@ the third channel is switched off.
 
 from __future__ import annotations
 
+import itertools
+
 import numpy as np
 import pytest
 from scipy import stats
+
+
+def _burst_log_likelihood_reference(
+        counts,
+        p,
+        background=None,
+        photon_number_pmf=None,
+) -> np.ndarray:
+    """The deleted ``pda3c.likelihood.burst_log_likelihood_reference``, frozen.
+
+    Evaluates the module's definition literally -- a full sum over every
+    channel's background count, with no truncation and no factorisation --
+    which makes it the independent oracle for
+    :func:`chisurf.core.fluorescence.pda3c.burst_log_likelihood`
+    (``tttrlib.PdaBurstLikelihood``, which carries the fast factorised
+    evaluation in C++). It has no production caller: PRD-105's PDA-dedup
+    survey found it was already test-only, so this is a move-and-rename, not
+    a port. Exponential in the number of channels and only usable on small
+    per-burst counts -- see :func:`chisurf.core.fluorescence.pda3c.likelihood`'s
+    module docstring for the O(K b m_max) factorisation this checks.
+
+    Parameters
+    ----------
+    counts : array_like
+        Per-burst photon counts, shape ``(n_bursts, K)``.
+    p : array_like
+        Channel probabilities, shape ``(n_points, K)``.
+    background : array_like, optional
+        Per-channel mean background counts.
+    photon_number_pmf : array_like, optional
+        ``P(n)`` for the signal photon number.
+
+    Returns
+    -------
+    numpy.ndarray
+        Shape ``(n_points, n_bursts)``.
+    """
+    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+
+    counts = np.atleast_2d(np.asarray(counts, dtype=int))
+    p = np.atleast_2d(np.asarray(p, dtype=float))
+    n_ch = counts.shape[1]
+    if background is None:
+        background = np.zeros(n_ch, dtype=float)
+    background = np.asarray(background, dtype=float)
+
+    out = np.full((p.shape[0], counts.shape[0]), -np.inf, dtype=float)
+    for j, f in enumerate(counts):
+        ranges = [range(int(fc) + 1) for fc in f]
+        for i, pi in enumerate(p):
+            total = 0.0
+            for b in itertools.product(*ranges):
+                b = np.asarray(b, dtype=int)
+                signal = f - b
+                n = int(signal.sum())
+                if photon_number_pmf is not None:
+                    pn = np.asarray(photon_number_pmf, dtype=float)
+                    weight = pn[n] if n < pn.size else 0.0
+                    if weight <= 0.0:
+                        continue
+                else:
+                    weight = 1.0
+                log_bg = float(stats.poisson.logpmf(b, background).sum())
+                total += weight * np.exp(log_bg + log_multinomial_pmf(signal, pi))
+            out[i, j] = np.log(total) if total > 0.0 else -np.inf
+    return out
+
 
 # ── the zero-background term ───────────────────────────────────────────────
 
@@ -97,25 +166,19 @@ def test_the_burst_path_also_rejects_a_negative_probability():
 )
 def test_convolution_equals_the_nested_sum(counts, background):
     """The whole point: collapsing the K-fold sum changes nothing but the cost."""
-    from chisurf.core.fluorescence.pda3c import (
-        burst_log_likelihood,
-        burst_log_likelihood_reference,
-    )
+    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
     counts = np.array([counts])
     k = counts.shape[1]
     p = np.array([np.full(k, 1.0 / k), np.linspace(0.2, 0.6, k) / np.linspace(0.2, 0.6, k).sum()])
 
     fast = burst_log_likelihood(counts, p, background=background)
-    slow = burst_log_likelihood_reference(counts, p, background=background)
+    slow = _burst_log_likelihood_reference(counts, p, background=background)
     assert np.allclose(fast, slow, rtol=1e-10, atol=1e-12)
 
 
 def test_convolution_equals_the_nested_sum_with_a_photon_number_distribution():
-    from chisurf.core.fluorescence.pda3c import (
-        burst_log_likelihood,
-        burst_log_likelihood_reference,
-    )
+    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
     n = np.arange(0, 21)
     pn = stats.poisson.pmf(n, mu=8.0)
@@ -126,7 +189,7 @@ def test_convolution_equals_the_nested_sum_with_a_photon_number_distribution():
     background = np.array([0.6, 0.4, 0.5])
 
     fast = burst_log_likelihood(counts, p, background, photon_number_pmf=pn)
-    slow = burst_log_likelihood_reference(counts, p, background, photon_number_pmf=pn)
+    slow = _burst_log_likelihood_reference(counts, p, background, photon_number_pmf=pn)
     assert np.allclose(fast, slow, rtol=1e-9, atol=1e-12)
 
 
@@ -210,7 +273,6 @@ def test_the_reference_survives_a_series_that_overflows_in_linear_space():
     nothing is dropped.
     """
     from chisurf.core.fluorescence.pda3c import (
-        burst_log_likelihood_reference,
         log_background_correction,
         log_background_series,
         log_multinomial_pmf,
@@ -227,7 +289,7 @@ def test_the_reference_survives_a_series_that_overflows_in_linear_space():
         assert not np.all(np.isfinite(np.exp(log_u)))
 
     convolution = log_multinomial_pmf(counts, p) + log_background_correction(counts, background, p)
-    nested_sum = burst_log_likelihood_reference(counts[None, :], p[None, :], background)
+    nested_sum = _burst_log_likelihood_reference(counts[None, :], p[None, :], background)
     assert convolution == pytest.approx(nested_sum[0, 0], rel=1e-9)
 
 
@@ -300,17 +362,14 @@ def test_a_vanishing_channel_probability_is_not_a_perfect_fit():
     The two halves are peak-shifted before the GEMM now, so the fast path
     tracks the nested-sum reference all the way down.
     """
-    from chisurf.core.fluorescence.pda3c import (
-        burst_log_likelihood,
-        burst_log_likelihood_reference,
-    )
+    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
     counts = np.array([[20, 6, 5]])
     background = np.array([0.5, 0.5, 0.5])
     for p_blue in (1e-3, 1e-8, 1e-14, 1e-18, 1e-40):
         p = np.array([[p_blue, 0.5, 0.5 - p_blue]])
         fast = burst_log_likelihood(counts, p, background)[0, 0]
-        exact = burst_log_likelihood_reference(counts, p, background)[0, 0]
+        exact = _burst_log_likelihood_reference(counts, p, background)[0, 0]
         assert np.isfinite(fast)
         assert fast == pytest.approx(exact, rel=1e-9)
 
@@ -487,7 +546,7 @@ def test_fast_path_agrees_with_the_untruncated_reference():
     p = rng.dirichlet([3, 2, 2], size=3)
     for background in (None, np.array([1.5, 0.8, 0.4]), np.array([4.0, 4.0, 4.0])):
         fast = L.burst_log_likelihood(counts, p, background)
-        slow = L.burst_log_likelihood_reference(counts, p, background)
+        slow = _burst_log_likelihood_reference(counts, p, background)
         np.testing.assert_allclose(fast, slow, rtol=1e-9, atol=1e-9)
 
 
@@ -497,7 +556,7 @@ def test_the_numpy_implementation_is_gone():
 
     for name in ("_burst_log_likelihood_numpy", "_channel_boxes",
                  "_background_factors", "_tail_cutoff",
-                 "_KERNEL_ELEMENT_BUDGET"):
+                 "_KERNEL_ELEMENT_BUDGET", "burst_log_likelihood_reference"):
         assert not hasattr(L, name), f"{name} should have been removed"
 
 
@@ -515,7 +574,7 @@ def test_zero_probability_channel_with_background_is_not_impossible():
     p = np.array([[0.5, 0.5, 0.0]])
     background = np.array([0.0, 0.0, 1.0])
 
-    reference = L.burst_log_likelihood_reference(counts, p, background)[0, 0]
+    reference = _burst_log_likelihood_reference(counts, p, background)[0, 0]
     assert np.isfinite(reference)
     assert L.burst_log_likelihood(counts, p, background)[0, 0] == pytest.approx(
         reference, rel=1e-12

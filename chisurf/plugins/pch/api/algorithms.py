@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from chisurf.core.models.pch.pch import (
     compute_p1,
-    convolve_pch,
     pch_mixture,
     pch_open_system,
     pch_single_species,
@@ -21,7 +20,6 @@ from chisurf.core.models.pch.pch import (
 
 __all__ = [
     "compute_p1",
-    "convolve_pch",
     "pch_mixture",
     "pch_open_system",
     "pch_single_species",

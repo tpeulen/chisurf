@@ -18,8 +18,6 @@ chisurf/core/fluorescence/curation/__init__.py
 chisurf/core/fluorescence/fret/forster.py
 chisurf/core/fluorescence/mfd/__init__.py
 chisurf/core/fluorescence/mfd/prepare.py
-chisurf/core/fluorescence/pda3c/__init__.py
-chisurf/core/fluorescence/pda3c/likelihood.py
 chisurf/core/models/deer/deer.py
 chisurf/core/models/deer/deer_gauss.view.json
 chisurf/core/models/deer/deer_maxent.view.json

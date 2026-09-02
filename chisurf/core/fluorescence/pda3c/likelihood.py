@@ -1,4 +1,4 @@
-r"""Burst-wise photon-partition likelihood for three-colour PDA (PRD-65).
+r"""Burst-wise photon-partition likelihood for three-colour PDA.
 
 The observable is a burst's photon counts split across detection channels. For
 a molecule with fixed transfer efficiencies the *signal* photons partition
@@ -55,7 +55,10 @@ and it returned ``-inf`` where a channel has $p_c = 0$ but collected photons,
 because the leading $\mathrm{Multinom}(F;p)$ is then zero and no finite
 correction recovers the (perfectly possible) all-background answer. tttrlib
 evaluates such bursts without factoring that term out, and agrees with
-:func:`burst_log_likelihood_reference`.
+``_burst_log_likelihood_reference`` — the nested sum written out, frozen in
+``test/models/test_pda3c_likelihood.py``. It has no production caller and is
+only ever a test's oracle, so it lives beside the tests it checks rather than
+beside the forwarder.
 
 tttrlib also does not form the box at all: grouping by $m$ makes the
 coefficients the convolution above, which is $O(K b m_{max})$ rather than
@@ -67,8 +70,6 @@ Only things tttrlib does not provide in the same shape:
 
 - :func:`log_multinomial_pmf` — broadcasting, so a caller gets the whole
   (points × bursts) grid from one matrix product;
-- :func:`burst_log_likelihood_reference` — the nested sum written out, the
-  independent oracle for everything above;
 - :func:`log_background_correction`, :func:`background_series` and
   :func:`log_background_series` — the untruncated per-burst path, deliberately
   sharing no cutoff heuristic with the fast one;
@@ -101,7 +102,6 @@ from scipy.stats import poisson
 __all__ = [
     "background_series",
     "burst_log_likelihood",
-    "burst_log_likelihood_reference",
     "collapse_bursts",
     "log_background_correction",
     "log_background_series",
@@ -440,66 +440,6 @@ def burst_log_likelihood(
     p = np.atleast_2d(np.asarray(p, dtype=float))
     obj = _tttrlib_likelihood(counts, background, photon_number_pmf, tolerance)
     return obj.log_likelihood_grid(np.ascontiguousarray(p, dtype=float))
-
-
-def burst_log_likelihood_reference(
-        counts,
-        p,
-        background=None,
-        photon_number_pmf=None,
-) -> np.ndarray:
-    """Nested-sum reference implementation, for testing the fast path.
-
-    Evaluates the definition literally — a full sum over every channel's
-    background count, with no truncation and no factorisation. Exponential in
-    the number of channels and only usable on small inputs; it exists so
-    :func:`burst_log_likelihood` has something independent to be wrong against.
-
-    Parameters
-    ----------
-    counts : array_like
-        Per-burst photon counts, shape ``(n_bursts, K)``.
-    p : array_like
-        Channel probabilities, shape ``(n_points, K)``.
-    background : array_like, optional
-        Per-channel mean background counts.
-    photon_number_pmf : array_like, optional
-        ``P(n)`` for the signal photon number.
-
-    Returns
-    -------
-    numpy.ndarray
-        Shape ``(n_points, n_bursts)``.
-    """
-    import itertools
-
-    counts = np.atleast_2d(np.asarray(counts, dtype=int))
-    p = np.atleast_2d(np.asarray(p, dtype=float))
-    n_ch = counts.shape[1]
-    if background is None:
-        background = np.zeros(n_ch, dtype=float)
-    background = np.asarray(background, dtype=float)
-
-    out = np.full((p.shape[0], counts.shape[0]), -np.inf, dtype=float)
-    for j, f in enumerate(counts):
-        ranges = [range(int(fc) + 1) for fc in f]
-        for i, pi in enumerate(p):
-            total = 0.0
-            for b in itertools.product(*ranges):
-                b = np.asarray(b, dtype=int)
-                signal = f - b
-                n = int(signal.sum())
-                if photon_number_pmf is not None:
-                    pn = np.asarray(photon_number_pmf, dtype=float)
-                    weight = pn[n] if n < pn.size else 0.0
-                    if weight <= 0.0:
-                        continue
-                else:
-                    weight = 1.0
-                log_bg = float(poisson.logpmf(b, background).sum())
-                total += weight * np.exp(log_bg + log_multinomial_pmf(signal, pi))
-            out[i, j] = np.log(total) if total > 0.0 else -np.inf
-    return out
 
 
 def collapse_bursts(counts):
