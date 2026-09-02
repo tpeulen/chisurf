@@ -38331,3 +38331,23 @@ side of the line.
   or a written verdict; the PRD frontmatter reads phases 0–3 complete.
   Noted as a later batching opportunity: the DEER band runs 120 scipy LM
   fits in Python.
+
+- **2026-09-02 — PRD-105's residue sliced into seventeen claimable
+  simple-job PRDs (owner: "write prds for simple jobs").**
+  PRD-118–PRD-134, each session-sized with a Definition of Done and its
+  known traps carried in the file: the two engine-node remainders
+  (118 FcsMdf node, 119 kinetics "full" over FcsSaturation), the
+  bounds-transform stall fix (120), census hardening incl. the FIDA axis
+  refusal and the pch_mixture upstream filing (121), the phase-4
+  duplication register as seven jobs (122 math forwarders, 123 burst
+  kernels + slicing loops, 124 regularised inversion ×5, 125 mixture EM
+  ×3, 126 κ² completion, 127 PDA algebra, 128 MFD spectrum algebra), the
+  phase-5 batching as four (129 correlator/fFCS matrix, 130 GopichSzabo
+  persistence, 131 fit_many adoption, 132 the DEER bootstrap band through
+  the graph), the fallback audit (133) and the seam documentation (134).
+  Rows blocked on owner decisions (i0 digit, distance_between_gaussian,
+  MEM default, core/ml direction) stay visibly staged behind their
+  decision rather than hidden inside a job. Registered in prds/index.md;
+  PRD-105's resume point and phase heads map rows to PRDs; the imp.bff
+  consolidation commit remains deliberately unsliced (the stream lands
+  whole).
