@@ -68,10 +68,17 @@ real.
 
 The two errors push in opposite directions — the threshold too high, the scan
 too narrow — and their ratio drifts with `n`, which is what made the
-disagreement look mysterious. Both are in shared fitting code and affect any
-model whose `chi2r` sits far from one, not just PDA3c. Until they are fixed,
-**quote the MCMC interval**: it samples `exp(-deviance/2)`, the actual posterior
-for this objective, and it reproduces the corrected likelihood-ratio interval.
+disagreement look mysterious. Both were in shared fitting code and affected
+any model whose `chi2r` sits far from one, not just PDA3c.
+
+**Both are fixed (2026-09-02, BUG-10):** `chi2_threshold` takes an
+``objective`` switch and this model declares ``objective_type =
+"likelihood"``, so its scans use the likelihood-ratio level; and the scan's
+crossing detection refuses a terminal graze — a curve that touches the
+threshold without exceeding it yields ``None`` rather than the scan's own
+grid edge. The measurements above are the acceptance evidence: with the
+corrected threshold the support plane agrees with MCMC to 2% and scales as
+`1/sqrt(n)`.
 
 Fitting a kinetic scheme
 ------------------------
@@ -464,6 +471,12 @@ class Pda3cModel(ModelCurve):
     """Three-colour photon-distribution-analysis model."""
 
     name = "PDA3c (three-colour)"
+
+    #: The objective is a likelihood deviance, whatever the fit's noise-model
+    #: plumbing says: the support-plane threshold must be the
+    #: likelihood-ratio level, not the F-test form (BUG-10; see the module
+    #: docstring's error-surface section for the measurement).
+    objective_type = "likelihood"
 
     #: Declarative AutoForm layout (PRD-38 model/view-spec split).
     view_spec_file = "pda3c.view.json"

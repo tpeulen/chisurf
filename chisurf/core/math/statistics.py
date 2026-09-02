@@ -349,31 +349,46 @@ def chi2_threshold(
         chi2_min: float = 1.0,
         n_extra_params: int = 1,
         nu: int = 1,
-        p_value: float = 0.99
+        p_value: float = 0.99,
+        objective: str = "least_squares",
 ) -> float:
-    """Return the chi² threshold for a given p-value under the F-test.
+    """Return the reduced-chi² threshold of a support-plane scan.
 
-    The threshold is the chi² value that corresponds to a confidence
-    level of ``p_value`` for an extra parameter added to a model.
-    This is the value at which the F-test would reject the null
-    hypothesis (the simpler model) at the 1 - p_value significance level.
+    Two objectives, two statistics — using the wrong one was BUG-10:
+
+    * ``"least_squares"`` — the F-test form
+      ``chi2r_min * (1 + k/nu * F)``, which rescales by ``chi2r_min``.
+      That rescaling is *correct* here because a least-squares fit leaves
+      the noise scale unknown and estimates it from the residuals.
+    * ``"likelihood"`` — the likelihood-ratio level
+      ``chi2r_min + delta_chi2 / nu`` with
+      ``delta_chi2 = chi2.isf(1 - p, k)`` (6.63 at 99% and one
+      parameter). A deviance's scale is already fixed by the likelihood,
+      so rescaling by ``chi2r_min`` inflates every interval by
+      ``sqrt(chi2r)`` — measured at 1.5x on PDA3c against both MCMC and
+      the exact likelihood-ratio interval.
 
     Parameters
     ----------
     chi2_min : float, optional
-        The minimum chi-squared value (best fit). Default is 1.0.
+        The minimum *reduced* chi-squared value (best fit). Default is 1.0.
     n_extra_params : int, optional
         The number of extra parameters being tested (default 1).
     nu : int, optional
         Degrees of freedom of the fit (n_points - n_free). Default is 1.
     p_value : float, optional
         The desired p-value threshold (default 0.99).
+    objective : {"least_squares", "likelihood"}, optional
+        Which statistic the fit's objective follows; see above.
 
     Returns
     -------
     float
-        The chi-squared value at which the F-test p-value equals p_value.
+        The reduced chi-squared level of the confidence boundary.
     """
+    if objective == "likelihood":
+        delta = scipy.stats.chi2.isf(1.0 - p_value, n_extra_params)
+        return float(chi2_min + delta / float(nu))
     return float(chi2_min * (
         1.0 + float(n_extra_params) / nu *
         scipy.stats.f.isf(1. - p_value, n_extra_params, nu)

@@ -37939,3 +37939,26 @@ side of the line.
   Scoreboard: `MdfFCSModel` 110 ms/curve 93% Python → 5.3 ms/curve 96%
   native — the `T-20260901-15` "port this one" half is closed. Remaining in
   `T-20260902-11` (released, open): `saturation.py` + the PSF layer.
+
+- 2026-09-02 (PRD-105 phase 0 closes: the director segfault and BUG-10) —
+  **T-20260901-13 fixed, differently than the ticket proposed.**
+  `IMP_SWIG_DIRECTOR` does not work for `Node`: `_director_objects.register`
+  silently refuses anything without IMP's `get_ref_count`, and `Node` is a
+  plain shared_ptr class — the macro reads as protection and protects
+  nothing (verified: registry stayed empty, the reproducer still crashed).
+  The real fix mirrors the C++ ownership on the Python side — a
+  `%pythonappend` on `set_objective` (Minimizer *and* Sampler) stashes the
+  node proxy on the wrapper holding the shared_ptr, released on replacement
+  (weakref-pinned; `imp.bff/test/minimizer/test_node_lifetime.py`).
+  **BUG-10 (the only open S1) fixed, both faults.** `chi2_threshold` gained
+  an `objective` switch — a likelihood deviance takes the likelihood-ratio
+  level (Δχ²=6.63/ν at 99%), not the F-test form that inflated PDA3c's
+  intervals by √χ²ᵣ ≈ 1.5; fits declare themselves through the new
+  `chisurf.core.fitting.objective_type` (Poisson noise model, or a
+  model-level attribute `Pda3cModel` now sets). And the scan stops lying
+  about its edge: `_scan_one_side` records the *evaluated* exceeding point
+  instead of fabricating one at exactly the threshold (the fabrication made
+  a genuine crossing indistinguishable from the terminal graze), and
+  `_interpolate_threshold_crossing` refuses a touch the next segment never
+  confirms. Guardrails in `test/fitting/test_support_plane_threshold.py`;
+  assessment.md: 30 FIXED, 0 open S1.

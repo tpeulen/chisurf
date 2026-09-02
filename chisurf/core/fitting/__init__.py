@@ -33,6 +33,25 @@ def normalize_noise_model(noise_model: str) -> str:
     return _NOISE_MODEL_ALIASES.get(str(noise_model).strip().lower(), "default")
 
 
+def objective_type(fit, model=None) -> str:
+    """How a fit's objective declares itself for interval statistics.
+
+    ``"likelihood"`` when the fit's noise model is the Poisson deviance, or
+    when the model itself says so (``model.objective_type`` — how a model
+    whose ``weighted_residuals`` are deviance residuals regardless of the
+    fit's noise-model plumbing, e.g. PDA3c, declares it); ``"least_squares"``
+    otherwise. The distinction decides the support-plane threshold
+    (:func:`chisurf.core.math.statistics.chi2_threshold`): using the F-test
+    form on a likelihood inflated every interval by ``sqrt(chi2r)`` (BUG-10).
+    """
+    m = model if model is not None else getattr(fit, "model", None)
+    if getattr(m, "objective_type", None) == "likelihood":
+        return "likelihood"
+    if normalize_noise_model(getattr(fit, "noise_model", None)) == "poisson":
+        return "likelihood"
+    return "least_squares"
+
+
 def deviance_residuals(
         data_y: np.ndarray,
         model_y: np.ndarray,

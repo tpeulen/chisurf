@@ -73,10 +73,11 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
 | [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
 | [INC-16](#inc-16) | S3 | INC | MMFDB | The mmfdb-admin RPC surface is declared in a manifest almost nothing checked: the guard covered 40 of 222 methods, and the one test that ran it had never run — it looked for the host checkout one directory above the repository | ~~VERIFIED~~ ✅ FIXED |
+| [INC-17](#inc-17) | S3 | INC | Core | `chisurf.Structure` is **closed to new code** (ruled 2026-08-15) but the legacy reader still has live call sites: the eight `potentials_*` widgets type against it, `pdb.py` uses it as the load-thread reader, `gui_services.py` imports the package — debt on a deletion path | REPORTED |
 | [BUG-13](#bug-13) | S3 | BUG | Plugins | The plugin-metadata AST reader returns 3 values where every caller unpacks 5 when the source will not decode as UTF-8, so a plugin declaring another source encoding disappears from the menu and from `csc` without a word | ~~VERIFIED~~ ✅ FIXED |
 
-41 findings (29 FIXED): 1 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 6 PARTIAL, 1 OPEN.
-Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
+42 findings (29 FIXED): 1 VERIFIED, 3 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 6 PARTIAL, 1 OPEN.
+Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
 
 ---
 
@@ -589,6 +590,17 @@ port is a view-model plus a `view.json` and no algorithm work.
 
 ### BUG-10
 **S1 · Support-plane confidence intervals are wrong on likelihood objectives, twice over.**
+**Status: ✅ FIXED 2026-09-02.** `chi2_threshold` takes an ``objective``
+switch (`least_squares` → F-test form, `likelihood` → likelihood-ratio
+level); the fit declares itself through
+`chisurf.core.fitting.objective_type` (Poisson noise model, or a model-level
+``objective_type`` attribute — `Pda3cModel` declares one). The scan records
+the *evaluated* exceeding point instead of a fabricated point at exactly the
+threshold, and a curve that merely touches the threshold without exceeding
+it yields no crossing (`None`) rather than the scan's own grid edge.
+Guardrails: `test/fitting/test_support_plane_threshold.py`. The PDA3c
+measurements (support plane vs MCMC to 2%, `1/sqrt(n)` scaling) are the
+acceptance evidence, recorded in that model's docstring.
 
 - Location: `chisurf/core/math/statistics.py::chi2_threshold` and
   `chisurf/core/fitting/fit.py::adaptive_chi2_scan` (crossings consumed by
@@ -768,3 +780,25 @@ entry out of a manifest copy and watching the guard fail. Also removes
 `_validate_fdb_methods_in_manifest` (an alias with no callers) and the default
 `manifest_path`, which pointed at a file that does not exist in the package. Tests:
 `modules/mmfdb/tests/test_rpc_surface_manifest.py` (4).
+
+### INC-17
+**S3 · `chisurf.Structure` is closed to new code but the legacy reader still has live call
+sites.** [chimol steering](chimol.md#rule--chisurfstructure-is-closed-to-new-code).
+**Ruled 2026-08-15**: new ChiSurf code MUST NOT use `chisurf.Structure`
+(`chisurf.core.structure.structure.Structure`) — structure data lives in chimol, ChiSurf
+imports and derives from chimol, never the other way round, so a place that needs a structure
+object reaches for `chimol.io.structure.load_structure_payload` → `MolView.apply_payload`
+(`chisurf.core.fio.structure.coordinates`, which re-exports chimol's `ATOM_DTYPE`, is the
+worked example). The rule landed while the chimol labelling work (`add_dye`, fps round-trip)
+needed a standalone structure path and proved the chimol-only route. But `chisurf.Structure`
+remains imported by real callers, each a deletion-path debt rather than a template:
+- the eight `potentials_*` structure widgets (`chisurf/gui/widgets/structure/potentials_*.py`)
+  type their `structure` argument against `chisurf.core.structure.Structure`
+  (e.g. `potentials_mj.py:17`); eight modules import the package;
+- `chisurf/gui/widgets/pdb/pdb.py:299` uses `Structure` as the load-thread reader
+  (`self.load_thread.read = Structure`);
+- `chisurf/startup/gui_services.py:132` pulls `chisurf.core.structure` into the deferred GUI
+  imports.
+
+→ When you touch any of them, port it to chimol's structure handling in the same change
+rather than adding another `Structure(...)` call site; a new call site violates the rule.

@@ -188,11 +188,15 @@ def _interpolate_threshold_crossing(
         return None
     d0 = y0 - threshold
     d1 = y1 - threshold
+    # A segment that merely *touches* the threshold at its far end is not a
+    # crossing: BUG-10's second fault was a scan whose maximum sat exactly at
+    # the threshold without exceeding it, reported as an interval that was
+    # really the scan's own grid edge. A touch counts only once the *next*
+    # segment confirms it by strictly exceeding (d0 == 0, d1 > 0 below);
+    # a terminal graze returns None and the scan keeps widening.
     if d0 == 0.0:
-        return x0
-    if d1 == 0.0:
-        return x1
-    if d0 * d1 > 0.0:
+        return x0 if d1 > 0.0 else None
+    if d0 * d1 >= 0.0:
         return None
     denom = y1 - y0
     if abs(denom) <= EPS:
@@ -276,6 +280,7 @@ def confidence_intervals_from_scan_result(
     v0 = float(result.get('v0', np.nan))
     nu = int(result.get('nu', 1))
     n_extra_params = int(result.get('n_extra_params', 1))
+    objective = str(result.get('objective', 'least_squares'))
     intervals = []
     if not np.isfinite(chi2r_min) or not np.isfinite(v0) or nu <= 0:
         return intervals
@@ -288,6 +293,7 @@ def confidence_intervals_from_scan_result(
                 n_extra_params=n_extra_params,
                 nu=nu,
                 p_value=p_value,
+                objective=objective,
             )
         except Exception:
             continue
@@ -376,14 +382,17 @@ def _scan_one_side(
             crossing = _interpolate_threshold_crossing(
                 previous_x, previous_y, float(v_next), float(chi2_next), threshold
             )
-            if crossing is not None:
-                xs.append(float(crossing))
-                ys.append(float(threshold))
-                v_cross = float(crossing)
-                return xs, ys, v_cross
-
+            # The *evaluated* point is what the scan records, crossed or
+            # not: appending a fabricated (crossing, threshold) point in its
+            # place -- the old behaviour -- discarded the exceedance, so the
+            # stored curve ended exactly AT the threshold and a later reader
+            # could not tell a genuine crossing from the terminal graze
+            # BUG-10 forbids reporting.
             xs.append(float(v_next))
             ys.append(float(chi2_next))
+            if crossing is not None:
+                v_cross = float(crossing)
+                return xs, ys, v_cross
             previous_x = float(v_next)
             previous_y = float(chi2_next)
 
@@ -442,8 +451,13 @@ def adaptive_scan_parameter(
     n_free = fit.model.n_free
     nu = n_points - n_free - 1
 
+    # Likelihood objectives take the likelihood-ratio level, least squares
+    # the F-test form -- using the F-form on a deviance inflated every
+    # interval by sqrt(chi2r) (BUG-10, fault 1).
+    objective = cs.core.fitting.objective_type(fit)
     threshold = cs.core.math.statistics.chi2_threshold(
-        chi2r_min, n_extra_params=1, nu=nu, p_value=p_value
+        chi2r_min, n_extra_params=1, nu=nu, p_value=p_value,
+        objective=objective,
     )
 
     # Desired chi² increment per step for smoothness. The UI point count is a
@@ -500,4 +514,5 @@ def adaptive_scan_parameter(
         'crossings': (neg_cross, pos_cross),
         'nu': nu,
         'n_extra_params': 1,
+        'objective': objective,
     }
