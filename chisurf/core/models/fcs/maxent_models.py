@@ -37,6 +37,48 @@ class _MaxEntFCSBase(ModelCurve):
     they recover the distribution on differ.
     """
 
+    def _init_prior_parameters(self, center_label: str, center_value: float):
+        """Create the entropy-prior controls (uniform by default).
+
+        A *real* prior in the MaxEnt sense: the distribution the entropy is
+        maximised at, so the inversion returns the data's deviations from
+        it rather than from flat ignorance. ``prior_kind`` selects it
+        (``uniform`` keeps the historical behaviour bit-for-bit --
+        ``fcs_maxent`` receives ``prior=None``); ``lognormal`` centres the
+        prior at ``prior_center`` on the model's own grid with a width of
+        ``prior_width`` decades. Both knobs are fixed parameters: they shape
+        the prior, the optimiser never varies them.
+        """
+        self.prior_kind = "uniform"
+        self._prior_center = FittingParameter(
+            name="prior_c", label_text=center_label, value=center_value,
+            lb=0.0, ub=float("inf"), bounds_on=True, fixed=True,
+        )
+        self._prior_width = FittingParameter(
+            name="prior_w", label_text="w<sub>prior</sub>[dec]", value=0.5,
+            lb=0.01, ub=5.0, bounds_on=True, fixed=True,
+        )
+
+    def prior_choices(self) -> list:
+        """The entropy-prior kinds the editor offers."""
+        return ["uniform", "lognormal"]
+
+    def _entropy_prior(self, grid: np.ndarray):
+        """The prior on *grid*, or ``None`` for the uniform default."""
+        if getattr(self, "prior_kind", "uniform") != "lognormal":
+            return None
+        center = float(self._prior_center.value)
+        width = float(self._prior_width.value)
+        if not (center > 0.0 and width > 0.0):
+            return None
+        m = np.exp(-0.5 * ((np.log10(grid) - np.log10(center)) / width) ** 2)
+        m = np.maximum(m, 1e-12)
+        return m / m.sum()
+
+    def _prior_parameter_rows(self) -> list:
+        """The prior's two shape parameters, for the editor's table."""
+        return [self._prior_center, self._prior_width]
+
     def _init_l_curve_state(self) -> None:
         """Reset the cached sweep. Called at the end of each subclass ``__init__``."""
         self._result = None
@@ -275,12 +317,14 @@ class MaxEntFCSModel(_MaxEntFCSBase):
             bounds_on=True, fixed=True,
         )
 
+        self._init_prior_parameters("t<sub>d,0</sub>[ms]", 1.0)
         self.find_parameters()
         self._init_l_curve_state()
 
     def _maxent_parameter_rows(self) -> list:
         """Return the entropy weight and the diffusion-time grid, in order."""
-        return [self._reg, self._td_min, self._td_max, self._n_td, self._s, self._b]
+        return ([self._reg, self._td_min, self._td_max, self._n_td, self._s,
+                 self._b] + self._prior_parameter_rows())
 
     @property
     def maxent_tauD_distribution(self):
@@ -331,8 +375,21 @@ class MaxEntFCSModel(_MaxEntFCSBase):
                 s=float(self._s.value),
                 baseline=float(self._b.value),
                 num_iter=60,
+                prior=self._lcurve_prior(),
             )
         )
+
+    def _lcurve_prior(self):
+        """The entropy prior on the sweep's own grid (it builds the same one)."""
+        from chisurf.core.models.fcs.maxent import _maxent_td_grid
+        data = self.fit.data
+        tau = np.asarray(data.x, dtype=float).ravel()
+        if tau.size == 0:
+            return None
+        td_min = float(self._td_min.value) if float(self._td_min.value) > 0.0 else None
+        td_max = float(self._td_max.value) if float(self._td_max.value) > 0.0 else None
+        n_td = int(self._n_td.value) if float(self._n_td.value) > 0.0 else 80
+        return self._entropy_prior(_maxent_td_grid(tau, td_min, td_max, n_td))
 
     def update_model(self, **kwargs) -> None:
         """Run the MaxEnt inversion and store the reconstructed correlation curve.
@@ -356,16 +413,19 @@ class MaxEntFCSModel(_MaxEntFCSBase):
         n_td = int(self._n_td.value) if float(self._n_td.value) > 0.0 else 80
         s_val = float(self._s.value) if float(self._s.value) > 0.0 else 3.5
 
+        # The grid is built here (the same way fcs_maxent would build it)
+        # so the entropy prior can be evaluated on it.
+        from chisurf.core.models.fcs.maxent import _maxent_td_grid
+        td_grid = _maxent_td_grid(tau, td_min, td_max, n_td)
         self._result = fcs_maxent(
             tau=tau,
             g=g,
-            td_min=td_min,
-            td_max=td_max,
-            n_td=n_td,
+            td_grid=td_grid,
             s=s_val,
             baseline=float(self._b.value),
             reg=10.0 ** float(self._reg.value),
             weights=self._data_weights(),
+            prior=self._entropy_prior(td_grid),
         )
         self.x = self._result["tau"]
         self.y = self._result["g_fit"]
@@ -429,12 +489,13 @@ class MaxEntRHModel(_MaxEntFCSBase):
             bounds_on=True, fixed=True,
         )
 
+        self._init_prior_parameters("r<sub>H,0</sub>[nm]", 2.0)
         self.find_parameters()
         self._init_l_curve_state()
 
     def _maxent_parameter_rows(self) -> list:
         """Return the entropy weight and the radius grid, in order."""
-        return [self._reg, self._rh_min, self._rh_max, self._n_rh, self._s, self._b]
+        return ([self._reg, self._rh_min, self._rh_max, self._n_rh, self._s, self._b] + self._prior_parameter_rows())
 
     def _optics_parameter_rows(self) -> list:
         """Return the quantities that turn a diffusion time into a radius."""
@@ -528,6 +589,8 @@ class MaxEntRHModel(_MaxEntFCSBase):
             reg=10.0 ** float(self._reg.value),
             temperature=float(self._temp.value) + 273.15,
             weights=self._data_weights(),
+            prior=self._entropy_prior(
+                np.logspace(np.log10(rh_min), np.log10(rh_max), n_rh)),
         )
         self.x = self._result["tau"]
         self.y = self._result["g_fit"]

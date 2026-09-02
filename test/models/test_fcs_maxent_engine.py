@@ -127,3 +127,47 @@ def test_fcs_maxent_end_to_end_recovers_the_curve():
     ss_res = float(np.sum((result["g_fit"] - g0) ** 2))
     ss_tot = float(np.sum((g0 - g0.mean()) ** 2))
     assert 1.0 - ss_res / ss_tot > 0.95, "reconstruction must track the data"
+
+
+def test_a_real_prior_pulls_the_distribution_where_the_data_are_silent():
+    """The entropy prior option (owner, 2026-09-02): 'uniform' keeps the
+    historical behaviour bit-for-bit (prior=None reaches the solver);
+    'lognormal' centres the prior on the grid, and where the data do not
+    constrain the distribution the inversion must follow it."""
+    import chisurf.core.data
+    import chisurf.core.fitting.fit as F
+    from chisurf.core.models.fcs.maxent_models import MaxEntFCSModel
+
+    tau = np.logspace(-3.0, 1.0, 96)
+    rng = np.random.default_rng(11)
+    td_true = 0.2
+    g = 1.0 + 0.02 / (1.0 + tau / td_true) / np.sqrt(1.0 + (tau / td_true) / 3.5 ** 2)
+    g = g + rng.normal(0.0, 2e-4, tau.size)
+    data = chisurf.core.data.DataCurve(x=tau, y=g, ey=np.full(tau.size, 2e-4))
+    fit = F.Fit(model_class=MaxEntFCSModel, data=data)
+    fit.xmin, fit.xmax = 0, tau.size
+    m = fit.model
+    m.find_parameters()
+
+    # Uniform: the historical default, prior=None end to end.
+    assert m.prior_kind == "uniform"
+    assert m._entropy_prior(np.logspace(-2, 1, 32)) is None
+    m.update_model()
+    p_uniform, td = m.maxent_tauD_distribution
+
+    # Lognormal prior far from the data's component: mass appears near the
+    # prior where the data are silent, and the model still reconstructs.
+    m.prior_kind = "lognormal"
+    m._prior_center.value = 5.0
+    m._prior_width.value = 0.3
+    prior = m._entropy_prior(td)
+    assert prior is not None and prior.shape == td.shape
+    assert td[np.argmax(prior)] == pytest.approx(5.0, rel=0.2)
+    m.update_model()
+    p_prior, td2 = m.maxent_tauD_distribution
+    assert p_prior.shape == td2.shape and np.all(p_prior >= 0.0)
+    # The prior moved the answer: mean log-td shifts toward the center.
+    def mean_logtd(p, grid):
+        w = p / max(p.sum(), 1e-30)
+        return float(np.sum(w * np.log10(grid)))
+    assert mean_logtd(p_prior, td2) > mean_logtd(p_uniform, td)

@@ -38129,3 +38129,30 @@ side of the line.
   single-implementation win. This is the directive working as intended:
   the route exists in the right repo, the regression did not ship, and
   the decision is the owner's with measurements attached.
+
+- 2026-09-02 (real entropy priors, and the MEM engine goes header-only) —
+  **Owner directives, both landed.** (1) *Real priors for the MEM
+  inversion*: the entropy prior — what the recovered distribution is pulled
+  toward where the data are silent — is now a first-class option on both
+  MaxEnt FCS models. `prior_kind` (uniform | lognormal) with `prior_c`
+  (center, in the model's own grid unit — t_d ms / r_H nm) and `prior_w`
+  (decades); uniform keeps the historical behaviour bit-for-bit
+  (`prior=None` end to end, pinned), lognormal builds m on the model's own
+  grid and flows through `fcs_maxent`/`fcs_maxent_rh`, the L-curve sweeps,
+  AND tttrlib's `maxent_invert_weighted` (whose prior argument landed with
+  `d2739150e`). GUI: a Prior choice + two table rows in both view specs,
+  editor rendered offscreen and inspected — combobox on top, rows clean, no
+  clipping. Pinned functionally: a lognormal prior far from the data's
+  component shifts the recovered mean log-t_d toward it
+  (`test_a_real_prior_pulls_the_distribution_where_the_data_are_silent`).
+  Full model-editor path green (18+28+26+3). (2) *tttrlib header-only where
+  it makes sense for bff*: the Skilling–Bryan engine (`MaxEntQp`) is now
+  entirely in its header (tttrlib `e30b44d15`) — the .cpp is a pointer stub
+  — so imp.bff can vendor it byte-identically the way it vendors
+  `DecayConvolution.h`/`ExpressionEngine.h`. **Vendoring itself is
+  deliberately deferred until a bff MaxEnt node exists**: a vendored copy
+  with no consumer is dead weight with a sync burden. Performance neutral,
+  measured: engine solve 11.9 vs 11.5 ms (noise), default loop path 4.7 ms
+  unchanged; 42 tttrlib maxent validations + 6 chisurf A/B/prior tests
+  green. Pre-existing red noted, not mine: `guide.schema.json` stale
+  against another stream's in-flight generator edit.

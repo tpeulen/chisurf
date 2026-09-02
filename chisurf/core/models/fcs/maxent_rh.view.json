@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the MaxEnt hydrodynamic-radius FCS model (MaxEntRHModel). Same inversion as maxent_fcs.view.json, but the grid is a size axis: w0 and the sample temperature turn each diffusion time into a radius, so they get their own panel — get either wrong and the distribution is in the wrong units, not merely the wrong shape.",
+  "_comment": "Editor layout for the MaxEnt hydrodynamic-radius FCS model (MaxEntRHModel). Same inversion as maxent_fcs.view.json, but the grid is a size axis: w0 and the sample temperature turn each diffusion time into a radius, so they get their own panel \u2014 get either wrong and the distribution is in the wrong units, not merely the wrong shape.",
   "sections": [
     {
       "type": "panel",
@@ -7,6 +7,13 @@
       "collapsible": true,
       "collapsed": false,
       "sections": [
+        {
+          "type": "choice",
+          "attr": "prior_kind",
+          "label": "Prior",
+          "options_source": "prior_choices",
+          "description": "Entropy prior: what the recovered distribution is pulled toward where the data say nothing. 'uniform' is flat ignorance (the historical behaviour); 'lognormal' centres the prior on the radius grid at prior_c with a width of prior_w decades -- the inversion then reports the data's deviations from that expectation rather than from flatness."
+        },
         {
           "type": "parameter_group_table",
           "parameters_source": "_maxent_parameter_rows",

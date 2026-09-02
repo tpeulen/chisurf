@@ -8,6 +8,13 @@
       "collapsed": false,
       "sections": [
         {
+          "type": "choice",
+          "attr": "prior_kind",
+          "label": "Prior",
+          "options_source": "prior_choices",
+          "description": "Entropy prior: what the recovered distribution is pulled toward where the data say nothing. 'uniform' is flat ignorance (the historical behaviour); 'lognormal' centres the prior on the diffusion-time grid at prior_c with a width of prior_w decades -- the inversion then reports the data's deviations from that expectation rather than from flatness."
+        },
+        {
           "type": "parameter_group_table",
           "parameters_source": "_maxent_parameter_rows",
           "collapsible": false,
