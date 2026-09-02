@@ -14,7 +14,10 @@ expression string. These tests pin:
 * the refusals: a freed timing parameter (folded into the tau axis) and a
   carpet-less dataset both fall back to the director path, which still fits;
 * that the geometry toggle regenerates the equation (the cache key carries
-  the string, so a ``two_d`` flip cannot reuse the 3D graph).
+  the string, so a ``two_d`` flip cannot reuse the 3D graph);
+* that the Gaussian fit converges under the group's own decade-spanning
+  default bounds (``A0`` up to ``1e9``) on both the graph and the director
+  path (PRD-120) -- it used to stall at chi2r ~600 instead of ~1.
 """
 import numpy as np
 import pytest
@@ -183,7 +186,18 @@ def test_the_gaussian2d_node_curve_is_the_python_curve():
     np.testing.assert_allclose(curve, model.y, rtol=1e-12, atol=1e-14)
 
 
-def test_the_gaussian2d_fit_recovers_the_widths():
+def _gaussian2d_fit_near_truth():
+    """The PRD-120 fixture: a close start under the group's own bounds.
+
+    ``A0`` is bounded ``(0, 1e9)`` and the widths ``(1, 1e5)`` -- the group's
+    defensive defaults, left on (``bounds_on`` defaults ``True``) -- from a
+    start close enough that the unbounded problem converges in a handful of
+    evaluations (chi2r ~1.0). Before PRD-120 the bounded fit stalled at
+    chi2r ~608 on *both* the graph and the director path: the two-sided
+    sin-transform's derivative is ~(ub-lb)/2 almost everywhere over a
+    decade-spanning interval, so MINPACK's forward-difference probe lands
+    physically kilometres from the start and the linearised step collapses.
+    """
     fit = _carpet_fit(model_class=IcsGaussian2DModel, n_lags=1, noise=1e-3)
     # Overwrite the carpet with the Gaussian model's own truth.
     meta = fit.data.meta_data["ics"]
@@ -197,18 +211,33 @@ def test_the_gaussian2d_fit_recovers_the_widths():
     model.gaussian._s1.value = 200.0
     model.gaussian._s2.value = 280.0
     model.gaussian._angle.fixed = True
-    # Bounds off: with the group's decade-spanning defaults (A0 up to 1e9)
-    # the *bounds transform* stalls the bounded LM identically on the graph
-    # and the director path (measured while writing this: chi2r 608 vs 1.0,
-    # scipy unbounded converges in 6 evaluations). That is an optimiser
-    # property this seam test must not measure; it is recorded in
-    # okf/references/known-issues.md.
+    model.find_parameters()
+    return fit, model
+
+
+def test_the_gaussian2d_fit_recovers_the_widths():
+    """PRD-120: converges under the group's own bounds, via the graph path."""
+    fit, model = _gaussian2d_fit_near_truth()
     for p in (model.gaussian._a0, model.gaussian._s1,
               model.gaussian._s2, model.gaussian._offset):
-        p.bounds_on = False
-    model.find_parameters()
+        assert p.bounds_on, "the group's decade-spanning defaults are the point"
     assert M.graph_objective(fit, model) is not None
     fit.run()
+    assert fit.chi2r == pytest.approx(1.0, rel=0.5)
+    got = sorted([model.gaussian.sigma_1, model.gaussian.sigma_2])
+    assert got[0] == pytest.approx(180.0, rel=1e-2)
+    assert got[1] == pytest.approx(320.0, rel=1e-2)
+
+
+def test_the_gaussian2d_fit_recovers_the_widths_through_the_director(monkeypatch):
+    """PRD-120: the director fallback shares the bounds transform, so a model
+    the graph refuses must converge just as well under the same bounds."""
+    fit, model = _gaussian2d_fit_near_truth()
+    monkeypatch.setattr(M, "graph_objective",
+                        lambda fit, model, allow_priors=False: None)
+    assert M.graph_objective(fit, model) is None
+    fit.run()
+    assert fit.chi2r == pytest.approx(1.0, rel=0.5)
     got = sorted([model.gaussian.sigma_1, model.gaussian.sigma_2])
     assert got[0] == pytest.approx(180.0, rel=1e-2)
     assert got[1] == pytest.approx(320.0, rel=1e-2)

@@ -5118,25 +5118,14 @@ stream: point `chisurf/core/structure/av/` at the new C++ surface, whatever
 `avbuilder`/`avmodel` now export, and re-run the AV parity set — not a rename
 to guess at from outside.
 
-## Bounded LM stalls when the bounds span decades (2026-09-02)
+## Bounded LM stalls when the bounds span decades (2026-09-02) — FIXED
 
-Found while writing `test/fitting/test_graph_fit_ics.py`: the 2D-Gaussian ICS
-fit from a *close* start (A0 0.4→truth 0.5, widths within 15%) stops at
-chi2r ≈ 600 with `bounds_on=True` under the group's default ranges (A0 up to
-1e9, widths to 1e5) — and converges to chi2r ≈ 1.0 in a handful of steps the
-moment the bounds are switched off (unbounded scipy reference: 6 evaluations
-to truth). The graph path and the director path stall **identically**, so
-this is the shared bounds transform, not the fitting seam: a sin/sqrt-style
-reparameterisation of a huge interval puts kilometre-scale Jacobian columns
-beside metre-scale ones and the LM step collapses.
-
-Consequence: any model whose parameter groups declare defensive
-decade-spanning bounds (most declare `ub=1e9`) can silently under-converge —
-the fit *finishes*, with a plausible-looking curve. The fix is engine-level
-(the bound handling in the minimiser both paths share), queued with the
-PRD-105 phase-6 cleanliness pass. Until then: judge suspicious fits by
-re-running with `bounds_on=False`, and prefer physically tight bounds over
-defensive wide ones in new parameter groups.
+Fixed via [PRD-120](../prds/prd-120.md) (2026-09-02): `IMP.bff.Minimizer::fdjac2_step`
+takes the smaller in magnitude of an internal-relative and an
+externally-relative forward-difference step for two-sided bounds, so a
+decade-spanning box no longer collapses the LM step. ICS 2D-Gaussian
+chi2r 608 → 1.03 bounded, matching unbounded. `test_graph_fit_ics.py`'s
+bounds-off workaround is gone.
 
 ## ✅ FIXED — `pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and reads past the end (2026-09-02)
 
