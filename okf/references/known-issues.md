@@ -5137,3 +5137,30 @@ the fit *finishes*, with a plausible-looking curve. The fix is engine-level
 PRD-105 phase-6 cleanliness pass. Until then: judge suspicious fits by
 re-running with `bounds_on=False`, and prefer physically tight bounds over
 defensive wide ones in new parameter groups.
+
+## ✅ FIXED — `pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and reads past the end (2026-09-02)
+
+Filed against tttrlib by `chisurf/core/models/pch/pch.py`'s `pch_mixture`
+wrapper, which raised a defensive `ValueError` in front of the delegation and
+documented the bug in its own docstring ("filed upstream ... this raises
+until it is fixed there"). Confirmed **fixed in tttrlib**, `okf/BUGS.md`
+("`pch_mixture` indexes `avg_numbers` by the length of `brightnesses`, and
+reads past the end", fixed 2026-08-10): a mismatched `(brightnesses,
+avg_numbers)` pair used to be read with no bounds check — not a crash, a
+*silent* one, because the `avg_numbers[s] <= 0.0` guard on the very next line
+then skipped the species whose occupancy read past the end into zeroed
+memory, and the result was a normalised, finite histogram of *fewer species
+than were asked for*. `pch_mixture` now throws `std::invalid_argument` naming
+both sizes, surfaced to Python as `ValueError`.
+
+**Verified present in the environment chisurf actually runs in**, not just
+in the tttrlib checkout: the `arm64` conda env's installed
+`tttrlib.pch_mixture` raises `ValueError: pch_mixture: brightnesses (3) and
+avg_numbers (1) must have one entry per species` for a mismatched pair,
+2026-09-02. The chisurf wrapper's own length check is kept regardless, as
+defense in depth (one call earlier, a message this module controls, and no
+dependency on which tttrlib build happens to be linked) — its docstring now
+says so instead of "filed, awaiting a fix". `FidaModel` does not go through
+`pch_mixture` (it uses the pure-Python `fida.fida_pch` generating-function
+path) and was not affected by this defect; its own axis problem is the
+separate refusal documented under PRD-121 in `okf/prds/prd-121.md`.
