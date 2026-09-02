@@ -151,52 +151,70 @@ def gaussian_mixture_1d(x, n_components: int, *, n_iterations: int = 300,
 
 
 def _em_1d(x, means, *, n_iterations: int, tolerance: float, sigma_floor: float) -> dict:
-    """One expectation-maximization run of a 1-D Gaussian mixture from ``means``."""
+    """One expectation-maximization run of a 1-D Gaussian mixture from ``means``.
+
+    The EM itself is not written here. A 1-D mixture of Gaussians is exactly
+    :class:`~chisurf.core.ml.mixture.GaussianMixture` at
+    ``covariance_type="spherical"`` with one feature, so this is the adapter
+    that keeps the gating call sites' parameter surface (``sigma_floor``, a
+    relative ``tolerance``, mean-sorted output) over the one shared estimator.
+    Holding a second copy of the algorithm here is what let the two disagree:
+    the copy this replaces normalised its responsibilities with a bare
+    ``exp(log_p - log_p.max(axis=1))``, which is ``nan`` for a sample no
+    component can explain, where the shared kernel returns a uniform
+    responsibility.
+
+    Two deliberate differences from the body this replaces, neither of which
+    moves a converged fit:
+
+    * ``tolerance`` is applied as an absolute gain in the total
+      log-likelihood rather than a relative one, so a run stops **no earlier**
+      than before -- the same fixed point from the same start, with the
+      iteration count as the only visible change.
+    * a component that collects no mass keeps the weight the data gives it
+      (effectively zero) rather than the old ``1e-6`` floor; its width is held
+      at ``sigma_floor`` by the shared estimator's ridge.
+    """
+    from chisurf.core.ml import GaussianMixture
+
     k = int(np.size(means))
     n = int(x.size)
-    means = np.asarray(means, dtype=float).copy()
+    start = np.asarray(means, dtype=float).reshape(k, 1)
     spread = float(np.std(x)) or 1.0
-    sigmas = np.full(k, max(spread / max(k, 1), sigma_floor))
-    weights = np.full(k, 1.0 / k)
+    sigma_start = max(spread / max(k, 1), sigma_floor)
 
-    log_likelihood = -np.inf
-    resp = np.full((n, k), 1.0 / k)
-    for _ in range(int(n_iterations)):
-        # E step
-        var = np.maximum(sigmas, sigma_floor) ** 2
-        log_p = (
-            np.log(np.maximum(weights, 1e-300))[None, :]
-            - 0.5 * np.log(2.0 * np.pi * var)[None, :]
-            - 0.5 * (x[:, None] - means[None, :]) ** 2 / var[None, :]
-        )
-        m = log_p.max(axis=1, keepdims=True)
-        p = np.exp(log_p - m)
-        norm = p.sum(axis=1, keepdims=True)
-        resp = p / np.maximum(norm, 1e-300)
-        new_ll = float(np.sum(m.ravel() + np.log(np.maximum(norm.ravel(), 1e-300))))
-        # M step
-        nk = resp.sum(axis=0)
-        weights = np.maximum(nk / n, 1e-6)
-        weights = weights / weights.sum()
-        means = (resp * x[:, None]).sum(axis=0) / np.maximum(nk, 1e-12)
-        var = (resp * (x[:, None] - means[None, :]) ** 2).sum(axis=0) / np.maximum(nk, 1e-12)
-        sigmas = np.maximum(np.sqrt(np.maximum(var, 0.0)), sigma_floor)
-        if abs(new_ll - log_likelihood) <= tolerance * max(1.0, abs(new_ll)):
-            log_likelihood = new_ll
-            break
-        log_likelihood = new_ll
+    fitted = GaussianMixture(
+        n_components=k,
+        covariance_type="spherical",
+        means_init=start,
+        covariances_init=np.full(k, sigma_start**2),
+        weights_init=np.full(k, 1.0 / k),
+        init_params="random",
+        # The estimator's ridge is additive on the variance, so it *is* the
+        # width floor this call site asks for.
+        reg_covar=float(sigma_floor) ** 2,
+        max_iter=int(n_iterations),
+        tol=float(tolerance),
+        n_init=1,
+    ).fit(x[:, None])
+
+    resp = fitted.predict_proba(x[:, None])
+    fitted_means = fitted.means_.ravel()
+    sigmas = np.maximum(np.sqrt(np.maximum(fitted.covariances_, 0.0)), sigma_floor)
+    log_likelihood = float(fitted.lower_bound_)
 
     n_free = 3 * k - 1
     bic = n_free * np.log(max(n, 2)) - 2.0 * log_likelihood
-    order = np.argsort(means)
+    order = np.argsort(fitted_means)
     return {
-        "weights": weights[order],
-        "means": means[order],
-        "sigmas": sigmas[order],
+        "weights": np.asarray(fitted.weights_)[order],
+        "means": fitted_means[order],
+        "sigmas": np.asarray(sigmas)[order],
         "responsibilities": resp[:, order],
         "labels": np.argmax(resp[:, order], axis=1),
         "log_likelihood": log_likelihood,
         "bic": float(bic),
+        "n_iter": int(fitted.n_iter_),
     }
 
 

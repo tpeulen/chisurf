@@ -21,6 +21,8 @@ from .._gaussian import (
     COVARIANCE_TYPES,
     _broadcast_covariance,
     _log_gaussian_density,
+    _responsibilities,
+    _row_logsumexp,
     logsumexp,
 )
 
@@ -345,12 +347,10 @@ class GaussianMixture(BaseEstimator):
                 log_prob += np.log(np.maximum(weights, np.finfo(float).tiny))[None, :]
             lb = _log_likelihood(log_prob)
 
-            # responsibilities
-            m = log_prob.max(axis=1, keepdims=True)
-            resp = np.exp(log_prob - m)
-            denom = resp.sum(axis=1, keepdims=True)
-            denom[denom <= 0] = 1.0
-            resp /= denom
+            # responsibilities -- shared with the HMM/1-D callers, and guards a
+            # sample no component can explain (a row of -inf, whose naive
+            # `-inf - (-inf)` is nan) into a uniform responsibility instead.
+            resp = _responsibilities(log_prob)
 
             # M-step -----------------------------------------------------------------
             Nk = resp.sum(axis=0)
@@ -451,8 +451,7 @@ class GaussianMixture(BaseEstimator):
         """Return the per-sample log probability, shape ``(n_samples,)``."""
         X = np.asarray(X, dtype=float)
         log_prob = self._log_proba(X, self.means_, self.covariances_, self.weights_)
-        m = log_prob.max(axis=1, keepdims=True)
-        return m.ravel() + np.log(np.exp(log_prob - m).sum(axis=1))
+        return _row_logsumexp(log_prob)
 
     def fit_predict(self, X) -> np.ndarray:
         """Fit the mixture and return the hard cluster labels of ``X``."""
@@ -470,9 +469,7 @@ class GaussianMixture(BaseEstimator):
         log_prob = self._log_proba(
             np.asarray(X, dtype=float), self.means_, self.covariances_, self.weights_
         )
-        m = log_prob - log_prob.max(axis=1, keepdims=True)
-        resp = np.exp(m)
-        return resp / resp.sum(axis=1, keepdims=True)
+        return _responsibilities(log_prob)
 
     def _n_parameters(self) -> int:
         """Number of free parameters of the fitted layout."""
@@ -496,9 +493,14 @@ class GaussianMixture(BaseEstimator):
 
 
 def _log_likelihood(log_prob: np.ndarray) -> float:
-    """Log-sum-exp over components of ``log_prob`` rows, summed over samples."""
-    m = log_prob.max(axis=1, keepdims=True)
-    return float(np.log(np.exp(log_prob - m).sum(axis=1)).sum() + m.sum())
+    """Log-sum-exp over components of ``log_prob`` rows, summed over samples.
+
+    A row no component can explain contributes ``-inf`` (see
+    :func:`chisurf.core.ml._gaussian._row_logsumexp`), not ``nan``: the total
+    then correctly reads as "impossible under this mixture" instead of
+    silently corrupting the whole log-likelihood.
+    """
+    return float(_row_logsumexp(log_prob).sum())
 
 
 def _clamp_covar(M: np.ndarray) -> np.ndarray:

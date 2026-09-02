@@ -429,17 +429,42 @@ class ConvergenceMonitor:
         self.iter = 0
         self.history.clear()
 
+    @staticmethod
+    def _gain(current: float, previous: float) -> float:
+        """Return the log-likelihood gain between two iterations.
+
+        Plain subtraction is wrong at the one place it matters: a model that
+        assigns zero probability to the data scores ``-inf`` twice in a row,
+        and ``-inf - (-inf)`` is ``nan``. Every comparison against ``nan`` is
+        false, so the run neither converges nor warns -- it silently spends
+        the whole iteration budget. Two equal scores are no gain, which is
+        what "converged" means, whether or not they are finite.
+        """
+        if current == previous:
+            return 0.0
+        return current - previous
+
     def report(self, log_prob: float) -> None:
         """Record the log-likelihood of the iteration that just finished."""
         if self.verbose:
-            delta = log_prob - self.history[-1] if self.history else np.nan
+            delta = self._gain(log_prob, self.history[-1]) if self.history else np.nan
             print(
                 self._template.format(iter=self.iter + 1, log_prob=log_prob, delta=delta),
                 file=sys.stderr,
             )
+        # A non-finite score is not a convergence result: the model explains
+        # none of the data. Say so rather than returning a converged-looking
+        # fit whose score, aic and bic are all -inf.
+        if not np.isfinite(log_prob):
+            logger.warning(
+                "HMM log-likelihood is %s: the model assigns zero probability "
+                "to the data (a structural zero or an emptied start "
+                "distribution makes every sequence impossible).",
+                log_prob,
+            )
         # EM cannot decrease the likelihood; allow only for rounding noise.
         precision = np.finfo(float).eps ** 0.5
-        if self.history and (log_prob - self.history[-1]) < -precision:
+        if self.history and self._gain(log_prob, self.history[-1]) < -precision:
             logger.warning(
                 "HMM is not converging: log-likelihood dropped from %s to %s",
                 self.history[-1],
@@ -452,7 +477,8 @@ class ConvergenceMonitor:
     def converged(self) -> bool:
         """Whether the iteration limit or the tolerance has been reached."""
         return self.iter == self.n_iter or (
-            len(self.history) == 2 and self.history[1] - self.history[0] < self.tol
+            len(self.history) == 2
+            and self._gain(self.history[1], self.history[0]) < self.tol
         )
 
 
@@ -1253,10 +1279,28 @@ class GaussianHMM:
         """
         if "s" in self.params:
             startprob = np.maximum(self.startprob_prior - 1 + stats["start"], 0)
-            self.startprob_ = _normalized(np.where(self.startprob_ == 0, 0, startprob))
+            startprob = np.where(self.startprob_ == 0, 0, startprob)
+            # A prior carrying no pseudo-counts clips every term to zero, and
+            # `_normalized` leaves the emptied block alone rather than dividing
+            # 0/0 -- correct as far as it goes, but an all-zero start
+            # distribution is not a distribution: it makes every sequence
+            # impossible, and the -inf lattice that follows is
+            # indistinguishable from a genuinely constrained model. A block
+            # with no information keeps the one it had, the same rule
+            # `_project_simplexes` applies on the accelerated path.
+            if startprob.sum() > 0:
+                self.startprob_ = _normalized(startprob)
         if "t" in self.params:
             transmat = np.maximum(self.transmat_prior - 1 + stats["trans"], 0)
-            self.transmat_ = _normalized(np.where(self.transmat_ == 0, 0, transmat), axis=1)
+            transmat = np.where(self.transmat_ == 0, 0, transmat)
+            # Same rule, per row: a state the data never visited keeps its
+            # transitions, exactly as it keeps its emission below. Zeroing the
+            # row instead would silently turn an unvisited state into a dead
+            # end that no later iteration can leave.
+            emptied = transmat.sum(axis=1) == 0
+            if emptied.any():
+                transmat[emptied] = self.transmat_[emptied]
+            self.transmat_ = _normalized(transmat, axis=1)
 
         # A state can lose all of its posterior mass -- with n_components above
         # what the data supports, that is the normal outcome. Its emission

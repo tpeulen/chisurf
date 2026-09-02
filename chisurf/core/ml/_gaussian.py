@@ -50,6 +50,45 @@ def logsumexp(values: np.ndarray) -> float:
     return float(np.log(np.exp(values - vmax).sum()) + vmax)
 
 
+def _row_logsumexp(log_prob: np.ndarray) -> np.ndarray:
+    """Row-wise log-sum-exp of ``(n_samples, n_components)`` log densities.
+
+    Mirrors :func:`logsumexp`'s convention per row: a sample every component
+    scores as impossible has an all ``-inf`` row, whose max is ``-inf`` too, so
+    a naive ``log_prob - log_prob.max(axis=1)`` computes ``-inf - (-inf) =
+    nan``. That row's total is ``-inf`` -- a genuinely-zero-probability
+    observation, which is a value, not a computation error -- not ``nan``.
+    """
+    m = log_prob.max(axis=1)
+    dead = ~np.isfinite(m)
+    safe_m = np.where(dead, 0.0, m)
+    with np.errstate(over="ignore"):
+        total = np.exp(log_prob - safe_m[:, None]).sum(axis=1)
+    with np.errstate(divide="ignore"):
+        out = np.log(total) + safe_m
+    return np.where(dead, -np.inf, out)
+
+
+def _responsibilities(log_prob: np.ndarray) -> np.ndarray:
+    """Normalise ``(n_samples, n_components)`` log densities into responsibilities.
+
+    Every row sums to one. Guards the same trap as :func:`_row_logsumexp`: a
+    row no component can explain (all ``-inf``) would otherwise divide
+    ``nan`` by ``nan``. Such a row gets a uniform responsibility instead --
+    "no component fits, so no component is preferred" -- rather than
+    poisoning the M-step that follows.
+    """
+    m = log_prob.max(axis=1, keepdims=True)
+    dead = ~np.isfinite(m)
+    safe_m = np.where(dead, 0.0, m)
+    with np.errstate(over="ignore"):
+        resp = np.exp(log_prob - safe_m)
+    resp = np.where(dead, 1.0, resp)
+    denom = resp.sum(axis=1, keepdims=True)
+    denom = np.where(denom <= 0, 1.0, denom)
+    return resp / denom
+
+
 def _broadcast_covariance(covars: np.ndarray, n_components: int, n_features: int) -> np.ndarray:
     """Convert the compact covariance layout to a ``(K, d, d)`` array."""
     if covars.ndim == 1:
@@ -155,4 +194,6 @@ __all__ = [
     "_gaussian_parameters",
     "_log_gaussian_density",
     "_broadcast_covariance",
+    "_row_logsumexp",
+    "_responsibilities",
 ]
