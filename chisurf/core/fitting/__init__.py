@@ -86,6 +86,16 @@ def deviance_residuals(
     return np.sign(mu - y) * np.sqrt(dev)
 
 
+#: bff's one-pass residual kernel, or ``None`` if bff is unavailable.
+#:
+#: Resolved once at import. The residual is too central to fitting to make
+#: bff a hard dependency of it, so the numpy path below stays as the fallback.
+try:
+    from IMP.bff import weighted_residuals as _bff_weighted_residuals
+except Exception:   # pragma: no cover - depends on the build
+    _bff_weighted_residuals = None
+
+
 def calculate_weighted_residuals(
         data: chisurf.core.data.DataCurve,
         model: chisurf.core.curve.Curve,
@@ -112,6 +122,34 @@ def calculate_weighted_residuals(
         :func:`normalize_noise_model`.
     :return: a numpy array containing the weighted residuals
     """
+    # One pass in C++ over the three buffers where they already lie. The
+    # residual needs the model's *curve* and not the model, so this serves
+    # every model in the tree, whatever computed its curve.
+    #
+    # Stateless on purpose. A `ChiSquared` node holding the data and reused
+    # across iterations is the obvious design and was tried: it copies the
+    # data, so an in-place edit would serve residuals against a stale copy,
+    # and the cache lookup guarding it measured 4.45 us against 0.61 us for
+    # the call it was protecting -- several times the arithmetic it saved.
+    #
+    # A negative `xmin` is left to numpy. It is a *slicing* index there --
+    # `data[-5:100]` means "five from the end", which is empty -- and the C++
+    # window clamps to zero instead, so the two disagree. Rather than
+    # reproduce Python's slice arithmetic in C++ and invite the next edge
+    # case, the rare path takes the path that defines the behaviour.
+    if _bff_weighted_residuals is not None and xmin is not None and xmin >= 0:
+        try:
+            return _bff_weighted_residuals(
+                np.ascontiguousarray(data.y, dtype=np.float64),
+                np.ascontiguousarray(data.ey, dtype=np.float64),
+                np.ascontiguousarray(model.y, dtype=np.float64),
+                int(xmin), int(xmax),
+                normalize_noise_model(noise_model))
+        except Exception as e:
+            chisurf.logging.warning(
+                f"calculate_weighted_residuals: C++ path failed ({e}); "
+                f"using numpy")
+
     model_x, model_y = model[xmin:xmax]
     data_sliced = data[xmin:xmax]
     data_x, data_y, _, data_y_error = data_sliced[:4]

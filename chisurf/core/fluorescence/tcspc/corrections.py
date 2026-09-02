@@ -167,43 +167,22 @@ def add_pile_up_to_model(
             lifetime measurement 2002 Optics Comm. 201 271-277
 
     """
-    rep_rate *= 1e6
-    dead_time *= 1e-9
-    cum_sum = np.cumsum(data)
-    n_pulse_detected = cum_sum[-1]
-    total_dead_time = n_pulse_detected * dead_time
-    live_time = measurement_time - total_dead_time
-    n_excitation_pulses = live_time * rep_rate
-
-    if n_excitation_pulses <= n_pulse_detected:
-        # The assumed measurement time accounts for fewer excitation pulses
-        # than there are detected photons. Coates' correction is undefined in
-        # that case (the denominator of eq. 2 reaches zero in the last channel
-        # and eq. 4 diverges), so the model is left unscaled instead of being
-        # turned into NaN.
-        sf = np.ones(len(data))
-    else:
-        # Coates, 1968, eq. 2. The probability is capped strictly below one so
-        # that eq. 4 stays finite for a measurement time that is only barely
-        # long enough.
-        remaining_pulses = n_excitation_pulses - cum_sum
-        p = np.minimum(data / remaining_pulses, MAX_DETECTION_PROBABILITY)
-        # Coates, 1968, eq. 4
-        rescaled_data = -np.log(1.0 - p)
-
-        # instead of rescaling the data, the model function is
-        # rescaled, to preserve the counting statistics and the
-        # known noise.
-        #
-        # A channel without a detected photon makes eq. 4 a 0/0 expression. Its
-        # analytic limit for p -> 0 is the number of excitation pulses that are
-        # left, so the scaling factor stays a smooth function of the channel
-        # index instead of forcing the model to zero in every empty channel.
-        empty = rescaled_data <= 0.0
-        sf = np.where(empty, remaining_pulses, data / np.where(empty, 1.0, rescaled_data))
-        sf = sf / np.sum(sf) * len(data)
-    if modify_inplace:
-        model *= sf
+    # The kernel is tttrlib's, which carries exactly these semantics since
+    # 2026-09-02 (the edge cases were fixed here first and ported there --
+    # unscaled below the pulse deficit, the probability capped strictly below
+    # one, the analytic p->0 limit in empty channels). This wrapper only
+    # arranges the arrays; keeping the numpy body beside the kernel would be
+    # a second implementation, and two implementations disagree silently.
+    import tttrlib
+    out = model if modify_inplace else np.array(model, dtype=np.float64)
+    out = np.ascontiguousarray(out, dtype=np.float64)
+    data64 = np.ascontiguousarray(data, dtype=np.float64)
+    tttrlib.add_pile_up_to_model(
+        out, data64,
+        float(rep_rate), float(dead_time), float(measurement_time),
+        "coates", 0, -1)
+    if modify_inplace and out is not model:
+        model[...] = out
         return model
-    return model * sf
+    return out
 

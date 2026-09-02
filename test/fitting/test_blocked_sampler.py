@@ -273,6 +273,14 @@ def test_the_curvature_seed_survives_the_warm_up():
         factors.append(out)
         return out
 
+    # This test spies on the *Python* sampler's internals, so it pins the
+    # fallback path explicitly; the graph route (sampler_bff) carries the
+    # same contract in C++ (BlockState.from_curvature skips the warm-up
+    # shape replacement) and is covered behaviourally by the recovery and
+    # mixing tests above.
+    from chisurf.core.fitting import sampler_bff
+    saved_bff = sampler_bff._bff
+    sampler_bff._bff = None
     chisurf.core.fitting.sample._cholesky_or_diagonal = spy
     try:
         np.random.seed(0)
@@ -281,6 +289,7 @@ def test_the_curvature_seed_survives_the_warm_up():
         )
     finally:
         chisurf.core.fitting.sample._cholesky_or_diagonal = original
+        sampler_bff._bff = saved_bff
 
     # Exactly one factorisation: the seed. No warm-up replacement.
     assert len(factors) == 1

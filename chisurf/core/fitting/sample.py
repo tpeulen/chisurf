@@ -10,6 +10,7 @@ import numpy as np
 import chisurf as cs
 import chisurf.core.fitting
 import chisurf.core.fitting.ensemble
+import chisurf.core.fitting.minimizer
 
 #: Relative forward-difference step for the conditional Jacobian of a local fit.
 #: The square root of the machine epsilon balances truncation against
@@ -131,6 +132,19 @@ def walk_mcmc(
     """
     if model is None:
         model = fit.model
+
+    # A graph-eligible fit samples entirely in C++ (the four-crossing
+    # contract; see sampler_bff). The C++ metropolis with a single block is
+    # the ported replacement for this walk's Robbins-Monro variant.
+    from chisurf.core.fitting import sampler_bff
+    graph_result = sampler_bff.sample_via_graph(
+        fit, model, "metropolis", steps=steps, thin=thin, chi2max=chi2max,
+        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
+        n_adapt=n_adapt, step_size=step_size,
+        blocks=[list(range(model.n_free))], use_curvature=False)
+    if graph_result is not None:
+        return graph_result
+
     dim = model.n_free
     state_initial = np.asarray(model.parameter_values, dtype=np.float64)
     thin = max(1, int(thin))
@@ -639,6 +653,16 @@ def sample_differential_evolution(
     """
     if model is None:
         model = fit.model
+
+    # A graph-eligible fit samples entirely in C++ (see sampler_bff).
+    from chisurf.core.fitting import sampler_bff
+    graph_result = sampler_bff.sample_via_graph(
+        fit, model, "de", steps=steps, thin=thin, chi2max=chi2max,
+        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
+        n_adapt=n_adapt, n_chains=n_chains, jitter=jitter, snooker=snooker)
+    if graph_result is not None:
+        return graph_result
+
     rng = _rng(seed)
     dim = model.n_free
     thin = max(1, int(thin))
@@ -855,16 +879,28 @@ def walk_mcmc_blocked(
     if model is None:
         model = fit.model
     dim = model.n_free
-    state = np.asarray(model.parameter_values, dtype=np.float64)
-    thin = max(1, int(thin))
-    n_samples = max(1, int(steps) // thin)
-    bounds = model.parameter_bounds
 
     if blocks is None:
         blocks = _default_blocks(fit, dim, model)
     block_idx = [np.asarray(b, dtype=int) for b in blocks if len(b)]
     if not block_idx:
         block_idx = [np.arange(dim, dtype=int)]
+
+    # A graph-eligible fit samples entirely in C++ (see sampler_bff), with
+    # the same resolved block partition.
+    from chisurf.core.fitting import sampler_bff
+    graph_result = sampler_bff.sample_via_graph(
+        fit, model, "metropolis", steps=steps, thin=thin, chi2max=chi2max,
+        temp=temp, seed=seed, callback=callback, check_cancel=check_cancel,
+        n_adapt=n_adapt, step_size=step_size,
+        blocks=[list(map(int, b)) for b in block_idx])
+    if graph_result is not None:
+        return graph_result
+
+    state = np.asarray(model.parameter_values, dtype=np.float64)
+    thin = max(1, int(thin))
+    n_samples = max(1, int(steps) // thin)
+    bounds = model.parameter_bounds
 
     def _lnprob(vector):
         """Return ``(lnpost, lnprior, chi2)`` of a parameter vector."""
@@ -1294,12 +1330,16 @@ def _profile_locals(groups, model, include_priors: bool = True):
         bounds = [all_bounds[i] for i in positions]
         x0 = [local_model.parameter_values[i] for i in positions]
         try:
-            fitted, _ = cs.core.math.optimization.leastsqbound(
-                func=_restricted_wres,
-                x0=x0,
+            # bff's optimiser, like every other fit in this package. The
+            # restricted residual is not a model the graph can be built from
+            # -- it varies a *subset* of one member's parameters -- so this
+            # takes the director path inside `minimize`.
+            fitted, _ = cs.core.fitting.minimizer.minimize(
+                _restricted_wres,
+                x0,
                 args=(local_model, positions, include_priors),
                 bounds=bounds,
-            )[:2]
+            )
         except Exception:
             return None
         fitted = np.atleast_1d(np.asarray(fitted, dtype=np.float64))
@@ -1977,6 +2017,32 @@ def sample_ensemble(
     thin`` states per walker are returned.
     """
     model = fit.model if model is None else model
+
+    # A graph-eligible fit samples entirely in C++ (see sampler_bff). The
+    # progress bar is driven from the per-segment callback, in recorded
+    # states, which is the same fraction `_sample_ensemble` reports.
+    from chisurf.core.fitting import sampler_bff
+    if progress_bar is not None and hasattr(progress_bar, 'setMaximum'):
+        progress_bar.setMaximum(max(1, int(steps) // max(1, int(thin))))
+
+        def _bar_callback(done, total, result=None, _cb=callback):
+            progress_bar.setValue(done)
+            if _cb is not None:
+                try:
+                    _cb(done, total, result=result)
+                except TypeError:
+                    _cb(done, total)
+        _route_callback = _bar_callback
+    else:
+        _route_callback = callback
+    graph_result = sampler_bff.sample_via_graph(
+        fit, model, "stretch", steps=steps, thin=thin, chi2max=chi2max,
+        seed=seed, callback=_route_callback, check_cancel=check_cancel,
+        substeps=substeps, nwalkers=nwalkers, stretch_scale=stretch_scale,
+        walker_start_std=std)
+    if graph_result is not None:
+        return graph_result
+
     ndim = len(model.parameter_values)
     if nwalkers is None:
         nwalkers = max(2 * ndim + 2, 10)
@@ -2445,44 +2511,42 @@ def sampler_settings(name: str) -> list:
 def optimizer_settings() -> list:
     """Return the least-squares settings, as view-spec sections.
 
-    Derived the same way the samplers are: from the signature of the optimiser
-    itself. Typing a control from the value that happens to be stored is what
-    makes ``gtol`` an integer field for ever, because it ships as ``0``.
+    Typing a control from the value that happens to be stored is what makes
+    ``gtol`` an integer field for ever, because it ships as ``0``. So the
+    types are declared here, beside the optimiser they belong to.
+
+    This used to read `scipy.optimize.leastsq`'s signature, which was a
+    reasonable way to get MINPACK's option names for free while ChiSurf still
+    ran on scipy. It does not: the optimiser is
+    :class:`IMP.bff.Minimizer`, `leastsq` is not imported anywhere in this
+    package any more, and introspecting a library nothing calls to describe
+    the knobs of one it does would be a settings dialog that drifts without
+    anything noticing. The names below are `Minimizer`'s own, in MINPACK's
+    order; ``diag`` is left out for the same reason scipy's ``None`` default
+    left it out, that it is a sequence and not a control.
 
     Returns
     -------
     list of dict
-        Sections for the tolerances and limits ``scipy.optimize.leastsq``
-        accepts, in its own order.
+        Sections for the tolerances and limits the optimiser accepts.
     """
-    import scipy.optimize
-
-    exclude = {'func', 'x0', 'args', 'Dfun', 'full_output', 'col_deriv'}
+    knobs = (
+        ('ftol', 'float'),      # relative error in the sum of squares
+        ('xtol', 'float'),      # relative error in the solution
+        ('gtol', 'float'),      # orthogonality of residuals and Jacobian
+        ('maxfev', 'int'),      # evaluation budget; 0 means 200 * (n + 1)
+        ('epsfcn', 'float'),    # forward-difference step for the Jacobian
+        ('factor', 'int'),      # initial step bound
+    )
     sections = []
-    for param in inspect.signature(scipy.optimize.leastsq).parameters.values():
-        if param.name in exclude or param.kind in (
-                param.VAR_POSITIONAL, param.VAR_KEYWORD):
-            continue
-        default = param.default
-        if default is inspect.Parameter.empty or default is None:
-            # A ``None`` default is scipy's way of saying "not a scalar knob"
-            # (``diag`` is a sequence); there is no control to draw for it.
-            continue
-        if isinstance(default, bool):
-            kind = 'toggle'
-        elif isinstance(default, int) and param.name in ('maxfev', 'factor'):
-            kind = 'int'
-        else:
-            # Everything else is a tolerance: a float, whatever it ships as.
-            kind = 'float'
+    for name, kind in knobs:
         section = {
-            'type': 'toggle' if kind == 'toggle' else 'value',
-            'attr': param.name,
-            'label': setting_label(param.name),
-            'description': f"scipy.optimize.leastsq '{param.name}'.",
+            'type': 'value',
+            'attr': name,
+            'label': setting_label(name),
+            'description': f"IMP.bff.Minimizer '{name}'.",
+            'kind': kind,
         }
-        if kind != 'toggle':
-            section['kind'] = kind
         if kind == 'float':
             section['decimals'] = 10
         sections.append(section)

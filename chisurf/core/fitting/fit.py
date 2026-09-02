@@ -21,6 +21,7 @@ import chisurf.core.data
 import chisurf.core.fitting.diagnostics
 import chisurf.core.fitting.engine
 import chisurf.core.fitting.factorgraph
+import chisurf.core.fitting.minimizer
 import chisurf.core.fitting.parameter
 import chisurf.core.fitting.priors
 import chisurf.core.fitting.sample
@@ -28,7 +29,7 @@ import chisurf.core.fitting.support_plane
 import chisurf.core.models
 import chisurf.core.math.statistics
 import chisurf.core.math.optimization
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.core.math.optimization import OptimizationCancelled
 import chisurf.core.fitting.sampling_meta
 import time
 import json
@@ -601,11 +602,19 @@ class Fit(cs.core.base.Base):
     def grad(self) -> np.array:
         """Approximate gradient of the residuals at current parameters.
 
-        The gradient is computed numerically via :func:`approx_grad`, which
-        picks a step that scales with each parameter. Passing the machine
-        epsilon here, as this used to, made every step a no-op and the whole
-        gradient zero.
+        The step scales with each parameter and is floored at 1.0 --
+        ``epsilon * max(|x_k|, 1)``. Passing the machine epsilon here, as
+        this used to, made every step a no-op and the whole gradient zero.
+
+        Taken over the graph in C++ when the model builds one, and by
+        :func:`approx_grad` when it does not. The two are the same
+        differences at the same step; only the side of the SWIG boundary
+        differs.
         """
+        over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(
+            self, self.model, what="jacobian")
+        if over_the_graph is not None:
+            return over_the_graph
         _, grad = approx_grad(
             self.model.parameter_values,
             self
@@ -1196,17 +1205,30 @@ class Fit(cs.core.base.Base):
         )
         progress_callback = kwargs.get("progress_callback") or self._progress_callback
         cancelled = False
+        # A covariance from an earlier run describes earlier parameters, and
+        # a graph cached for one describes earlier data.
+        self.__dict__.pop("_cpp_covariance", None)
+        self.__dict__.pop("_graph_cache", None)
         try:
             # The structure is fixed for the whole optimisation -- parameters
             # are not linked, freed or rediscovered between two evaluations --
             # so resolve the free-parameter list and the bounds once.
             with cs.core.fitting.factorgraph.frozen_structure(self):
-                cs.core.math.optimization.leastsqbound(
+                # The optimiser runs in C++, on the same side of the
+                # boundary as the residual: one crossing per evaluation
+                # instead of one per parameter plus one per part. Same
+                # MINPACK lmdif, same bounds transform, same tolerances --
+                # pinned against this module's own leastsqbound in
+                # IMP.bff's test/minimizer.
+                cs.core.fitting.minimizer.minimize(
                     get_wres,
                     self.model.parameter_values,
                     args=(self.model, True),
                     bounds=self.model.parameter_bounds,
                     progress_callback=progress_callback,
+                    n_free=self.model.n_free,
+                    fit=self,
+                    model=self.model,
                     **fitting_options
                 )
         except OptimizationCancelled:
@@ -1343,12 +1365,56 @@ class Fit(cs.core.base.Base):
         """Update parameter error estimates from the covariance matrix."""
         # Estimate errors based on gradient
         fit = self
-        cov_m, used_parameters = fit.covariance_matrix
-        err = np.sqrt(np.diag(cov_m))
+        # Both callers of this method run `self.update()` immediately before
+        # it, so the model curve belongs to the parameter values the
+        # covariance is taken around, and its residuals are exactly the `f0`
+        # that would otherwise be recomputed. That is one model evaluation of
+        # the five this used to cost for three free parameters -- a fifth of
+        # the error estimate, which is itself a third of every fit.
+        cov_m, used_parameters = self._optimiser_covariance()
+        if cov_m is None:
+            f0 = None
+            try:
+                residuals = np.asarray(fit.model.weighted_residuals, dtype=float)
+                if residuals.ndim == 1 and residuals.size:
+                    f0 = residuals
+            except Exception:
+                f0 = None
+            cov_m, used_parameters = covariance_matrix(fit, f0=f0)
+        err = np.sqrt(np.diag(cov_m)) * _error_scale(fit)
         free = fit.model.parameters
         for p, e in zip(used_parameters, err):
             free[p].error_estimate = e
         self._propagate_redundant_error_estimates(cov_m, used_parameters, free)
+
+    def _optimiser_covariance(self):
+        """The covariance the optimiser already built, or ``(None, None)``.
+
+        Rebuilding the Jacobian by finite differences over the *Python*
+        model costs ``p + 1`` calls to :meth:`Model.update_model` and was
+        **32% of every TCSPC fit** -- for a matrix that can be built where
+        the model and the data already are.
+
+        :func:`chisurf.core.fitting.minimizer._covariance_at_the_solution`
+        builds it: the optimiser's own QR matrix when its step resolved, and
+        otherwise the same finite differences taken over the *graph*, in C++.
+        Either way nothing crosses the boundary here. Only a model that never
+        built a graph returns ``(None, None)`` and sends the caller to
+        :func:`covariance_matrix`.
+
+        The stash is checked against the *identity* of the current free
+        parameters rather than their number, because a re-parse rebuilds the
+        parameter objects and a covariance for the previous set would line up
+        by length and mean nothing.
+        """
+        stash = self.__dict__.pop("_cpp_covariance", None)
+        if stash is None:
+            return None, None
+        cov_m, used_parameters, parameter_ids = stash
+        free = self.model.parameters
+        if tuple(id(p) for p in free) != parameter_ids:
+            return None, None
+        return cov_m, list(used_parameters)
 
     def _propagate_redundant_error_estimates(self, cov_m, used_parameters, free):
         """Give redundant parameters the uncertainty implied by their constraint.
@@ -1950,6 +2016,8 @@ class FitGroup(Fit):
         if local_first is None:
             local_first = cs.core.settings.optimization['global_optimize_local_first']
         cancelled = False
+        # A covariance from an earlier run describes earlier parameters.
+        self.__dict__.pop("_cpp_covariance", None)
         sink = kwargs.pop("progress_callback", None) or self._progress_callback
         # A group runs each member and then the global fit, and every one of
         # those restarts its own evaluation count from zero. Reported raw, the
@@ -1969,12 +2037,25 @@ class FitGroup(Fit):
             # Nothing about the structure changes while the optimiser runs, so
             # the free-parameter lists are resolved once instead of per call.
             with cs.core.fitting.factorgraph.frozen_structure(fit):
-                cs.core.math.optimization.leastsqbound(
+                # The same C++ optimiser as a member fit, and -- when every
+                # member is a model bff can compile -- the same whole-graph
+                # arrangement: one `Expression -> ChiSquared` per member under
+                # one `JointChiSquared`, with the shared parameters as port
+                # links. The group's residual is its members' end to end,
+                # which is what `GlobalFitModel.weighted_residuals`
+                # concatenates, so the objective is the same one and nothing
+                # crosses the boundary per iteration. A group with a member
+                # the graph cannot represent is refused *whole* and falls back
+                # to scipy: half a group in C++ still pays the crossing.
+                cs.core.fitting.minimizer.minimize(
                     func=get_wres,
                     x0=fit._model.parameter_values,
                     args=(fit._model, True),
                     bounds=bounds,
                     progress_callback=progress_callback,
+                    n_free=fit._model.n_free,
+                    fit=fit,
+                    model=fit._model,
                     **fitting_options
                 )
         except OptimizationCancelled:
@@ -2418,8 +2499,9 @@ def sample_fit(
         fn_final = os.path.join(chains_dir, base_fn + chain_suffix)
         fn_partial = os.path.join(chains_dir, base_fn + '.partial' + chain_suffix)
 
-        def sampler_callback(done, run_total, sampler=None, **cb_kwargs):
-            """Callback invoked during ensemble sampling for intermediate saves.
+        def sampler_callback(done, run_total, sampler=None, result=None,
+                             **cb_kwargs):
+            """Callback invoked during sampling for intermediate saves.
 
             Parameters
             ----------
@@ -2429,16 +2511,25 @@ def sample_fit(
                 Total steps in the current run.
             sampler : chisurf.core.fitting.ensemble.EnsembleSampler, optional
                 The ensemble sampler instance, used to extract intermediate
-                chains when not None.
+                chains when not None (the Python samplers' route).
+            result : dict, optional
+                A partial result dict, already in the samplers' return shape
+                (the C++ graph route delivers one per segment).
             """
-            if sampler is not None:
+            if result is not None:
+                # Partial save of the C++ sampler's chain so far.
+                try:
+                    save_chain(result, fn_partial)
+                except Exception:
+                    pass
+            elif sampler is not None:
                 # Partial save of an unfinished ensemble chain.
                 try:
                     r_partial = cs.core.fitting.sample.ensemble_result(sampler, fit)
                     save_chain(r_partial, fn_partial)
                 except Exception:
                     pass
-            
+
             if progress_callback is not None:
                 current_total_done = done_steps + done
                 progress_callback(current_total_done, total_steps)
@@ -2450,6 +2541,7 @@ def sample_fit(
                 thin=thin,
                 chi2max=chi2max,
                 temp=temp,
+                callback=sampler_callback,
                 check_cancel=check_cancel,
                 model=sample_model,
                 **kwargs
@@ -2475,6 +2567,7 @@ def sample_fit(
                 chi2max=chi2max,
                 step_size=step_size,
                 temp=temp,
+                callback=sampler_callback,
                 check_cancel=check_cancel,
                 model=sample_model,
                 **kwargs
@@ -2487,6 +2580,7 @@ def sample_fit(
                 chi2max=chi2max,
                 step_size=step_size,
                 temp=temp,
+                callback=sampler_callback,
                 check_cancel=check_cancel,
                 **kwargs
             )
@@ -2758,10 +2852,57 @@ def approx_grad(
     return f0, grad
 
 
+def _error_scale(fit) -> float:
+    """Correction for data that carries no uncertainties of its own.
+
+    `covariance_matrix` returns ``(J'J)^-1`` for ``J = d(weighted residuals)/dp``.
+    That is the parameter covariance **only when the weights are real standard
+    deviations** -- weighted least squares, the assumption
+    :func:`calculate_weighted_residuals` documents for its ``"default"`` noise
+    model, and what ``scipy.optimize.curve_fit(absolute_sigma=True)`` computes.
+
+    `DataCurve` sets ``ey`` to **ones** whenever none is supplied, which
+    includes the ordinary case of a two-column ``x, y`` file
+    (``chisurf/core/data.py``, five sites). The residuals are then not weighted
+    by anything and the covariance comes out in units of "a residual of 1", so
+    the reported errors are wrong by a factor ``1/sqrt(chi2r)``. Measured on a
+    400-point exponential with sigma = 0.05 and no ``ey``: 0.078 / 0.291 /
+    0.375 reported against 0.0036 / 0.0133 / 0.0171 correct -- **22x too
+    large**.
+
+    When sigma is unknown the standard treatment is to estimate it from the
+    residuals, which scales the covariance by ``chi2r``; that is what
+    ``curve_fit`` does by default and what gnuplot and Origin report. So the
+    scale is applied *only* when the data supplies no uncertainties, detected
+    as ``ey`` being exactly one everywhere. A dataset with genuine errors is
+    untouched, and its error bars do not move.
+
+    The narrow risk is a dataset whose true sigma really is exactly 1.0 at
+    every point; its errors would now be scaled. That is both vanishingly
+    unlikely and self-diagnosing -- if sigma were truly 1 the scale would be
+    sqrt(chi2r) ~= 1 and the correction would do nothing. It only bites when
+    the data already contradicts the sigma = 1 claim.
+    """
+    try:
+        ey = np.asarray(fit.data.ey, dtype=float)
+    except Exception:
+        return 1.0
+    if ey.size == 0 or not np.all(ey == 1.0):
+        return 1.0          # real uncertainties: the covariance is already right
+    try:
+        chi2r = float(fit.chi2r)
+    except Exception:
+        return 1.0
+    if not np.isfinite(chi2r) or chi2r <= 0.0:
+        return 1.0
+    return float(np.sqrt(chi2r))
+
+
 def covariance_matrix(
         fit: cs.core.fitting.fit.Fit,
         epsilon: float = None,
         model: cs.core.models.Model = None,
+        f0: np.ndarray = None,
         **kwargs
 ) -> typing.Tuple[np.array, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
@@ -2793,8 +2934,29 @@ def covariance_matrix(
     """
     if model is None:
         model = fit.model
+    # The graph first, when the model builds one: the same arithmetic at the
+    # same step rule, but in C++ with the data already in the node, instead
+    # of `p + 1` trips through `Model.update_model()`. Every caller of this
+    # function gets that -- the error estimate, the posterior view, the
+    # derived-quantity propagation, the sampler preconditioners -- because
+    # the choice is made here rather than at six call sites. A model the
+    # graph cannot represent falls through to the numpy path below, which is
+    # the definition of the answer and stays the reference the C++ routine is
+    # pinned against.
+    over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(
+        fit, model, epsilon)
+    if over_the_graph is not None:
+        return over_the_graph
     xk = np.array(model.parameter_values)
-    fi_v, partial_derivatives = approx_grad(xk, fit, epsilon, model=model)
+    # `f0` is the residuals at `xk`. Supplied by a caller that has just
+    # evaluated the model there, it saves the first of the p+2 evaluations
+    # this function costs -- and it is the *same* number, not an
+    # approximation of it: the gradient comes out bit-identical (verified at
+    # rtol=0, atol=0). Only a caller that can guarantee the model is current
+    # for `xk` may pass it; everyone else leaves it None and pays for the
+    # evaluation, which is why this is not simply read from the model here.
+    fi_v, partial_derivatives = approx_grad(
+        xk, fit, epsilon, model=model, f0=f0)
 
     # find parameters which do not change the models
     # use only parameters which change the models

@@ -285,7 +285,7 @@ def test_no_two_nodes_land_on_the_same_point():
 
 def test_a_one_dimensional_layout_is_turned_to_lie_horizontally():
     """A chain drawn down a wide canvas wastes it and stacks the labels."""
-    from chinet import graph as cg
+    from chisurf.core import graph as cg
     path = cg.path_graph(6)
     pos = gv._layout(path)
     xs = np.array([p[0] for p in pos.values()])

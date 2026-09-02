@@ -28,7 +28,7 @@ headlessly and the same description can be drawn by any front end.
 
 Notes
 -----
-Layout uses the in-tree graph layer :mod:`chinet.graph`. The correlation view
+Layout uses the in-tree graph layer :mod:`chisurf.core.graph`. The correlation view
 lays out with Kamada-Kawai on :math:`1 - |r|` distances, so strongly correlated
 parameters are placed close together and the geometry itself carries the
 message.
@@ -40,7 +40,7 @@ import math
 
 import numpy as np
 
-from chinet import graph as cg
+from chisurf.core import graph as cg
 
 from chisurf import typing
 
@@ -206,7 +206,7 @@ def _layout(graph: cg.Graph, seed: int = 0, **kw) -> typing.Dict[str, np.ndarray
 
     Parameters
     ----------
-    graph : chinet.graph.Graph
+    graph : chisurf.core.graph.Graph
         Graph to lay out.
     seed : int, optional
         Seed for the fallback layout, so a redraw does not reshuffle the picture.

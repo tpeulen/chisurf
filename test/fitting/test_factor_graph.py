@@ -287,45 +287,24 @@ def test_describe_reports_the_identifiability_statement():
     assert 'components     : 1' in text
 
 
-def _count_copies(monkeypatch, graph):
-    """Count the moral-graph copies the greedy elimination makes.
+def test_structural_queries_are_computed_once_per_graph():
+    """The greedy elimination must not re-run for every caller that asks.
 
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Fixture used to wrap the moral graph's ``copy``.
-    graph : chisurf.core.fitting.factorgraph.FactorGraph
-        Graph whose moral graph is instrumented.
-
-    Returns
-    -------
-    list
-        Appended to once per copy; only the greedy path copies.
+    It runs in `IMP.bff.FactorGraph` now, so what is observable from here is
+    the engine: built on first use, shared by every query, and *dropped* by
+    :meth:`FactorGraph.invalidate` -- a mutated graph must not answer from a
+    structure that describes the old one. (This test used to count copies of
+    the Python moral graph, which no longer exists; the property it was
+    defending does.)
     """
-    calls = []
-    moral = graph.markov_graph()
-    original = moral.copy
-
-    def counting_copy():
-        calls.append(1)
-        return original()
-
-    monkeypatch.setattr(moral, 'copy', counting_copy)
-    return calls
-
-
-def test_structural_queries_are_computed_once_per_graph(monkeypatch):
-    """The greedy elimination must not re-run for every caller that asks."""
     fit = _global_fit(3)
     _link_across(fit, 'a')
     g = build_factor_graph(fit)
-    calls = _count_copies(monkeypatch, g)
 
     order = g.elimination_order()
     cliques = g.cliques()
-    assert calls  # the first pair of calls does the work
+    engine = g.engine
 
-    n_after_first = len(calls)
     assert g.elimination_order() == order
     assert g.cliques() == cliques
     assert g.treewidth == max(len(c) for c in cliques) - 1
@@ -333,13 +312,12 @@ def test_structural_queries_are_computed_once_per_graph(monkeypatch):
     g.separators()
     repr(g)
     g.describe()
-    assert len(calls) == n_after_first
+    assert g.engine is engine, "a query rebuilt the engine"
 
-    # ... but invalidating must drop them, so a mutated graph is recomputed.
+    # ... but invalidating must drop it, so a mutated graph is recomputed.
     g.invalidate()
-    recomputed = _count_copies(monkeypatch, g)
+    assert g.engine is not engine
     assert g.elimination_order() == order
-    assert recomputed
 
 
 def test_cached_structures_are_handed_out_as_copies():
@@ -357,17 +335,40 @@ def test_cached_structures_are_handed_out_as_copies():
     assert g.cliques()
 
 
-def test_a_complete_graph_skips_the_greedy_elimination(monkeypatch):
-    """A single dataset couples everything, so there is nothing to decide."""
-    g = build_factor_graph(_single_fit())
-    calls = _count_copies(monkeypatch, g)
+def test_a_complete_graph_skips_the_greedy_elimination():
+    """A single dataset couples everything, so there is nothing to decide.
 
+    The shortcut is the engine's now; what is checked here is that it gives
+    the same answer the greedy loop would -- one clique over everything, and
+    the elimination order the tie-break already decides.
+    """
+    g = build_factor_graph(_single_fit())
     assert g.treewidth == len(g) - 1
     assert g.cliques() == [tuple(sorted(g.variables))]
     assert g.elimination_order() == sorted(
         g.variables, key=lambda key: g.index_of(key)
     )
-    assert calls == []
+
+
+def test_a_star_is_not_mistaken_for_a_complete_graph():
+    """The shape of every global fit, and it used to come out complete.
+
+    Three datasets around one shared parameter: four variables, three edges.
+    The completeness shortcut compared *twice* the edge count against
+    ``n(n-1)/2``, and ``2*3 == 4*3/2`` exactly -- so a star of this size was
+    taken for a clique, reported a treewidth of 3 instead of 1, and offered a
+    sampler one 4-dimensional block where there are three 2-dimensional ones.
+    It is the shape a global fit *has*, and nothing said anything was wrong.
+    """
+    fit = _global_fit(3)
+    _link_across(fit, 'a')
+    g = build_factor_graph(fit)
+
+    assert len(g) == 4
+    assert g.treewidth == 1
+    assert len(g.cliques()) == 3
+    assert all(len(c) == 2 for c in g.cliques())
+    assert len(g.separators()) == 1
 
 
 def test_the_complete_graph_shortcut_agrees_with_the_greedy_order():

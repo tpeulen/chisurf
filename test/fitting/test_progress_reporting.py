@@ -20,7 +20,7 @@ import chisurf.core.data
 import chisurf.core.fitting.fit
 import chisurf.core.models.parse
 from chisurf.core.fitting.fit import _StagedProgress
-from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.core.math.optimization import OptimizationCancelled
 
 
 def _fit(seed: int = 0):
@@ -83,16 +83,16 @@ def test_a_two_argument_callback_is_honoured():
     into a blanket ``except Exception: pass`` -- so a correct callback silently
     never fired.
     """
-    from chisurf.core.math.optimization.leastsqbound import leastsqbound
+    from chisurf.core.fitting.minimizer import minimize
 
     x = np.linspace(0.0, 5.0, 48)
     residual = lambda p: (3.0 + 1.2 * x ** 2) - (p[0] + p[1] * x ** 2)  # noqa: E731
 
     two_arg, four_arg = [], []
-    leastsqbound(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
-                 progress_callback=lambda d, t: two_arg.append(d))
-    leastsqbound(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
-                 progress_callback=lambda d, t, **kw: four_arg.append(d))
+    minimize(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
+             progress_callback=lambda d, t: two_arg.append(d))
+    minimize(residual, [1.0, 1.0], bounds=[(0.0, 10.0)] * 2,
+             progress_callback=lambda d, t, **kw: four_arg.append(d))
     assert two_arg, "a callback with the documented signature was never called"
     assert len(two_arg) == len(four_arg)
 

@@ -78,19 +78,20 @@ def test_reading_value_is_side_effect_free():
 
 
 # ---------------------------------------------------------------------------
-# Port.value setter fast path
+# Port.value setter semantics
 # ---------------------------------------------------------------------------
 #
-# Writing a finite float into a scalar float port takes a fast path that skips
-# atleast_1d, three np.where sanitisation passes, astype and clip (9.57 us ->
-# 0.81 us). These pin the semantics it must preserve.
+# The port runtime is IMP.bff's Port (C++), which inherited chinet's write
+# path: finite floats write directly, non-finite values are sanitised (NaN
+# becomes the smallest normal, +/-inf the largest finite magnitudes), and
+# writes respect the fixed flag and the bounds. These pin the contract.
 
 
-import chinet
+from chisurf.core import nodes
 
 
 def _port(**kw):
-    return chinet.Port(value=1.0, name="t", **kw)
+    return nodes._bff.Port(value=1.0, name="t", **kw)
 
 
 @pytest.mark.parametrize("v", [3.5, -2.25, 0.0, 1e-300, 1e300])

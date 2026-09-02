@@ -277,6 +277,15 @@ def frozen_structure(*targets):
             # into the backing port, purely to decide how to read it -- and none
             # of those answers can change during the run either. Stamp them so a
             # read is one dict lookup and one port access.
+            #
+            # `fixed` is stamped for the *write* path, which is the same
+            # argument applied to the other direction and was missing for a
+            # long time. An optimiser writes every free parameter on every
+            # iteration, and each write re-read `_port.fixed`, cleared it,
+            # wrote the value and restored it -- four calls across the binding
+            # where one will do, because a parameter's fixedness is exactly as
+            # constant during a run as its linkage is. Reads had been brought
+            # down to 0.224 us this way while writes still cost 3.191 us.
             for q in _freezable_parameters(model):
                 try:
                     lb, ub = q.bounds if q.bounds_on else (float("nan"), float("nan"))
@@ -286,6 +295,7 @@ def frozen_structure(*targets):
                         bool(q.bounds_on),
                         float(lb) if lb is not None else float("nan"),
                         float(ub) if ub is not None else float("nan"),
+                        bool(q.fixed),
                     )
                     frozen_parameters.append(q)
                 except Exception:
@@ -533,13 +543,39 @@ class FactorGraph:
         self._incidence = {k: tuple(v) for k, v in incidence.items()}
 
         self._markov_graph: typing.Optional[cg.Graph] = None
-        #: elimination heuristic -> greedy order
-        self._elimination_order: typing.Dict[str, typing.List[str]] = {}
-        #: elimination order (``None`` for the default) -> maximal cliques
+        #: The graph queries themselves, in C++ -- see :attr:`engine`.
+        self._engine = None
+        #: elimination order -> maximal cliques, for a *caller-supplied* order
+        #: only; the default order is the engine's and is cached there.
         self._cliques: typing.Dict[
             typing.Optional[typing.Tuple[str, ...]],
             typing.List[typing.Tuple[str, ...]]
         ] = {}
+
+    # -- the engine -------------------------------------------------------
+
+    @property
+    def engine(self):
+        """The same graph, as an :class:`IMP.bff.FactorGraph`.
+
+        **Every structural query below is answered here rather than in
+        Python.** Moralisation, greedy elimination, the cliques, the junction
+        tree, the separators, the sampling blocks and the relevance queries
+        are one implementation, in C++, ported from the Python this module
+        used to carry (`IMP/bff/FactorGraph.h`). What stays on this side is
+        what is genuinely ChiSurf's: *what a variable is* -- which parameter,
+        at which position of which model's vector -- and *what a factor is*.
+        Discovery is the application's knowledge; triangulating a graph is
+        not, and two implementations of it would be two answers to
+        "are these datasets independent?".
+
+        Built on first use and dropped by :meth:`invalidate`. The engine
+        caches its own derived structure, so this property is the whole of
+        the caching this class needs.
+        """
+        if self._engine is None:
+            self._engine = _build_engine(self.variables, self.factors)
+        return self._engine
 
     # -- basic accessors --------------------------------------------------
 
@@ -614,19 +650,8 @@ class FactorGraph:
         all of them together.
         """
         self._markov_graph = None
-        self._elimination_order.clear()
+        self._engine = None
         self._cliques.clear()
-
-    def _is_complete(self) -> bool:
-        """Return whether every pair of variables is coupled by some factor.
-
-        A single dataset whose likelihood reads all its parameters gives exactly
-        this shape, and it is the one the greedy elimination is slowest on while
-        having nothing to decide: no elimination ever adds an edge.
-        """
-        g = self.markov_graph()
-        n = g.number_of_nodes()
-        return g.number_of_edges() == n * (n - 1) // 2
 
     def connected_components(self) -> typing.List[typing.Set[str]]:
         """Return the independent sub-problems of the fit.
@@ -640,9 +665,7 @@ class FactorGraph:
         list of set of str
             One set of variable keys per component.
         """
-        comps = [set(c) for c in cg.connected_components(self.markov_graph())]
-        comps.sort(key=len, reverse=True)
-        return comps
+        return [set(c) for c in self.engine.connected_components()]
 
     def elimination_order(
             self,
@@ -662,8 +685,7 @@ class FactorGraph:
         Returns
         -------
         list of str
-            Variable keys in elimination order. Cached per heuristic; call
-            :meth:`invalidate` after mutating the graph.
+            Variable keys in elimination order.
 
         Raises
         ------
@@ -675,43 +697,7 @@ class FactorGraph:
                 f"unknown elimination heuristic {heuristic!r}; "
                 "expected 'min_fill' or 'min_degree'"
             )
-        cached = self._elimination_order.get(heuristic)
-        if cached is not None:
-            return list(cached)
-        if self._is_complete():
-            # Every node has the same cost at every step, so the greedy loop
-            # would spend O(n^3) deciding what the tie-break already decides.
-            order = sorted(
-                self.markov_graph().nodes(),
-                key=lambda node: self._index_of.get(node, 0)
-            )
-            self._elimination_order[heuristic] = order
-            return list(order)
-        g = self.markov_graph().copy()
-        order: typing.List[str] = []
-        while g.number_of_nodes():
-            best, best_cost = None, None
-            for node in g.nodes():
-                neighbours = list(g.neighbors(node))
-                if heuristic == "min_degree":
-                    cost = len(neighbours)
-                else:
-                    cost = sum(
-                        1 for a, b in itertools.combinations(neighbours, 2)
-                        if not g.has_edge(a, b)
-                    )
-                tie = self._index_of.get(node, 0)
-                if best_cost is None or (cost, tie) < best_cost:
-                    best, best_cost = node, (cost, tie)
-            neighbours = list(g.neighbors(best))
-            # Eliminating a variable marries its neighbours: whatever it linked
-            # remains coupled once it is summed/maximised out.
-            for a, b in itertools.combinations(neighbours, 2):
-                g.add_edge(a, b)
-            g.remove_node(best)
-            order.append(best)
-        self._elimination_order[heuristic] = order
-        return list(order)
+        return list(self.engine.get_elimination_order(heuristic))
 
     def cliques(
             self,
@@ -727,26 +713,32 @@ class FactorGraph:
         Parameters
         ----------
         order : sequence of str, optional
-            Elimination order; defaults to :meth:`elimination_order`.
+            Elimination order; defaults to :meth:`elimination_order`, and that
+            default is the case :attr:`engine` answers. A *caller-supplied*
+            order is triangulated here, because it is not a query the engine
+            exposes -- nothing in the tree passes one, and an entry point in
+            C++ for a caller that does not exist would be worse than these
+            fifteen lines.
 
         Returns
         -------
         list of tuple of str
             Maximal cliques, each a sorted tuple of variable keys, largest
-            first. Cached per order; call :meth:`invalidate` after mutating the
-            graph.
+            first.
         """
-        cache_key = None if order is None else tuple(order)
+        if order is None:
+            # Sorted by *key*, which is this class's documented contract and
+            # what a caller using a clique as a dict key or a graph node
+            # relies on. The engine orders a clique's members by their
+            # flat-vector position instead -- also canonical, and the more
+            # useful of the two for a C++ caller lining a clique up against a
+            # parameter array. A clique is a set; both orders are answers to
+            # a question neither library needs to agree on.
+            return [tuple(sorted(c)) for c in self.engine.get_cliques()]
+        cache_key = tuple(order)
         cached = self._cliques.get(cache_key)
         if cached is not None:
             return list(cached)
-        if order is None:
-            order = self.elimination_order()
-        if self.variables and self._is_complete() and len(set(order)) == len(self.variables):
-            # A complete graph has a single maximal clique whatever the order.
-            maximal_cliques = [tuple(sorted(self.markov_graph().nodes()))]
-            self._cliques[cache_key] = maximal_cliques
-            return list(maximal_cliques)
         g = self.markov_graph().copy()
         raw: typing.List[typing.Set[str]] = []
         for node in order:
@@ -789,6 +781,24 @@ class FactorGraph:
             One node per maximal clique. Disconnected fits give a forest.
         """
         cliques = self.cliques(order)
+        tree = cg.Graph()
+        tree.add_nodes_from(cliques)
+        if order is None:
+            # The engine's tree: the maximum-weight spanning tree of the
+            # clique graph weighted by separator size, which is the
+            # construction that guarantees the running-intersection property.
+            # Its edges index into `get_cliques()`, so they are read against
+            # the engine's clique list rather than the key-sorted one above.
+            engine_cliques = [tuple(sorted(c))
+                              for c in self.engine.get_cliques()]
+            for edge in self.engine.get_junction_tree_edges():
+                a = engine_cliques[edge.first]
+                b = engine_cliques[edge.second]
+                tree.add_edge(a, b, weight=len(edge.separator))
+                tree[a][b]["separator"] = tuple(sorted(edge.separator))
+            return tree
+        # A caller-supplied elimination order is triangulated on this side
+        # (see :meth:`cliques`), so its tree is built here too.
         complete = cg.Graph()
         complete.add_nodes_from(cliques)
         for a, b in itertools.combinations(cliques, 2):
@@ -803,18 +813,15 @@ class FactorGraph:
 
     @property
     def treewidth(self) -> int:
-        """Return ``max clique size − 1`` — the fit's structural difficulty.
+        """Return ``max clique size - 1`` -- the fit's structural difficulty.
 
         The cost of exact marginalisation is exponential in this number, and it
         is also the dimension a blocked sampler would have to move jointly. A
         star-shaped global fit (many datasets, a few shared globals) has a small
         treewidth however many datasets it holds; a single dataset whose
-        likelihood couples all its parameters has ``n_free − 1``.
+        likelihood couples all its parameters has ``n_free - 1``.
         """
-        cliques = self.cliques()
-        if not cliques:
-            return 0
-        return max(len(c) for c in cliques) - 1
+        return int(self.engine.get_treewidth())
 
     def blocks(self) -> typing.List[typing.Tuple[str, ...]]:
         """Return clique-derived blocks for joint sampling or scanning.
@@ -856,32 +863,13 @@ class FactorGraph:
             first so that a sweep front-loads the inexpensive moves. Variables
             no likelihood touches are grouped last.
         """
-        groups: typing.Dict[typing.FrozenSet[int], typing.List[str]] = {}
-        for key in self.variables:
-            neighbourhood = frozenset(
-                self.factors[f].fit_index
-                for f in self.factors_of(key)
-                if self.factors[f].kind == LIKELIHOOD
-                and self.factors[f].fit_index is not None
-            )
-            groups.setdefault(neighbourhood, []).append(key)
-        ordered = sorted(
-            groups.items(),
-            # Cheap blocks first; ties broken on vector position so the
-            # partition is deterministic. An empty neighbourhood costs nothing
-            # to evaluate but explains nothing either, so it sorts last.
-            key=lambda kv: (
-                len(kv[0]) if kv[0] else len(self.likelihood_factors()) + 1,
-                min(self._index_of.get(k, 0) for k in kv[1]),
-            ),
-        )
-        return [
-            tuple(sorted(keys, key=lambda k: self._index_of.get(k, 0)))
-            for _, keys in ordered
-        ]
+        # Block *members* keep the engine's order, which is flat-vector
+        # position -- unlike a clique, a sampling block is consumed as a slice
+        # of the parameter vector, so that is the order its callers want.
+        return [tuple(b) for b in self.engine.get_sampling_blocks()]
 
     def block_cost(self, block: typing.Iterable[str]) -> int:
-        """Return how many local fits a move of ``block`` must recompute.
+        """Return how many local fits a move of *block* must recompute.
 
         Parameters
         ----------
@@ -893,7 +881,7 @@ class FactorGraph:
         int
             Number of likelihood factors that would have to be re-evaluated.
         """
-        return len(self.affected_fits(block))
+        return int(self.engine.block_cost([str(k) for k in block]))
 
     def separators(self) -> typing.List[typing.Tuple[str, ...]]:
         """Return the distinct separators of the junction tree.
@@ -901,13 +889,7 @@ class FactorGraph:
         The separator of a global fit is the set of parameters its datasets
         genuinely share: condition on it and the datasets become independent.
         """
-        tree = self.junction_tree()
-        seen = {
-            tuple(data["separator"])
-            for _, _, data in tree.edges(data=True)
-            if data.get("separator")
-        }
-        return sorted(seen, key=len, reverse=True)
+        return [tuple(sorted(sep)) for sep in self.engine.get_separators()]
 
     # -- relevance --------------------------------------------------------
 
@@ -927,10 +909,7 @@ class FactorGraph:
         set of str
             Keys of the factors whose scope intersects ``changed``.
         """
-        out: typing.Set[str] = set()
-        for key in changed:
-            out.update(self.factors_of(key))
-        return out
+        return set(self.engine.affected_factors([str(k) for k in changed]))
 
     def affected_fits(
             self,
@@ -952,12 +931,8 @@ class FactorGraph:
             Sorted indices of the local fits whose likelihood factor depends on
             at least one changed variable.
         """
-        out: typing.Set[int] = set()
-        for factor_key in self.affected_factors(changed):
-            factor = self.factors[factor_key]
-            if factor.kind == LIKELIHOOD and factor.fit_index is not None:
-                out.add(int(factor.fit_index))
-        return sorted(out)
+        return [int(i) for i in self.engine.affected_fits(
+            [str(k) for k in changed])]
 
     def unexplained_variables(self) -> typing.Set[str]:
         """Return the variables no likelihood factor depends on.
@@ -974,11 +949,7 @@ class FactorGraph:
         set of str
             Keys of the variables absent from every likelihood scope.
         """
-        covered: typing.Set[str] = set()
-        for f in self.factors.values():
-            if f.kind == LIKELIHOOD:
-                covered.update(f.scope)
-        return set(self.variables) - covered
+        return set(self.engine.get_unexplained_variables())
 
     def affected_fits_from_indices(
             self,
@@ -1029,6 +1000,39 @@ class FactorGraph:
         else:
             lines.append("separators     : (none — no shared parameters)")
         return "\n".join(lines)
+
+
+def _build_engine(variables, factors):
+    """Mirror the variables and factors onto an :class:`IMP.bff.FactorGraph`.
+
+    One direction only, and once: the engine is rebuilt rather than mutated,
+    because :meth:`FactorGraph.invalidate` drops it and a graph whose
+    structure changed is a different graph. Keys, names, vector positions and
+    factor scopes cross verbatim -- ``None`` becoming ``-1`` for a fit index
+    is the only translation, and it is the same convention the C++ documents.
+
+    A factor's scope is filtered to variables the graph actually holds. The
+    engine refuses a scope naming an unknown variable, and rightly; the
+    Python builders have always tolerated one (a prior on a parameter that is
+    not free, say), so the filtering that used to happen implicitly in
+    :meth:`markov_graph` happens explicitly here.
+    """
+    import IMP.bff as _bff
+
+    engine = _bff.FactorGraph()
+    for v in variables.values():
+        engine.add_variable(
+            v.key, v.name, int(v.index),
+            -1 if v.fit_index is None else int(v.fit_index))
+    for f in factors.values():
+        scope = [k for k in f.scope if k in variables]
+        engine.add_factor(
+            f.key,
+            _bff.LIKELIHOOD if f.kind == LIKELIHOOD else _bff.PRIOR,
+            scope,
+            -1 if f.fit_index is None else int(f.fit_index),
+            int(f.size))
+    return engine
 
 
 def _free_variables(model) -> typing.List[VariableNode]:

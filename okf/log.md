@@ -37832,3 +37832,43 @@ side of the line.
   statement of the same goal, pre-graph) is superseded by PRD-105;
   `architecture/compute-display-line.md` gap 1 marked closed with a
   pick-this-up pointer at PRD-105. Board ticket `T-20260902-08`.
+
+- 2026-09-02 (PRD-105 first wave — ExprTk out, the sampler crosses four
+  times, pile-up joins the graph) — **Three owner directives implemented in
+  one session.** (1) *"tttrlib should not have exprtk, that must go"* —
+  removed entirely (tttrlib `d84fdb5c7`): Bool/String columns widen into the
+  in-tree `ExpressionEngine`, `root`/`logn`/`frac` joined it, everything
+  unimplemented refuses with a `ValueError`, and `thirdparty/exprtk/`
+  (46,766 lines, untracked, referenced by no build file) is deleted.
+  (2) *"the sampler must be migrated to bff, so that the boundary only
+  crosses on state updates (progress bar), the sampling begin, intermediate
+  saving, and the end"* — `chisurf/core/fitting/sampler_bff.py` routes
+  `walk_mcmc`/`walk_mcmc_blocked`/`sample_differential_evolution`/
+  `sample_ensemble` through `IMP.bff.Sampler` for graph-eligible fits via
+  `graph_objective(allow_priors=True)`; segmented `run()` delivers all four
+  crossings without a per-step observer, priors ride the port specs, and
+  `sample_fit` now saves partials and reports progress for **every**
+  backend, not just the ensemble ones. Two latent C++ defects found doing
+  it, both squarely in the every-move-finds-a-bug pattern: the blocked
+  proposal drew a fresh normal per matrix *entry* (L·z degenerated to a
+  correlation-free proposal — invisible while every seed was diagonal;
+  measured as a chain 3.5–5x too narrow at 4000 steps), and the curvature
+  proposal seed had never been ported (added as
+  `Sampler::set_proposal_covariance` with chisurf's from_curvature warm-up
+  protection). Parity is statistical, pinned in
+  `test/fitting/test_bff_sampler.py`; the Python sampler bodies stay as the
+  refusal path for graph-less fits. (3) *"tcspc pileup can be in tttrlib"* —
+  `add_pile_up_to_model_ad<T>` is a header-only tttrlib kernel carrying
+  chisurf's three edge-case fixes (tttrlib `635b97242`); `TcspcDecay`
+  applies it between scatter and scaling; `_lifetime_objective` dropped one
+  of its seven refusals; `tcspc/corrections.py` now forwards to the kernel
+  (the numpy body deleted — one implementation); the graph curve is pinned
+  against `update_model` at 1e-10 with the correction visibly reshaping the
+  decay. Suites: 997 fitting tests green (baseline two deselected), 36+56
+  tttrlib decayfit, 84 datastore, 5,000 expression fuzz cases exact.
+  Board: T-20260831-13 resolved, T-20260902-09/-10 resolved,
+  T-20260902-11 (FCS MDF/saturation/PSF → tttrlib, owner-decided) open and
+  unowned. ⚠ imp.bff's working tree carries the whole engine stream
+  uncommitted (Sampler/TcspcDecay untracked there); today's C++ edits live
+  in it and a consolidation commit is owed. Tracker: PRD-105 (now
+  in-progress).
