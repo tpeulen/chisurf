@@ -26,12 +26,12 @@ fit23:
     - {column: "X pixel",                        source: base, term: _flr_analysis_feature.pixel_col}
     - {column: "Pixel Number",                   source: base, term: _flr_analysis_feature.pixel_number}
     - {column: "Number of Photons (fit window)", source: base, term: _flr_analysis_feature.n_photons}
-    - {column: "tau",              source: "parameter:0", term: _flr_chisurf_parameter.tau}
-    - {column: "gamma",            source: "parameter:1", term: _flr_chisurf_parameter.gamma}
-    - {column: "r0",               source: "parameter:2", term: _flr_chisurf_parameter.r0}
-    - {column: "rho",              source: "parameter:3", term: _flr_chisurf_parameter.rho}
-    - {column: "BIFL scatter fit?", source: "flag:soft_bifl_scatter", term: _flr_chisurf_parameter.soft_bifl_scatter}
-    - {column: "2I*: P+2S?",       source: "flag:p2s_twoIstar", term: _flr_chisurf_parameter.p2s_twoIstar}
-    - {column: "rS",               source: blank, term: _flr_chisurf_parameter.r_scatter}
-    - {column: "rE",               source: blank, term: _flr_chisurf_parameter.r_experimental}
-    - {column: "2I*",              source: "parameter:4", term: _flr_chisurf_parameter.twoIstar}
+    - {column: "tau",              source: "parameter:0", term: _flr_fit_parameter.tau}
+    - {column: "gamma",            source: "parameter:1", term: _flr_fit_parameter.gamma}
+    - {column: "r0",               source: "parameter:2", term: _flr_fit_parameter.r0}
+    - {column: "rho",              source: "parameter:3", term: _flr_fit_parameter.rho}
+    - {column: "BIFL scatter fit?", source: "flag:soft_bifl_scatter", term: _flr_fit_parameter.soft_bifl_scatter}
+    - {column: "2I*: P+2S?",       source: "flag:p2s_twoIstar", term: _flr_fit_parameter.p2s_twoIstar}
+    - {column: "rS",               source: blank, term: _flr_fit_parameter.r_scatter}
+    - {column: "rE",               source: blank, term: _flr_fit_parameter.r_experimental}
+    - {column: "2I*",              source: "parameter:4", term: _flr_fit_parameter.twoIstar}

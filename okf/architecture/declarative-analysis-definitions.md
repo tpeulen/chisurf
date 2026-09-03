@@ -70,10 +70,13 @@ where one fits, else an item **created in `mmfdb_flr_ext.dic`** (in the
 mmfdb repo — `modules/mmfdb` symlinks it; commit there). Two categories
 carry the analysis vocabulary today:
 
-- `flr_chisurf_parameter` — fitted model parameters (one item per
-  registry parameter; gained tau/gamma/rho/twoIstar/r_scatter/
-  r_experimental/soft_bifl_scatter/p2s_twoIstar for the fit23 exports,
-  mmfdb `32c70a8`);
+- `flr_fit_parameter` — fitted model parameters, one item per registry
+  key (renamed from `flr_chisurf_parameter` 2026-09-03: **dictionary
+  keywords are software-agnostic, by rule** — a category named after one
+  program brands the shared schema; the old spelling reads via the
+  `EXTENSION_CATEGORY_ALIASES` de-branding table, and
+  mmfdb `tests/test_dictionary_keywords_are_software_agnostic.py` scans
+  every bundled dictionary so no branded keyword returns);
 - `flr_analysis_feature` — computed per-event observables (burst summary
   quantities, pixel bookkeeping, region morphology/brightness; new
   category, same commit), each description carrying units and

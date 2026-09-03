@@ -38543,3 +38543,20 @@ side of the line.
   + CLAUDE.md updated; note the derived `_dictionary_cache.json` in the
   mmfdb tree auto-regenerates and currently mixes another stream's
   uncommitted categories, so it rides with their commit, not ours.
+
+- **2026-09-03 — dictionary keywords de-branded: `flr_chisurf_parameter`
+  → `flr_fit_parameter` (owner rule: "mmfdb and flrcif keywords must be
+  software agnostic").** The fitted-parameter category named a program —
+  the disease PRD-44 cured for `_chisurf_schema.*`/`_chisurf_*`
+  categories, missed here. mmfdb `c238a50`: category + ~240 items
+  renamed, old spelling reads via the de-branding alias table, and a new
+  guard (`tests/test_dictionary_keywords_are_software_agnostic.py`)
+  scans every bundled dictionary's keywords for program names so none
+  can return (enumeration values and prose stay free — provenance
+  legitimately names tools). chisurf side: `parameter_registry.json`
+  (230 term ids), the fit23 declaration terms, the alignment generator
+  (`align_flrcif_parameters.py` — the one thing that appends to the
+  dictionary, so its spelling IS the future file), and the flrcif
+  alignment tests (float-only type assertion widened to numeric — the
+  two 0/1 flag items are deliberately int). `prd-02c.md` keeps its
+  historical snippets with a note rather than a rewrite.

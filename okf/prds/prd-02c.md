@@ -76,6 +76,10 @@ the JSON registry is internal-only and maps internal short names to canonical
 `parameter_registry.json`, check each short name against standard flrCIF, and
 auto-generate + append `.dic` entries for the missing ones. Example:
 
+> **Historical note (2026-09-03):** `flr_chisurf_parameter` was renamed
+> `flr_fit_parameter` — dictionary keywords are software-agnostic by
+> rule. The snippets below show the original spelling.
+
 ```text
 save__flr_chisurf_parameter.E_FRET
    _item.name                "_flr_chisurf_parameter.E_FRET"

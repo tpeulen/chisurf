@@ -569,7 +569,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter AtB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.AtB",
+      "flrcif_item_id": "_flr_fit_parameter.AtB",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -595,7 +595,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.BG",
+      "flrcif_item_id": "_flr_fit_parameter.BG",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -618,7 +618,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.BR",
+      "flrcif_item_id": "_flr_fit_parameter.BR",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -641,7 +641,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter BtA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.BtA",
+      "flrcif_item_id": "_flr_fit_parameter.BtA",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -667,7 +667,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.D",
+      "flrcif_item_id": "_flr_fit_parameter.D",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -732,7 +732,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Apparent FRET efficiency parameter E_FRET (0e00..1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.E_FRET",
+      "flrcif_item_id": "_flr_fit_parameter.E_FRET",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -762,7 +762,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.N",
+      "flrcif_item_id": "_flr_fit_parameter.N",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -811,7 +811,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.N1",
+      "flrcif_item_id": "_flr_fit_parameter.N1",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -834,7 +834,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.N2",
+      "flrcif_item_id": "_flr_fit_parameter.N2",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -857,7 +857,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.N3",
+      "flrcif_item_id": "_flr_fit_parameter.N3",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -880,7 +880,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.QYA",
+      "flrcif_item_id": "_flr_fit_parameter.QYA",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -903,7 +903,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.QYD",
+      "flrcif_item_id": "_flr_fit_parameter.QYD",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -926,7 +926,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Frster radius R0 of the donor-acceptor pair.",
-      "flrcif_item_id": "_flr_chisurf_parameter.R0",
+      "flrcif_item_id": "_flr_fit_parameter.R0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -957,7 +957,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.Veff",
+      "flrcif_item_id": "_flr_fit_parameter.Veff",
       "keywords": [],
       "label_texts": [
         "V<sub>eff</sub>[fL]"
@@ -982,7 +982,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.aT",
+      "flrcif_item_id": "_flr_fit_parameter.aT",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -991,7 +991,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.alpha",
+      "flrcif_item_id": "_flr_fit_parameter.alpha",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1014,7 +1014,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.b",
+      "flrcif_item_id": "_flr_fit_parameter.b",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1089,7 +1089,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.ba",
+      "flrcif_item_id": "_flr_fit_parameter.ba",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1112,7 +1112,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "Constant background level added to the time-resolved decay curve (counts per time channel).",
-      "flrcif_item_id": "_flr_chisurf_parameter.bg",
+      "flrcif_item_id": "_flr_fit_parameter.bg",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -1167,7 +1167,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.bg0",
+      "flrcif_item_id": "_flr_fit_parameter.bg0",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1190,7 +1190,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.bg1",
+      "flrcif_item_id": "_flr_fit_parameter.bg1",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1213,7 +1213,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.brightness",
+      "flrcif_item_id": "_flr_fit_parameter.brightness",
       "keywords": [],
       "label_texts": [
         "&epsilon;[kHz]"
@@ -1251,7 +1251,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.bt",
+      "flrcif_item_id": "_flr_fit_parameter.bt",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1274,7 +1274,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.conc",
+      "flrcif_item_id": "_flr_fit_parameter.conc",
       "keywords": [],
       "label_texts": [
         "c[nM]"
@@ -1299,7 +1299,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter cont used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.cont",
+      "flrcif_item_id": "_flr_fit_parameter.cont",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -1325,7 +1325,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.cpm",
+      "flrcif_item_id": "_flr_fit_parameter.cpm",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1361,7 +1361,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.cpm_all",
+      "flrcif_item_id": "_flr_fit_parameter.cpm_all",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1397,7 +1397,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.diam",
+      "flrcif_item_id": "_flr_fit_parameter.diam",
       "keywords": [],
       "label_texts": [
         "d<sub>foci</sub>[nm]"
@@ -1435,7 +1435,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Time bin width of the TCSPC histogram (time per channel).",
-      "flrcif_item_id": "_flr_chisurf_parameter.dt",
+      "flrcif_item_id": "_flr_fit_parameter.dt",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -1463,7 +1463,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.dtMT[ns]",
+      "flrcif_item_id": "_flr_fit_parameter.dtMT[ns]",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1486,7 +1486,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.dtTAC[ns]",
+      "flrcif_item_id": "_flr_fit_parameter.dtTAC[ns]",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1509,7 +1509,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.eps1",
+      "flrcif_item_id": "_flr_fit_parameter.eps1",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1532,7 +1532,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.eps2",
+      "flrcif_item_id": "_flr_fit_parameter.eps2",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1555,7 +1555,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.eps3",
+      "flrcif_item_id": "_flr_fit_parameter.eps3",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -1580,7 +1580,7 @@
       ],
       "ambiguous": false,
       "description": "Dimensionless factor C used in the rotational correlation / anisotropy term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_C",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_C",
       "keywords": [
         "FCS",
         "anisotropy",
@@ -1604,7 +1604,7 @@
       ],
       "ambiguous": false,
       "description": "Average number of fluorescent particles in the observation volume. In standard FCS models the correlation amplitude scales roughly as 1/N.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_N",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_N",
       "keywords": [
         "FCS",
         "number of molecules",
@@ -1658,7 +1658,7 @@
       ],
       "ambiguous": false,
       "description": "Average number of fluorescent particles in the observation volume. In standard FCS models the correlation amplitude scales roughly as 1/N.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_N3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_N3",
       "keywords": [
         "FCS",
         "number of molecules",
@@ -1683,7 +1683,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1707,7 +1707,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a1",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1742,7 +1742,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a2",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1768,7 +1768,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a21",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a21",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1792,7 +1792,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a22",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a22",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1816,7 +1816,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude or population of this diffusion/kinetic component (dimensionless, typically between 0 and 1).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_a31",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_a31",
       "keywords": [
         "FCS",
         "amplitude",
@@ -1840,7 +1840,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aR",
       "keywords": [
         "FCS",
         "relaxation",
@@ -1868,7 +1868,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aR1",
       "keywords": [
         "FCS",
         "relaxation",
@@ -1893,7 +1893,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aR2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aR2",
       "keywords": [
         "FCS",
         "relaxation",
@@ -1918,7 +1918,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of a relaxation or anticorrelation term (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aRa",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aRa",
       "keywords": [
         "FCS",
         "relaxation",
@@ -1943,7 +1943,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of the photon antibunching term (very fast correlation component).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aab",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aab",
       "keywords": [
         "FCS",
         "antibunching",
@@ -1974,7 +1974,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ab1",
       "keywords": [
         "FCS",
         "antibunching",
@@ -1999,7 +1999,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ab2",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2024,7 +2024,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ab3",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2049,7 +2049,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ab4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ab4",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2074,7 +2074,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aba",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2101,7 +2101,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aba1",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2128,7 +2128,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aba2",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2155,7 +2155,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aba3",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2182,7 +2182,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aba4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aba4",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2209,7 +2209,7 @@
       ],
       "ambiguous": false,
       "description": "Total amplitude factor for a group of anticorrelation components.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abf",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abf",
       "keywords": [
         "FCS",
         "anticorrelation",
@@ -2235,7 +2235,7 @@
       ],
       "ambiguous": false,
       "description": "Time constant of an antibunching or anticorrelation component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2262,7 +2262,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt1",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2289,7 +2289,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt2",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2316,7 +2316,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt3",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2343,7 +2343,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt4",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2370,7 +2370,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_abt5",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_abt5",
       "keywords": [
         "FCS",
         "antibunching",
@@ -2397,7 +2397,7 @@
       ],
       "ambiguous": false,
       "description": "Overall amplitude factor for a set of anticorrelation components.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_af",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_af",
       "keywords": [
         "FCS",
         "anticorrelation",
@@ -2422,7 +2422,7 @@
       ],
       "ambiguous": false,
       "description": "Amplitude of the rotational correlation (anisotropy) contribution.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_aroc",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_aroc",
       "keywords": [
         "FCS",
         "anisotropy",
@@ -2447,7 +2447,7 @@
       ],
       "ambiguous": false,
       "description": "Additive baseline/offset of the correlation function.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_b",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_b",
       "keywords": [
         "FCS",
         "baseline",
@@ -2502,7 +2502,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba",
       "keywords": [
         "FCS",
         "bunching",
@@ -2530,7 +2530,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba1",
       "keywords": [
         "FCS",
         "bunching",
@@ -2571,7 +2571,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba11",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba11",
       "keywords": [
         "FCS",
         "bunching",
@@ -2598,7 +2598,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba12",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba12",
       "keywords": [
         "FCS",
         "bunching",
@@ -2625,7 +2625,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba2",
       "keywords": [
         "FCS",
         "bunching",
@@ -2663,7 +2663,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba21",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba21",
       "keywords": [
         "FCS",
         "bunching",
@@ -2690,7 +2690,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba22",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba22",
       "keywords": [
         "FCS",
         "bunching",
@@ -2717,7 +2717,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba3",
       "keywords": [
         "FCS",
         "bunching",
@@ -2751,7 +2751,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba31",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba31",
       "keywords": [
         "FCS",
         "bunching",
@@ -2777,7 +2777,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba32",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba32",
       "keywords": [
         "FCS",
         "bunching",
@@ -2803,7 +2803,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba4",
       "keywords": [
         "FCS",
         "bunching",
@@ -2835,7 +2835,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba5",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba5",
       "keywords": [
         "FCS",
         "bunching",
@@ -2864,7 +2864,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba6",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba6",
       "keywords": [
         "FCS",
         "bunching",
@@ -2890,7 +2890,7 @@
       ],
       "ambiguous": false,
       "description": "Fractional amplitude of a dark or bunching state (e.g. triplet or blinking); dimensionless and typically between 0 and 1.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_ba7",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_ba7",
       "keywords": [
         "FCS",
         "bunching",
@@ -2916,7 +2916,7 @@
       ],
       "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bs2",
       "keywords": [
         "FCS",
         "stretched exponential",
@@ -2941,7 +2941,7 @@
       ],
       "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs21",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bs21",
       "keywords": [
         "FCS",
         "stretched exponential",
@@ -2966,7 +2966,7 @@
       ],
       "ambiguous": false,
       "description": "Stretching exponent for a stretched-exponential relaxation term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bs22",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bs22",
       "keywords": [
         "FCS",
         "stretched exponential",
@@ -2991,7 +2991,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt",
       "keywords": [
         "FCS",
         "bunching",
@@ -3019,7 +3019,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt1",
       "keywords": [
         "FCS",
         "bunching",
@@ -3060,7 +3060,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt11",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt11",
       "keywords": [
         "FCS",
         "bunching",
@@ -3087,7 +3087,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt12",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt12",
       "keywords": [
         "FCS",
         "bunching",
@@ -3114,7 +3114,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt2",
       "keywords": [
         "FCS",
         "bunching",
@@ -3152,7 +3152,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt21",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt21",
       "keywords": [
         "FCS",
         "bunching",
@@ -3179,7 +3179,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt22",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt22",
       "keywords": [
         "FCS",
         "bunching",
@@ -3206,7 +3206,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt3",
       "keywords": [
         "FCS",
         "bunching",
@@ -3240,7 +3240,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt31",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt31",
       "keywords": [
         "FCS",
         "bunching",
@@ -3266,7 +3266,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt32",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt32",
       "keywords": [
         "FCS",
         "bunching",
@@ -3292,7 +3292,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt4",
       "keywords": [
         "FCS",
         "bunching",
@@ -3324,7 +3324,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt5",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt5",
       "keywords": [
         "FCS",
         "bunching",
@@ -3353,7 +3353,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt6",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt6",
       "keywords": [
         "FCS",
         "bunching",
@@ -3379,7 +3379,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation/relaxation time constant of a dark or bunching state.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_bt7",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_bt7",
       "keywords": [
         "FCS",
         "bunching",
@@ -3405,7 +3405,7 @@
       ],
       "ambiguous": false,
       "description": "Structure parameter s = z0 / w0 describing the axial-to-radial extent of the detection volume.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_s",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_s",
       "keywords": [
         "FCS",
         "structure parameter",
@@ -3447,7 +3447,7 @@
       ],
       "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tR",
       "keywords": [
         "FCS",
         "relaxation",
@@ -3475,7 +3475,7 @@
       ],
       "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tR1",
       "keywords": [
         "FCS",
         "relaxation",
@@ -3500,7 +3500,7 @@
       ],
       "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tR2",
       "keywords": [
         "FCS",
         "relaxation",
@@ -3525,7 +3525,7 @@
       ],
       "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tR3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tR3",
       "keywords": [
         "FCS",
         "relaxation",
@@ -3550,7 +3550,7 @@
       ],
       "ambiguous": false,
       "description": "Relaxation or anticorrelation time constant of a kinetic component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tRa",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tRa",
       "keywords": [
         "FCS",
         "relaxation",
@@ -3575,7 +3575,7 @@
       ],
       "ambiguous": false,
       "description": "Correlation time of the photon antibunching term (fast time scale).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tab",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tab",
       "keywords": [
         "FCS",
         "antibunching",
@@ -3605,7 +3605,7 @@
       ],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tb1",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -3625,7 +3625,7 @@
       ],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tb2",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -3645,7 +3645,7 @@
       ],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tb3",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -3665,7 +3665,7 @@
       ],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_tb4",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_tb4",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -3685,7 +3685,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3722,7 +3722,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td1",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3757,7 +3757,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td2",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td2",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3795,7 +3795,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td21",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td21",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3819,7 +3819,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td22",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td22",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3843,7 +3843,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td3",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td3",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3870,7 +3870,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td31",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td31",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3894,7 +3894,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic diffusion time of this component (time scale on which particles traverse the observation volume).",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_td32",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_td32",
       "keywords": [
         "FCS",
         "diffusion",
@@ -3918,7 +3918,7 @@
       ],
       "ambiguous": false,
       "description": "Rotational correlation time used in the anisotropy / rotational diffusion term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_trc1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_trc1",
       "keywords": [
         "FCS",
         "anisotropy",
@@ -3943,7 +3943,7 @@
       ],
       "ambiguous": false,
       "description": "Rotational correlation time used in the anisotropy / rotational diffusion term.",
-      "flrcif_item_id": "_flr_chisurf_parameter.fcs_trc2trc1",
+      "flrcif_item_id": "_flr_fit_parameter.fcs_trc2trc1",
       "keywords": [
         "FCS",
         "anisotropy",
@@ -3966,7 +3966,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter g used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.g",
+      "flrcif_item_id": "_flr_fit_parameter.g",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -3992,7 +3992,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.gG",
+      "flrcif_item_id": "_flr_fit_parameter.gG",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4015,7 +4015,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.gR",
+      "flrcif_item_id": "_flr_fit_parameter.gR",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4038,7 +4038,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Anomalous diffusion exponent alpha in MSD(tau) = 4*D*tau^alpha. 1 is normal diffusion; below 1 is subdiffusion (crowding, transient binding), above 1 is directed transport. Releasing it turns an image-correlation fit into the anomalous/iMSD case.",
-      "flrcif_item_id": "_flr_chisurf_parameter.ics_alpha",
+      "flrcif_item_id": "_flr_fit_parameter.ics_alpha",
       "keywords": [
         "ICS",
         "iMSD",
@@ -4053,7 +4053,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Shape parameter of the synthetic IRF model.",
-      "flrcif_item_id": "_flr_chisurf_parameter.ik",
+      "flrcif_item_id": "_flr_fit_parameter.ik",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4083,7 +4083,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Start index (or time) of the IRF region used for convolution.",
-      "flrcif_item_id": "_flr_chisurf_parameter.irf_start",
+      "flrcif_item_id": "_flr_fit_parameter.irf_start",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4114,7 +4114,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Stop index (or time) of the IRF region used for convolution.",
-      "flrcif_item_id": "_flr_chisurf_parameter.irf_stop",
+      "flrcif_item_id": "_flr_fit_parameter.irf_stop",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4145,7 +4145,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Width parameter of the synthetic IRF model.",
-      "flrcif_item_id": "_flr_chisurf_parameter.iw",
+      "flrcif_item_id": "_flr_fit_parameter.iw",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4175,7 +4175,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Orientation factor  governing dipole-dipole coupling in FRET.",
-      "flrcif_item_id": "_flr_chisurf_parameter.k2",
+      "flrcif_item_id": "_flr_fit_parameter.k2",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4206,7 +4206,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.kQ",
+      "flrcif_item_id": "_flr_fit_parameter.kQ",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4229,7 +4229,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter l used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.l",
+      "flrcif_item_id": "_flr_fit_parameter.l",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4255,7 +4255,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter l1 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.l1",
+      "flrcif_item_id": "_flr_fit_parameter.l1",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4281,7 +4281,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter l2 used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.l2",
+      "flrcif_item_id": "_flr_fit_parameter.l2",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4307,7 +4307,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.lam_em",
+      "flrcif_item_id": "_flr_fit_parameter.lam_em",
       "keywords": [],
       "label_texts": [
         "&lambda;<sub>em</sub>[nm]"
@@ -4332,7 +4332,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.lam_ex",
+      "flrcif_item_id": "_flr_fit_parameter.lam_ex",
       "keywords": [],
       "label_texts": [
         "&lambda;<sub>ex</sub>[nm]"
@@ -4357,7 +4357,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Lamp background level subtracted from the instrument response function.",
-      "flrcif_item_id": "_flr_chisurf_parameter.lb",
+      "flrcif_item_id": "_flr_fit_parameter.lb",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4386,7 +4386,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.line_dur",
+      "flrcif_item_id": "_flr_fit_parameter.line_dur",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -4395,7 +4395,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter lp used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.lp",
+      "flrcif_item_id": "_flr_fit_parameter.lp",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4421,7 +4421,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter mA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.mA",
+      "flrcif_item_id": "_flr_fit_parameter.mA",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4447,7 +4447,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter mB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.mB",
+      "flrcif_item_id": "_flr_fit_parameter.mB",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4473,7 +4473,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.mag",
+      "flrcif_item_id": "_flr_fit_parameter.mag",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4496,7 +4496,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.n",
+      "flrcif_item_id": "_flr_fit_parameter.n",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4519,7 +4519,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.n curves",
+      "flrcif_item_id": "_flr_fit_parameter.n curves",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4542,7 +4542,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.n photons",
+      "flrcif_item_id": "_flr_fit_parameter.n photons",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4565,7 +4565,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Initial number of excited donor molecules used to scale the model decay to the experimental counts.",
-      "flrcif_item_id": "_flr_chisurf_parameter.n0",
+      "flrcif_item_id": "_flr_fit_parameter.n0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4595,7 +4595,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Output: estimated number of background photons in the TCSPC trace based on background level and measurement timing settings.",
-      "flrcif_item_id": "_flr_chisurf_parameter.nPh_bg",
+      "flrcif_item_id": "_flr_fit_parameter.nPh_bg",
       "keywords": [
         "TCSPC",
         "background",
@@ -4626,7 +4626,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Output: estimated number of fluorescence photons (after background subtraction) in the TCSPC trace.",
-      "flrcif_item_id": "_flr_chisurf_parameter.nPh_fl",
+      "flrcif_item_id": "_flr_fit_parameter.nPh_fl",
       "keywords": [
         "TCSPC",
         "fluorescence",
@@ -4657,7 +4657,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.nPh_max",
+      "flrcif_item_id": "_flr_fit_parameter.nPh_max",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4680,7 +4680,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.nPh_min",
+      "flrcif_item_id": "_flr_fit_parameter.nPh_min",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4703,7 +4703,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.nTAC",
+      "flrcif_item_id": "_flr_fit_parameter.nTAC",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4726,7 +4726,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.n_rh",
+      "flrcif_item_id": "_flr_fit_parameter.n_rh",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4749,7 +4749,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.n_td",
+      "flrcif_item_id": "_flr_fit_parameter.n_td",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -4772,7 +4772,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.offset",
+      "flrcif_item_id": "_flr_fit_parameter.offset",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -4781,7 +4781,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.pinhole",
+      "flrcif_item_id": "_flr_fit_parameter.pinhole",
       "keywords": [],
       "label_texts": [
         "pinhole[\u00b5m]"
@@ -4806,7 +4806,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter pureA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.pureA",
+      "flrcif_item_id": "_flr_fit_parameter.pureA",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4832,7 +4832,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter pureB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.pureB",
+      "flrcif_item_id": "_flr_fit_parameter.pureB",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4858,7 +4858,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.pxl_dur",
+      "flrcif_item_id": "_flr_fit_parameter.pxl_dur",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -4867,7 +4867,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.pxl_size",
+      "flrcif_item_id": "_flr_fit_parameter.pxl_size",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -4876,7 +4876,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Frster radius R0 of the donor-acceptor pair.",
-      "flrcif_item_id": "_flr_chisurf_parameter.r0",
+      "flrcif_item_id": "_flr_fit_parameter.r0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -4905,7 +4905,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Intensity-domain steady-state anisotropy. For dual-channel data, ChiSurf background-corrects VV and VH (per-channel metadata when available), compensates objective mixing via l1/l2, and evaluates rS,I from channel sums using the ChiSurf convention r = (VV - VH) / (g*VV + 2*VH). For single-channel fallback, VM is reconstructed from the active anisotropy model before summation.",
-      "flrcif_item_id": "_flr_chisurf_parameter.r_ss_i",
+      "flrcif_item_id": "_flr_fit_parameter.r_ss_i",
       "keywords": [
         "TCSPC",
         "anisotropy",
@@ -4936,7 +4936,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Lifetime-domain steady-state anisotropy derived from the model lifetime spectrum and rotational spectrum. This value is model-predicted (spectrum/integral domain) and does not depend on direct VV/VH channel integration.",
-      "flrcif_item_id": "_flr_chisurf_parameter.r_ss_l",
+      "flrcif_item_id": "_flr_fit_parameter.r_ss_l",
       "keywords": [
         "TCSPC",
         "anisotropy",
@@ -4967,7 +4967,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter rc_ele used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rc_ele",
+      "flrcif_item_id": "_flr_fit_parameter.rc_ele",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -4993,7 +4993,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.reg",
+      "flrcif_item_id": "_flr_fit_parameter.reg",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -5029,7 +5029,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Laser repetition rate of the excitation source.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rep",
+      "flrcif_item_id": "_flr_fit_parameter.rep",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5058,7 +5058,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.rh_max",
+      "flrcif_item_id": "_flr_fit_parameter.rh_max",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -5081,7 +5081,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.rh_min",
+      "flrcif_item_id": "_flr_fit_parameter.rh_min",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -5104,7 +5104,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Diffusion coefficient D in \u00b5m\u00b2/s.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_D",
+      "flrcif_item_id": "_flr_fit_parameter.rics_D",
       "keywords": [
         "RICS",
         "diffusion",
@@ -5118,7 +5118,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Triplet/blinking fraction a_T (0\u20131).",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_aT",
+      "flrcif_item_id": "_flr_fit_parameter.rics_aT",
       "keywords": [
         "RICS",
         "triplet",
@@ -5133,7 +5133,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Frame time t_frame in ms. Converts a frame lag Delta into a lag time via tau = |xi*t_pixel + psi*t_line + Delta*t_frame|, so it scales every diffusion coefficient derived from frame lags (STICS/TICS/iMSD).",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_frame_dur",
+      "flrcif_item_id": "_flr_fit_parameter.rics_frame_dur",
       "keywords": [
         "RICS",
         "ICS",
@@ -5151,7 +5151,7 @@
       ],
       "ambiguous": false,
       "description": "Time between successive scanned lines in milliseconds.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_line_dur",
+      "flrcif_item_id": "_flr_fit_parameter.rics_line_dur",
       "keywords": [
         "RICS",
         "imaging",
@@ -5166,7 +5166,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Average number of fluorescent molecules in the observation volume N. RICS/ICS amplitude G(0) is proportional to 1/N.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_n",
+      "flrcif_item_id": "_flr_fit_parameter.rics_n",
       "keywords": [
         "RICS",
         "ICS",
@@ -5181,7 +5181,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Additive offset of the correlation function.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_offset",
+      "flrcif_item_id": "_flr_fit_parameter.rics_offset",
       "keywords": [
         "RICS",
         "baseline",
@@ -5197,7 +5197,7 @@
       ],
       "ambiguous": false,
       "description": "Pixel dwell time (line scan) in microseconds.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_pxl_dur",
+      "flrcif_item_id": "_flr_fit_parameter.rics_pxl_dur",
       "keywords": [
         "RICS",
         "imaging",
@@ -5214,7 +5214,7 @@
       ],
       "ambiguous": false,
       "description": "Pixel size in the sample plane in nanometers.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_pxl_size",
+      "flrcif_item_id": "_flr_fit_parameter.rics_pxl_size",
       "keywords": [
         "RICS",
         "imaging",
@@ -5229,7 +5229,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Triplet/blinking correlation time \u03c4_T in milliseconds.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_tauT",
+      "flrcif_item_id": "_flr_fit_parameter.rics_tauT",
       "keywords": [
         "RICS",
         "triplet",
@@ -5244,7 +5244,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Radial waist of the detection PSF in \u00b5m.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_w_r",
+      "flrcif_item_id": "_flr_fit_parameter.rics_w_r",
       "keywords": [
         "RICS",
         "PSF",
@@ -5259,7 +5259,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Axial waist of the detection PSF in \u00b5m.",
-      "flrcif_item_id": "_flr_chisurf_parameter.rics_w_z",
+      "flrcif_item_id": "_flr_fit_parameter.rics_w_z",
       "keywords": [
         "RICS",
         "PSF",
@@ -5274,7 +5274,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.s",
+      "flrcif_item_id": "_flr_fit_parameter.s",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -5336,7 +5336,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Relative amplitude of a prompt scattering contribution that is added to the model decay.",
-      "flrcif_item_id": "_flr_chisurf_parameter.sc",
+      "flrcif_item_id": "_flr_fit_parameter.sc",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5365,7 +5365,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter slowf used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.slowf",
+      "flrcif_item_id": "_flr_fit_parameter.slowf",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -5391,7 +5391,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Start time (or channel) of the fit/convolution window.",
-      "flrcif_item_id": "_flr_chisurf_parameter.start",
+      "flrcif_item_id": "_flr_fit_parameter.start",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5419,7 +5419,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Stop time (or channel) of the fit/convolution window.",
-      "flrcif_item_id": "_flr_chisurf_parameter.stop",
+      "flrcif_item_id": "_flr_fit_parameter.stop",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5447,7 +5447,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.t0",
+      "flrcif_item_id": "_flr_fit_parameter.t0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5476,7 +5476,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Measurement time of the background acquisition.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tBg",
+      "flrcif_item_id": "_flr_fit_parameter.tBg",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5504,7 +5504,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter tDead used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tDead",
+      "flrcif_item_id": "_flr_fit_parameter.tDead",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -5530,7 +5530,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Measurement time of the main TCSPC experiment.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tMeas",
+      "flrcif_item_id": "_flr_fit_parameter.tMeas",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5558,7 +5558,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tau0",
+      "flrcif_item_id": "_flr_fit_parameter.tau0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5585,7 +5585,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.tauD",
+      "flrcif_item_id": "_flr_fit_parameter.tauD",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -5621,7 +5621,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.tauT",
+      "flrcif_item_id": "_flr_fit_parameter.tauT",
       "keywords": [],
       "label_texts": [],
       "sources": []
@@ -5632,7 +5632,7 @@
       ],
       "ambiguous": false,
       "description": "Translational diffusion coefficient of the fluorescent dye.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Ddye",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_Ddye",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5658,7 +5658,7 @@
       ],
       "ambiguous": false,
       "description": "Effective number or concentration of quenchers in the interaction volume.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Nq",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_Nq",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5685,7 +5685,7 @@
       ],
       "ambiguous": false,
       "description": "Characteristic interaction radius or distance parameter for the dye\u00113quencher system.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Rdye",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_Rdye",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5712,7 +5712,7 @@
       ],
       "ambiguous": false,
       "description": "Effective averaging volume used in the transient-quenching model.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_Vav",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_Vav",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5738,7 +5738,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_a",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5763,7 +5763,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a1",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_a1",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5794,7 +5794,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a2",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_a2",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5823,7 +5823,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_a3",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_a3",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5848,7 +5848,7 @@
       ],
       "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aD",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_aD",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5873,7 +5873,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDA",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_aDA",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5898,7 +5898,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDAA",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_aDAA",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5923,7 +5923,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_aDO",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_aDO",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5948,7 +5948,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude of this decay component (fractional contribution to the overall time-resolved signal; dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_ad1",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_ad1",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5973,7 +5973,7 @@
       ],
       "ambiguous": false,
       "description": "Pre-exponential amplitude or population fraction of this decay component (dimensionless contribution to the overall time-resolved signal).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_af1A",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_af1A",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -5998,7 +5998,7 @@
       ],
       "ambiguous": false,
       "description": "Empirical coefficient of the sqrt(time) term in the transient-quenching decay model; controls deviations from a pure single-exponential decay.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_b",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_b",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6023,7 +6023,7 @@
       ],
       "ambiguous": false,
       "description": "Quenching rate constant added to the inverse lifetime (1/tau + kQ).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kQ",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_kQ",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6051,7 +6051,7 @@
       ],
       "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf1A",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_kf1A",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6077,7 +6077,7 @@
       ],
       "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf1AA",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_kf1AA",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6103,7 +6103,7 @@
       ],
       "ambiguous": false,
       "description": "Effective FRET or energy-transfer rate constant for this channel.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_kf2A",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_kf2A",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6129,7 +6129,7 @@
       ],
       "ambiguous": false,
       "description": "Overall normalization or intensity at time zero of the decay curve.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_p0",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_p0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6157,7 +6157,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau0",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_tau0",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6182,7 +6182,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau1",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_tau1",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6212,7 +6212,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau2",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_tau2",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6239,7 +6239,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_tau3",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_tau3",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6263,7 +6263,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_td1",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_td1",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6287,7 +6287,7 @@
       ],
       "ambiguous": false,
       "description": "Fluorescence lifetime or characteristic decay time of this component.",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_td2",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_td2",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6311,7 +6311,7 @@
       ],
       "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.tcspc_xD",
+      "flrcif_item_id": "_flr_fit_parameter.tcspc_xD",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6334,7 +6334,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.td_max",
+      "flrcif_item_id": "_flr_fit_parameter.td_max",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6357,7 +6357,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.td_min",
+      "flrcif_item_id": "_flr_fit_parameter.td_min",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6380,7 +6380,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.temp",
+      "flrcif_item_id": "_flr_fit_parameter.temp",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6416,7 +6416,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Additional temporal shift applied to align IRF and decay.",
-      "flrcif_item_id": "_flr_chisurf_parameter.ts",
+      "flrcif_item_id": "_flr_fit_parameter.ts",
       "keywords": [
         "TCSPC",
         "lifetime",
@@ -6444,7 +6444,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Background-corrected summed VH intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace.",
-      "flrcif_item_id": "_flr_chisurf_parameter.vh_bg_int",
+      "flrcif_item_id": "_flr_fit_parameter.vh_bg_int",
       "keywords": [
         "TCSPC",
         "anisotropy",
@@ -6475,7 +6475,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Background-corrected summed VV intensity used by anisotropy diagnostics. Derived after channel/background extraction and channel-wise summation over the active trace.",
-      "flrcif_item_id": "_flr_chisurf_parameter.vv_bg_int",
+      "flrcif_item_id": "_flr_fit_parameter.vv_bg_int",
       "keywords": [
         "TCSPC",
         "anisotropy",
@@ -6506,7 +6506,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter w used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.w",
+      "flrcif_item_id": "_flr_fit_parameter.w",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -6532,7 +6532,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.w0",
+      "flrcif_item_id": "_flr_fit_parameter.w0",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6581,7 +6581,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.w_r",
+      "flrcif_item_id": "_flr_fit_parameter.w_r",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6604,7 +6604,7 @@
       "aliases": [],
       "ambiguous": true,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.w_z",
+      "flrcif_item_id": "_flr_fit_parameter.w_z",
       "keywords": [],
       "label_texts": [],
       "sources": [
@@ -6627,7 +6627,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "",
-      "flrcif_item_id": "_flr_chisurf_parameter.wem",
+      "flrcif_item_id": "_flr_fit_parameter.wem",
       "keywords": [],
       "label_texts": [
         "w<sub>em</sub>[nm]"
@@ -6652,7 +6652,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter win-size used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.win_size",
+      "flrcif_item_id": "_flr_fit_parameter.win_size",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -6678,7 +6678,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter xA used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.xA",
+      "flrcif_item_id": "_flr_fit_parameter.xA",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -6704,7 +6704,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Model parameter xB used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
-      "flrcif_item_id": "_flr_chisurf_parameter.xB",
+      "flrcif_item_id": "_flr_fit_parameter.xB",
       "keywords": [
         "TCSPC",
         "lifetime"
@@ -6730,7 +6730,7 @@
       "aliases": [],
       "ambiguous": false,
       "description": "Fraction of donors subject to additional quenching or rate channels (dimensionless).",
-      "flrcif_item_id": "_flr_chisurf_parameter.xDOnly",
+      "flrcif_item_id": "_flr_fit_parameter.xDOnly",
       "keywords": [
         "TCSPC",
         "lifetime",

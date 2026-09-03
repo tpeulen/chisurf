@@ -81,15 +81,15 @@ def test_dic_file_exists():
 def test_dic_parses_correctly():
     """The extended dictionary parses without errors."""
     d = MmcifDictionary(DIC_PATH)
-    assert d.get_category("flr_chisurf_parameter") is not None
+    assert d.get_category("flr_fit_parameter") is not None
 
 
-def test_dic_contains_flr_chisurf_parameter_items():
-    """The dictionary contains items from the flr_chisurf_parameter category."""
+def test_dic_contains_flr_fit_parameter_items():
+    """The dictionary contains items from the flr_fit_parameter category."""
     d = MmcifDictionary(DIC_PATH)
-    cat = d.get_category("flr_chisurf_parameter")
+    cat = d.get_category("flr_fit_parameter")
     assert cat is not None
-    assert len(cat.items) > 0, "flr_chisurf_parameter category has no items"
+    assert len(cat.items) > 0, "flr_fit_parameter category has no items"
 
 
 def test_all_registry_ids_mapped_to_dic_items():
@@ -115,21 +115,22 @@ def test_all_registry_ids_mapped_to_dic_items():
 
 
 def test_dic_item_metadata_matches_registry():
-    """Type codes on dictionary items should be float for chisurf parameters."""
+    """Fit-parameter items are numeric: float values, int for 0/1 flags."""
     d = MmcifDictionary.load_bundled()
-    cat = d.get_category("flr_chisurf_parameter")
+    cat = d.get_category("flr_fit_parameter")
     assert cat is not None
     for item in cat.items.values():
-        assert item.type_code == "float", (
-            f"Expected float type_code for {item.name}, got {item.type_code}"
+        assert item.type_code in ("float", "int"), (
+            f"Expected a numeric type_code for {item.name}, "
+            f"got {item.type_code}"
         )
 
 
 def test_lookup_flrcif_name_resolves_known_parameters():
     """Known parameter short names resolve to canonical identifiers."""
-    assert _lookup_flrcif_name("E_FRET", resolve_parameter_name) == "_flr_chisurf_parameter.E_FRET"
-    assert _lookup_flrcif_name("bg", resolve_parameter_name) == "_flr_chisurf_parameter.bg"
-    assert _lookup_flrcif_name("R0", resolve_parameter_name) == "_flr_chisurf_parameter.R0"
+    assert _lookup_flrcif_name("E_FRET", resolve_parameter_name) == "_flr_fit_parameter.E_FRET"
+    assert _lookup_flrcif_name("bg", resolve_parameter_name) == "_flr_fit_parameter.bg"
+    assert _lookup_flrcif_name("R0", resolve_parameter_name) == "_flr_fit_parameter.R0"
 
 
 def test_lookup_flrcif_name_returns_none_for_unknown():
@@ -141,16 +142,16 @@ def test_lookup_flrcif_name_returns_none_for_unknown():
 def test_lookup_flrcif_name_resolves_family_prefixed():
     """Family-prefixed parameter names also resolve correctly."""
     result = _lookup_flrcif_name("fcs.N", resolve_parameter_name)
-    assert result == "_flr_chisurf_parameter.fcs_N"
+    assert result == "_flr_fit_parameter.fcs_N"
 
 
 def test_dic_items_have_schema_bindings():
-    """Every flr_chisurf_parameter item has table/column schema bindings."""
+    """Every flr_fit_parameter item has table/column schema bindings."""
     d = MmcifDictionary.load_bundled()
-    cat = d.get_category("flr_chisurf_parameter")
+    cat = d.get_category("flr_fit_parameter")
     assert cat is not None
     for item in cat.items.values():
-        assert item.schema_table == "flr_chisurf_parameter", (
+        assert item.schema_table == "flr_fit_parameter", (
             f"{item.name} missing schema_table"
         )
         assert item.schema_column, (
@@ -181,7 +182,7 @@ def test_generated_item_def_uses_the_vendor_neutral_schema_namespace():
     """
     block = align.generate_item_def("E_FRET", "Apparent FRET efficiency.")
     assert "_chisurf_schema" not in block
-    assert "   _mmfdb_schema.table_name  flr_chisurf_parameter" in block
+    assert "   _mmfdb_schema.table_name  flr_fit_parameter" in block
     assert "   _mmfdb_schema.column_name e_fret" in block
 
 
@@ -233,7 +234,7 @@ def test_registry_and_dictionary_descriptions_do_not_drift():
         data = json.load(fh)
     params = data.get("parameters", {})
     d = MmcifDictionary.load_bundled()
-    cat = d.get_category("flr_chisurf_parameter")
+    cat = d.get_category("flr_fit_parameter")
     assert cat is not None
 
     drifted = []

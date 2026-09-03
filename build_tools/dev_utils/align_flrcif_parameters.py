@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Set
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 
-CATEGORY = "flr_chisurf_parameter"
+CATEGORY = "flr_fit_parameter"
 CATEGORY_ID = CATEGORY
 SAVE_CATEGORY = f"save_{CATEGORY}"
 SAVE_ITEM_PREFIX = f"save__{CATEGORY}."
@@ -119,7 +119,7 @@ def get_all_dic_items() -> Set[str]:
 
 
 def generate_category_def() -> List[str]:
-    """Generate the category definition for flr_chisurf_parameter."""
+    """Generate the category definition for flr_fit_parameter."""
     return [
         "",
         f"save_{CATEGORY_ID}",
@@ -232,7 +232,7 @@ def append_dic_entries(
     """Append generated .dic entries to the extension dictionary file.
 
     If the file does not yet have a category definition for
-    ``flr_chisurf_parameter``, it is inserted before the first item entry.
+    ``flr_fit_parameter``, it is inserted before the first item entry.
     """
     if not dic_path.exists():
         with open(dic_path, "w", encoding="utf-8") as fh:
