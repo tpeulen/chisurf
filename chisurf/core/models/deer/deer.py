@@ -398,6 +398,17 @@ class _DeerModelBase(ModelCurve):
                 if p_b is not None and np.size(p_b) == np.size(p_best) and np.all(np.isfinite(p_b)):
                     reals.append(np.asarray(p_b, dtype=float))
 
+        # --- Fallback: fast re-inversion (Tikhonov/MaxEnt) -----------------
+        # Models without a C++ director band use _pr_bootstrap: a direct
+        # re-inversion of each noisy replica (not a fit — the regulariser
+        # is the model, so no optimiser is needed).
+        if len(reals) < 5:
+            reals = []
+            for v_b in replicas:
+                p_b = self._pr_bootstrap(v_b)
+                if p_b is not None and np.size(p_b) == np.size(p_best) and np.all(np.isfinite(p_b)):
+                    reals.append(np.asarray(p_b, dtype=float))
+
         if len(reals) < 5:
             return r, p_best, p_best, p_best
         arr = np.vstack(reals)

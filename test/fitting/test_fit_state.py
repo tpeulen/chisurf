@@ -271,7 +271,8 @@ def test_fret_gaussian_model_get_set_state_preserves_gaussians():
 
     fit1 = Fit(model_class=chisurf.core.models.tcspc.fret.GaussianModel, data=data)
     m1 = fit1.model
-    # Add two Gaussians
+    # Clear any default Gaussians, then add two
+    m1.gaussians.clear()
     m1.gaussians.append(mean=2.0, sigma=0.5, x=1.0)
     m1.gaussians.append(mean=5.0, sigma=1.0, x=0.5)
     n1 = len(m1.gaussians)
