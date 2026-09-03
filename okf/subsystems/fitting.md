@@ -29,6 +29,18 @@ and [parameters](/subsystems/parameters.md).
 1. Evaluate model → `model.update()` produces model y-values (values-only
    inside a `frozen_structure` run; `update_model` was renamed to the
    private `_update_model`, and `update()` is the one public verb).
+   **A fit is born consistent**: attaching a model to data (the `Fit.model`
+   setter) computes the curve once, so a freshly created fit displays a
+   real model rather than the zeroed placeholder — the first draw must
+   never depend on a GUI event happening to fire. And
+   **`Fit.update()` owns the recompute-then-redraw contract**: it
+   recomputes and publishes ``fit.updated`` on the shared event bus (the
+   GUI's plot windows subscribe), so a range change, a parameter edit or a
+   script all get the redraw from the same verb instead of each GUI path
+   carrying its own notification. The RPC facade is a routing choice, not
+   a capability: every GUI action (run, range change, parameter edit)
+   works identically with the client absent, through `fit.run()` /
+   `fit.update()` in-process.
 2. Weighted residuals `wres = (data − model) / data_error` over the range
    (`calculate_weighted_residuals` in `fitting/__init__.py`; masked via
    `_apply_fit_mask`).

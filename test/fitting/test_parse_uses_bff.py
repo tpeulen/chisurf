@@ -310,6 +310,14 @@ class UpdateModelRunsInCppTests(unittest.TestCase):
         fit = Fit(model_class=ParseModel, data=DataCurve(x=x, y=np.zeros_like(x)))
         model = fit.model
         model.func = equation
+        model.update()
+        # A fit is born consistent: constructing it computed the placeholder
+        # equation once, and setting `func` recomputed. Those evaluations
+        # predate the equation under test -- the counters here measure what a
+        # fit's *iterations* do, so they start from zero at the configured
+        # model.
+        model._n_eval_cpp = 0
+        model._n_eval_python = 0
         return model, x
 
     def test_one_update_evaluates_in_cpp_and_not_in_python(self):
@@ -416,6 +424,14 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
         fit = Fit(model_class=ParseModel, data=DataCurve(x=x, y=np.zeros_like(x)))
         model = fit.model
         model.func = equation
+        model.update()
+        # A fit is born consistent: constructing it computed the placeholder
+        # equation once, and setting `func` recomputed. Those evaluations
+        # predate the equation under test -- the counters here measure what a
+        # fit's *iterations* do, so they start from zero at the configured
+        # model.
+        model._n_eval_cpp = 0
+        model._n_eval_python = 0
         return model, x
 
     def test_parsing_establishes_the_binding(self):

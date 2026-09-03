@@ -1301,11 +1301,25 @@ class ParameterActionsMixin:
         """Recompute the owning fit and refresh visible output parameters."""
         try:
             fc = get_fitting_client()
+            fit_uid = self._parameter_context(self.fitting_parameter).get("fit_uid")
             if fc is not None:
-                fit_uid = self._parameter_context(self.fitting_parameter).get("fit_uid")
                 if fit_uid:
                     fc.update_fit(fit_uid=fit_uid)
                     fc.model_finalize(fit_uid=fit_uid)
+            else:
+                # No transport: recompute the owning fit locally.
+                # `Fit.update()` publishes ``fit.updated`` itself, so the
+                # trace redraw follows exactly as on the RPC path -- without
+                # this, an edited value changed the parameter but never the
+                # displayed curve.
+                for fit in list(getattr(cs, "fits", []) or []):
+                    if str(getattr(fit, "unique_identifier", "")) == fit_uid:
+                        fit.update()
+                        try:
+                            fit.model.finalize()
+                        except Exception:
+                            pass
+                        break
             # ``fc.update_fit`` publishes ``fit.updated``, which the main window
             # turns into a single ``_refresh_fit_display`` (trace redraw) on the
             # next subscriber poll. Do not redraw here as well — one refresh per

@@ -1054,16 +1054,22 @@ class FittingControllerWidget(Controller):
             # makes the bar move at all.
             try:
                 fc = get_fitting_client()
-                if fc is not None:
-                    with self.fit.reporting_progress(_on_progress):
+                with self.fit.reporting_progress(_on_progress):
+                    if fc is not None:
                         fc.run_fit(
                             fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
                         )
-                    if getattr(self.fit, "last_run_cancelled", False):
-                        # The optimiser raised, ``Fit.run`` re-raised, and the
-                        # service turned it into an error result -- so a
-                        # cancelled fit arrives here looking like a clean one.
-                        raise OptimizationCancelled()
+                    else:
+                        # No transport: the fit itself is right here. The RPC
+                        # facade is a routing choice, not a capability -- with
+                        # it absent the button must still fit, not silently
+                        # do nothing.
+                        self.fit.run()
+                if getattr(self.fit, "last_run_cancelled", False):
+                    # The optimiser raised, ``Fit.run`` re-raised, and the
+                    # service turned it into an error result -- so a
+                    # cancelled fit arrives here looking like a clean one.
+                    raise OptimizationCancelled()
             except OptimizationCancelled:
                 cs.logging.info("Fitting cancelled by user.")
                 success = False
@@ -1072,6 +1078,15 @@ class FittingControllerWidget(Controller):
                     fc.model_finalize(
                         fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
                     )
+                else:
+                    try:
+                        self.fit.model.finalize()
+                    except Exception:
+                        pass
+                    # `Fit.update()` publishes ``fit.updated``; that is what
+                    # redraws the trace on the local path, exactly as the
+                    # server's own publish does on the RPC path.
+                    self.fit.update()
                 for pa in self._iter_fit_parameters_to_finalize(self.fit):
                     controller = getattr(pa, "controller", None)
                     if controller is None:
@@ -1130,9 +1145,10 @@ class FittingControllerWidget(Controller):
             self._apply_proteinmc_controls()
             cs.logging.info("ProteinMC does not use generic Fit. Use Sampling to start ProteinMC.")
             return
-        fc = get_fitting_client()
-        if fc is not None:
-            self._run_fit_impl()
+        # Unconditionally: `_run_fit_impl` routes through the RPC facade when
+        # one is up and runs the fit in-process otherwise. Gating the button
+        # on the client made a missing/late server disable fitting silently.
+        self._run_fit_impl()
 
     @property
     def xmin(self):
@@ -1190,6 +1206,15 @@ class FittingControllerWidget(Controller):
             fc.update_fit(
                 fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
             )
+        else:
+            # No transport: recompute locally. `Fit.update()` publishes
+            # ``fit.updated`` itself, so the plot redraw follows on either
+            # path -- this branch used to end after setting the range, which
+            # left the displayed curve stale until something else updated.
+            try:
+                self.fit.update()
+            except Exception as e:
+                cs.logging.warning(f'fit update after range change failed: {e}')
 
 
     def onAutoFitRange(self):

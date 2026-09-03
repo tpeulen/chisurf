@@ -369,41 +369,21 @@ def find_bursts(arr, max_gap=0):
     [[1, 2], [5, 7]]
     >>> find_bursts(arr, max_gap=1).tolist()
     [[1, 7]]
+
+    Notes
+    -----
+    Computes in the engine: ``tttrlib.BurstFilter.bursts_from_mask``, the
+    mask-level twin of the burst searches (owner placement ruling
+    2026-09-03: the burst compute belongs to tttrlib). The engine keeps the
+    reference's exact merge rule -- at ``max_gap = g`` an unselected
+    stretch of up to ``g + 1`` entries is bridged (see the doctest) -- so
+    every existing burst table reproduces. The deleted NumPy body lives on
+    as the frozen A/B reference in tttrlib's
+    ``test/python/burstfilter/test_bursts_from_mask.py``.
     """
-    if len(arr) == 0 or np.all(arr == 0):  # Handle empty or all-zero input
-        return np.empty((0, 2), dtype=int)
-
-    # Find where the array changes from 0 to 1 (start of burst) and 1 to 0 (end of burst)
-    is_burst = np.diff(arr, prepend=0, append=0)
-    starts = np.where(is_burst == 1)[0]
-    stops = np.where(is_burst == -1)[0]
-
-    if len(starts) == 0 or len(stops) == 0:  # If no bursts are found
-        return np.empty((0, 2), dtype=int)
-
-    # If max_gap is greater than 0, merge small gaps
-    if max_gap > 0:
-        merged_starts = [starts[0]]
-        merged_stops = []
-
-        for i in range(1, len(starts)):
-            # Check if the gap between current stop and next start is small enough to merge
-            if starts[i] - stops[i - 1] - 1 <= max_gap:
-                continue  # Skip this start, effectively merging
-            else:
-                merged_stops.append(stops[i - 1])
-                merged_starts.append(starts[i])
-
-        # Append the final stop
-        merged_stops.append(stops[-1])
-
-        # Convert merged lists to NumPy arrays
-        starts = np.array(merged_starts)
-        stops = np.array(merged_stops)
-
-    # Stack the starts and stops into a 2D array (stop is exclusive, so subtract 1)
-    bursts = np.column_stack((starts, stops - 1))
-    return bursts
+    import tttrlib
+    mask = np.ascontiguousarray(np.asarray(arr) != 0, dtype=np.uint8)
+    return tttrlib.BurstFilter.bursts_from_mask(mask, int(max_gap))
 
 
 def _fill_gaps_helper(arr: np.ndarray, starts: np.ndarray, stops: np.ndarray, small_gaps: np.ndarray) -> None:

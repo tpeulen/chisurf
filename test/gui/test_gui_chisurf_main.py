@@ -147,9 +147,7 @@ class Tests(unittest.TestCase):
             filename=filename_irf
         )
         data_set_name = "Decay_577D.txt"
-        # 'Lifetime ' carries a trailing space in LifetimeModel.name; the combo
-        # shows the model name verbatim, so the test has to spell it that way.
-        for model_name in ('Lifetime ', 'FRET: FD (Gaussian)'):
+        for model_name in ('Lifetime', 'FRET: FD (Gaussian)'):
             fit = add_fit(
                 data_set_name=data_set_name,
                 dataset_selector=gui.dataset_selector,

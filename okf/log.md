@@ -38468,3 +38468,37 @@ side of the line.
   fitting 1059/1059, models+fluorescence+tcspc+architecture green except
   the recorded baselines (AV/PRD-117, `test_change_dihedral` — new
   known-issues entry, pre-existing).
+
+- **2026-09-03 — the plot-update contract gets an owner; the mask→bursts
+  kernel moves to tttrlib (owner: "plot update broke … fix underlying
+  issues on architecture level"; "the burst stuff belongs to tttrlib").**
+  Reproduced headlessly with the real main window: a freshly created fit
+  had **no computed model at all** (`model.y` all zeros — invisible on the
+  log axis, residuals data-vs-zero), because the first compute was an
+  accident of GUI plumbing (`onAutoFitRange`'s deferred callback, RPC-only
+  branches). Three architecture-level fixes, no patches: (1) **a fit is
+  born consistent** — the `Fit.model` setter computes the curve at attach,
+  so every creation path (GUI, script, project load) yields a drawable
+  fit; (2) **`Fit.update()` owns recompute-then-redraw** — it now actually
+  publishes ``fit.updated`` (its docstring always claimed "notify
+  observers"), and the range-change / parameter-edit / run paths call it
+  instead of carrying per-path notifications; (3) **the RPC facade is a
+  routing choice, not a capability** — `onRunFit` ran only `if fc is not
+  None` (no client → the Fit button silently did nothing) and the
+  range/edit handlers had the same hole; all now run in-process when no
+  client is up, through the same verbs. The evaluation-counter guards in
+  `test_parse_uses_bff.py` now measure from a configured model (the
+  construction compute is not an iteration). Verified end to end offscreen
+  with PNGs read: creation shows data + model + honest chi2r; post-fit
+  curve matches the fitted parameters. Placement: `find_bursts` (the
+  mask→intervals run-length kernel, the last live burst compute in
+  chisurf) moved to `tttrlib.BurstFilter.bursts_from_mask` — bit-faithful
+  to the NumPy reference including its documented gap off-by-one, A/B
+  pinned there against the transcribed reference (22 tests); chisurf's
+  `core.math.signal.find_bursts` is a forwarder. The `burst/photons.py`
+  per-burst loop was re-verified: it crosses C++ once per *file* (arrays
+  cached), so its Python iteration is PRD-123 batching work, not a live
+  crossing defect. Trap for the record: copying rebuilt dylibs into
+  site-packages by hand SIGKILLs every import on macOS arm64 (signature
+  invalidation) — `pip install --no-deps --force-reinstall .` is the
+  recovery, per tttrlib's own handover note.
