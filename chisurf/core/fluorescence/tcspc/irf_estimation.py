@@ -642,7 +642,7 @@ class IRFEstimator:
         exponential fitting, Richardson-Lucy deconvolution) was a fallback
         for a build whose ``tttrlib`` predates the engine; that build is not
         supported by the tree's pinned dependencies, so the fallback was
-        dead code and has been removed (PRD-133).
+        dead code and has been removed.
 
         Parameters
         ----------

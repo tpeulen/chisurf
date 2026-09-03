@@ -164,7 +164,7 @@ def compute_efficiencies(
     return (1.0 / (1.0 + x ** 6)).astype(np.float32, copy=False)
 
 
-# `_select_av_backend` is gone with PRD-109. It chose between LabelLib and an
+# `_select_av_backend` is gone. It chose between LabelLib and an
 # `imp` branch that imported `quest.lib.imp_av` — a module QuEst stopped
 # shipping in July 2026 when `quest/lib` became `quest/core` — so `HAS_IMP_BFF`
 # was always False and the `imp` branch was unreachable. There is now one

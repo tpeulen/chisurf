@@ -1,4 +1,4 @@
-"""Forwarder — fps.json / FPS I/O moved to :mod:`IMP.bff.fret.io` (PRD-97).
+"""Forwarder — fps.json / FPS I/O moved to :mod:`IMP.bff.fret.io`.
 
 Unlike the pure module-alias forwarders next to this file, two functions are
 overridden here with application behaviour that does not belong in IMP.bff:

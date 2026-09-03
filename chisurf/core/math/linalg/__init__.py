@@ -285,7 +285,7 @@ def dihedral(
 
 
 # ``solve_richardson_lucy`` (generic matrix-operator Richardson-Lucy: p @ u
-# against an arbitrary dense ``p``) removed 2026-09-02 (PRD-122). It had no
+# against an arbitrary dense ``p``) removed 2026-09-02. It had no
 # caller anywhere in the tree -- only ``math.optimization.solve_richardson_lucy``
 # wrapped it, and that wrapper had no caller either. It also was not a
 # candidate for forwarding to ``tttrlib.richardson_lucy_2d/3d``, the engine

@@ -57,7 +57,7 @@ def _gather_frames(flat, frames, atoms, frame_stride, x_offset, gap, out):
     This was a parallel numba kernel until numba was retired. NumPy is
     **2.5–9.4× slower** here (measured; a parallel gather *with* a transpose is
     the shape NumPy expresses worst), so a compiled kernel is still wanted —
-    board ticket ``T-20260811-20``, tttrlib PRD-037 B5. Correctness is
+    board ticket ``T-20260811-20``. Correctness is
     unaffected: this produces identical bytes.
     """
     from numpy.lib.stride_tricks import as_strided

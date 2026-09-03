@@ -12,8 +12,6 @@
 chisurf/core/dataspec/__init__.py
 chisurf/core/experiments/pda3c/__init__.py
 chisurf/core/experiments/pda3c/reader.py
-chisurf/core/fio/trajectory/__init__.py
-chisurf/core/fio/trajectory/xtc.py
 chisurf/core/fluorescence/curation/__init__.py
 chisurf/core/fluorescence/fret/forster.py
 chisurf/core/fluorescence/mfd/__init__.py

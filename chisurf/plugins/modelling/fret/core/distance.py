@@ -1,4 +1,4 @@
-"""Forwarder — this module moved to :mod:`IMP.bff.fret.distance` (PRD-97).
+"""Forwarder — this module moved to :mod:`IMP.bff.fret.distance`.
 
 The implementation lives in IMP.bff; this alias keeps every ChiSurf import
 path and symbol (including private helpers used by tests) working unchanged.

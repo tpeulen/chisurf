@@ -13,7 +13,7 @@ from chisurf.core.math.optimization.leastsqbound import (
 
 # ``solve_richardson_lucy`` (a generic matrix-operator Richardson-Lucy) used to
 # live here, wrapping an identically-named function in
-# :mod:`chisurf.core.math.linalg`. Removed 2026-09-02 (PRD-122): zero callers
+# :mod:`chisurf.core.math.linalg`. Removed 2026-09-02: zero callers
 # anywhere in the tree (only the two duplicates called each other), and it was
 # not a drop-in for the engine anyway -- ``tttrlib.richardson_lucy_2d/3d``
 # assume a translation-invariant image/PSF pair, not an arbitrary dense

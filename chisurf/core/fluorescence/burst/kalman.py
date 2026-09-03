@@ -15,7 +15,7 @@ they run ``tttrlib``'s ``burst_search_kalman`` -- the same shape as
 The in-tree Python recursion (``KalmanBurstDetector``, ``kalman_burst_detection``
 and the binning helpers) was kept as a fallback for a build whose ``tttrlib``
 predates ``burst_search_kalman``.  The tree pins its engines, so that fallback
-was dead code; it was deleted in PRD-133 (the fallback audit).  The parity test
+was dead code; it was deleted in the fallback audit.  The parity test
 that exercised the fallback path (``test_kalman_engine_parity.py``) was updated
 to cover only the engine path.
 """

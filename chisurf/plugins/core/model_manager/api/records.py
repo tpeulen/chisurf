@@ -40,7 +40,7 @@ class ModelRow:
     view_spec: str = ""
     #: Whether that declared spec actually resolves on disk.
     view_spec_ok: bool = False
-    #: Whether the class is still a Qt widget subclass (PRD-38 migration debt).
+    #: Whether the class is still a Qt widget subclass.
     qt_bound: bool = False
     disabled: bool = False
     #: Other models sharing this display name -- disabling hits all of them.

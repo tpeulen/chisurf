@@ -46,8 +46,7 @@ What is cut from it, and by what:
 **"Zelda-like tilesets and sprites"** by **ArMM1998**, in the form they reach
 this repository through: pre-cut, individual PNGs bundled with the
 `pyzelda-rpg` tutorial project (MIT-licensed code, over that CC0 art; the same
-checkout PRD-91 already mines for steering, pathing and the particle layer —
-see `okf/prds/prd-91.md`).
+checkout already mined for steering, pathing and the particle layer).
 
 - Original source: <https://opengameart.org/content/zelda-like-tilesets-and-sprites>
 - Vector into this repo: <https://github.com/artemshchirov/pyzelda-rpg>

@@ -431,8 +431,8 @@ def _generator_is_diagonalisable(rate_matrix, emission) -> bool:
     generator itself. What was left called ``_spectral`` purely for its
     ``None``-or-not return, threw away everything it built, and made the C++
     engine repeat the same eigendecomposition immediately after -- redundant
-    on every single evaluation of a scipy optimisation loop, which is
-    exactly the arithmetic PRD-130 measured and removed.
+    on every single evaluation of a scipy optimisation loop, and that
+    arithmetic was measured and removed.
 
     **What survives, and why it must.** A generator with a repeated
     eigenvalue (the reversible no-exchange limit collapsed onto an
@@ -698,7 +698,7 @@ class GsFitResult:
     relaxation_times: np.ndarray = field(default_factory=lambda: np.zeros(0))
     #: Number of ``tttrlib.GopichSzabo()`` C++ objects actually constructed
     #: over the whole fit (see :class:`EngineCache`) -- 1, not one per
-    #: evaluation, since PRD-130. A test-visible measurement, not a tuning
+    #: evaluation. A test-visible measurement, not a tuning
     #: knob.
     n_engine_builds: int = 0
 

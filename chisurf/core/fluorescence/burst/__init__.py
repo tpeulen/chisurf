@@ -12,7 +12,7 @@ from chisurf.core.fluorescence.burst.bocpd import (
 import chisurf.core.fluorescence.burst.bocpd
 
 # Kalman module — forwards to the tttrlib C++ engine; the Python fallback
-# was dead code (PRD-133) and has been deleted.
+# was dead code and has been deleted.
 from chisurf.core.fluorescence.burst.kalman import (
     kalman_filter,
     kalman_burst_search,

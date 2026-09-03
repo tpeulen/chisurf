@@ -1,7 +1,7 @@
 """The delegated 2D-FDC must keep returning the same numbers.
 
 ``flc_2d/core.py`` built the fluorescence-decay correlation matrices with numba;
-they are now the photon library's (`fdc_scan_log`, `fdc_log`, tttrlib PRD-036).
+they are now the photon library's (`fdc_scan_log`, `fdc_log`).
 The reference is a recorded fixture, not a live comparison — a live comparison
 becomes a skip the day the old code leaves, and a skip reads like a pass.
 

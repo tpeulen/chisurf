@@ -1,4 +1,4 @@
-"""OpenGL backend for chiplot (PRD-64 Phase 5+).
+"""OpenGL backend for chiplot.
 
 A native OpenGL 2-D renderer behind the same :mod:`base` contract as the
 pyqtgraph backend. Data items (curves, scatters, bars, images) are drawn
