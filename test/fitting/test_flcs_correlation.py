@@ -92,3 +92,56 @@ def test_channel_aware_correlation_matches_single_axis():
     )
     assert np.allclose(single.auto[0], per_ch.auto[0], rtol=1e-6, atol=1e-9)
     assert np.allclose(single.cross[(0, 1)], per_ch.cross[(0, 1)], rtol=1e-6, atol=1e-9)
+
+
+def test_the_packed_matrix_lands_on_the_right_species_pairs():
+    """The single-pass matrix, unpacked, equals the per-pair correlator loop.
+
+    `species_filtered_correlation` translates tttrlib's packed
+    upper-triangular row layout into `auto`/`cross` dicts in exactly one
+    place — the index formula `i*n - i*(i-1)//2 + (j-i)`. A transposition
+    or off-by-one there yields finite, well-shaped curves assigned to the
+    *wrong* species pair, which no shape or finiteness test can see. So the
+    reference is the loop the single pass replaced (transcribed from the
+    pre-batching implementation): one plain `tttrlib.Correlator` per pair,
+    with three deliberately distinguishable species so every misassignment
+    moves a number.
+    """
+    import tttrlib
+
+    rng = np.random.default_rng(3)
+    n = 30000
+    macro = np.cumsum(rng.integers(1, 40, n)).astype(np.uint64)
+    micro = rng.integers(0, 64, n).astype(np.int64)
+    # Three species filters over 64 micro-time bins with distinct shapes,
+    # so every misassigned row moves a number.
+    bins = np.arange(64, dtype=float)
+    f = np.vstack([
+        np.exp(-bins / 8.0),
+        np.exp(-((bins - 30.0) / 10.0) ** 2),
+        0.02 + 0.015 * bins / 63.0,
+    ])
+    streams = species_weight_streams(f, micro, None)
+    assert len(streams) == 3
+
+    single = species_filtered_correlation(
+        macro, micro, f, 1e-8, n_bins=8, n_casc=12, method="wahl")
+
+    def _pair(wa, wb):
+        c = tttrlib.Correlator()
+        c.n_bins = 8
+        c.n_casc = 12
+        c.set_macrotimes(macro, macro)
+        c.set_weights(np.ascontiguousarray(wa), np.ascontiguousarray(wb))
+        c.run()
+        return np.asarray(c.get_corr_normalized(), dtype=float)
+
+    for i in range(3):
+        np.testing.assert_allclose(
+            single.auto[i], _pair(streams[i], streams[i]),
+            rtol=1e-10, err_msg=f"auto[{i}] landed on the wrong row")
+    for i in range(3):
+        for j in range(i + 1, 3):
+            np.testing.assert_allclose(
+                single.cross[(i, j)], _pair(streams[i], streams[j]),
+                rtol=1e-10, err_msg=f"cross[({i},{j})] landed on the wrong row")

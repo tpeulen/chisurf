@@ -676,7 +676,16 @@ def analyze_file(
     )
 
     output_paths: dict[str, str] = {}
-    if "bur" in analysis_settings.output_formats and output_dir is not None:
+    # An explicit `output_dir` is a request for the legacy folder, and the
+    # folder is defined by its `.bur` plus `Info/` sidecars -- the same
+    # "the request implies the format" rule the request path applies for
+    # `legacy_output`. Without this, `analyze_file(..., output_dir=...)`
+    # under the `["pto"]` default returned success and wrote nothing.
+    # An explicitly *empty* `output_formats` still means "write nothing".
+    formats = list(analysis_settings.output_formats)
+    if output_dir is not None and formats and "bur" not in formats:
+        formats.append("bur")
+    if "bur" in formats and output_dir is not None:
         bur_path = Path(output_dir) / f"{Path(path).stem}.bur"
         write_bur(df, bur_path)
         output_paths["bur"] = str(bur_path)

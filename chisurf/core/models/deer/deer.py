@@ -367,11 +367,17 @@ class _DeerModelBase(ModelCurve):
         pointwise ``ci``% percentile band is returned. ``None`` when the model
         does not support it or there is no data.
 
-        One C++ :class:`IMP.bff.Minimizer` is built for the whole band —
-        not one per replica — and the target data are swapped between runs
-        via a mutable container the residual closure reads.  The director
-        path (:func:`director_objective`) is the only optimisation path;
-        there is no scipy fallback.
+        Two routes, by model kind, neither of them scipy:
+
+        * **Parametric models** (Gaussian, Rice) re-fit their shape
+          parameters per replica through one C++
+          :class:`IMP.bff.Minimizer` built for the whole band — the target
+          data are swapped between runs via a mutable container the
+          residual closure reads. The director path
+          (:func:`director_objective`) is the only *optimisation* path.
+        * **Model-free models** (Tikhonov, MaxEnt) re-*invert* each replica
+          (:meth:`_pr_bootstrap`) at the fitted regularisation weight — the
+          regulariser is the model, so there is nothing to optimise.
         """
         self._update_model()
         r = self._r
@@ -410,7 +416,11 @@ class _DeerModelBase(ModelCurve):
                     reals.append(np.asarray(p_b, dtype=float))
 
         if len(reals) < 5:
-            return r, p_best, p_best, p_best
+            # Too few usable replicas for percentiles. `None` is the honest
+            # answer the contract already allows -- a zero-width band
+            # (p_best, p_best) would display as *perfect certainty*, which
+            # is the opposite of what happened.
+            return None
         arr = np.vstack(reals)
         half = (100.0 - float(ci)) / 2.0
         lo = np.percentile(arr, half, axis=0)

@@ -669,14 +669,30 @@ def open_sources(resolution: SourceResolution) -> dict[str, Any]:
     Raises
     ------
     UnresolvedPhotonSource
-        If a file opens with zero photons — which ``tttrlib`` reports by printing to
-        stderr and returning an empty object, not by raising.
+        If a file cannot be read at all, or opens with zero photons. Older
+        ``tttrlib`` builds reported an undecodable container by printing to
+        stderr and returning an *empty* object; current ones raise at
+        construction. Both present here as the same domain error, so a
+        caller never has to know which build it is on.
     """
     from chisurf.core.fio.staging import open_tttr
 
     opened: dict[str, Any] = {}
     for key, path in resolution.paths.items():
-        tttr = open_tttr(path, resolution.container_type.get(key))
+        try:
+            tttr = open_tttr(path, resolution.container_type.get(key))
+        except Exception as exc:
+            raise UnresolvedPhotonSource(
+                f"{path} could not be read as a photon stream"
+                + (
+                    f" (container type {resolution.container_type[key]!r} from "
+                    "the manifest)"
+                    if resolution.container_type.get(key)
+                    else " (container type auto-detected)"
+                )
+                + f": {exc}. An unreadable file holds zero photons, and it "
+                "would otherwise look like a measurement with no signal."
+            ) from exc
         if len(tttr) == 0:
             raise UnresolvedPhotonSource(
                 f"{path} was opened but holds zero photons"

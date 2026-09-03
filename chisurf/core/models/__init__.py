@@ -140,13 +140,11 @@ def function_to_model_decorator(**kws):
 
             def update(self, **kwargs) -> None:
                 """Refresh parameters and re-evaluate the model."""
-                logging.debug(f'update called.')
-                logging.debug(f'find_parameters')
-                self.find_parameters()
-                logging.debug(f'find_parameters finished.')
-                logging.debug(f'update_model')
+                # Values-only inside a freeze, as Model.update: the
+                # structure walk is a contracted no-op there.
+                if self.__dict__.get("_frozen_structure") is None:
+                    self.find_parameters()
                 self._update_model()
-                logging.debug(f'update_model finished.')
 
         return ModelDecorator
 

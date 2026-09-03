@@ -177,31 +177,42 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
         :class:`FittingParameterGroup` instances and then calls
         :meth:`_update_model`. Subclasses may extend this method but should
         usually call ``super().update()``.
+
+        Inside :func:`~chisurf.core.fitting.factorgraph.frozen_structure`
+        the refresh half is skipped entirely: the freeze *is* the statement
+        that the parameter structure cannot change during the run, so
+        re-walking it per objective evaluation is a contracted no-op -- and
+        an actively harmful one, because ``find_parameters`` may reassign
+        which amplitude is redundant and thereby invalidate the flags the
+        freeze stamped (measured: the frozen and plain residuals of the same
+        parameter vector diverged through a stale redundant amplitude).
         """
-        self.find_parameters()
+        if self.__dict__.get("_frozen_structure") is None:
+            self.find_parameters()
 
-        # Update ParameterGroups
-        d = [v for v in self.__dict__.values() if v is not self]
-        pgs = chisurf.core.base.find_objects(
-            search_iterable=d,
-            searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup
-        )
-        for pg in pgs:
-            # ``update`` historically existed only on the GUI widget groups
-            # (it refreshed displayed values). Pure parameter groups don't have
-            # it — their controllers refresh via ``finalize()`` — so skip them
-            # quietly instead of logging a warning on every fit iteration.
-            pg_update = getattr(pg, "update", None)
-            if not callable(pg_update):
-                continue
-            try:
-                pg_update()
-            except Exception as e:
-                import logging
-                logging.warning(f"Failed to update parameter group {pg}: {e}")
-                continue
+            # Update ParameterGroups
+            d = [v for v in self.__dict__.values() if v is not self]
+            pgs = chisurf.core.base.find_objects(
+                search_iterable=d,
+                searched_object_type=chisurf.core.fitting.parameter.FittingParameterGroup
+            )
+            for pg in pgs:
+                # ``update`` historically existed only on the GUI widget
+                # groups (it refreshed displayed values). Pure parameter
+                # groups don't have it — their controllers refresh via
+                # ``finalize()`` — so skip them quietly instead of logging a
+                # warning on every fit iteration.
+                pg_update = getattr(pg, "update", None)
+                if not callable(pg_update):
+                    continue
+                try:
+                    pg_update()
+                except Exception as e:
+                    import logging
+                    logging.warning(f"Failed to update parameter group {pg}: {e}")
+                    continue
 
-        self._update_model()
+        self._update_model(**kwargs)
 
     def finalize(self) -> None:
         """Propagate finalization to all parameter groups.

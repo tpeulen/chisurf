@@ -38436,3 +38436,35 @@ side of the line.
   the smaller-of-two rule. `test/fitting/` 1013 passed / 23 pre-existing
   unrelated failures (verified by reverting and reproducing the same
   set); `test/models/` 334 passed / 3 pre-existing.
+
+- **2026-09-03 — review pass over the PRD-118–134 wave (owner: "check
+  implementation PRD 118-134 and improve/clean").** Three audits + a full
+  test sweep over what five parallel streams landed. Correctness defects
+  found and fixed: the mdf FCS producer's node ports opened at
+  `build_ports()` defaults instead of the model's values (fixed
+  non-default `w0` → a silently wrong graph, 50% error; now
+  value-initialised, curve-pinned at 1e-12 with a live-chain check);
+  `Model.update()` violated the `frozen_structure` contract after the
+  `update_model → _update_model` rename (per-evaluation structure walk
+  reassigned the redundant amplitude mid-freeze — frozen and plain
+  residuals of the same vector diverged; values-only under a freeze now,
+  and `**kwargs` forwarded instead of dropped); `ParseDecayModel`
+  recursed infinitely in both mirrored modules (`super().update()` where
+  the compute verb was meant); `analyze_file(output_dir=...)` wrote no
+  `.bur` under the `["pto"]` default (request-implies-format extended to
+  the direct path); the census harness itself was rename-broken and now
+  reads 14/42 with zero disagreements; `compute_uncertainty`'s
+  too-few-replicas terminal returned a zero-width band (reads as perfect
+  certainty) and now returns `None`; chimol's `MolView → Viewer` rename
+  adopted; the stale `_HAVE_*` gate assertions replaced by the
+  hard-import contract. New pins: the fFCS packed-triangle unpacking
+  against the transcribed per-pair reference (the one place a silent
+  species misassignment could hide). Record hygiene: all 17 PRD statuses,
+  DoD boxes and the PRD-105 register now agree (five register rows were
+  struck for work not done — burst search, 2CDE, EM ×3, higher-order
+  correlation, the slicing/fit_many phase-5 boxes — and one done row was
+  unstruck); the two `mfd/patterns.py` known-issues pointers now point at
+  entries that exist; `fitting.md`'s central verb corrected. Suites:
+  fitting 1059/1059, models+fluorescence+tcspc+architecture green except
+  the recorded baselines (AV/PRD-117, `test_change_dihedral` — new
+  known-issues entry, pre-existing).

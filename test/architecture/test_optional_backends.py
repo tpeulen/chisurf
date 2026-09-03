@@ -55,10 +55,14 @@ def test_a_present_backend_reports_itself_present(module_name, flag, feature):
 
 
 def test_the_h2mm_engine_selector_picks_the_compiled_backend():
-    """The selector, not just the module flag.
+    """The selector must reach the compiled backend, and only it.
 
-    ``engines`` re-exports the gate through its own name, so it can disagree with
-    the module it imported from — and it is the selector callers actually reach.
+    The availability gates this test used to read (``_HAVE_TTTRLIB``,
+    ``_HAVE_TTTRLIB_SURROGATE``) were deleted with the fallback paths they
+    guarded (the fallback audit: tttrlib or an error, no silent twin). What
+    remains to pin is the new contract: the module imports against this
+    build -- a missing engine symbol must raise at import, not gate -- and
+    no availability flag has crept back in.
     """
     if not hasattr(tttrlib, "HMM"):
         pytest.skip("this tttrlib build has no HMM")
@@ -66,8 +70,12 @@ def test_the_h2mm_engine_selector_picks_the_compiled_backend():
     engines = importlib.import_module(
         "chisurf.plugins.burst.burst_h2mm.core.engines"
     )
-    assert engines._HAVE_TTTRLIB is True
-    assert engines._HAVE_TTTRLIB_SURROGATE is True
+    assert callable(engines.optimize)
+    gates = [n for n in vars(engines) if n.startswith("_HAVE_")]
+    assert not gates, (
+        "an availability gate reappeared in the H2MM selector (%s); the "
+        "module is hard-import by decision -- tttrlib or an error, no "
+        "silently degraded path" % ", ".join(gates))
 
 
 def test_the_photon_simulator_is_available_to_the_shim():

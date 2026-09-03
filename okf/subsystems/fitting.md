@@ -26,7 +26,9 @@ and [parameters](/subsystems/parameters.md).
 
 # Fitting flow
 
-1. Evaluate model → `model.update_model()` produces model y-values.
+1. Evaluate model → `model.update()` produces model y-values (values-only
+   inside a `frozen_structure` run; `update_model` was renamed to the
+   private `_update_model`, and `update()` is the one public verb).
 2. Weighted residuals `wres = (data − model) / data_error` over the range
    (`calculate_weighted_residuals` in `fitting/__init__.py`; masked via
    `_apply_fit_mask`).
@@ -232,10 +234,10 @@ Cliques come from a greedy `min_fill` (or `min_degree`) elimination order; the
 clique tree is the maximum-weight spanning tree over shared-variable counts.
 Only `numpy` and the in-tree graph layer `chinet.graph` are involved.
 
-**Selective updates.** `GlobalFitModel.update_model` recomputes only the local
+**Selective updates.** `GlobalFitModel._update_model` recomputes only the local
 models a change reached. The dirty set is armed *solely* by the
 `parameter_values` setter — the one moment the model knows exactly what moved —
-and consumed by the very next `update_model`; anything else (a GUI edit of a
+and consumed by the very next `_update_model`; anything else (a GUI edit of a
 single value, a second update, a structure change) recomputes everything. A
 `_current_at_version` stamp additionally forbids skipping until every local
 model has been evaluated at least once since the last structural change, since
@@ -724,7 +726,7 @@ two-exponential TCSPC fit runs in ~37 ms.
   `fit_range`/`mask` setters. `n_points` and the residual cache key on it
   instead of reading every member's window back twice per evaluation.
 - **Per-member residual cache** in `GlobalFitModel.weighted_residuals`, invalidated
-  by exactly the members `update_model` recomputed. Selective updating was
+  by exactly the members `_update_model` recomputed. Selective updating was
   otherwise half an optimisation: the models were skipped but their residuals
   were recomputed anyway (24 000 → 7 054 calls).
 - **`parameter_values` setter** skips writing a value a parameter already has,

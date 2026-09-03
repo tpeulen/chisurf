@@ -30,7 +30,10 @@ class ParseDecayModel(parse.ParseModel):
         scatter = kwargs.get('scatter', self.generic.scatter)
         background = kwargs.get('background', self.generic.background)
         lintable = kwargs.get('lintable', self.corrections.lintable)
-        super(ParseDecayModel, self).update(**kwargs)
+        # The *compute* half of the parent (evaluate the parsed equation
+        # into self.y) -- not update(), whose default implementation
+        # dispatches back to _update_model and would recurse forever.
+        super(ParseDecayModel, self)._update_model(**kwargs)
         decay = self.y
         if self.convolve.irf is not None:
             decay = self.convolve.convolve(

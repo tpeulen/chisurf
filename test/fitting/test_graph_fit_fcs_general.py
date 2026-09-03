@@ -141,26 +141,48 @@ def test_the_fit_recovers_the_truth_with_zero_python_evaluations():
     assert during <= 2      # the post-run display refresh only
 
 
-def test_mdf_mode_refuses_the_graph_and_still_fits():
-    """The MDF shape is a numerical kernel (bff FcsMdf), not a formula.
+def test_mdf_mode_takes_the_graph_and_the_curve_is_the_python_curve():
+    """The MDF producer graph must compute *the model*, not just build.
 
-    After PRD-118 the MDF mode *does* take the graph route — the FcsMdfCurve
-    producer node publishes ``g_mdf`` and the equation composes the rest
-    onto it. The test now pins that the graph builds (not refuses) and the
-    director fallback is not needed.
+    "Builds and runs" is the assertion that let a wrong graph through once
+    already (the `MaxEntLifetimeModel` lesson): the producer's ports open at
+    `build_ports()` defaults, and without the build-time write of the
+    model's values a **fixed** non-default `w0`/`wem`/`diam` left the graph
+    computing a different instrument — measured at 50% off before the fix.
+    So the physical parameters here are deliberately fixed *and* away from
+    every default, and the pin is on the curve.
     """
     fit = make_fit()
-    fit.model.diffusion_mode = "mdf"
-    fit.model.find_parameters()
-    assert fit.model.func is not None   # equation with producer variable g_mdf
-    built = M.graph_objective(fit, fit.model)
-    # The graph may build (MDF producer path) or refuse (older build);
-    # either way the director path remains the definition.
+    model = fit.model
+    model.diffusion_mode = "mdf"
+    model.mdf_physical._w0.value = 320.0
+    model.mdf_physical._wem.value = 360.0
+    model.mdf_physical._diam.value = 1.2
+    model.find_parameters()
+    model.update()
+    python_y = np.array(model.y, dtype=float)
+
+    built = M.graph_objective(fit, model)
     if built is None:
-        # director path; on this deliberately meaningless fixture it must
-        # complete, not converge.
-        pass
-    fit.run()
+        pytest.skip("engine build without FcsMdfCurve")
+    m, _ = built
+    chi2, carried, keepalive, producer = m._graph
+    assert producer is not None, "the mdf path must carry its producer node"
+    chi2.update()   # the Minimizer's own call: it must pull the producer
+    node_y = np.asarray(
+        keepalive[0].get_output_port("chi2_model").value, dtype=float)
+    np.testing.assert_allclose(node_y, python_y, rtol=1e-12, atol=1e-14)
+
+    # And the chain is live: a producer-port write must reach the misfit
+    # through chi2.update() alone, because that is all the optimiser calls.
+    dport = producer.get_input_port("D")
+    dport.value = float(dport.value) * 3.0
+    chi2.update()
+    moved = np.asarray(
+        keepalive[0].get_output_port("chi2_model").value, dtype=float)
+    assert not np.array_equal(moved, node_y)
+
+    fit.run()   # end to end, on the graph
 
 
 def test_a_free_bg_without_count_rate_metadata_refuses():

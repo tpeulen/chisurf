@@ -727,6 +727,13 @@ def _fcs_mdf_producer(fit, model):
                (physical._wem, node.get_input_port("wem")),
                (physical._D, node.get_input_port("D")),
                (physical._diam, node.get_input_port("diam"))]
+    # The ports open at `build_ports()` defaults, not at the model's values.
+    # A free parameter is overwritten by the optimiser anyway, but a *fixed*
+    # one is a constant that must hold the model's value from the first
+    # evaluation on -- without this write the graph computed a shape for a
+    # different instrument (measured: 50% off with a fixed non-default w0).
+    for p, port in carried:
+        port.value = float(p.value)
     return node, node.get_output_port("mdf_shape"), carried
 
 

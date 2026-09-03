@@ -5153,3 +5153,46 @@ says so instead of "filed, awaiting a fix". `FidaModel` does not go through
 `pch_mixture` (it uses the pure-Python `fida.fida_pch` generating-function
 path) and was not affected by this defect; its own axis problem is the
 separate refusal documented under PRD-121 in `okf/prds/prd-121.md`.
+
+## `AnisotropySpectrum` applies the G-factor before the mixing (2026-09-02)
+
+Found porting the MFD patterns onto the graph's producer nodes (PRD-128).
+The engine node's polarised mixing applies ``G`` in a different slot than
+the Schaffer form the MFD side derives from: at ``G = 1`` the two spellings
+are algebraically identical for every ``l1``/``l2``, away from it they are
+not (at ``G = 2``, ``l1 = l2 = 0.1`` the recovered anisotropy differs by a
+factor of two). `chisurf/core/fluorescence/mfd/patterns.py`
+(`_polarized_spectrum`) works around it by driving the node at ``g = 1``
+and applying ``G`` afterwards as a perpendicular-channel gain — one
+multiplication, not a second copy of the algebra. **Not corrected in the
+node** because `AnisotropySpectrum` must stay bit-identical to
+`chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`, which the
+fitted TCSPC models are pinned against; fixing the ordering is an
+engine-side change that must move both together, with the VV/VH parity
+tests re-based in the same commit.
+
+## No `AcceptorSpectrum` producer node — the sensitized-acceptor transform is a second implementation (2026-09-02)
+
+`mfd/patterns.py::acceptor_lifetime_spectrum` computes the sensitized
+acceptor's rise/decay spectrum in numpy because nothing in `IMP.bff` emits
+it — the decay graph's producers cover the donor (`FretSpectrum`) and the
+polarisation (`AnisotropySpectrum`); no fitted TCSPC model has needed the
+acceptor rise yet. The transform belongs *in* the engine (an
+`AcceptorSpectrum` node taking the quenched donor spectrum plus ``tau_a``
+and ``tau0``); until that node exists the numpy transform stays, stated
+loudly in its docstring rather than hidden behind a fallback. This is the
+one recorded exception to PRD-128's "patterns.py computes no spectrum
+algebra of its own".
+
+## `test_change_dihedral` red — `ProteinCentroid.update()` no longer moves atoms (2026-09-03)
+
+`test/fluorescence/test_structure.py::Tests::test_change_dihedral` expects
+zeroing ``omega`` and calling ``update()`` to move the first atoms;
+coordinates come back unchanged. Not from the 2026-09-02/03 PRD-118–134
+wave (the file was last touched by the numba removal, 2026-08-11, and the
+internal-coordinate stack change before it). `chisurf.Structure` is closed
+to new code (assessment INC-17, deletion path owned by PRD-100), so this
+goes to that stream: either the dihedral write no longer reaches
+`internal_coordinates` or `internal_to_cartesian`'s start-point handling
+changed. Sibling `test_labeled_structure` is the already-recorded
+`IMP.bff.av` import baseline.

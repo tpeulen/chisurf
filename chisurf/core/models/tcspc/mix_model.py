@@ -85,9 +85,13 @@ class LifetimeMixModel(LifetimeModel):
     # TODO: needs docstring
     def update(self):
         """Update the state and emit signals."""
-        self.find_parameters()
-        for m in self.models:
-            m.update()
+        # Values-only inside a freeze, as Model.update: the structure walk
+        # is a contracted no-op there and reassigning redundancy mid-run
+        # invalidates the frozen flags.
+        if self.__dict__.get("_frozen_structure") is None:
+            self.find_parameters()
+            for m in self.models:
+                m.update()
         self._update_model()
 
     # TODO: needs docstring
