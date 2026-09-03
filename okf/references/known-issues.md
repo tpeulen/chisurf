@@ -4411,7 +4411,30 @@ changed, and each should be updated by whoever owns the change:
 * `test_surface_splat` — expects `splat` and gets `fast`; the default in the
   untracked `surface_quality.py` changed.
 
-### Open — five SQLite databases named `<sqlite3.Connection object at 0x…>`
+### Resolved 2026-09-03 — the SQLite databases named `<sqlite3.Connection object at 0x…>`
+
+The call site stayed unconfirmed, but the mechanism is now pinned and guarded
+in mmfdb itself. `MFDatabase.__init__` forwards `db_path` to
+`parse_database_target`, whose old `raw = str(location)` accepted anything — a
+`Connection` passed positionally became the string
+`"<sqlite3.Connection object at 0x…>"`, matched "no `://`", and was treated as
+a SQLite *path*. `connect()` then created that file and `_initialize_schema()`
+bootstrapped the full mmfdb schema into it — which is why the strays were
+~1 MB of fresh-schema databases (77 tables, the 226-row vocabulary) rather
+than empty files. The one zero-byte stray is the other shape: a bare
+`sqlite3.connect(<repr>)` read, of the kind `local_admin_status` in the
+mmfdb-admin GUI does — a SELECT over `sqlite_master` creates the file and
+leaves it empty.
+
+Fix (mmfdb `repository.py` + `store/sql_backend.py`): both entry points now
+raise `TypeError` for a non-str/non-PathLike location, with a message that
+says to pass an open connection as `connection=` instead.
+`local_admin_status` validates its argument too. A regression test
+(`tests/test_sql_backends.py::test_a_connection_as_path_is_rejected_and_never_creates_a_file`)
+asserts the raise *and* that no file appears in the working directory. The
+strays themselves, with their `-wal`/`-shm` sidecars, are deleted; the
+`.gitignore` carries a `<sqlite3.Connection object at 0x*` pattern so any
+regression is visible rather than silent.
 
 Found 2026-08-12 while clearing the repository root for a full commit. Five
 untracked files sit there with names like
@@ -4753,7 +4776,7 @@ projection agrees with what was drawn. A real check has to render a frame and
 find the molecule's pixels, then click those -- the same "measure it, do not
 re-derive it" rule the trajectory test now follows.
 
-## test_prd_mentions and test_plugin_help_guide_seam are red at HEAD for unrelated plugins (open)
+## test_prd_mentions and test_plugin_help_guide_seam are red at HEAD for unrelated plugins (open) — both resolved 2026-09-03
 
 **Found 2026-08-14, during the chimol relocation** (which is *not* the
 cause — verified against HEAD before touching anything).
@@ -4761,24 +4784,25 @@ cause — verified against HEAD before touching anything).
 Two guardrail suites fail on plugins whose modernisation is in flight
 elsewhere:
 
-* `test_prd_mentions.py`: `dcd.py`, `chiplot/backends/{__init__,opengl}`, the
-  `fcs/flc_2d` parity test, `lumis_quest` CREDITS.md and the `fret/core` files
-  name PRDs without allow-list entries; conversely the allow-list still carries
-  `core/fio/trajectory/{__init__,xtc}.py`, which no longer name one. The five
-  `mfd_prepare` offenders were cleaned **2026-08-15** (commit `e7f9a3835`).
-  All of these are exactly the state at HEAD — the offenders named PRDs in
-  HEAD's blobs and were absent from HEAD's allow-list.
-* `test_plugin_help_guide_seam.py`: `mfd_prepare`, `plot_settings`,
-  `tttr_to_pto`, `tttr/filetools` lack help/guide without allow-list entries,
-  `lumis_quest` lacks help.md, and the allow-list still carries
-  `tttr/converter/gui`, which matches no manifest.
+* ✅ **RESOLVED 2026-09-03** `test_prd_mentions.py`: every current offender was
+  cleaned rather than allow-listed — the `fret/core` forwarders' and
+  `model_manager`'s "(PRD-97)"/"(PRD-38)" parentheticals dropped, the
+  `flc_2d` parity test and `lumis_quest` CREDITS.md reworded, the historical
+  "(PRD-109/122/130/133)" asides in
+  `core/{fluorescence/burst,math/{linalg,optimization},structure/av,
+  fluorescence/tcspc/irf_estimation}` and `gui/chiplot/backends` rewritten to
+  say what happened without the number. The allow-list's genuinely stale lines
+  (`core/fio/trajectory/{__init__,xtc}.py` — the latter file no longer exists)
+  were struck. Both guards green.
+* ✅ **RESOLVED 2026-09-03** `test_plugin_help_guide_seam.py`: the six plugins
+  now ship their `help.md`/`guide.json` — see the plugin-manager-rebuild entry
+  below.
 
 `mfd_prepare` was mid-restructure (its files were staged for deletion in the
 shared index), which is why the PRD fix did not land with the relocation; the
 restructure finished **2026-08-15** and its PRD mentions and the broken
 `ServiceDispatcher.method` registration were fixed together (commit
-`e7f9a3835`). The fret-core PRD mentions and the stale trajectory/converter
-lines remain free wins.
+`e7f9a3835`). What this entry called "free wins" are now taken.
 
 ## ✅ FIXED — lumis_quest: `test_a_hitched_frame_does_not_throw_anybody_through_a_wall` fails on the working tree
 
@@ -4809,56 +4833,75 @@ instead. Fails identically on the pre-move disk state — carried verbatim to
 Full-suite tally after the relocation: 3625 passed, 41 skipped, and this one
 failure.
 
-## Six plugin-suite failures that predate the dependency work (open)
+## Six plugin-suite failures that predate the dependency work (open) — 4 of 6 fixed 2026-09-03
 
 **Found 2026-08-20, during the plugin-dependency change's `pytest test/plugins`
 run.** All six reproduce on HEAD content and are unrelated to manifests,
 discovery or load order; verified by checking the relevant files with
 `git show HEAD:<path>` rather than by assuming.
 
-- `test_all_plugins.py::test_plugin_entrypoints_import[fps_json_editor]` and
-  `[fret]` — `ModuleNotFoundError: No module named 'IMP.bff.fret'`. An
-  environment/migration gap in the imp-tricks split, not a manifest one.
-- `test_plugin_demo_gating.py::test_every_game_declares_itself_a_demo` and
-  `::test_opting_in_brings_the_demo_hub_back` — `misc/games`,
-  `misc/games/lumis_quest` and `misc/games/ninja_adventure` all carry
-  `"demo": false` at HEAD while the test requires `true`. **Not fixed here on
-  purpose**: flipping the flag hides the Games entry from the default menu
-  (demo plugins are gated behind `plugins.show_demo_plugins`), which is a
-  user-visible change inside an area another instance is actively editing
-  (`chisurf/gui/chigame/` is modified in the shared tree). It belongs to
-  whoever owns the chigame work.
-- `burst/test_mmfdb_h2mm_simulation.py::test_model_selection_scan_is_exposed` —
-  `ValueError: The truth value of an array with more than one element is
-  ambiguous`, i.e. a bare truth-test on a numpy array in the scan path.
-- `burst_selection/test_export_guards.py::test_export_bur_writes_non_empty_frame`
-  — `bursts.bur` is never written.
+State after the 2026-09-03 sweep (arm64 env, `QT_QPA_PLATFORM=offscreen`):
 
-Tally at the end of that change: 6 failed, 319 passed, 1 skipped (down from 18
-failed, since 12 of the original failures *were* caused by the change or by
-manifest-scanning tests that mistook chimol render baselines for plugin
+- ✅ **FIXED** `burst/test_mmfdb_h2mm_simulation.py::test_model_selection_scan_is_exposed`
+  — the scan is a `tttrlib.DataStore` now, not a frame: `.columns` is the list
+  of `Column` objects and `Column == str` raises the truth-value ambiguity the
+  test showed. The test's spelling moved to `.names`
+  (`list(h2mm.scan.names) == [...]`); the store's column order is first-seen,
+  which is the order `store_from_rows` builds, so the assertion holds. Whole
+  file: 5 passed.
+- ✅ **FIXED, and it was hiding a real defect**
+  `burst_selection/test_export_guards.py::test_export_bur_writes_non_empty_frame`
+  — the test fed a `pandas.DataFrame` where production holds a `DataStore`, and
+  `write_csv_table` no longer converts frames, so the export silently reported
+  "Export failed". **Behind it, both exporters (`export_bur`,
+  `export_flr_cif`) guarded on `self._last_frame.empty` — a pandas attribute
+  the DataStore does not have — so in production, with a real table, the
+  guard itself raised `AttributeError` and neither export could run at all.**
+  The guards now test `n_rows() == 0`; the test builds its table through
+  `store_from_rows`, the way the pipeline does. 6 passed.
+- ✅ **FIXED** `test_plugin_entrypoints_import[fps_json_editor]` and `[fret]`'s
+  root cause is unchanged — `IMP.bff.fret` does not exist — **but the
+  environment question is now answered**: the forwarders
+  (`plugins/modelling/fret/core/*.py`) name a Python subpackage that exists
+  only in `/Users/tpeulen/dev/imp.bff/cmake-build-debug`, and that build
+  cannot even initialise under the arm64 env (its `IMP/__init__.py`
+  path arithmetic fails before any import). The env's installed build
+  (`/Users/tpeulen/dev/imp/cmake-build-arm64`) has the flat C++ surface —
+  `fret_efficiency`, `FretSpectrum`, `histogram_rada`, … — and no `fret`
+  subpackage. So this is the PRD-97 stream's decision, on the record now:
+  either install the `IMP.bff.fret` Python portion into the active imp build,
+  or de-forward `fret/core` onto the flat surface. **Still open.**
+- **Still open on purpose** `test_plugin_demo_gating.py::test_every_game_declares_itself_a_demo`
+  and `::test_opting_in_brings_the_demo_hub_back` — the three game manifests
+  still carry `"demo": false` and `chisurf/gui/chigame/` is still modified in
+  the shared tree (re-verified 2026-09-03). It belongs to whoever owns the
+  chigame work; flipping the flag hides the Games entry from the default menu.
+
+Tally at the end of the original change: 6 failed, 319 passed, 1 skipped (down
+from 18 failed, since 12 of the original failures *were* caused by the change
+or by manifest-scanning tests that mistook chimol render baselines for plugin
 manifests, and were fixed).
 
-## Pre-existing failures found during the plugin-manager rebuild (open)
+## Pre-existing failures found during the plugin-manager rebuild (open) — both fixed 2026-09-03
 
-**Found 2026-08-20.** None are caused by that change; each was checked against
+**Found 2026-08-20.** None were caused by that change; each was checked against
 the working tree's own state before the rewrite began.
 
-- `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
-  `chisurf/core/dataspec/schema.py` (+154 lines) and the two written schemas
-  under `chisurf/core/dataspec/schemas/` are all **uncommitted work belonging to
-  another instance**, and the generator and the written files currently
-  disagree. Regenerating would fold that unfinished change into someone else's
-  commit, so it was left alone. Whoever owns that work: run
-  `python -c "from chisurf.core.dataspec.schema import write_view_schema, write_guide_schema; write_view_schema(); write_guide_schema()"`.
-- `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
-  — six GUI plugins still ship neither file and are not allow-listed:
-  `mfd_prepare`, `plot_settings`, `tttr_to_pto`, `filetools` (no `help.md` and
-  no `guide.json`), `lumis_quest` (no `help.md`), `ninja_adventure` (neither).
-  Writing the two files needs no code change. Two *stale* entries were struck
-  from `test/plugin_help_guide_allowlist.txt` in passing: `plugin_manager/gui`
-  (now ships both) and `tttr/converter/gui` (the plugin was renamed away in
-  `7f63edb4e` and no longer exists).
+- ✅ **FIXED 2026-09-03**
+  `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator` —
+  the schema work flagged as uncommitted in August has long since landed; the
+  written schemas under `chisurf/core/dataspec/schemas/` had simply drifted
+  from the generator again. Regenerated with
+  `python -m chisurf.core.dataspec.schema` (`guide.schema.json` +16 lines,
+  `view.schema.json` +243). The whole file: 325 passed.
+- ✅ **FIXED 2026-09-03**
+  `test/test_plugin_help_guide_seam.py::test_every_gui_plugin_has_help_and_guide`
+  — the six unlisted GUI plugins (`mfd_prepare`, `plot_settings`,
+  `tttr_to_pto`, `filetools`, `lumis_quest`, `ninja_adventure`) now ship
+  `help.md` and `guide.json` beside their GUI modules, written against what
+  each tool actually does; no code change was involved, exactly as the seam
+  promised. Whole file: 121 passed, 20 skipped. The allow-list was not
+  touched.
 
 ## ✅ FIXED — chiplot's WGPU backend: middle-drag opens a selection rectangle instead of panning
 
@@ -5103,20 +5146,73 @@ which backend chiplot happens to have**, and it is invisible to the import
 guard because it reaches pyqtgraph without importing it.
 `test/chiplot_native_allowlist.txt` is the list of remaining bets.
 
-## `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
+## RESOLVED 2026-09-03 — `IMP.bff.av` no longer exists — three test/models failures (2026-09-02)
 
-`chisurf/core/structure/av/__init__.py:75` imports
-`IMP.bff.av.compute.compute_av`, but imp-tricks no longer carries an
-`IMP/bff/` portion (its `src/IMP/` holds only cgmol/finite/speciation/swarm)
-and imp.bff's `pyext/src` was emptied by the PRD-117 stream (`avbuilder.i`,
-`avmodel.i` went to C++), so the Python subpackage the wrapper imports is
-gone. Fails: `test/models/test_fret_structure.py` (both tests) and, likely
-related, `test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`.
-Pre-existing before the 2026-09-02 PRD-105 session (verified: nothing in that
-session touches the AV import path). The fix belongs to the PRD-117/PRD-100
-stream: point `chisurf/core/structure/av/` at the new C++ surface, whatever
-`avbuilder`/`avmodel` now export, and re-run the AV parity set — not a rename
-to guess at from outside.
+`chisurf/core/structure/av/__init__.py` imported
+`IMP.bff.av.compute.compute_av`, but the installed imp build (the arm64 env's
+`/Users/tpeulen/dev/imp/cmake-build-arm64`) carries no `IMP.bff.av` Python
+subpackage — the PRD-117-style move put the builder on the flat `IMP.bff` C++
+surface. Failed: `test/models/test_fret_structure.py` (both tests),
+`test/fluorescence/test_structure.py::test_labeled_structure`, and
+`test/models/test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`
+(the last two only through shared import/state).
+
+**Fixed 2026-09-03** by pointing the wrapper at the new surface — verified by
+introspection and by running the AV parity set, not by renaming:
+
+* `_compute_av()` → `IMP.bff.compute_av`, which takes **one (N, 4) xyz+radius
+  array** and `r1/r2/r3` separately (no `dye_radii=`, no `backend=`), and
+  returns an `AccessibleVolume` read through `get_ng()/get_density()/
+  attachment_point`.
+* The other lazy imports moved to module-level functions that exist now:
+  `density_to_points` (returns one `(n, 4)` array, not `(n, points)`),
+  `random_distances`, `av_pair_statistics` (deterministic across calls;
+  takes the point clouds directly), `mean_position_distance`,
+  `histogram_rda` (takes **point arrays**, no longer the duck-typed AV —
+  real `States` or nothing), `split_contact_volume_masks` (returns
+  `[contact_mask, free_mask]`, wants 2-D radius/centre arrays),
+  and `IMP.bff.DynamicAccessibleVolume` (built from the real upstream AV plus
+  an `ObstacleAtoms`; `dye_radius` renamed `probe_radius`).
+* **The site strip is the load-bearing part.** With the FRETStructure model
+  defaults (`linker_width=4.5`, `radius1=4`, grid 0.5) the raw-array door
+  returned **zero** points for the hGBP1 18/577 sites while upstream's own
+  PDB door returned 106k for the same parameters — because the PDB door
+  strips the attachment residue to backbone + attachment atom
+  (`default_strip_mask`), which is what keeps the source from obstructing
+  itself. The wrapper now applies the same keep-set before calling.
+* `allowed_sphere_radius=None` now passes the **derive sentinel** (`-1.0`)
+  instead of the flat settings value 2.0. Upstream derives
+  `max(1.5, linker_width/2 + grid/2)`; the search inflates obstacles by half
+  the linker width, so a flat 2.0 at `linker_width=4.5` walls the source in —
+  exactly the fps.json-door bug upstream's `AV.h` documents as fixed by the
+  same derivation. The yaml key `fps.allowed_sphere_radius` is no longer read
+  by the wrapper.
+
+With `QT_QPA_PLATFORM=offscreen`, `test/fluorescence/test_structure.py`
+(7), `test/models/test_fret_structure.py` (3) and
+`test/models/test_detector_setups.py` (5) all pass. The Qt-offscreen
+platform is required for the last two — bare `QApplication([])` aborts the
+interpreter headless, which had masked these tests' progress earlier.
+
+**`DynamicAV` was rewired end-to-end the same day** (it shared the dead
+import): the upstream class renames every field to a getter
+(`get_diffusion_map`, `get_quenching_rate_map`, `get_fret_rate_map`,
+`get_rate_map`, `get_occupancy`), needs `update_diffusion_map()` before
+`update_occupancy()` will run, and `donor_decay` takes `(t_max, t_step,
+n_out)` positionally returning a `GridDiffusionResult` read through
+`get_time/get_fluorescence/get_density`. The PET quenching table is now
+`PETParametersMap`: ChiSurf's `structure.json` `Quencher` block
+(`{RES: {ATOM: [rate (1/ns), contact_distance (Å)]}}` — the residue-varying
+number is the rate, the shared 2.9 Å the contact radius) maps onto
+`PETParameters(comp_id, rate_constant, contact_distance)`. Exercised
+end-to-end on hGBP1 site 18 (quenching field max 5.55/ns, occupancy
+normalised, decay integrated to f(∞)=0.067). One honest gap: upstream's
+`n_out` sampling semantics returned fewer samples than requested in the
+smoke test, and the AV-decay model (`av_decay.py`) has no test coverage of
+its own — nothing pins the output length the fit sees.
+
+The fret-plugin forwarders still naming `IMP.bff.fret.*` are a *separate*
+gap and remain open — see the plugin-suite entry below.
 
 ## Bounded LM stalls when the bounds span decades (2026-09-02) — FIXED
 
@@ -5184,15 +5280,66 @@ loudly in its docstring rather than hidden behind a fallback. This is the
 one recorded exception to PRD-128's "patterns.py computes no spectrum
 algebra of its own".
 
-## `test_change_dihedral` red — `ProteinCentroid.update()` no longer moves atoms (2026-09-03)
+## RESOLVED 2026-09-03 — `test_change_dihedral` red: the test relied on two accidents, not on the dihedral machinery
 
-`test/fluorescence/test_structure.py::Tests::test_change_dihedral` expects
+`test/fluorescence/test_structure.py::Tests::test_change_dihedral` expected
 zeroing ``omega`` and calling ``update()`` to move the first atoms;
-coordinates come back unchanged. Not from the 2026-09-02/03 PRD-118–134
-wave (the file was last touched by the numba removal, 2026-08-11, and the
-internal-coordinate stack change before it). `chisurf.Structure` is closed
-to new code (assessment INC-17, deletion path owned by PRD-100), so this
-goes to that stream: either the dihedral write no longer reaches
-`internal_coordinates` or `internal_to_cartesian`'s start-point handling
-changed. Sibling `test_labeled_structure` is the already-recorded
-`IMP.bff.av` import baseline.
+coordinates came back unchanged. **Both halves of the premise were wrong, and
+neither had anything to do with the dihedral machinery:**
+
+1. **``s1.omega *= 0.0`` never wrote anything.** The ``omega`` getter returns
+   ``internal_coordinates[self._omega_indices]['d']`` — fancy indexing, hence a
+   **copy** — so the in-place multiply modified a temporary. True since the
+   property was introduced (2019); the *setter* writes through, the augmented
+   assignment does not.
+2. **The first atoms cannot move under ``omega`` at all.** The omega rows sit
+   at the CA atoms; residue 1's row carries dummy anchors ``(0, 0, 0)``, and
+   the first *effective* omega is the CA of residue 2 — atom 7. Atoms 0–6
+   (N, CA, C, O, CB, … of MET 7) are built before any omega and are unmoved by
+   a real omega write (verified: zeroing every omega moves 3449/3456 atoms, max
+   Δ 170 Å, first mover exactly atom 7).
+
+The test had been green because the old internal→cartesian reconstruction was
+lossy enough to jiggle the first atoms on every ``update()``; the numba-removal
+stack made the round-trip exact (Δ ≈ 2e-15), which turned the dormant no-op
+into a red assertion. Fails identically on a clean worktree at HEAD, so it was
+never working-tree fallout.
+
+**Fixed the test** (2026-09-03): set ``s1.omega = np.zeros_like(s1.omega)``
+through the property, then assert atoms `[:7]` stay and atoms `[7:]` move.
+Not from the 2026-09-02/03 PRD wave; the internal-coordinate code was never
+wrong. Sibling `test_labeled_structure` was the already-recorded
+`IMP.bff.av` import baseline — also fixed, see above its entry.
+
+## The `common.py` move left two stale `cs.core.common`/import sites — 24 pda2c tests red, one PDB parse path dead (found & fixed 2026-09-03)
+
+The working tree's `chisurf/core/common.py` → `chisurf/core/support/common.py`
+relocation (part of the large uncommitted refactor) did not move all of its
+callers with it. Three separate symptoms, one cause:
+
+* `chisurf/core/models/pda2c/simple.py` imported `Pda2cModelMixin`,
+  `mask_zero_photon_bins`, `pda_1d_residuals_from_s1s2` and
+  `resolve_fit_settings` from `chisurf.core.support.common` — the *relocated
+  general helpers* module — when they live in
+  `chisurf/core/models/pda2c/common.py`, the *pda2c* module of the same
+  basename. Every import of `simple.py` raised, which took down
+  **24 tests** across `test_pda2c_diagnostics.py` (12),
+  `test_pda2c_statistics.py` (9) and `test_pda2c_saw_nu.py` (3) with one
+  `ImportError`. **Fixed**: the import now names `chisurf.core.models.pda2c.common`.
+  All 47 pda2c tests pass.
+* `chisurf/core/fio/structure/coordinates.py` still spelled the old namespace
+  eight times (`cs.core.common.atom_weights`, `CHARGE_DICT`,
+  `TITR_ATOM_COARSE`, `VDW_DICT`) — even though it *already imported*
+  `chisurf.core.support.common`. Killed `parse_string_pdb`'s mass/radius
+  assignment and the PQR writer. **Fixed** to the `chisurf.core.support.common`
+  spelling; found because `test_structure_Structure` failed with
+  `module 'chisurf.core' has no attribute 'common'`.
+* `chisurf/core/structure/av/__init__.py:564` had the same stale
+  `cs.core.common.quencher` reference. **Fixed** the same way.
+
+The trap worth keeping: `support/common.py` and `models/pda2c/common.py` share
+a basename, and a mechanical `chisurf.core.common` → `chisurf.core.support.common`
+rewrite pastes over *both* kinds of caller. A file that stopped importing is a
+red suite; a file that now imports the wrong `common` and silently loses
+`atom_weights` is a wrong-answer path — the PDB parser's `except KeyError`
+printed "Cloud not assign parameters" and kept going.
