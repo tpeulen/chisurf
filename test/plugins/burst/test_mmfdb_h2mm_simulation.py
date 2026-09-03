@@ -62,7 +62,9 @@ def test_h2mm_recovers_the_simulated_states(analyzed):
 def test_model_selection_scan_is_exposed(analyzed):
     """The model-selection scan is available as a table."""
     _, _, _, h2mm = analyzed
-    assert list(h2mm.scan.columns) == ["n_states", "loglik", "bic", "icl"]
+    # The table is a tttrlib DataStore, not a frame: its column names live on
+    # `.names` (`.columns` is the list of Column objects).
+    assert list(h2mm.scan.names) == ["n_states", "loglik", "bic", "icl"]
     assert set(h2mm.scan["n_states"]) == {1, 2, 3}
 
 
