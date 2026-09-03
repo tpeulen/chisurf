@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour for the bare TTTR ⇄ PTO converter. One drop target, no options — the tour is about the direction rule and what is kept, which is the only thing there is to know.",
+  "steps": [
+    {
+      "title": "The drop decides the direction",
+      "text": "There is no pack/unpack switch. Drop a vendor file — <b>.ptu</b>, <b>.spc</b>, <b>.ht3</b> — and it is packed <i>into</i> a .pto. Drop a <b>.pto</b> and it is unpacked <i>back out</i> to the vendor files it embeds. The tool reads the suffix and goes.",
+      "target": {}
+    },
+    {
+      "title": "Nothing is ever deleted",
+      "text": "Packing writes the .pto <b>beside</b> the vendor file and keeps the original. Unpacking writes the vendor files back and keeps the container. Either direction can be repeated or thrown away with no loss.",
+      "await": {
+        "hint": "Drop a vendor file (or a .pto) on the list to convert it."
+      }
+    },
+    {
+      "title": "Files dropped together are one measurement",
+      "text": "A recording split across <b>m000.spc, m001.spc, …</b> is one measurement, so files dropped together are packed into <b>one</b> .pto, in lexical name order. Drop them as a group and the container comes out whole.",
+      "target": {}
+    },
+    {
+      "title": "The .set rides along, never leads",
+      "text": "A Becker &amp; Hickl <b>.set</b> is an .spc's sidecar. Dropped alongside, it is picked up automatically with the file it belongs to; dropped alone, it is never itself packed — it is not a measurement, it is the header of one."
+    }
+  ]
+}

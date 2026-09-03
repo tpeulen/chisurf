@@ -1,0 +1,29 @@
+{
+  "_comment": "Guided tour for Plot Settings. Sections are CollapsibleBox panels; the live preview at the bottom re-renders on every change, so each step says what to watch for there.",
+  "steps": [
+    {
+      "title": "Change it here, watch it below",
+      "text": "Everything in this window applies to a <b>live preview</b> at the bottom, before it applies to your working panels. If a setting does something you did not want, you see it on the preview first.<br/><br/>Settings are grouped into folding sections: backend, colours, appearance, and a pyqtgraph-only advanced section.",
+      "target": {}
+    },
+    {
+      "title": "The backend is the how, not the what",
+      "text": "Switching the rendering backend re-draws every open plot with a different engine — the curves, ranges and selections stay as they are. Try a switch and watch the preview: the <b>data</b> does not change, the <b>renderer</b> does.",
+      "await": {
+        "hint": "Pick a different backend and watch the preview re-render."
+      }
+    },
+    {
+      "title": "Colours reach new curves first",
+      "text": "The palette applies to curves drawn <b>after</b> the change; a fit already on screen keeps its colours until it is re-plotted. Appearance settings — fonts, grid, background — apply immediately.",
+      "target": {}
+    },
+    {
+      "title": "The folded section is engine-specific",
+      "text": "The advanced section holds the options that only exist on the pyqtgraph engine: anti-aliasing, downsampling, legend and SI-prefix behaviour. They are inert under a native backend — which is why they live in their own folded section rather than the main page.",
+      "await": {
+        "hint": "Open the advanced section and toggle an option."
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "_comment": "Guided tour for MFD Prepare. Three steps: point at the folder, prepare, read the result. Steps carry no widget targets — the tool is a single panel, so the tour walks the workflow rather than individual controls.",
+  "steps": [
+    {
+      "title": "Preparation is a claim check, not a copy",
+      "text": "An MFD fit reads a burst folder on trust: it assumes the channels line up, the counts agree and every measurement traces back to its photons. This tool checks those claims <b>before</b> a fit sits down to depend on them.<br/><br/>Nothing is moved or rewritten — a prepare either reports the folder is sound or names what is wrong with it.",
+      "target": {}
+    },
+    {
+      "title": "Choose the folder, then prepare it",
+      "text": "<b>Browse</b> to the folder burst search wrote, then press <b>Prepare</b>. The service walks the folder over RPC, so a large folder keeps the window responsive.<br/><br/>Prepare the folder once, after burst search and before the first MFD session opens it.",
+      "await": {
+        "hint": "Pick a burst folder and press <b>Prepare</b>."
+      }
+    },
+    {
+      "title": "Read all four answers",
+      "text": "The result panel answers four questions: which channels were <b>verified</b>, whether the <b>counts agree</b> across companion files, where each <b>source</b> resolved, and what the <b>diagnostics</b> raised.<br/><br/>A channel with no photons, a count mismatch against its companions, or a source that does not resolve are all cheap to fix now and expensive to discover mid-fit."
+    }
+  ]
+}

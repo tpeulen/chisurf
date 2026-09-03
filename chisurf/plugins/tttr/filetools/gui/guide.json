@@ -1,0 +1,26 @@
+{
+  "_comment": "Guided tour for the File Tools hub. The window is a navigation list plus a lazy panel area, so the tour is about choosing the right panel for the operation you actually mean.",
+  "steps": [
+    {
+      "title": "One hub, one kind of work",
+      "text": "Everything in this window acts on a <b>file</b>: it moves a measurement between containers, reads one back, or corrects a header. No panel here measures anything — the analyses live elsewhere on purpose.<br/><br/>Pick a tool on the left; its panel opens on the right.",
+      "target": {}
+    },
+    {
+      "title": "The converters move, they do not change",
+      "text": "<b>TTTR Split / Convert</b>, <b>TTTR → Time Windows</b> and <b>⇄ .pto</b> all rewrite a recording into a different container. Conversion never touches the photons — if a count comes out different afterwards, the header was wrong, not the conversion.",
+      "await": {
+        "hint": "Select a converter panel from the list."
+      }
+    },
+    {
+      "title": "Inspect before you trust",
+      "text": "<b>PTO Inspector</b> reads what a .pto actually contains, and the <b>TTTR header editor</b> shows the tags a vendor wrote — the ones every later step takes on faith. Wrong micro-time card, wrong resolution, wrong detector number: this is where those are caught.",
+      "target": {}
+    },
+    {
+      "title": "One broken tool breaks one panel",
+      "text": "Panels load lazily and independently, so a sub-tool whose dependencies are missing shows an error panel and the rest of the hub still works. If a panel fails to open, the problem is that tool's — not the file you dropped on another one."
+    }
+  ]
+}

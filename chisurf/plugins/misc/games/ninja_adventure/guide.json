@@ -1,0 +1,28 @@
+{
+  "_comment": "Guided tour for Ninja Adventure. The window is one canvas, so the tour covers what the game is, who the keyboard belongs to, and where the rest lives.",
+  "steps": [
+    {
+      "title": "A walk beside the work",
+      "text": "This is the ported Ninja Adventure map in a dockable canvas — something to walk while a fit runs. It ships with ChiSurf but sits behind the demo-plugins switch: a tile-map game is not why someone opens a fitting program.",
+      "target": {}
+    },
+    {
+      "title": "The keyboard follows the focus",
+      "text": "The game takes the arrow keys only while the canvas has focus. Click <b>anywhere else</b> in ChiSurf and the keys are back to the application — <b>Escape</b> hands them over without moving the mouse.",
+      "await": {
+        "hint": "Click into the map and take a few steps with the arrow keys."
+      }
+    },
+    {
+      "title": "Talk to the village",
+      "text": "Walk up to someone and press <b>Space</b> or <b>Return</b> to interact. The world is small on purpose: the map is a carrier, not a campaign — the review-attachment phase attaches to real actions, not to wandering.",
+      "await": {
+        "hint": "Find an NPC and interact."
+      }
+    },
+    {
+      "title": "It comes back as you left it",
+      "text": "The window remembers where it was between sessions through the shared plugin-state mechanism. The game logic lives in <b>game.py</b> with its own tests — including the one that checks nothing walks through a wall."
+    }
+  ]
+}
