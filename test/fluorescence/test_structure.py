@@ -125,12 +125,28 @@ class Tests(unittest.TestCase):
             True
         )
 
-        s1.omega *= 0.0
+        before = s1.atoms['xyz'].copy()
+        # The omega getter fancy-indexes ``coord_i``, so it returns a copy and
+        # an in-place ``*=`` would write into a temporary. Set through the
+        # property, whose setter writes the internal coordinates.
+        s1.omega = np.zeros_like(s1.omega)
         s1.update()
+        # The omega rows sit at the CA atoms and residue 1's row carries
+        # dummy anchors (0, 0, 0), so its own atoms cannot move; the first
+        # effective omega is the CA of residue 2 (atom 7). Zeroing every
+        # omega turns the trans peptide bonds (~180 deg) cis (0 deg) and
+        # must move everything from that CA onward.
         self.assertEqual(
             np.allclose(
-                a,
-                s1.atoms['xyz'][:5]
+                before[:7],
+                s1.atoms['xyz'][:7]
+            ),
+            True
+        )
+        self.assertEqual(
+            np.allclose(
+                before[7:],
+                s1.atoms['xyz'][7:]
             ),
             False
         )
