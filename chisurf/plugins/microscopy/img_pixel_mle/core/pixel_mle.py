@@ -45,11 +45,32 @@ ProgressCallback = Callable[[int, int, int, int], None]
 #: Minimum number of pixels to fit before spreading across threads is worthwhile.
 _MIN_ROWS_FOR_THREADS = 512
 
-_RESULT_COLUMNS = (
-    "Y pixel", "X pixel", "Pixel Number", "Number of Photons (fit window)",
-    "tau", "gamma", "r0", "rho", "BIFL scatter fit?", "2I*: P+2S?",
-    "rS", "rE", "2I*",
-)
+#: Loaded once; ``result_columns.yaml`` beside this module is the schema
+#: authority for models whose export layout is fixed by history (fit23).
+_RESULT_SCHEMAS = None
+
+
+def result_column_schemas() -> dict:
+    """Return the declared per-model result schemas (``result_columns.yaml``).
+
+    Models without an entry take the generic registry route -- their schema
+    *is* the tttrlib parameter registry and needs no file. The declared
+    ones exist for byte-compatible legacy layouts; the file's own header
+    documents the source vocabulary.
+
+    Returns
+    -------
+    dict
+        Model key (``Fit2xModel.name.lower()``) -> ``{"columns": [...]}``.
+    """
+    global _RESULT_SCHEMAS
+    if _RESULT_SCHEMAS is None:
+        import pathlib
+        import yaml
+        path = pathlib.Path(__file__).with_name("result_columns.yaml")
+        with open(path, encoding="utf-8") as fh:
+            _RESULT_SCHEMAS = yaml.safe_load(fh)
+    return _RESULT_SCHEMAS
 
 
 @dataclasses.dataclass
@@ -429,23 +450,33 @@ def fit_pixel_lifetimes(
             out[fit_rows] = values
         return out
 
-    if model is Fit2xModel.FIT23:
-        # Unchanged fit23 schema (byte-for-byte with the historical export).
-        columns = {
-            **base,
-            "tau": _column(values=params[:, 0] if len(fit_rows) else None),
-            "gamma": _column(values=params[:, 1] if len(fit_rows) else None),
-            "r0": _column(values=params[:, 2] if len(fit_rows) else None),
-            "rho": _column(values=params[:, 3] if len(fit_rows) else None),
-            "BIFL scatter fit?": _column(
-                0, np.full(len(fit_rows), int(settings.soft_bifl_scatter)),
-                dtype=np.int64),
-            "2I*: P+2S?": _column(
-                0, np.full(len(fit_rows), int(settings.p2s_twoIstar)), dtype=np.int64),
-            "rS": _column(), "rE": _column(),
-            "2I*": _column(values=params[:, 4] if len(fit_rows) else None),
-        }
-        result_cols = list(_RESULT_COLUMNS)
+    schema = result_column_schemas().get(model.name.lower())
+    if schema is not None:
+        # A declared legacy layout (fit23: byte-for-byte with the
+        # historical export). The schema file decides names, order and
+        # sources; this walk only knows the source vocabulary.
+        columns = dict(base)
+        result_cols = []
+        for entry in schema["columns"]:
+            name_, source = entry["column"], entry["source"]
+            result_cols.append(name_)
+            if source == "base":
+                if name_ not in base:
+                    raise ValueError(
+                        f"result_columns.yaml: no base column {name_!r}")
+            elif source == "blank":
+                columns[name_] = _column()
+            elif source.startswith("parameter:"):
+                j = int(source.split(":", 1)[1])
+                columns[name_] = _column(
+                    values=params[:, j] if len(fit_rows) else None)
+            elif source.startswith("flag:"):
+                flag = bool(getattr(settings, source.split(":", 1)[1]))
+                columns[name_] = _column(
+                    0, np.full(len(fit_rows), int(flag)), dtype=np.int64)
+            else:
+                raise ValueError(
+                    f"result_columns.yaml: unknown source {source!r}")
     else:
         # Generic schema: ``tau`` (primary lifetime) + one column per free
         # parameter named by the registry, then ``2I*``.

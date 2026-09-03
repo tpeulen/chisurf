@@ -1,7 +1,15 @@
 """Readers and writers for the ``.bur`` burst tables.
 
-One column name in this format does not mean what it says, and it means the
-same wrong thing in both writers here, so it is inherited rather than a slip:
+**The column set is declared, not coded**: ``burst_features.yaml`` beside
+this module names every computed feature, its header and its order, and
+``generate_burst_dataframe`` instantiates that declaration over the detector
+setup. Add, rename, reorder or drop a column in the YAML — no code change
+(the general rule: analysis I/O and computed features live in settings). The
+quantity vocabulary the declaration draws from is
+:func:`_static_burst_features` / :func:`_span_features`.
+
+One column name in this format does not mean what it says, and it is
+inherited from the reference format rather than a slip:
 
 ``Mean Macro Time (ms)`` and ``Mean Macrotime (<detector>) (ms)`` are the
 **midpoint of the burst's first and last photon**, ``(t_first + t_last) / 2`` —
@@ -203,185 +211,147 @@ def get_indices_in_ranges(rout, mt, chs, micro_time_ranges):
     return indices.tolist()
 
 
-def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detectors):
+#: Loaded once; the file is the schema authority (see its own header).
+_BURST_FEATURES_DECLARATION = None
+
+
+def burst_feature_declaration() -> dict:
+    """Return the declared burst-summary schema (``burst_features.yaml``).
+
+    The declaration names every computed feature of a burst analysis, its
+    column header and its order -- the general rule: analysis I/O and
+    computed features live in a settings file so they can change without a
+    code change. The ``source`` vocabulary the entries may use is defined
+    by :func:`_static_burst_features` and :func:`_span_features`.
+
+    Returns
+    -------
+    dict
+        ``{"groups": [{"scope": ..., "columns": [...]}, ...],
+        "trailing_blank": bool}``.
     """
-    Write burst summary information to a TSV file (tab-separated),
-    using a vectorized approach for efficiency.
+    global _BURST_FEATURES_DECLARATION
+    if _BURST_FEATURES_DECLARATION is None:
+        import yaml
+        path = pathlib.Path(__file__).with_name("burst_features.yaml")
+        with open(path, encoding="utf-8") as fh:
+            _BURST_FEATURES_DECLARATION = yaml.safe_load(fh)
+    return _BURST_FEATURES_DECLARATION
 
-    Modified to match a format where zero rows are interleaved between
-    the computed rows and an extra (empty) column is added at the end.
-    Ensures that even if there are no bursts, the output file contains
-    a header row with the expected columns.
 
-    :param bur_filename: Output filename for the TSV summary.
-    :param start_stop: List of tuples (start_index, stop_index) defining bursts,
-                       with stop_index the burst's last photon (inclusive).
-    :param filename: String representing the file name.
-    :param tttr: A TTTR-like object with:
-                 - macro_times
-                 - micro_times
-                 - routing_channel
-                 - header.macro_time_resolution
-    :param windows: Dictionary {window_name: (r_start, r_stop)}
-    :param detectors: Dictionary {det_name: {"chs": [...], "micro_time_ranges": [(mt_start, mt_stop), ...]}}
+def _static_burst_features(sources, start, stop, macro, res,
+                           confidence, burst_index, file_name) -> dict:
+    """Whole-burst quantities, by declared ``source`` name.
+
+    This is the ``static``-scope vocabulary of ``burst_features.yaml``; a
+    new whole-burst feature is one ``elif`` here plus its declaration line.
     """
-    import numpy as np
-
-    # Unpack arrays and resolution
-    n_ph = len(tttr)
-    macro_times = tttr.macro_times
-    micro_times = tttr.micro_times
-    routing_channels = tttr.routing_channel
-    res = tttr.header.macro_time_resolution
-
-    # ---------------------------------------------------------
-    # Precompute the full list of column headers
-    # ---------------------------------------------------------
-    static_cols = [
-        "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
-        "Number of Photons", "Count Rate (KHz)", "First File", "Last File"
-    ]
-    det_cols = []
-    for det_name in detectors:
-        det_cols += [
-            f"First Photon ({det_name})", f"Last Photon ({det_name})",
-            f"Duration ({det_name}) (ms)", f"Mean Macro Time ({det_name}) (ms)",
-            f"Number of Photons ({det_name})", f"{det_name.capitalize()} Count Rate (KHz)"
-        ]
-    window_cols = []
-    for window_name, (r_start, r_stop) in windows.items():
-        for det_name in detectors:
-            window_cols.append(
-                f"S {window_name} {det_name} (kHz) | {r_start}-{r_stop}"
-            )
-    # Mean micro time per detector, appended after every pre-existing column and
-    # before the trailing blank: a reader keying on leading positions is not
-    # shifted, and ndX's trailing-blank strip still finds the blank.
-    micro_cols = [f"Mean Microtime ({det_name}) (ns)" for det_name in detectors]
-    micro_ns = micro_time_resolution_ns(tttr)
-    # extra empty column
-    header_keys = static_cols + det_cols + window_cols + micro_cols + [""]
-
-    summary_rows = []
-
-    # Helper: create a zero row dict
-    def create_zero_row(keys):
-        """Create a zero-filled OrderedDict row.
-
-        Parameters
-        ----------
-        keys : list
-            Column keys.
-
-        Returns
-        -------
-        OrderedDict
-        """
-        row = OrderedDict()
-        for key in keys:
-            row[key] = "" if key == "" else 0
-        return row
-
-    # ---------------------------------------------------------
-    # Iterate and build rows
-    # ---------------------------------------------------------
-    for start_idx, stop_idx in start_stop:
-        # ``stop_idx`` is the burst's last photon (inclusive), so it must be a
-        # valid index and every slice runs to ``stop_idx + 1``.
-        if stop_idx >= n_ph or stop_idx < 0:
-            continue
-
-        burst_macro = macro_times[start_idx:stop_idx + 1]
-        burst_micro = micro_times[start_idx:stop_idx + 1]
-        burst_rout = routing_channels[start_idx:stop_idx + 1]
-
-        if stop_idx <= start_idx:
-            duration = mean_macro_time = n_photons = 0
+    dur = (macro[stop] - macro[start]) * res * 1e3
+    out = {}
+    for s in sources:
+        if s == "first_photon":
+            out[s] = start
+        elif s == "last_photon":
+            out[s] = stop
+        elif s == "duration_ms":
+            out[s] = dur
+        elif s == "mean_macro_time_ms":
+            out[s] = ((macro[stop] + macro[start]) / 2) * res * 1e3
+        elif s == "n_photons":
+            out[s] = stop - start + 1
+        elif s == "count_rate_khz":
+            # ``dur`` is milliseconds, so photons-per-``dur`` is already
+            # kHz -- the unit every rate column is written in.
+            npix = stop - start + 1
+            out[s] = (npix / dur) if dur > 0 else np.nan
+        elif s == "confidence_sigma":
+            # Indexed by position in start_stop, not by output row: skipped
+            # bursts never reach the filler, so the two would otherwise
+            # drift apart. Unavailable (old engine) stays 0 -- the layout
+            # must not depend on the tttrlib version.
+            out[s] = (float(confidence[burst_index])
+                      if confidence is not None
+                      and burst_index < confidence.size else 0)
+        elif s == "file_name":
+            out[s] = file_name
         else:
-            duration = (macro_times[stop_idx] - macro_times[start_idx]) * res
-            mean_macro_time = ((macro_times[stop_idx] + macro_times[start_idx]) / 2.0) * res
-            n_photons = stop_idx - start_idx + 1
-        count_rate = (n_photons / duration) if duration > 0 else np.nan
+            raise ValueError(
+                f"burst_features.yaml: unknown static source {s!r}")
+    return out
 
-        # base row data
-        row_data = OrderedDict([
-            ("First Photon", start_idx),
-            ("Last Photon", stop_idx),
-            ("Duration (ms)", duration * 1e3),
-            ("Mean Macro Time (ms)", mean_macro_time * 1e3),
-            ("Number of Photons", n_photons),
-            ("Count Rate (KHz)", count_rate / 1e3),
-            ("First File", filename),
-            ("Last File", filename),
-        ])
 
-        # detector masks and per-detector stats
-        detector_masks = {}
-        for det_name, det_info in detectors.items():
-            ch_mask = np.isin(burst_rout, det_info["chs"])
-            detector_masks[det_name] = ch_mask & _micro_time_mask(
-                burst_micro, det_info["micro_time_ranges"]
-            )
+#: What a span quantity reads when its detector/window saw no photon.
+#: Sentinel values, not omissions -- one row per burst, always (the
+#: companion contract), so an empty selection is a value, never a hole.
+_SPAN_EMPTY = {
+    "first_photon": -1,
+    "last_photon": -1,
+    "duration_ms": -1.0,
+    "mean_macro_time_ms": -1.0,
+    "n_photons": 0,
+    "count_rate_khz": -1.0,
+}
 
-        for det_name, mask in detector_masks.items():
-            idxs = np.nonzero(mask)[0]
-            if len(idxs) == 0:
-                row_data.update({
-                    f"First Photon ({det_name})": -1,
-                    f"Last Photon ({det_name})": -1,
-                    f"Duration ({det_name}) (ms)": -1.0,
-                    f"Mean Macro Time ({det_name}) (ms)": -1.0,
-                    f"Number of Photons ({det_name})": 0,
-                    f"{det_name.capitalize()} Count Rate (KHz)": -1.0,
-                })
+
+def _span_features(sources, idxs, start, macro, res,
+                   micro_sl, micro_ns) -> dict:
+    """Photon-span quantities, by declared ``source`` name.
+
+    The shared vocabulary of the ``detector`` and ``window_detector``
+    scopes of ``burst_features.yaml``: quantities over the selected photons
+    of one burst (a detector's, or a detector's within a PIE window).
+
+    Parameters
+    ----------
+    sources : set of str
+        Which quantities the declaration asks for.
+    idxs : numpy.ndarray
+        Indices of the selected photons, relative to the burst slice.
+    start : int
+        The burst's first photon, absolute.
+    macro : numpy.ndarray
+        Macro times of the whole measurement.
+    res : float
+        Macro-time resolution in seconds.
+    micro_sl : numpy.ndarray
+        The burst's micro times.
+    micro_ns : float
+        Micro-time resolution in nanoseconds.
+
+    Returns
+    -------
+    dict
+        ``source`` name -> value, empty spans filled from ``_SPAN_EMPTY``.
+    """
+    out = {}
+    if idxs.size == 0:
+        for s in sources:
+            if s == "mean_micro_time_ns":
+                out[s] = mean_micro_time_ns(micro_sl, idxs, micro_ns)
             else:
-                first_i, last_i = idxs[0], idxs[-1]
-                dur_ms = (burst_macro[last_i] - burst_macro[first_i]) * res * 1e3
-                mean_mt_ms = ((burst_macro[last_i] + burst_macro[first_i]) / 2.0) * res * 1e3
-                rate_khz = (len(idxs) / dur_ms) if dur_ms > 0 else np.nan
-                row_data.update({
-                    f"First Photon ({det_name})": start_idx + first_i,
-                    f"Last Photon ({det_name})": start_idx + last_i,
-                    f"Duration ({det_name}) (ms)": dur_ms,
-                    f"Mean Macro Time ({det_name}) (ms)": mean_mt_ms,
-                    f"Number of Photons ({det_name})": len(idxs),
-                    f"{det_name.capitalize()} Count Rate (KHz)": rate_khz,
-                })
-
-        # per-window, per-detector stats
-        for window_name, (r_start, r_stop) in windows.items():
-            w_mask = (burst_micro >= r_start) & (burst_micro < r_stop)
-            for det_name in detectors:
-                combined = detector_masks[det_name] & w_mask
-                idxs = np.nonzero(combined)[0]
-                key = f"S {window_name} {det_name} (kHz) | {r_start}-{r_stop}"
-                if len(idxs) == 0:
-                    row_data[key] = -1.0
-                else:
-                    dur_win_ms = (burst_macro[idxs[-1]] - burst_macro[idxs[0]]) * res * 1e3
-                    row_data[key] = (len(idxs) / dur_win_ms) if dur_win_ms > 0 else np.nan
-
-        # mean micro time per detector — inserted here so the dict's insertion
-        # order matches ``header_keys`` (the frame takes its columns from the
-        # rows, not from that list)
-        for det_name, mask in detector_masks.items():
-            row_data[f"Mean Microtime ({det_name}) (ns)"] = mean_micro_time_ns(
-                burst_micro, np.nonzero(mask)[0], micro_ns
-            )
-
-        # append empty column
-        row_data[""] = ""
-
-        # interleave zero rows
-        if not summary_rows:
-            summary_rows.append(create_zero_row(header_keys))
-        summary_rows.append(row_data)
-        summary_rows.append(create_zero_row(header_keys))
-
-    # ---------------------------------------------------------
-    # Build DataFrame and write TSV, ensuring header is always present
-    # ---------------------------------------------------------
-    write_csv_table(bur_filename, store_from_rows(summary_rows, columns=header_keys))
+                out[s] = _SPAN_EMPTY[s]
+        return out
+    abs0, abs1 = start + idxs[0], start + idxs[-1]
+    d_ms = (macro[abs1] - macro[abs0]) * res * 1e3
+    for s in sources:
+        if s == "first_photon":
+            out[s] = abs0
+        elif s == "last_photon":
+            out[s] = abs1
+        elif s == "duration_ms":
+            out[s] = d_ms
+        elif s == "mean_macro_time_ms":
+            out[s] = ((macro[abs1] + macro[abs0]) / 2) * res * 1e3
+        elif s == "n_photons":
+            out[s] = idxs.size
+        elif s == "count_rate_khz":
+            out[s] = (idxs.size / d_ms) if d_ms > 0 else np.nan
+        elif s == "mean_micro_time_ns":
+            out[s] = mean_micro_time_ns(micro_sl, idxs, micro_ns)
+        else:
+            raise ValueError(
+                f"burst_features.yaml: unknown span source {s!r}")
+    return out
 
 
 def generate_burst_dataframe(
@@ -438,29 +408,50 @@ def generate_burst_dataframe(
     rout  = tttr.routing_channel
     res   = tttr.header.macro_time_resolution if macro_time_resolution is None else float(macro_time_resolution)
     n_ph  = len(tttr)
-
-    # build column list
-    static_cols = [
-        "First Photon", "Last Photon", "Duration (ms)", "Mean Macro Time (ms)",
-        "Number of Photons", "Count Rate (KHz)", "Confidence (sigma)",
-        "First File", "Last File",
-    ]
-    det_cols = []
-    for d in detectors:
-        det_cols += [
-            f"First Photon ({d})", f"Last Photon ({d})",
-            f"Duration ({d}) (ms)", f"Mean Macrotime ({d}) (ms)",
-            f"Number of Photons ({d})", f"{d.capitalize()} Count Rate (KHz)",
-        ]
-    win_cols = []
-    for w,(r0,r1) in windows.items():
-        for d in detectors:
-            win_cols.append(f"S {w} {d} (kHz) | {r0}-{r1}")
-    # Mean micro time per detector, appended last (see write_bur_file_old)
-    micro_cols = [f"Mean Microtime ({d}) (ns)" for d in detectors]
     micro_ns = micro_time_resolution_ns(tttr)
-    # extra blank column
-    cols = static_cols + det_cols + win_cols + micro_cols + [""]
+
+    # The column set is DECLARED, not coded: `burst_features.yaml` beside
+    # this module names every computed feature, its header and its order
+    # (the general rule -- analysis I/O drifts in settings, not in code).
+    # This function instantiates the declared families over the detector
+    # setup and fills each column from its `source` quantity.
+    declaration = burst_feature_declaration()
+    cols = []          # header, in declared order
+    fills = []         # one (scope, source, instance-key) per column
+    for group in declaration["groups"]:
+        scope = group["scope"]
+        entries = [(e["column"], e["source"]) for e in group["columns"]]
+        # Instances outer, declared entries inner -- the historical layout
+        # groups a detector's (or window-pair's) columns consecutively.
+        if scope == "static":
+            for template, source in entries:
+                cols.append(template)
+                fills.append((scope, source, None))
+        elif scope == "detector":
+            for d in detectors:
+                for template, source in entries:
+                    cols.append(template.format(
+                        detector=d, Detector=str(d).capitalize()))
+                    fills.append((scope, source, d))
+        elif scope == "window_detector":
+            for w, (r0, r1) in windows.items():
+                for d in detectors:
+                    for template, source in entries:
+                        cols.append(template.format(
+                            window=w, detector=d,
+                            Detector=str(d).capitalize(), r0=r0, r1=r1))
+                        fills.append((scope, source, (w, d)))
+        else:
+            raise ValueError(
+                f"burst_features.yaml: unknown scope {scope!r}")
+    if declaration.get("trailing_blank", False):
+        cols.append("")
+        fills.append(("blank", "", None))
+    # Which quantities each scope actually has to compute for this schema.
+    wanted = {
+        s: {src for sc, src, _ in fills if sc == s}
+        for s in ("static", "detector", "window_detector")
+    }
 
     # Per-burst confidence: the significance of the burst's photon excess over
     # the background measured around it, in sigma. tttrlib computes it from the
@@ -481,10 +472,6 @@ def generate_burst_dataframe(
         except Exception:
             confidence = None
 
-    # map col→index for fast assignment
-    idx = {c:i for i,c in enumerate(cols)}
-    n_cols = len(cols)
-
     # precompute global masks so we don't remake them per-burst
     # Detector/window micro-time ranges are always expressed in raw micro-time
     # channels (the same units as ``micro``); micro-time binning is a display-only
@@ -499,9 +486,8 @@ def generate_burst_dataframe(
         for w,(r0,r1) in windows.items()
     }
 
-    # helper zero-row
-    zero_row = [0]*n_cols
-    zero_row[-1] = ""  # last col blank string
+    # helper zero-row: 0 for every declared column, "" for the blank one
+    zero_row = ["" if scope == "blank" else 0 for scope, _, _ in fills]
 
     out = []
     # only add the leading zero‐row when there's at least one burst and interleaved zeros are requested
@@ -517,79 +503,43 @@ def generate_burst_dataframe(
         if stop <= start or stop>=n_ph or start<0:
             continue
 
-        # allocate a fresh row
-        row = zero_row.copy()
-
-        # static stats — ``stop`` is the burst's last photon (inclusive), so the
-        # photon at ``stop`` counts and every slice below runs to ``stop + 1``.
-        dur   = (macro[stop] - macro[start]) * res * 1e3
-        meanm = ((macro[stop] + macro[start]) / 2) * res * 1e3
-        npix  = stop - start + 1
-        # ``dur`` is milliseconds, so photons-per-``dur`` is already kHz — the
-        # unit the "Count Rate (KHz)" header and the per-detector rates below
-        # are written in. Do not scale again.
-        crate = (npix / dur) if dur>0 else np.nan
-
-        row[idx["First Photon"]]          = start
-        row[idx["Last Photon"]]           = stop
-        row[idx["Duration (ms)"]]         = dur
-        row[idx["Mean Macro Time (ms)"]]  = meanm
-        row[idx["Number of Photons"]]     = npix
-        row[idx["Count Rate (KHz)"]]      = crate
-        # Indexed by position in start_stop, not by output row: skipped bursts
-        # never reach here, so the two would otherwise drift apart.
-        if confidence is not None and burst_index < confidence.size:
-            row[idx["Confidence (sigma)"]] = confidence[burst_index]
-        row[idx["First File"]]            = file_name_only
-        row[idx["Last File"]]             = file_name_only
-
-        # slice views
+        # ``stop`` is the burst's last photon (inclusive), so the photon at
+        # ``stop`` counts and every slice runs to ``stop + 1``.
         sl = slice(start, stop + 1)
         micro_sl = micro[sl]
-        for d in detectors:
-            mask = det_global[d][sl]
-            idxs = np.nonzero(mask)[0]
-            row[idx[f"Mean Microtime ({d}) (ns)"]] = mean_micro_time_ns(
-                micro_sl, idxs, micro_ns
-            )
-            col0 = f"First Photon ({d})"
-            if idxs.size == 0:
-                # these get -1 or 0 per your original logic
-                row[idx[col0]]                             = -1
-                row[idx[f"Last Photon ({d})"]]            = -1
-                row[idx[f"Duration ({d}) (ms)"]]           = -1.0
-                row[idx[f"Mean Macrotime ({d}) (ms)"]]     = -1.0
-                row[idx[f"Number of Photons ({d})"]]       = 0
-                row[idx[f"{d.capitalize()} Count Rate (KHz)"]] = -1.0
-            else:
-                i0, i1 = idxs[0], idxs[-1]
-                abs0, abs1 = start + i0, start + i1
-                d_ms = (macro[abs1] - macro[abs0]) * res * 1e3
-                m_ms = ((macro[abs1] + macro[abs0]) / 2) * res * 1e3
-                rate = (idxs.size / d_ms) if d_ms>0 else np.nan
 
-                row[idx[col0]]                             = abs0
-                row[idx[f"Last Photon ({d})"]]            = abs1
-                row[idx[f"Duration ({d}) (ms)"]]           = d_ms
-                row[idx[f"Mean Macrotime ({d}) (ms)"]]     = m_ms
-                row[idx[f"Number of Photons ({d})"]]       = idxs.size
-                row[idx[f"{d.capitalize()} Count Rate (KHz)"]] = rate
+        static_q = _static_burst_features(
+            wanted["static"], start, stop, macro, res,
+            confidence, burst_index, file_name_only)
 
-        # now per-window, per-detector
-        for w in windows:
-            wmask = win_global[w][sl]
-            for d in detectors:
-                combined = det_global[d][sl] & wmask
-                idxs = np.nonzero(combined)[0]
-                key = f"S {w} {d} (kHz) | {windows[w][0]}-{windows[w][1]}"
-                if idxs.size == 0:
-                    row[idx[key]] = -1.0
-                else:
-                    abs0, abs1 = start+idxs[0], start+idxs[-1]
-                    d_ms = (macro[abs1] - macro[abs0]) * res * 1e3
-                    row[idx[key]] = (idxs.size / d_ms) if d_ms>0 else np.nan
+        # Per-instance quantities, computed lazily -- once per detector /
+        # window pair per burst, however many declared columns read them.
+        det_q: dict = {}
+        win_q: dict = {}
+        row = []
+        for scope, source, key in fills:
+            if scope == "static":
+                row.append(static_q[source])
+            elif scope == "detector":
+                q = det_q.get(key)
+                if q is None:
+                    idxs = np.nonzero(det_global[key][sl])[0]
+                    q = det_q[key] = _span_features(
+                        wanted["detector"], idxs, start, macro, res,
+                        micro_sl, micro_ns)
+                row.append(q[source])
+            elif scope == "window_detector":
+                q = win_q.get(key)
+                if q is None:
+                    w, d = key
+                    idxs = np.nonzero(det_global[d][sl] & win_global[w][sl])[0]
+                    q = win_q[key] = _span_features(
+                        wanted["window_detector"], idxs, start, macro, res,
+                        micro_sl, micro_ns)
+                row.append(q[source])
+            else:                          # the trailing blank
+                row.append("")
 
-        # blank column already set to ""
         out.append(row)
         # Only add trailing zero row if interleaved zeros are requested
         if include_interleaved_zeros:

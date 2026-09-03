@@ -38502,3 +38502,25 @@ side of the line.
   site-packages by hand SIGKILLs every import on macOS arm64 (signature
   invalidation) — `pip install --no-deps --force-reinstall .` is the
   recovery, per tttrlib's own handover note.
+
+- **2026-09-03 — analysis feature sets become declarations (owner: "the
+  input/output definitions and what is actually computed ... must be coded
+  in some settings files ... no hardcoding ... not too many abstraction
+  layers").** New general rule, recorded in
+  `okf/architecture/declarative-analysis-definitions.md` + CLAUDE.md.
+  Converted in the same change: the `.bur` burst-summary schema
+  (`core/fio/fluorescence/burst_features.yaml` — the writer used to spell
+  every column twice, header list + positional filler, and carried a
+  *diverged dead duplicate* (`write_bur_file_old`, "Mean Macrotime" vs
+  "Mean Macro Time") now deleted; cell-for-cell parity pinned against the
+  transcribed old builder, and a drift test proves a dropped column
+  actually drops; cost 108.9 → 118.3 ms per 3000 bursts, once per
+  measurement); the pixel-MLE fit23 legacy export
+  (`img_pixel_mle/core/result_columns.yaml` — other models already take
+  the registry route, where tttrlib's parameter registry IS the
+  declaration); the region-MLE shape features
+  (`region_mle/core/result_columns.yaml`, one list serving table and
+  preview). The three .bur tests that used the deleted twin as their A/B
+  reference now assert against the one live path. Remaining (in the
+  concept's resume): `pixel_maps.py`'s kind chain + map-name dicts and
+  `MFD_INTENSITY_COLUMNS`.

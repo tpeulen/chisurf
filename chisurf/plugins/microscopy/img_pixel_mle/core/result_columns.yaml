@@ -1,0 +1,33 @@
+# Per-model result schemas of the pixel-MLE table (the general rule:
+# analysis I/O and computed features are declared in settings, never
+# hardcoded). `assemble` in pixel_mle.py walks the schema for the fitted
+# model; a model without an entry here takes the generic registry route
+# (tau + one column per tttrlib-registry-named free parameter + 2I*),
+# which needs no declaration because tttrlib's registry IS its
+# declaration.
+#
+# Column sources:
+#   base           a pixel-bookkeeping column of the same name (Y pixel,
+#                  X pixel, Pixel Number, Number of Photons (fit window))
+#   parameter:<j>  the j-th column of the fitted parameter block
+#   flag:<name>    the settings attribute <name>, written as 0/1
+#   blank          NaN placeholder (columns the legacy format reserves)
+#
+# `fit23` is the historical export, byte-for-byte -- reorder or rename
+# only knowing every reader of these tables moves with it.
+
+fit23:
+  columns:
+    - {column: "Y pixel",                        source: base}
+    - {column: "X pixel",                        source: base}
+    - {column: "Pixel Number",                   source: base}
+    - {column: "Number of Photons (fit window)", source: base}
+    - {column: "tau",              source: "parameter:0"}
+    - {column: "gamma",            source: "parameter:1"}
+    - {column: "r0",               source: "parameter:2"}
+    - {column: "rho",              source: "parameter:3"}
+    - {column: "BIFL scatter fit?", source: "flag:soft_bifl_scatter"}
+    - {column: "2I*: P+2S?",       source: "flag:p2s_twoIstar"}
+    - {column: "rS",               source: blank}
+    - {column: "rE",               source: blank}
+    - {column: "2I*",              source: "parameter:4"}

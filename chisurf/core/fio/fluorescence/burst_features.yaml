@@ -1,0 +1,61 @@
+# The .bur burst-summary schema: which features a burst analysis computes,
+# under which column names, in which order.
+#
+# `generate_burst_dataframe` iterates THIS file — add, rename, reorder or
+# drop a column here and the written table follows, with no code change
+# (the general rule: analysis I/O and computed features are declared in
+# settings, never hardcoded).
+#
+# `source` names a quantity the filler knows how to compute; the vocabulary
+# is the three `_*_FEATURES` tables in
+# `chisurf/core/fio/fluorescence/burst.py`, one per scope. A brand-new
+# quantity needs a one-line entry there; everything about *which* quantities
+# appear, their headers and their order lives here.
+#
+# `scope` decides what a column is computed over and how the family is
+# instantiated:
+#   static           one column per entry, whole burst
+#   detector         one column per entry per detector in the detector setup
+#                    ({detector} and {Detector} placeholders)
+#   window_detector  one column per entry per (PIE window x detector) pair
+#                    ({window}, {r0}, {r1} placeholders as well)
+# The detector and window *instances* come from the detector setup
+# (detector_setups.json / the wizard), not from here — this file declares
+# the families, the setup declares how many of each exist.
+#
+# Contract notes (see okf/subsystems/burst-companions.md): the .bur table is
+# merged column-wise and read by header name downstream (ndxplorer, the MFD
+# reader infers the setup back from these names), so renaming a column here
+# is a *format change* — the readers' inference patterns must move with it.
+# The trailing blank column and the interleaved zero rows are part of the
+# legacy layout.
+
+groups:
+  - scope: static
+    columns:
+      - {column: "First Photon",         source: first_photon}
+      - {column: "Last Photon",          source: last_photon}
+      - {column: "Duration (ms)",        source: duration_ms}
+      - {column: "Mean Macro Time (ms)", source: mean_macro_time_ms}
+      - {column: "Number of Photons",    source: n_photons}
+      - {column: "Count Rate (KHz)",     source: count_rate_khz}
+      - {column: "Confidence (sigma)",   source: confidence_sigma}
+      - {column: "First File",           source: file_name}
+      - {column: "Last File",            source: file_name}
+  - scope: detector
+    columns:
+      - {column: "First Photon ({detector})",        source: first_photon}
+      - {column: "Last Photon ({detector})",         source: last_photon}
+      - {column: "Duration ({detector}) (ms)",       source: duration_ms}
+      - {column: "Mean Macrotime ({detector}) (ms)", source: mean_macro_time_ms}
+      - {column: "Number of Photons ({detector})",   source: n_photons}
+      - {column: "{Detector} Count Rate (KHz)",      source: count_rate_khz}
+  - scope: window_detector
+    columns:
+      - {column: "S {window} {detector} (kHz) | {r0}-{r1}", source: count_rate_khz}
+  - scope: detector
+    columns:
+      - {column: "Mean Microtime ({detector}) (ns)", source: mean_micro_time_ns}
+
+# The legacy layout ends every row with one unnamed blank column.
+trailing_blank: true

@@ -486,8 +486,37 @@ def region_photon_indices(clsm, labels) -> list[np.ndarray]:
     return [np.asarray(b, dtype=np.int64) for b in buckets]
 
 
+#: Loaded once; ``result_columns.yaml`` beside this module is the schema
+#: authority for the exported shape/brightness features.
+_SHAPE_COLUMN_DECLARATION = None
+
+
+def shape_column_declaration() -> list:
+    """Return the declared shape-column schema (``result_columns.yaml``).
+
+    Returns
+    -------
+    list of dict
+        One entry per exported column; the file's own header documents the
+        entry keys.
+    """
+    global _SHAPE_COLUMN_DECLARATION
+    if _SHAPE_COLUMN_DECLARATION is None:
+        import pathlib
+        import yaml
+        path = pathlib.Path(__file__).with_name("result_columns.yaml")
+        with open(path, encoding="utf-8") as fh:
+            _SHAPE_COLUMN_DECLARATION = yaml.safe_load(fh)["shape"]
+    return _SHAPE_COLUMN_DECLARATION
+
+
 def _shape_columns(prop) -> dict:
     """Return the per-molecule shape columns of the result table.
+
+    The column set is declared in ``result_columns.yaml`` beside this
+    module (the general rule: computed features live in settings). Shared
+    by the fitted table and the un-fitted segmentation preview so the two
+    stay in step.
 
     Parameters
     ----------
@@ -497,23 +526,18 @@ def _shape_columns(prop) -> dict:
     Returns
     -------
     dict
-        The morphology and brightness columns, shared by the fitted table and
-        the un-fitted segmentation preview so the two stay in step.
+        The declared morphology and brightness columns.
     """
-    row, col = prop.centroid
-    columns = {
-        "label": int(prop.label),
-        "centroid_row": float(row),
-        "centroid_col": float(col),
-        "area": int(prop.area),
-        "perimeter": float(prop.perimeter),
-        "circularity": float(prop.circularity),
-        "eccentricity": float(prop.eccentricity),
-        "solidity": float(prop.solidity),
-    }
-    if prop.image_intensity is not None:
-        columns["intensity_mean"] = float(prop.intensity_mean)
-        columns["intensity_max"] = float(prop.intensity_max)
+    casts = {"int": int, "float": float}
+    columns = {}
+    for entry in shape_column_declaration():
+        requires = entry.get("requires")
+        if requires is not None and getattr(prop, requires) is None:
+            continue
+        value = getattr(prop, entry["source"])
+        if "index" in entry:
+            value = value[entry["index"]]
+        columns[entry["column"]] = casts[entry.get("type", "float")](value)
     return columns
 
 

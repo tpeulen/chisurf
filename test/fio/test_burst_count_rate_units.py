@@ -19,7 +19,6 @@ import pytest
 
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
-    write_bur_file_old,
 )
 
 MACRO_TIME_RESOLUTION = 1e-6  # 1 µs per macro-time unit
@@ -103,31 +102,3 @@ def test_the_total_rate_is_at_least_every_detector_rate(
         rate = row[f"{det_name.capitalize()} Count Rate (KHz)"]
         assert rate > 0.0
         assert total >= rate
-
-
-def test_both_writers_agree_on_the_count_rate(two_photon_burst: _FakeTTTR, tmp_path) -> None:
-    """The legacy TSV writer and the fast one report the same rate for one burst."""
-    bur = tmp_path / "synthetic.bur"
-    write_bur_file_old(
-        str(bur),
-        [(0, 1)],
-        "synthetic.spc",
-        two_photon_burst,
-        WINDOWS,
-        DETECTORS,
-    )
-    legacy = pd.read_csv(bur, sep="\t")
-    legacy = legacy[legacy["Number of Photons"] > 0].iloc[0]
-
-    fast = generate_burst_dataframe(
-        start_stop=[(0, 1)],
-        filename="synthetic.spc",
-        tttr=two_photon_burst,
-        windows=WINDOWS,
-        detectors=DETECTORS,
-        include_interleaved_zeros=False,
-    )
-    fast = rows_from_table(fast)[0]
-
-    assert legacy["Count Rate (KHz)"] == pytest.approx(2.0)
-    assert fast["Count Rate (KHz)"] == pytest.approx(legacy["Count Rate (KHz)"])

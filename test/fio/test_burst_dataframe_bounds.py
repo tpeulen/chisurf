@@ -18,7 +18,6 @@ import pytest
 
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
-    write_bur_file_old,
 )
 from chisurf.core.math.signal import find_bursts
 
@@ -105,26 +104,3 @@ def test_burst_dataframe_may_end_on_the_last_photon(burst_stream: _FakeTTTR) -> 
 
     assert row_count(df) == 1
     assert rows_from_table(df)[0]["Number of Photons"] == len(burst_stream)
-
-
-def test_write_bur_file_old_uses_the_same_convention(
-    burst_stream: _FakeTTTR, tmp_path
-) -> None:
-    """The legacy TSV writer counts the stop photon too, and rejects n_ph."""
-    bur = tmp_path / "synthetic.bur"
-    write_bur_file_old(
-        str(bur),
-        # The second pair is out of range and must be skipped rather than
-        # indexing macro_times[n_ph].
-        [(0, 9), (0, len(burst_stream))],
-        "synthetic.spc",
-        burst_stream,
-        WINDOWS,
-        DETECTORS,
-    )
-
-    df = pd.read_csv(bur, sep="\t")
-    rows = df[df["Number of Photons"] > 0]
-    assert len(rows) == 1
-    assert rows.iloc[0]["Number of Photons"] == 10
-    assert rows.iloc[0]["Number of Photons (g)"] == 10

@@ -1,0 +1,26 @@
+# Which per-molecule shape/brightness features the region-MLE table
+# exports, and under which column names (the general rule: analysis I/O
+# and computed features are declared in settings, never hardcoded).
+# `_shape_columns` in region_mle.py walks this list -- add or drop a
+# regionprops feature here, no code change. Shared by the fitted table and
+# the un-fitted segmentation preview, so the two cannot drift apart.
+#
+# Entry keys:
+#   column    the exported column name
+#   source    the attribute of chisurf.core.roi.RegionProperties to read
+#   index     optional: pick one element of a tuple-valued attribute
+#   type      int | float (default float)
+#   requires  optional: only export when this RegionProperties attribute
+#             is not None (the brightness columns need an intensity image)
+
+shape:
+  - {column: label,          source: label,     type: int}
+  - {column: centroid_row,   source: centroid,  index: 0}
+  - {column: centroid_col,   source: centroid,  index: 1}
+  - {column: area,           source: area,      type: int}
+  - {column: perimeter,      source: perimeter}
+  - {column: circularity,    source: circularity}
+  - {column: eccentricity,   source: eccentricity}
+  - {column: solidity,       source: solidity}
+  - {column: intensity_mean, source: intensity_mean, requires: image_intensity}
+  - {column: intensity_max,  source: intensity_max,  requires: image_intensity}

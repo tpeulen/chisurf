@@ -24,7 +24,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.core.datastore import column_names, numeric_column, rows_from_table
+from chisurf.core.datastore import (
+    column_names,
+    numeric_column,
+    rows_from_table,
+    write_csv_table,
+)
 import pandas as pd
 import pytest
 
@@ -33,7 +38,6 @@ from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
     mean_micro_time_ns,
     micro_time_resolution_ns,
-    write_bur_file_old,
 )
 
 MACRO_TIME_RESOLUTION = 1e-6  # 1 µs per macro-time unit
@@ -93,6 +97,13 @@ def _data_rows(frame: pd.DataFrame) -> pd.DataFrame:
     return frame.iloc[1::2]
 
 
+def _write_bur(out, tttr):
+    """Write a real .bur through the one live path (builder + TSV writer)."""
+    frame = generate_burst_dataframe(
+        [(0, 5)], "m000.ptu", tttr, WINDOWS, DETECTORS)
+    write_csv_table(str(out), frame)
+
+
 def test_helper_converts_channels_to_nanoseconds():
     micro = np.array([100, 200, 300, 400])
     ns = micro_time_resolution_ns(_FakeTTTR([0], [0], [0]))
@@ -120,29 +131,6 @@ def test_fast_writer_reports_the_mean_micro_time(two_colour_burst, detector, mic
     )
     value = numeric_column(frame, f"Mean Microtime ({detector}) (ns)")[0]
     assert value == pytest.approx(_expected_ns(micro_channels))
-
-
-@pytest.mark.parametrize("detector,micro_channels", [("green", GREEN_MICRO), ("red", RED_MICRO)])
-def test_old_writer_reports_the_mean_micro_time(tmp_path, two_colour_burst, detector, micro_channels):
-    out = tmp_path / "m000.bur"
-    write_bur_file_old(str(out), [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS)
-    frame = pd.read_csv(out, sep="\t")
-    value = _data_rows(frame)[f"Mean Microtime ({detector}) (ns)"].iloc[0]
-    assert value == pytest.approx(_expected_ns(micro_channels))
-
-
-def test_both_writers_agree(tmp_path, two_colour_burst):
-    """The two writer paths must not drift — they write the same format."""
-    fast = generate_burst_dataframe(
-        [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS,
-        include_interleaved_zeros=False,
-    )
-    out = tmp_path / "m000.bur"
-    write_bur_file_old(str(out), [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS)
-    old = _data_rows(pd.read_csv(out, sep="\t"))
-    for detector in DETECTORS:
-        column = f"Mean Microtime ({detector}) (ns)"
-        assert numeric_column(fast, column)[0] == pytest.approx(old[column].iloc[0])
 
 
 def test_detector_without_photons_gets_the_shared_sentinel(green_only_burst):
@@ -207,7 +195,7 @@ def test_the_reader_picks_the_column_up(tmp_path, two_colour_burst):
     from chisurf.core.fluorescence.burst.table import read_burst_table
 
     out = tmp_path / "m000.bur"
-    write_bur_file_old(str(out), [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS)
+    _write_bur(out, two_colour_burst)
     columns = read_burst_table(out)
     assert "Mean Microtime (green) (ns)" in columns
 
@@ -217,7 +205,7 @@ def test_the_companion_reader_keeps_it_and_still_strips_the_blank(tmp_path, two_
     ndx_reader = pytest.importorskip("ndxplorer.io.reader")
 
     out = tmp_path / "m000.bur"
-    write_bur_file_old(str(out), [(0, 5)], "m000.ptu", two_colour_burst, WINDOWS, DETECTORS)
+    _write_bur(out, two_colour_burst)
     frame = ndx_reader._drop_trailing_empty_columns(pd.read_csv(out, sep="\t"))
 
     assert "Mean Microtime (green) (ns)" in frame.columns
