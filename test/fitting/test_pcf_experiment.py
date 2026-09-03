@@ -29,7 +29,7 @@ def test_pcf_config_block_present():
     readers = cfg["pcf"]["readers"]
     assert readers[0]["reader_class"] == "chisurf.core.experiments.fcs.FCS"
     assert readers[0]["reader_params"]["experiment_reader"] == "csv"
-    assert "chisurf.gui.widgets.models.pcf.ParsePCFWidget" in cfg["pcf"]["models"]
+    assert "chisurf.core.models.pcf.parse.ParsePCFModel" in cfg["pcf"]["models"]
 
 
 def test_pcf_reader_loads_csv_curve(tmp_path):
