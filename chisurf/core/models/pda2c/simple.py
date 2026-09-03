@@ -161,10 +161,33 @@ class ProbCh0(FittingParameterGroup):
         return rows
 
     def update(self):
-        """Synchronize internal amplitude values from the (possibly normalized) property."""
-        amplitudes = self.amplitudes
+        """Synchronize internal amplitude values from the (possibly normalized) property.
+
+        When amplitudes are normalized, the error estimates — which the
+        optimiser computed in raw space — are rescaled by the same factor
+        so the error bar stays on the same scale as the value.  Idempotent:
+        once ``sum|a| = 1`` the factor is 1.
+        """
+        raw = np.array([x.value for x in self._amplitudes])
+        if self.absolute_amplitudes:
+            raw = np.sqrt(raw**2)
+        if self.normalize_amplitudes:
+            s = abs(raw.sum())
+            if s > 0:
+                normalized = raw / s
+                scale = 1.0 / s
+            else:
+                normalized = raw
+                scale = 1.0
+        else:
+            normalized = raw
+            scale = 1.0
         for i, a in enumerate(self._amplitudes):
-            a.value = amplitudes[i]
+            a.value = normalized[i]
+            ee = a.error_estimate
+            if (isinstance(ee, float) and np.isfinite(ee)
+                    and abs(scale - 1.0) > 1e-12):
+                a.error_estimate = ee * scale
 
     def finalize(self):
         """Synchronize internal amplitudes with normalization rules."""

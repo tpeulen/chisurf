@@ -384,10 +384,23 @@ class Gaussians(FittingParameterGroup):
 
     # TODO: needs docstring
     def finalize(self):
-        """Finalize the component state."""
-        a = self.amplitude
+        """Finalize the component state and rescale error estimates.
+
+        Amplitudes are normalized to sum to one.  The error estimates
+        computed by the optimiser are in the raw (pre-normalisation) space,
+        so they must be rescaled by ``1 / sum|a_raw|`` to stay on the
+        same scale as the normalised values.  Idempotent.
+        """
+        raw = np.sqrt(np.array([g.value for g in self._gaussianAmplitudes]) ** 2)
+        s = float(raw.sum())
+        a = raw / s if s > 0 else raw
+        scale = 1.0 / s if s > 0 else 1.0
         for i, g in enumerate(self._gaussianAmplitudes):
             g.value = a[i]
+            ee = g.error_estimate
+            if (isinstance(ee, float) and np.isfinite(ee)
+                    and abs(scale - 1.0) > 1e-12):
+                g.error_estimate = ee * scale
 
     def clear(self) -> None:
         """Remove every component.
@@ -572,10 +585,23 @@ class DiscreteDistance(FittingParameterGroup):
 
     # TODO: needs docstring
     def finalize(self):
-        """Finalize the component state."""
-        a = self.amplitude
+        """Finalize the component state and rescale error estimates.
+
+        Amplitudes are normalized to sum to one.  The error estimates
+        computed by the optimiser are in the raw (pre-normalisation) space,
+        so they must be rescaled by ``1 / sum|a_raw|`` to stay on the
+        same scale as the normalised values.  Idempotent.
+        """
+        raw = np.sqrt(np.array([g.value for g in self._amplitudes]) ** 2)
+        s = float(raw.sum())
+        a = raw / s if s > 0 else raw
+        scale = 1.0 / s if s > 0 else 1.0
         for i, g in enumerate(self._amplitudes):
             g.value = a[i]
+            ee = g.error_estimate
+            if (isinstance(ee, float) and np.isfinite(ee)
+                    and abs(scale - 1.0) > 1e-12):
+                g.error_estimate = ee * scale
 
     def clear(self) -> None:
         """Remove every component.

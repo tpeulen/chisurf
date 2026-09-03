@@ -362,6 +362,21 @@ class Fit(cs.core.base.Base):
                 f"a fit's model must be a Model or a Model subclass, "
                 f"got {model!r}"
             )
+        # A fit is born consistent: attaching a model to data computes the
+        # curve once, here, so every consumer -- the first plot draw, a
+        # residual read, a chi2 display -- sees a real curve rather than the
+        # zeroed placeholder `ModelCurve.__init__` leaves. Before this, the
+        # first compute was an accident of GUI event plumbing (an auto-range
+        # widget's deferred callback, skipped on some transport paths), and
+        # a freshly created fit displayed no model at all. A model that
+        # cannot compute yet (a payload it does not have -- no burst folder,
+        # no carpet) says so on its own terms; construction still succeeds.
+        if self._model is not None and self._data is not None:
+            try:
+                self._model.update()
+            except Exception as e:
+                cs.logging.debug(
+                    "initial model update at attach deferred: %s" % e)
 
     @property
     def weighted_residuals(self) -> cs.core.curve.Curve:
@@ -1452,8 +1467,26 @@ class Fit(cs.core.base.Base):
                 a.error_estimate = float(np.sqrt(max(block.sum(), 0.0)))
 
     def update(self) -> None:
-        """Update the model and notify observers."""
+        """Update the model and notify observers.
+
+        The notification half is real: ``fit.updated`` goes out on the shared
+        event bus, which is what the GUI's plot windows subscribe to. That
+        makes this method the *one* owner of the recompute-then-redraw
+        contract -- a range change, a parameter edit or a script calling
+        ``fit.update()`` all get the redraw for free, instead of each GUI
+        path carrying (and sometimes dropping) its own notification.
+        """
         self.model.update()
+        try:
+            from chisurf.server.startup import get_shared_event_bus
+            bus = get_shared_event_bus()
+            if bus is not None:
+                bus.publish("fit.updated", {
+                    "fit_uid": str(getattr(self, "unique_identifier", "") or ""),
+                    "fit_name": str(getattr(self, "name", "") or ""),
+                })
+        except Exception:
+            pass          # headless without a bus: the recompute already happened
 
     def grid_scan(
             self,
@@ -2078,6 +2111,7 @@ class FitGroup(Fit):
         if not cancelled:
             self.update_error_estimates()
             self.results.append(self.model.__getstate__())
+        self.model.finalize()
         if cancelled:
             raise OptimizationCancelled()
 

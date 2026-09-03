@@ -133,11 +133,32 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
         return rows
 
     def finalize(self) -> None:
-        """Synchronize internal amplitudes with any normalization rules."""
-        amps = self.amplitudes
+        """Synchronize internal amplitudes with normalization rules.
+
+        Rescales error estimates by the same normalization factor so they
+        stay on the same scale as the values.  Idempotent.
+        """
+        raw = np.array([p.value for p in self._amplitudes], dtype=float)
+        if getattr(self, "_abs_amplitudes", True):
+            raw = np.sqrt(raw ** 2)
+        if getattr(self, "_normalize_amplitudes", True):
+            s = float(np.sum(raw))
+            if s > 0:
+                normalized = raw / s
+                scale = 1.0 / s
+            else:
+                normalized = raw
+                scale = 1.0
+        else:
+            normalized = raw
+            scale = 1.0
         try:
             for i, p in enumerate(self._amplitudes):
-                p.value = amps[i]
+                p.value = normalized[i]
+                ee = p.error_estimate
+                if (isinstance(ee, float) and np.isfinite(ee)
+                        and abs(scale - 1.0) > 1e-12):
+                    p.error_estimate = ee * scale
         except Exception:
             pass
 

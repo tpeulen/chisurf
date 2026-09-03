@@ -103,12 +103,27 @@ class Anisotropy(FittingParameterGroup):
 
     @property
     def b(self) -> np.array:
-        """Rotational amplitudes array, normalized to r0."""
-        a = np.sqrt(np.array([g.value for g in self._bs]) ** 2)
-        a /= a.sum()
-        a *= self.r0
+        """Rotational amplitudes array, normalized to r0.
+
+        Writes the normalised values back to the parameters, and rescales
+        error estimates by the same factor so they stay on the same scale.
+        Idempotent: once normalised, ``sum|a| = r0`` and the factor is 1.
+        """
+        raw = np.sqrt(np.array([g.value for g in self._bs]) ** 2)
+        s = float(raw.sum())
+        r0 = float(self.r0)
+        if s > 0:
+            a = raw / s * r0
+            scale = r0 / s
+        else:
+            a = raw
+            scale = 1.0
         for i, g in enumerate(self._bs):
             g.value = a[i]
+            ee = g.error_estimate
+            if (isinstance(ee, float) and np.isfinite(ee)
+                    and abs(scale - 1.0) > 1e-12):
+                g.error_estimate = ee * scale
         return a
 
     @property
@@ -274,7 +289,6 @@ class Anisotropy(FittingParameterGroup):
         """Return the number of components."""
         return len(self._bs)
 
-    # TODO: needs docstring
     def add_rotation(
             self,
             b: float = 0.2,

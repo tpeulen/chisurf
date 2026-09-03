@@ -205,11 +205,40 @@ class Lifetime(FittingParameterGroup):
 
     # TODO: needs docstring
     def update(self):
-        """Update the state and emit signals."""
+        """Update the state and emit signals.
+
+        When amplitudes are normalized, the raw values written by the
+        optimiser are rescaled to ``|a| / sum|a|`` here.  The error estimates
+        live in the same raw space the optimiser works in, so they must be
+        rescaled by the **same** factor — otherwise the displayed value is
+        normalized but the error bar is not, and the relative error is off by
+        ``sum|a_raw|``.
+
+        The scaling is idempotent: once the values are normalized
+        (``sum|a| = 1``) the factor is 1 and subsequent calls are no-ops,
+        so repeated ``update()`` calls do not compound the correction.
+        """
         self._update_redundant_amplitude()
-        amplitudes = self.amplitudes
+        raw = np.array([x.value for x in self._amplitudes])
+        if self.absolute_amplitudes:
+            raw = np.sqrt(raw**2)
+        if self.normalize_amplitudes:
+            s = abs(raw.sum())
+            if s > 0:
+                normalized = raw / s
+                scale = 1.0 / s
+            else:
+                normalized = raw
+                scale = 1.0
+        else:
+            normalized = raw
+            scale = 1.0
         for i, a in enumerate(self._amplitudes):
-            a.value = amplitudes[i]
+            a.value = normalized[i]
+            ee = a.error_estimate
+            if (isinstance(ee, float) and np.isfinite(ee)
+                    and abs(scale - 1.0) > 1e-12):
+                a.error_estimate = ee * scale
 
     # TODO: needs docstring
     def finalize(self):
