@@ -25,7 +25,7 @@ from chisurf.core.datastore import (
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core import analysis_cache
+from chisurf.core.runtime import analysis_cache
 from chisurf.core.fio.decimate import per_curve_budget, thin_for_plot
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
@@ -3426,7 +3426,8 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def export_bur(self) -> None:
         """Export burst data as .bur file."""
-        if self._last_frame is None or self._last_frame.empty:
+        # The table is a tttrlib DataStore (no `.empty`); emptiness is row count.
+        if self._last_frame is None or self._last_frame.n_rows() == 0:
             self.summary.setPlainText("No burst data to export.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -3442,7 +3443,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def export_flr_cif(self) -> None:
         """Export burst data as flrCIF format."""
-        if self._last_frame is None or self._last_frame.empty:
+        if self._last_frame is None or self._last_frame.n_rows() == 0:
             self.summary.setPlainText("No burst data to export.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
