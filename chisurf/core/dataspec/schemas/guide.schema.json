@@ -86,6 +86,10 @@
                 "sequence": {
                   "type": "boolean",
                   "description": "The sequence strip (chimol)."
+                },
+                "wizard": {
+                  "type": "boolean",
+                  "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
                 }
               },
               "additionalProperties": false
@@ -168,6 +172,10 @@
           "_comment": {
             "type": "string"
           },
+          "$schema": {
+            "type": "string",
+            "description": "JSON Schema URI for editor validation."
+          },
           "title": {
             "type": "string"
           },
@@ -245,6 +253,10 @@
                     "sequence": {
                       "type": "boolean",
                       "description": "The sequence strip (chimol)."
+                    },
+                    "wizard": {
+                      "type": "boolean",
+                      "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
                     }
                   },
                   "additionalProperties": false
@@ -397,6 +409,10 @@
             "sequence": {
               "type": "boolean",
               "description": "The sequence strip (chimol)."
+            },
+            "wizard": {
+              "type": "boolean",
+              "description": "The running wizard's panel (chimol). Resolves only while a wizard is running, so the step should start it first."
             }
           },
           "additionalProperties": false

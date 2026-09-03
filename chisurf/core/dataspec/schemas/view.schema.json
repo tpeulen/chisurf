@@ -9,6 +9,10 @@
       "type": "string",
       "description": "What this file is and what reads it."
     },
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema URI for editor validation. Map the pattern in .vscode/settings.json or set this to the schema's $id."
+    },
     "sections": {
       "type": "array",
       "items": {
@@ -332,7 +336,244 @@
               },
               "options": {}
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "background_run"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "interval_ms": {},
+                        "progress_attr": {},
+                        "running_attr": {},
+                        "start_action": {},
+                        "start_description": {},
+                        "start_label": {},
+                        "status_attr": {},
+                        "stop_action": {},
+                        "stop_description": {},
+                        "stop_label": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "embed"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "attr": {},
+                        "expanding": {},
+                        "kwargs": {},
+                        "pass_model": {},
+                        "widget": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "fitting_parameter"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "label": {},
+                        "prior": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "help"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "align": {},
+                        "label": {},
+                        "resource": {},
+                        "text": {},
+                        "title": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "lcurve"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "compute_action": {},
+                        "log10_max": {},
+                        "log10_min": {},
+                        "n_points": {},
+                        "select_action": {},
+                        "x_label": {},
+                        "y_label": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "path_list"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "add_folders": {},
+                        "allow_duplicates": {},
+                        "checkable": {},
+                        "dialog_filter": {},
+                        "extensions": {},
+                        "folder_expander": {},
+                        "guards": {},
+                        "max_height": {},
+                        "mmfdb": {},
+                        "mmfdb_kinds": {},
+                        "mmfdb_scope": {},
+                        "path_filter": {},
+                        "replace_on_drop": {},
+                        "select_first": {},
+                        "title": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "rate_matrix"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "attr": {},
+                        "decimals": {},
+                        "diagonal": {},
+                        "disable_row0": {},
+                        "labels_attr": {},
+                        "maximum": {},
+                        "minimum": {},
+                        "popup": {},
+                        "size_attr": {},
+                        "title": {},
+                        "unit": {},
+                        "unit_attr": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "key": {
+                      "const": "scalar_table"
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "call": {},
+                        "rows": {},
+                        "title": {}
+                      },
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            ]
           }
         },
         {
