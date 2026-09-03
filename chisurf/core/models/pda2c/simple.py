@@ -26,7 +26,7 @@ from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGro
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda2c.nusiance import Background, Pda2cPhotonRange
 
-from .common import (
+from chisurf.core.models.pda2c.common import (
     Pda2cModelMixin,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
