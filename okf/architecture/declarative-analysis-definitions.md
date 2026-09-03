@@ -9,6 +9,10 @@ timestamp: '2026-09-03T00:00:00Z'
 
 # Where to pick this up
 
+0. **Vocabulary anchored (2026-09-03)**: all three declarations carry
+   `term:` keys resolving into `mmfdb_flr_ext.dic` (mmfdb `32c70a8`), and
+   the guard test refuses unanchored or unresolvable terms. New analyses
+   follow the same two steps: define the term in mmfdb, reference it.
 1. **Converted (2026-09-03)**: the `.bur` burst-summary schema
    (`chisurf/core/fio/fluorescence/burst_features.yaml`, walked by
    `generate_burst_dataframe`; cell-for-cell parity pinned in
@@ -51,6 +55,37 @@ Two halves, and the second constrains the first:
   selections are settings. No registry classes, no plugin framework, no
   schema-of-schemas. A brand-new quantity is one `elif` plus its
   declaration line.
+
+# The vocabulary is central: mmfdb / flrCIF (owner refinement, 2026-09-03)
+
+> "The settings and yaml ideally follow the mmfdb scheme and the flrcif
+> scheme. Not all parameters may be defined — where not defined, freedom
+> of definition, but keep it central in mmfdb: create the new parameter
+> in mmfdb, so that there are no drifts, and all drifts happen at a
+> central spot, i.e. flrcif and mmfdb. This is a general rule."
+
+Every declaration entry carries a ``term`` anchoring it in the mmCIF
+dictionary family MMFDB is generated from: an existing flrCIF/PDBx item
+where one fits, else an item **created in `mmfdb_flr_ext.dic`** (in the
+mmfdb repo — `modules/mmfdb` symlinks it; commit there). Two categories
+carry the analysis vocabulary today:
+
+- `flr_chisurf_parameter` — fitted model parameters (one item per
+  registry parameter; gained tau/gamma/rho/twoIstar/r_scatter/
+  r_experimental/soft_bifl_scatter/p2s_twoIstar for the fit23 exports,
+  mmfdb `32c70a8`);
+- `flr_analysis_feature` — computed per-event observables (burst summary
+  quantities, pixel bookkeeping, region morphology/brightness; new
+  category, same commit), each description carrying units and
+  empty-selection sentinel semantics.
+
+Enforced by `test/core/test_analysis_feature_terms.py`: every entry in
+every declaration file must carry a ``term``, and every term must resolve
+against the bundled dictionaries — a locally invented name fails the
+build, so drift can only happen at the center. Column *headers* remain
+format-legacy spellings (`"Mean Macrotime (green) (ms)"`); the term is
+the identity behind the spelling, which is also what lets two formats
+name the same quantity.
 
 # The shape that works
 

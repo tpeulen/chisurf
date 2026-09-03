@@ -38524,3 +38524,22 @@ side of the line.
   reference now assert against the one live path. Remaining (in the
   concept's resume): `pixel_maps.py`'s kind chain + map-name dicts and
   `MFD_INTENSITY_COLUMNS`.
+
+- **2026-09-03 — the analysis vocabulary is anchored in mmfdb/flrCIF
+  (owner refinement of the declarations rule: "keep central in mmfdb,
+  create new parameter in mmfdb, so all drifts happen at a central spot
+  — flrcif and mmfdb").** Every entry of the three declaration files now
+  carries a `term:` resolving into the mmCIF dictionary family MMFDB is
+  generated from. mmfdb `32c70a8` (committed there, content-anchored blob
+  after a first hunk-offset cut was redone): new category
+  `flr_analysis_feature` (22 per-event observables + key — burst summary
+  quantities, pixel bookkeeping, region morphology/brightness, units and
+  empty-sentinel semantics in each description) and eight missing
+  fit23-family items on `flr_chisurf_parameter` (tau, gamma, rho,
+  twoIstar, r_scatter, r_experimental, soft_bifl_scatter, p2s_twoIstar).
+  Enforced by `test/core/test_analysis_feature_terms.py`: an entry
+  without a term, or with a term the bundled dictionaries do not define,
+  fails — the fix is a dictionary item, never a local invention. Concept
+  + CLAUDE.md updated; note the derived `_dictionary_cache.json` in the
+  mmfdb tree auto-regenerates and currently mixes another stream's
+  uncommitted categories, so it rides with their commit, not ours.

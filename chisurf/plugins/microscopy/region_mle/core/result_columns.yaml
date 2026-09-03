@@ -12,15 +12,19 @@
 #   type      int | float (default float)
 #   requires  optional: only export when this RegionProperties attribute
 #             is not None (the brightness columns need an intensity image)
+#
+# `term` anchors every column in the central mmfdb/flrCIF vocabulary
+# (mmfdb_flr_ext.dic); new terms are created there, never here.
+# Guarded by test/core/test_analysis_feature_terms.py.
 
 shape:
-  - {column: label,          source: label,     type: int}
-  - {column: centroid_row,   source: centroid,  index: 0}
-  - {column: centroid_col,   source: centroid,  index: 1}
-  - {column: area,           source: area,      type: int}
-  - {column: perimeter,      source: perimeter}
-  - {column: circularity,    source: circularity}
-  - {column: eccentricity,   source: eccentricity}
-  - {column: solidity,       source: solidity}
-  - {column: intensity_mean, source: intensity_mean, requires: image_intensity}
-  - {column: intensity_max,  source: intensity_max,  requires: image_intensity}
+  - {column: label,          source: label,     type: int, term: _flr_analysis_feature.region_label}
+  - {column: centroid_row,   source: centroid,  index: 0, term: _flr_analysis_feature.centroid_row}
+  - {column: centroid_col,   source: centroid,  index: 1, term: _flr_analysis_feature.centroid_col}
+  - {column: area,           source: area,      type: int, term: _flr_analysis_feature.area}
+  - {column: perimeter,      source: perimeter, term: _flr_analysis_feature.perimeter}
+  - {column: circularity,    source: circularity, term: _flr_analysis_feature.circularity}
+  - {column: eccentricity,   source: eccentricity, term: _flr_analysis_feature.eccentricity}
+  - {column: solidity,       source: solidity, term: _flr_analysis_feature.solidity}
+  - {column: intensity_mean, source: intensity_mean, requires: image_intensity, term: _flr_analysis_feature.intensity_mean}
+  - {column: intensity_max,  source: intensity_max,  requires: image_intensity, term: _flr_analysis_feature.intensity_max}

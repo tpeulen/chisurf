@@ -201,4 +201,4 @@ def test_the_shipped_declaration_is_well_formed():
     assert scopes == ["static", "detector", "window_detector", "detector"]
     for g in decl["groups"]:
         for e in g["columns"]:
-            assert set(e) == {"column", "source"}
+            assert set(e) == {"column", "source", "term"}

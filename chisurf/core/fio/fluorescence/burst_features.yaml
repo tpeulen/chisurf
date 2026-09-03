@@ -23,6 +23,13 @@
 # (detector_setups.json / the wizard), not from here — this file declares
 # the families, the setup declares how many of each exist.
 #
+# `term` anchors every feature in the central vocabulary (the general
+# rule): an mmfdb/flrCIF dictionary item, defined in
+# `modules/mmfdb/src/mmfdb/data/mmfdb_flr_ext.dic` (or upstream flrCIF).
+# A feature the dictionaries do not define is created THERE first — all
+# drift happens at that one spot. Guarded by
+# `test/core/test_analysis_feature_terms.py`.
+#
 # Contract notes (see okf/subsystems/burst-companions.md): the .bur table is
 # merged column-wise and read by header name downstream (ndxplorer, the MFD
 # reader infers the setup back from these names), so renaming a column here
@@ -33,29 +40,29 @@
 groups:
   - scope: static
     columns:
-      - {column: "First Photon",         source: first_photon}
-      - {column: "Last Photon",          source: last_photon}
-      - {column: "Duration (ms)",        source: duration_ms}
-      - {column: "Mean Macro Time (ms)", source: mean_macro_time_ms}
-      - {column: "Number of Photons",    source: n_photons}
-      - {column: "Count Rate (KHz)",     source: count_rate_khz}
-      - {column: "Confidence (sigma)",   source: confidence_sigma}
-      - {column: "First File",           source: file_name}
-      - {column: "Last File",            source: file_name}
+      - {column: "First Photon",         source: first_photon,       term: _flr_analysis_feature.first_photon}
+      - {column: "Last Photon",          source: last_photon,        term: _flr_analysis_feature.last_photon}
+      - {column: "Duration (ms)",        source: duration_ms,        term: _flr_analysis_feature.duration_ms}
+      - {column: "Mean Macro Time (ms)", source: mean_macro_time_ms, term: _flr_analysis_feature.mean_macro_time_ms}
+      - {column: "Number of Photons",    source: n_photons,          term: _flr_analysis_feature.n_photons}
+      - {column: "Count Rate (KHz)",     source: count_rate_khz,     term: _flr_analysis_feature.count_rate_khz}
+      - {column: "Confidence (sigma)",   source: confidence_sigma,   term: _flr_analysis_feature.confidence_sigma}
+      - {column: "First File",           source: file_name,          term: _flr_analysis_feature.file_name}
+      - {column: "Last File",            source: file_name,          term: _flr_analysis_feature.file_name}
   - scope: detector
     columns:
-      - {column: "First Photon ({detector})",        source: first_photon}
-      - {column: "Last Photon ({detector})",         source: last_photon}
-      - {column: "Duration ({detector}) (ms)",       source: duration_ms}
-      - {column: "Mean Macrotime ({detector}) (ms)", source: mean_macro_time_ms}
-      - {column: "Number of Photons ({detector})",   source: n_photons}
-      - {column: "{Detector} Count Rate (KHz)",      source: count_rate_khz}
+      - {column: "First Photon ({detector})",        source: first_photon,       term: _flr_analysis_feature.first_photon}
+      - {column: "Last Photon ({detector})",         source: last_photon,        term: _flr_analysis_feature.last_photon}
+      - {column: "Duration ({detector}) (ms)",       source: duration_ms,        term: _flr_analysis_feature.duration_ms}
+      - {column: "Mean Macrotime ({detector}) (ms)", source: mean_macro_time_ms, term: _flr_analysis_feature.mean_macro_time_ms}
+      - {column: "Number of Photons ({detector})",   source: n_photons,          term: _flr_analysis_feature.n_photons}
+      - {column: "{Detector} Count Rate (KHz)",      source: count_rate_khz,     term: _flr_analysis_feature.count_rate_khz}
   - scope: window_detector
     columns:
-      - {column: "S {window} {detector} (kHz) | {r0}-{r1}", source: count_rate_khz}
+      - {column: "S {window} {detector} (kHz) | {r0}-{r1}", source: count_rate_khz, term: _flr_analysis_feature.count_rate_khz}
   - scope: detector
     columns:
-      - {column: "Mean Microtime ({detector}) (ns)", source: mean_micro_time_ns}
+      - {column: "Mean Microtime ({detector}) (ns)", source: mean_micro_time_ns, term: _flr_analysis_feature.mean_micro_time_ns}
 
 # The legacy layout ends every row with one unnamed blank column.
 trailing_blank: true
