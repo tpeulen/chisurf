@@ -95,6 +95,7 @@ class MaxEntLifetimeModel(LifetimeModel):
             ub=3.0,
             bounds_on=True,
             fixed=True,
+            description='Maximum-entropy regularisation strength: log10(nu). Smaller = more regularised.',
         )
         self._tau_min = FittingParameter(
             name="mem_tau_min",
@@ -104,6 +105,7 @@ class MaxEntLifetimeModel(LifetimeModel):
             ub=float("inf"),
             bounds_on=True,
             fixed=True,
+            description='Lower bound of the lifetime grid (ns).',
         )
         self._tau_max = FittingParameter(
             name="mem_tau_max",
@@ -113,6 +115,7 @@ class MaxEntLifetimeModel(LifetimeModel):
             ub=float("inf"),
             bounds_on=True,
             fixed=True,
+            description='Upper bound of the lifetime grid (ns).',
         )
         self._tau_bins = FittingParameter(
             name="mem_tau_bins",
@@ -122,6 +125,7 @@ class MaxEntLifetimeModel(LifetimeModel):
             ub=10000,
             bounds_on=True,
             fixed=True,
+            description='Number of logarithmically spaced bins on the lifetime grid.',
         )
         super().__init__(fit, **kwargs)
         self._cached_lifetime_spectrum = np.array([1.0, 4.0], dtype=float)
@@ -308,6 +312,7 @@ class MaxEntFRETModel(FRETModel):
             ub=3.0,
             bounds_on=True,
             fixed=True,
+            description='Maximum-entropy regularisation strength: log10(nu). Smaller = more regularised.',
         )
         self._r_min_frac = FittingParameter(
             name="mem_r_min_frac",
@@ -317,6 +322,7 @@ class MaxEntFRETModel(FRETModel):
             ub=10.0,
             bounds_on=True,
             fixed=True,
+            description='Lower bound of the distance grid as a fraction of the Forster radius R0.',
         )
         self._r_max_frac = FittingParameter(
             name="mem_r_max_frac",
@@ -326,6 +332,7 @@ class MaxEntFRETModel(FRETModel):
             ub=10.0,
             bounds_on=True,
             fixed=True,
+            description='Upper bound of the distance grid as a fraction of the Forster radius R0.',
         )
         self._r_bins = FittingParameter(
             name="mem_r_bins",
@@ -335,6 +342,7 @@ class MaxEntFRETModel(FRETModel):
             ub=10000,
             bounds_on=True,
             fixed=True,
+            description='Number of distance bins on the FRET distance grid.',
         )
         super().__init__(fit, **kwargs)
         self._last_result = None

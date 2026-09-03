@@ -108,7 +108,8 @@ class Pda2cDynamicNStates(RateMatrixMixin, FittingParameterGroup):
         # rescales every rate. The model reads it from the dataset instead.
         self._n_windows = FittingParameter(
             value=2000, name="n_windows", lb=100, ub=200000, bounds_on=True, fixed=True,
-            label_text="N<sub>win</sub>")
+            label_text="N<sub>win</sub>",
+            description='Number of observation windows sampled by the Monte-Carlo dynamic route.')
         self.n_states = int(n_states)
 
     # -- size ---------------------------------------------------------------
@@ -133,10 +134,12 @@ class Pda2cDynamicNStates(RateMatrixMixin, FittingParameterGroup):
             self._R.append(FittingParameter(
                 value=_DEFAULT_DISTANCES[(index - 1) % len(_DEFAULT_DISTANCES)],
                 name=f"R{index}", lb=1.0, ub=200.0, bounds_on=True,
-                label_text=f"R<sub>{index}</sub>"))
+                label_text=f"R<sub>{index}</sub>",
+                description=f'Mean donor-acceptor distance of state {index} (Angstrom).'))
             self._s.append(FittingParameter(
                 value=6.0, name=f"s{index}", lb=0.5, ub=50.0, bounds_on=True,
-                label_text=f"s<sub>{index}</sub>"))
+                label_text=f"s<sub>{index}</sub>",
+                description=f'Width of the distance distribution of state {index} (Angstrom).'))
 
         self._rebuild_rates(target)
 

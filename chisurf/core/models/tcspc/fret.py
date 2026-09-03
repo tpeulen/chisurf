@@ -124,21 +124,24 @@ class FRETParameters(FittingParameterGroup):
             label_text='&tau;<sub>0</sub>',
             value=tau0,
             fixed=True,
-            model=model
+            model=model,
+            description='Donor lifetime in the absence of the acceptor (ns).'
         )
         self._forster_radius = FittingParameter(
             name='R0',
             label_text='R<sub>0</sub>',
             value=forster_radius,
             fixed=True,
-            model=model
+            model=model,
+            description='Forster radius R0 of the donor-acceptor pair (Angstrom).'
         )
         self._kappa2 = FittingParameter(
             name='k2', label_text='&kappa;<sup>2</sup>',
             value=kappa2, fixed=True,
             lb=0.0, ub=4.0,
             bounds_on=False,
-            models=model
+            models=model,
+            description='Orientation factor kappa-squared governing dipole-dipole coupling in FRET (0–4).'
         )
         self._xDonly = FittingParameter(
             name='xDOnly',
@@ -148,7 +151,8 @@ class FRETParameters(FittingParameterGroup):
             lb=0.0,
             ub=1.0,
             bounds_on=True,
-            model=model
+            model=model,
+            description='Fraction of donor-only molecules (no active acceptor) in the sample.'
         )
 
         # Base parameter list is always tau0, R0, kappa2 and xDOnly.
@@ -177,7 +181,8 @@ class FRETParameters(FittingParameterGroup):
                 lb=0.0,
                 ub=1.0,
                 bounds_on=True,
-                model=model
+                model=model,
+                description='Apparent FRET efficiency E_FRET (0..1).'
             )
             parameters.append(self._fret_efficiency)
 
@@ -480,24 +485,28 @@ class Gaussians(FittingParameterGroup):
         m = FittingParameter(
             name='R(%s,%i)' % (self.short, n + 1),
             label_text='R<sub>DA,%i</sub>' % (n + 1),
-            value=mean
+            value=mean,
+            description='Mean donor-acceptor distance of this Gaussian component (Angstrom).'
         )
         x = FittingParameter(
             name='x(%s,%i)' % (self.short, n + 1),
             label_text='x<sub>%i</sub>' % (n + 1),
-            value=x
+            value=x,
+            description='Amplitude (population fraction) of this Gaussian component.'
         )
         s = FittingParameter(
             name='s(%s,%i)' % (self.short, n + 1),
             label_text='w<sub>%i</sub>' % (n + 1),
             value=sigma,
-            fixed=True
+            fixed=True,
+            description='Width (standard deviation) of this Gaussian component (Angstrom).'
         )
         shape = FittingParameter(
             name='k(%s,%i)' % (self.short, n + 1),
             label_text='k<sub>%i</sub>' % (n + 1),
             value=shape,
-            fixed=True
+            fixed=True,
+            description='Shape parameter of the generalised Gaussian distribution.'
         )
         self._gaussianMeans.append(m)
         self._gaussianSigma.append(s)
@@ -646,14 +655,16 @@ class DiscreteDistance(FittingParameterGroup):
             FittingParameter(
                 name='R(%s,%i)' % (self.short, n + 1),
                 label_text='R<sub>DA,%i</sub>' % (n + 1),
-                value=mean
+                value=mean,
+                description='Discrete donor-acceptor distance (Angstrom).'
             )
         )
         self._amplitudes.append(
             FittingParameter(
                 name='x(%s,%i)' % (self.short, n + 1),
                 label_text='x<sub>%i</sub>' % (n + 1),
-                value=x
+                value=x,
+                description='Amplitude (population fraction) of this distance component.'
             )
         )
 
@@ -1189,7 +1200,8 @@ class WormLikeChainModel(FRETModel):
             value=100.0,
             model=self,
             fixed=False,
-            text='l'
+            text='l',
+            description='Contour length of the worm-like-chain polymer (Angstrom).'
         )
         self._use_dye_linker = use_dye_linker
         self._sigma_linker = FittingParameter(
@@ -1197,14 +1209,16 @@ class WormLikeChainModel(FRETModel):
             value=6.0,
             model=self,
             fixed=False,
-            text='lw'
+            text='lw',
+            description='RMS width of the dye-linker flexibility (Angstrom).'
         )
         self._persistence_length = FittingParameter(
             name='lp',
             value=30.0,
             model=self,
             fixed=False,
-            text='lp'
+            text='lp',
+            description='Persistence length of the worm-like-chain polymer (Angstrom).'
         )
 
 
@@ -1267,10 +1281,12 @@ class SawNuModel(FRETModel):
         self._r_rms = FittingParameter(
             name='Rrms', value=55.0, model=self, fixed=False, text='Rrms',
             lb=1.0, ub=1000.0,
+            description='Root-mean-square inter-dye distance (Angstrom).'
         )
         self._nu = FittingParameter(
             name='nu', value=0.588, model=self, fixed=False, text='&nu;',
             lb=0.30, ub=0.95, bounds_on=True,
+            description='Flory scaling exponent nu (~0.588 expanded, 0.5 theta, <0.4 collapsed).'
         )
 
 
@@ -1316,15 +1332,20 @@ class IsingChainModel(FRETModel):
         """Initialize the Ising two-state chain FRET model."""
         super().__init__(fit, **kwargs)
         self._n_residues = FittingParameter(
-            name='N', value=40.0, model=self, fixed=True, text='N', lb=2.0, ub=1000.0)
+            name='N', value=40.0, model=self, fixed=True, text='N', lb=2.0, ub=1000.0,
+            description='Number of residues in the Ising two-state chain.')
         self._b_structured = FittingParameter(
-            name='bS', value=4.0, model=self, fixed=False, text='bS', lb=0.5, ub=50.0)
+            name='bS', value=4.0, model=self, fixed=False, text='bS', lb=0.5, ub=50.0,
+            description='RMS bond length of a structured residue (Angstrom).')
         self._b_unstructured = FittingParameter(
-            name='bU', value=8.0, model=self, fixed=False, text='bU', lb=0.5, ub=50.0)
+            name='bU', value=8.0, model=self, fixed=False, text='bU', lb=0.5, ub=50.0,
+            description='RMS bond length of an unstructured residue (Angstrom).')
         self._coupling = FittingParameter(
-            name='J', value=1.5, model=self, fixed=False, text='J', lb=0.0, ub=10.0)
+            name='J', value=1.5, model=self, fixed=False, text='J', lb=0.0, ub=10.0,
+            description='Ising nearest-neighbour coupling (cooperativity) parameter.')
         self._field = FittingParameter(
-            name='h', value=0.0, model=self, fixed=False, text='h', lb=-10.0, ub=10.0)
+            name='h', value=0.0, model=self, fixed=False, text='h', lb=-10.0, ub=10.0,
+            description='Ising external field parameter (bias toward structured state).')
 
 
 class SingleDistanceModel(FRETModel):

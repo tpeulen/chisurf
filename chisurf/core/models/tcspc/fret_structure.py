@@ -118,7 +118,8 @@ class FRETStructure(fret.FRETModel):
             name="x_" + str(len(self.names)), 
             lb=0.0, 
             ub=1.0, 
-            bounds_on=True
+            bounds_on=True,
+            description='Amplitude (population weight) of this structural ensemble in the mixture.'
         )
         self._amplitudes.append(amplitude_param)
         if getattr(self, "_parameters", None) is not None:

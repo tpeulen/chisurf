@@ -326,7 +326,8 @@ class Lifetime(FittingParameterGroup):
             name=f'x{self.short}{i}',
             label_text=f'x<sub>{self.short}, {i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on,
+            description='Pre-exponential amplitude (normalised xi) of this lifetime component.'
         )
         lifetime = FittingParameter(
             lb=lower_bound_lifetime,
@@ -335,7 +336,8 @@ class Lifetime(FittingParameterGroup):
             name=f't{self.short}{i}',
             label_text=f'&tau;<sub>{self.short},{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on_lifetime
+            bounds_on=bound_on_lifetime,
+            description='Fluorescence lifetime (decay time) of this component (ns).'
         )
         self._amplitudes.append(amplitude)
         self._lifetimes.append(lifetime)
@@ -1100,7 +1102,8 @@ class LifetimeMixtureModel(LifetimeModel):
                 value=1.0,
                 name=name,
                 bounds_on=True,
-                lb=0.0, ub=1.0
+                lb=0.0, ub=1.0,
+                description='Mixing fraction of this lifetime model instance within the mixture.'
             )
         )
 

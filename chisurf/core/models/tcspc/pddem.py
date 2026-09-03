@@ -165,17 +165,25 @@ class PDDEM(FittingParameterGroup):
         """Initialize the instance."""
         super().__init__(**kwargs)
 
-        self._fAB = FittingParameter(name='AtB', label_text='A&rarr;B', value=1.0, model=self.model, decimals=2, fixed=True)
-        self._fBA = FittingParameter(name='BtA', label_text='B&rarr;A', value=0.0, model=self.model, decimals=2, fixed=True)
+        self._fAB = FittingParameter(name='AtB', label_text='A&rarr;B', value=1.0, model=self.model, decimals=2, fixed=True,
+            description='Fraction of species A that has converted to species B (A->B conversion).')
+        self._fBA = FittingParameter(name='BtA', label_text='B&rarr;A', value=0.0, model=self.model, decimals=2, fixed=True,
+            description='Fraction of species B that has converted to species A (B->A conversion).')
 
-        self._pA = FittingParameter(value=0.0, name='pureA', label_text='pure<sub>A</sub>', model=self.model, decimals=2, fixed=True)
-        self._pB = FittingParameter(value=0.0, name='pureB', label_text='pure<sub>B</sub>', model=self.model, decimals=2, fixed=True)
+        self._pA = FittingParameter(value=0.0, name='pureA', label_text='pure<sub>A</sub>', model=self.model, decimals=2, fixed=True,
+            description='Fluorescence intensity of pure species A (arbitrary units).')
+        self._pB = FittingParameter(value=0.0, name='pureB', label_text='pure<sub>B</sub>', model=self.model, decimals=2, fixed=True,
+            description='Fluorescence intensity of pure species B (arbitrary units).')
 
-        self._pxA = FittingParameter(value=0.98, name='xA', label_text='Ex<sub>A</sub>', model=self.model, decimals=2, fixed=True)
-        self._pxB = FittingParameter(value=0.02, name='xB', label_text='Ex<sub>B</sub>', model=self.model, decimals=2, fixed=True)
+        self._pxA = FittingParameter(value=0.98, name='xA', label_text='Ex<sub>A</sub>', model=self.model, decimals=2, fixed=True,
+            description='Excitation cross-section ratio of species A relative to A+B.')
+        self._pxB = FittingParameter(value=0.02, name='xB', label_text='Ex<sub>B</sub>', model=self.model, decimals=2, fixed=True,
+            description='Excitation cross-section ratio of species B relative to A+B.')
 
-        self._pmA = FittingParameter(value=0.02, name='mA', label_text='Em<sub>A</sub>', model=self.model, decimals=2, fixed=True)
-        self._pmB = FittingParameter(value=0.98, name='mB', label_text='Em<sub>B</sub>', model=self.model, decimals=2, fixed=True)
+        self._pmA = FittingParameter(value=0.02, name='mA', label_text='Em<sub>A</sub>', model=self.model, decimals=2, fixed=True,
+            description='Emission detection efficiency of species A.')
+        self._pmB = FittingParameter(value=0.98, name='mB', label_text='Em<sub>B</sub>', model=self.model, decimals=2, fixed=True,
+            description='Emission detection efficiency of species B.')
 
         self._alpha_A = FittingParameter(
             value=float('nan'),
@@ -183,7 +191,8 @@ class PDDEM(FittingParameterGroup):
             label_text='&alpha;<sub>A&rarr;B</sub>',
             model=self.model,
             fixed=True,
-            is_output=True
+            is_output=True,
+            description='Output: normalised amplitude of the A->B conversion.'
         )
         self._alpha_B = FittingParameter(
             value=float('nan'),
@@ -191,7 +200,8 @@ class PDDEM(FittingParameterGroup):
             label_text='&alpha;<sub>B&rarr;A</sub>',
             model=self.model,
             fixed=True,
-            is_output=True
+            is_output=True,
+            description='Output: normalised amplitude of the B->A conversion.'
         )
 
         self.update()

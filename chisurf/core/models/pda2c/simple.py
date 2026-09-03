@@ -237,7 +237,8 @@ class ProbCh0(FittingParameterGroup):
             name=f'x{self.short}{i}',
             label_text=f'x<sub>{self.short},{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on,
+            description='Amplitude (population fraction) of this PDA species.'
         )
         pch0 = FittingParameter(
             lb=lower_bound_pch0,
@@ -246,7 +247,8 @@ class ProbCh0(FittingParameterGroup):
             name=f'p{self.short}{i}',
             label_text=f'p<sub>{self.short},{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on,
+            description='Mean photon count (brightness) of this species.'
         )
         self._amplitudes.append(amplitude)
         self._pch0.append(pch0)

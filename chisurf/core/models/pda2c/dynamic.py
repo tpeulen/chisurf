@@ -87,22 +87,28 @@ class Pda2cDynamicStates(FittingParameterGroup):
         """Initialize the two-state parameter group."""
         super().__init__(name=name, **kwargs)
         self._R1 = FittingParameter(value=40.0, name="R1", lb=1.0, ub=200.0, bounds_on=True,
-                                    label_text="R<sub>1</sub>")
+                                    label_text="R<sub>1</sub>",
+                                    description='Mean donor-acceptor distance of state 1 (Angstrom).')
         self._s1 = FittingParameter(value=6.0, name="s1", lb=0.5, ub=50.0, bounds_on=True,
-                                    label_text="s<sub>1</sub>")
+                                    label_text="s<sub>1</sub>",
+                                    description='Width of the distance distribution of state 1 (Angstrom).')
         self._R2 = FittingParameter(value=60.0, name="R2", lb=1.0, ub=200.0, bounds_on=True,
-                                    label_text="R<sub>2</sub>")
+                                    label_text="R<sub>2</sub>",
+                                    description='Mean donor-acceptor distance of state 2 (Angstrom).')
         self._s2 = FittingParameter(value=6.0, name="s2", lb=0.5, ub=50.0, bounds_on=True,
-                                    label_text="s<sub>2</sub>")
+                                    label_text="s<sub>2</sub>",
+                                    description='Width of the distance distribution of state 2 (Angstrom).')
         self._x1 = FittingParameter(value=0.5, name="x1", lb=0.0, ub=1.0, bounds_on=True,
-                                    label_text="x<sub>1</sub>")
+                                    label_text="x<sub>1</sub>",
+                                    description='Equilibrium fraction of state 1 (0..1).')
         # Total exchange rate k1 + k2, in Hz. The model converts it to the
         # dimensionless K = (k1+k2)*T with the dataset's observation time, so a
         # global fit over several time-bin widths shares one absolute rate --
         # which is the only way the rate is identifiable at all. A single
         # dataset determines only the product.
         self._kex = FittingParameter(value=500.0, name="k_ex", lb=0.0, ub=1e9,
-                                     bounds_on=True, label_text="k<sub>ex</sub>[Hz]")
+                                     bounds_on=True, label_text="k<sub>ex</sub>[Hz]",
+                                     description='Total exchange rate k1+k2 (Hz). Converted to dimensionless K=(k1+k2)*T.')
 
     R1 = property(lambda s: s._R1.value)
     s1 = property(lambda s: s._s1.value)

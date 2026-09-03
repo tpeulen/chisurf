@@ -223,22 +223,26 @@ class Pda3cSpecies(FittingParameterGroup):
         """
         i = len(self) + 1
         self._amplitudes.append(
-            FittingParameter(value=amplitude, name=f"A({i})", label_text=f"A<sub>{i}</sub>")
+            FittingParameter(value=amplitude, name=f"A({i})", label_text=f"A<sub>{i}</sub>",
+                description='Amplitude (population fraction) of this three-colour FRET species.')
         )
         for tag, value in zip(self.PAIRS, (r_gr, r_bg, r_br)):
             self._means.append(
                 FittingParameter(value=value, name=f"R{tag}({i})", lb=1.0, ub=200.0,
-                                 bounds_on=True, label_text=f"R<sub>{tag},{i}</sub>")
+                                 bounds_on=True, label_text=f"R<sub>{tag},{i}</sub>",
+                                 description=f'Mean distance R{tag} of this species (Angstrom).')
             )
             self._sigmas.append(
                 FittingParameter(value=sigma, name=f"s{tag}({i})", lb=0.5, ub=60.0,
-                                 bounds_on=True, label_text=f"s<sub>{tag},{i}</sub>")
+                                 bounds_on=True, label_text=f"s<sub>{tag},{i}</sub>",
+                                 description=f'Width (standard deviation) of the distance R{tag} distribution (Angstrom).')
             )
         for tag in self.CORRELATIONS:
             self._correlations.append(
                 FittingParameter(value=0.0, name=f"rho{tag}({i})", lb=-0.99, ub=0.99,
                                  bounds_on=True, fixed=True,
-                                 label_text=f"&rho;<sub>{tag},{i}</sub>")
+                                 label_text=f"&rho;<sub>{tag},{i}</sub>",
+                                 description=f'Distance correlation rho_{tag} between two distance axes (-1..1).')
             )
 
     def pop(self):
@@ -413,16 +417,19 @@ class Pda3cSetup(FittingParameterGroup):
         self._window = FittingParameter(
             value=2e-3, name="T(window)", label_text="T<sub>window</sub>",
             lb=1e-9, ub=1.0, bounds_on=True, fixed=True,
+            description='Observation window duration (s), used by the multistate Szabo-Gopich route.',
         )
         # Mean number of state transitions per observation window. Zero is
         # the static limit, so the dynamic model nests the static one.
         self._k_ex = FittingParameter(
             value=1.0, name="K(ex)", label_text="K<sub>ex</sub>",
             lb=0.0, ub=1e4, bounds_on=True, fixed=True,
+            description='Mean number of state transitions per observation window (0 = static limit).',
         )
         self._labeling_fraction = FittingParameter(
             value=1.0, name="F(labeling)", label_text="F<sub>labeling</sub>",
             lb=0.0, ub=1.0, bounds_on=True, fixed=True,
+            description='Fraction of molecules carrying the intended dye assignment (free when sites are equivalent).',
         )
 
     def as_setup(self) -> ThreeColorSetup:

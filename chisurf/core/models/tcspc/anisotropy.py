@@ -310,7 +310,8 @@ class Anisotropy(FittingParameterGroup):
             name=f'b({i})',
             label_text=f'b<sub>{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on,
+            description='Amplitude of this rotational correlation component (normalised to r0).'
         )
         rho = chisurf.core.fitting.parameter.FittingParameter(
             value=rho_value,
@@ -319,7 +320,8 @@ class Anisotropy(FittingParameterGroup):
             name='rho(%i)' % i,
             label_text=f'&rho;<sub>{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on,
+            description='Rotational correlation time of this component (ns).'
         )
         self._rhos.append(rho)
         self._bs.append(b)
@@ -652,22 +654,26 @@ class Anisotropy(FittingParameterGroup):
         self._r0 = chisurf.core.fitting.parameter.FittingParameter(
             name='r0',
             value=r0,
-            fixed=True
+            fixed=True,
+            description='Fundamental (limiting) anisotropy r0 — the anisotropy at the moment of excitation.'
         )
         self._g = chisurf.core.fitting.parameter.FittingParameter(
             name='g',
             value=g_factor,
-            fixed=True
+            fixed=True,
+            description='G-factor (instrumental sensitivity ratio) correcting VV/VH detection efficiency.'
         )
         self._l1 = chisurf.core.fitting.parameter.FittingParameter(
             name='l1',
             value=l1,
-            fixed=True
+            fixed=True,
+            description='Background correction factor l1 for the VV channel.'
         )
         self._l2 = chisurf.core.fitting.parameter.FittingParameter(
             name='l2',
             value=l2,
-            fixed=True
+            fixed=True,
+            description='Background correction factor l2 for the VH channel.'
         )
 
 

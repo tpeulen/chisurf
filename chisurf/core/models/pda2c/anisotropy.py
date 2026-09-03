@@ -41,6 +41,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=1e6,
             bounds_on=True,
+            description='Background count rate in the parallel (VV) detection channel.',
         )
         self.B_perp = FittingParameter(
             value=1.0,
@@ -48,6 +49,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=1e6,
             bounds_on=True,
+            description='Background count rate in the perpendicular (VH) detection channel.',
         )
         # Detection ratio and mixing factors (fixed or very tightly bounded)
         self.G = FittingParameter(
@@ -57,6 +59,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             ub=10.0,
             bounds_on=True,
             label_text="g<sub>perp</sub>/g<sub>par</sub>",
+            description='G-factor: perpendicular-to-parallel detection sensitivity ratio.',
         )
         self.l1 = FittingParameter(
             value=0.0,
@@ -64,6 +67,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=0.33,
             bounds_on=True,
+            description='Background correction factor for the parallel (VV) channel.',
         )
         self.l2 = FittingParameter(
             value=0.0,
@@ -71,6 +75,7 @@ class Pda2cAnisotropyNuisance(FittingParameterGroup):
             lb=0.0,
             ub=0.33,
             bounds_on=True,
+            description='Background correction factor for the perpendicular (VH) channel.',
         )
 
         try:
@@ -185,6 +190,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             label_text=f"x<sub>A,{i}</sub>",
             fixed=fixed,
             bounds_on=bounds_on,
+            description='Amplitude (population fraction) of this anisotropy species.',
         )
         r_param = FittingParameter(
             lb=lower_bound_r,
@@ -194,6 +200,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
             label_text=f"r<sub>A,{i}</sub>",
             fixed=fixed,
             bounds_on=bounds_on,
+            description='Anisotropy value of this species (0..r0).',
         )
         self._amplitudes.append(amp_param)
         self._anisotropies.append(r_param)

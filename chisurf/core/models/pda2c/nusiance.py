@@ -102,14 +102,16 @@ class Background(FittingParameterGroup):
             name='bg0',
             lb=0.0,
             ub=100.0,
-            bounds_on=True
+            bounds_on=True,
+            description='Background photon count rate in channel 0 (green/donor channel).',
         )
         self._bg1 = FittingParameter(
             value=0.0,
             name='bg1',
             lb=0.0,
             ub=100.0,
-            bounds_on=True
+            bounds_on=True,
+            description='Background photon count rate in channel 1 (red/acceptor channel).',
         )
 
 
@@ -456,35 +458,41 @@ class Pda2cFretNuisance(FittingParameterGroup):
             name='BG',
             lb=0.0,
             ub=100.0,
-            bounds_on=True
+            bounds_on=True,
+            description='Background photon count rate in the green/donor channel.',
         )
         self._bgR = FittingParameter(
             value=0.0,
             name='BR',
             lb=0.0,
             ub=100.0,
-            bounds_on=True
+            bounds_on=True,
+            description='Background photon count rate in the red/acceptor channel.',
         )
         self._QYD = FittingParameter(
             value=0.8,
             name='QYD',
-            fixed=True
+            fixed=True,
+            description='Donor fluorescence quantum yield.',
         )
         self._QYA = FittingParameter(
             value=0.3,
             name='QYA',
-            fixed=True
+            fixed=True,
+            description='Acceptor fluorescence quantum yield.',
         )
         # Per-channel detector efficiencies (green/red).
         self._gG = FittingParameter(
             value=1.0,
             name='gG',
             fixed=True,
+            description='Green-channel detection efficiency.',
         )
         self._gR = FittingParameter(
             value=1.0,
             name='gR',
             fixed=True,
+            description='Red-channel detection efficiency.',
         )
         # Absolute excitation probabilities (e.g. extinction coefficients at
         # the donor excitation wavelength). By default they are zero so that
@@ -494,11 +502,13 @@ class Pda2cFretNuisance(FittingParameterGroup):
             value=1.0,
             name='ExDG',
             fixed=True,
+            description='Excitation probability of the donor at the donor excitation wavelength.',
         )
         self._ExAG = FittingParameter(
             value=0.0,
             name='ExAG',
             fixed=True,
+            description='Direct excitation probability of the acceptor at the donor excitation wavelength.',
         )
         # Full emission / detection crosstalk matrix elements. These default
         # to zero so that existing projects using alpha/gamma are unaffected
@@ -507,21 +517,25 @@ class Pda2cFretNuisance(FittingParameterGroup):
             value=1.0,
             name='cGD',
             fixed=True,
+            description='Emission crosstalk: fraction of donor emission detected in the green channel.',
         )
         self._cGA = FittingParameter(
             value=0.0,
             name='cGA',
             fixed=True,
+            description='Emission crosstalk: fraction of donor emission leaking into the red channel.',
         )
         self._cRD = FittingParameter(
             value=0.02,
             name='cRD',
             fixed=True,
+            description='Emission crosstalk: fraction of acceptor emission leaking into the green channel.',
         )
         self._cRA = FittingParameter(
             value=1.0,
             name='cRA',
             fixed=True,
+            description='Emission crosstalk: fraction of acceptor emission detected in the red channel.',
         )
         # Derived legacy-style crosstalk parameters. These are populated by
         # PDA models that use this nuisance group and are shown as fixed,
@@ -532,6 +546,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             label_text='&alpha;<sub>D</sub>',
             fixed=True,
             is_output=True,
+            description='Output: donor excitation fraction (derived from ExDG/ExAG).',
         )
         self._alpha_A = FittingParameter(
             value=float("nan"),
@@ -539,6 +554,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             label_text='&alpha;<sub>A</sub>',
             fixed=True,
             is_output=True,
+            description='Output: acceptor direct-excitation fraction (derived from ExAG/ExDG).',
         )
         # Derived MFD correction factors (read-only outputs, like alpha):
         # gamma (acceptor/donor detection ratio) and delta (direct excitation).
@@ -548,6 +564,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             label_text='&gamma;',
             fixed=True,
             is_output=True,
+            description='Output: gamma correction factor (acceptor/donor detection efficiency ratio).',
         )
         self._delta = FittingParameter(
             value=float("nan"),
@@ -555,6 +572,7 @@ class Pda2cFretNuisance(FittingParameterGroup):
             label_text='&delta;',
             fixed=True,
             is_output=True,
+            description='Output: delta correction factor (direct acceptor excitation fraction).',
         )
         # Photon-number range for PDA scoring (nPh_min, nPh_max).
         # Defaults are taken from the attached dataset's PDA metadata if
@@ -576,12 +594,14 @@ class Pda2cFretNuisance(FittingParameterGroup):
             name='nPh_min',
             label_text='N<sub>Ph,min</sub>',
             fixed=True,
+            description='Minimum photon number for PDA burst selection.',
         )
         self._nPh_max = FittingParameter(
             value=default_nmax,
             name='nPh_max',
             label_text='N<sub>Ph,max</sub>',
             fixed=True,
+            description='Maximum photon number for PDA burst selection.',
         )
 
 
@@ -636,10 +656,12 @@ class Pda2cPhotonRange(FittingParameterGroup):
             name='nPh_min',
             label_text='N<sub>Ph,min</sub>',
             fixed=True,
+            description='Minimum photon number for PDA burst selection.',
         )
         self._nPh_max = FittingParameter(
             value=default_nmax,
             name='nPh_max',
             label_text='N<sub>Ph,max</sub>',
             fixed=True,
+            description='Maximum photon number for PDA burst selection.',
         )

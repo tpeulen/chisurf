@@ -81,7 +81,8 @@ class GaussDiffusion(FittingParameterGroup):
         """Initialize the classic 3-D-Gaussian diffusion parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_gauss.N"
+            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_gauss.N",
+            description='Average number of fluorescent particles in the observation volume.'
         )
         self._D = FittingParameter(
             value=300.0,
@@ -91,6 +92,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="D[µm²/s]",
             registry_id="fcs_gauss.D",
+            description='Translational diffusion coefficient of the fluorophore (µm²/s).'
         )
         self._w_r = FittingParameter(
             value=250.0,
@@ -100,6 +102,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="w<sub>r</sub>[nm]",
             registry_id="fcs_gauss.w_r",
+            description='Radial waist (1/e²) of the detection PSF (nm).'
         )
         self._w_z = FittingParameter(
             value=1000.0,
@@ -109,9 +112,11 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=False,
             label_text="w<sub>z</sub>[nm]",
             registry_id="fcs_gauss.w_z",
+            description='Axial waist (1/e²) of the detection PSF (nm).'
         )
         self._b = FittingParameter(
-            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b"
+            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b",
+            description='Additive baseline/offset of the correlation function.'
         )
         self._diam = FittingParameter(
             value=0.0,
@@ -121,6 +126,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=True,
             label_text="d<sub>foci</sub>[nm]",
             registry_id="fcs_gauss.diam",
+            description='Lateral distance between the two foci in a dual-focus FCS setup (nm).'
         )
         self._bg = FittingParameter(
             value=0.0,
@@ -130,6 +136,7 @@ class GaussDiffusion(FittingParameterGroup):
             fixed=True,
             label_text="BG[kHz]",
             registry_id="fcs_gauss.bg",
+            description='Background count rate (kHz).'
         )
         self._s = FittingParameter(
             value=float("nan"),
@@ -138,6 +145,7 @@ class GaussDiffusion(FittingParameterGroup):
             is_output=True,
             label_text="s",
             registry_id="fcs_gauss.s",
+            description='Output: structure parameter s = z0/w0 (axial-to-radial extent of the detection volume).'
         )
         self._brightness = FittingParameter(
             value=float("nan"),
@@ -146,6 +154,7 @@ class GaussDiffusion(FittingParameterGroup):
             is_output=True,
             label_text="&epsilon;[kHz]",
             registry_id="fcs_gauss.brightness",
+            description='Output: molecular brightness (counts per molecule per second, kHz).'
         )
 
     N = property(lambda s: float(s._N.value))

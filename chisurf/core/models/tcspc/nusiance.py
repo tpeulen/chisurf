@@ -129,7 +129,8 @@ class Generic(FittingParameterGroup):
             name='sc',
             lb=0.0,
             ub=100.0,
-            bounds_on=True
+            bounds_on=True,
+            description='Relative amplitude of a prompt scattering contribution added to the model decay.'
         )
         # Deliberately unbounded, unlike ``sc`` above. ``bg`` is a *net* offset,
         # not a count rate: applied to data whose background has already been
@@ -138,7 +139,8 @@ class Generic(FittingParameterGroup):
         # (reduced chi2 1.37 at bg = -1.35) into a poor one (4.93).
         self._bg = FittingParameter(
             value=0.0,
-            name='bg'
+            name='bg',
+            description='Constant background level added to the time-resolved decay curve (counts per time channel).'
         )
         self._tmeas_bg = FittingParameter(
             value=1.0,
@@ -146,7 +148,8 @@ class Generic(FittingParameterGroup):
             lb=1e-6,
             ub=1e9,
             fixed=True,
-            bounds_on=True
+            bounds_on=True,
+            description='Measurement time of the background acquisition.'
         )
         self._tmeas_exp = FittingParameter(
             value=1.0,
@@ -154,7 +157,8 @@ class Generic(FittingParameterGroup):
             fixed=True,
             lb=1e-6,
             ub=1e9,
-            bounds_on=True
+            bounds_on=True,
+            description='Measurement time of the main TCSPC experiment.'
         )
         self._n_ph_bg = FittingParameter(
             value=float('nan'),
@@ -162,7 +166,8 @@ class Generic(FittingParameterGroup):
             fixed=True,
             is_output=True,
             label_text='#Ph<sub>B</sub>',
-            decimals=0
+            decimals=0,
+            description='Estimated number of background photons in the TCSPC trace.'
         )
         self._n_ph_fl = FittingParameter(
             value=float('nan'),
@@ -170,7 +175,8 @@ class Generic(FittingParameterGroup):
             fixed=True,
             is_output=True,
             label_text='#Ph<sub>F</sub>',
-            decimals=0
+            decimals=0,
+            description='Estimated number of fluorescence photons (after background subtraction) in the TCSPC trace.'
         )
 
 
@@ -425,8 +431,8 @@ class Corrections(FittingParameterGroup):
         self.correct_pile_up = correct_pile_up
         self._window_function = window_function
         self._auto_range = lin_auto_range
-        self._dead_time = FittingParameter(value=85.0, name='tDead', fixed=True, decimals=1)
-        self._window_length = FittingParameter(value=17.0, name='win-size', fixed=True, decimals=0)
+        self._dead_time = FittingParameter(value=85.0, name='tDead', fixed=True, decimals=1, description='Dead time of the TCSPC detector (ns), used for pile-up correction.')
+        self._window_length = FittingParameter(value=17.0, name='win-size', fixed=True, decimals=0, description='Window length for the sliding-window pile-up correction (channels).')
 
 
 class Convolve(FittingParameterGroup):
@@ -1004,40 +1010,47 @@ class Convolve(FittingParameterGroup):
             name='n0',
             label_text="n<sub>0</sub>",
             fixed=chisurf.core.settings.cs_settings['tcspc']['autoscale'],
-            decimals=4
+            decimals=4,
+            description='Overall scaling factor that normalises the model decay to the experimental photon counts.'
         )
         self._dt = FittingParameter(
             value=dt,
             name='dt',
             fixed=True,
-            digits=4
+            digits=4,
+            description='Time bin width of the TCSPC histogram (time per channel).'
         )
         self._rep = FittingParameter(
             value=rep_rate,
             name='rep',
-            fixed=True
+            fixed=True,
+            description='Laser repetition rate of the excitation source (MHz).'
         )
         self._start = FittingParameter(
             value=0.0,
             name='start',
-            fixed=True
+            fixed=True,
+            description='Start time (or channel) of the fit / convolution window.'
         )
         self._stop = FittingParameter(
             value=stop,
             name='stop',
-            fixed=True
+            fixed=True,
+            description='Stop time (or channel) of the fit / convolution window.'
         )
         self._irf_start = FittingParameter(
             value=0.0,
             name='irf_start',
             label_text='IRF<sub>start</sub>',
-            fixed=True
+            fixed=True,
+            description='Start index (or time) of the IRF region used for convolution.'
         )
         self._irf_stop = FittingParameter(
             value=stop,
             name='irf_stop',
             label_text='IRF<sub>stop</sub>',
-            fixed=True
+            fixed=True,
+            description='Stop index (or time) of the IRF region used for convolution.'
         )
         # Set bounds for lamp background to be between 0 and half the lamp height
         # Default upper bound will be updated when IRF is set
@@ -1047,25 +1060,29 @@ class Convolve(FittingParameterGroup):
             fixed=True,
             bounds_on=True,
             lb=0.0,
-            ub=1.0  # Default upper bound, will be updated when IRF is set
+            ub=1.0,  # Default upper bound, will be updated when IRF is set
+            description='Lamp background level subtracted from the instrument response function.'
         )
         self._ts = FittingParameter(
             value=0.0,
             name='ts',
-            bounds_on=False
+            bounds_on=False,
+            description='Additional temporal shift applied to align IRF and decay.'
         )
 
         self._iw = FittingParameter(
             value=0.10,
             name='iw',
             fixed=True,
-            label_text='IRF<sub>w</sub>'
+            label_text='IRF<sub>w</sub>',
+            description='Width parameter of the synthetic IRF model.'
         )
         self._ik = FittingParameter(
             value=-0.31,
             name='ik',
             fixed=True,
-            label_text='IRF<sub>k</sub>'
+            label_text='IRF<sub>k</sub>',
+            description='Shape parameter of the synthetic IRF model.'
         )
 
         self._do_convolution = chisurf.core.settings.cs_settings['tcspc']['convolution_on_by_default']

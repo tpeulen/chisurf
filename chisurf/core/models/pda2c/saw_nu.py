@@ -61,10 +61,12 @@ class Pda2cSawNuDistances(FittingParameterGroup):
         self._r_rms = FittingParameter(
             value=55.0, name="Rrms", label_text="R<sub>rms</sub>",
             lb=1.0, ub=1000.0, bounds_on=True,
+            description='Root-mean-square inter-dye distance (Angstrom).',
         )
         self._nu = FittingParameter(
             value=0.588, name="nu", label_text="&nu;",
             lb=0.30, ub=0.95, bounds_on=True,
+            description='Flory scaling exponent nu (~0.588 expanded, 0.5 theta, <0.4 collapsed).',
         )
         super().__init__(name=name, parameters=[self._r_rms, self._nu], **kwargs)
 

@@ -107,11 +107,16 @@ class AVDecayModel(LifetimeModel):
         )
         self._av = av
 
-        self._fluorescence_lifetime = FittingParameter(value=4.2, name='tau0')
-        self._diffusion_coefficient = FittingParameter(value=8.0, name='D', bounds_on=True, bounds=(0.5, 30))
-        self._contact_distance = FittingParameter(value=3.5, name='cont', bounds_on=True, bounds=(0.5, 5.0))
-        self._slow_factor = FittingParameter(value=0.985, name='slowf', bounds_on=True, bounds=(0.01, 1.0))
-        self._rc_ele = FittingParameter(value=1.5, name='rc_ele', bounds_on=True, bounds=(0.5, 3.5))
+        self._fluorescence_lifetime = FittingParameter(value=4.2, name='tau0',
+            description='Fluorescence lifetime of the donor in the absence of quenching (ns).')
+        self._diffusion_coefficient = FittingParameter(value=8.0, name='D', bounds_on=True, bounds=(0.5, 30),
+            description='Translational diffusion coefficient of the fluorophore (10^-7 cm^2/s).')
+        self._contact_distance = FittingParameter(value=3.5, name='cont', bounds_on=True, bounds=(0.5, 5.0),
+            description='Contact distance for the quenching interaction (Angstrom).')
+        self._slow_factor = FittingParameter(value=0.985, name='slowf', bounds_on=True, bounds=(0.01, 1.0),
+            description='Slow quenching factor (fraction of the lifetime retained at contact).')
+        self._rc_ele = FittingParameter(value=1.5, name='rc_ele', bounds_on=True, bounds=(0.5, 3.5),
+            description='Effective electron-transfer distance parameter (Angstrom).')
 
         def update_lifetime():
             """Update the fluorescence lifetime and quenching map."""

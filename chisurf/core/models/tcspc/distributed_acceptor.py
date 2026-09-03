@@ -69,18 +69,21 @@ class DistributedAcceptorModel(LifetimeModel):
             ub=100.0,
             bounds_on=True,
             fixed=False,
+            description='Ratio of acceptor concentration to the quenching concentration C0 (dimensionless).',
         )
         self._forster_radius = FittingParameter(
             value=kwargs.get("forster_radius", 52.0),
             name="R0",
             label_text="R<sub>0</sub> [&#8491;]",
             fixed=True,
+            description='Forster radius R0 of the donor-acceptor pair (Angstrom).',
         )
         self._tau_d0 = FittingParameter(
             value=kwargs.get("tau_d0", 4.0),
             name="tauD0",
             label_text="&tau;<sub>D(0)</sub> [ns]",
             fixed=True,
+            description='Donor lifetime in the absence of the acceptor (ns).',
         )
         self._dimension = int(kwargs.get("dimension", 2))
 
