@@ -20,20 +20,20 @@ class Generic(FittingParameterGroup):
 
     @property
     def n_ph_bg(self) -> float:
-        """Number of background photons
-        """
+        """Number of background photons."""
         n_bg = 0.0
         if isinstance(self.background_curve, Curve):
             a = self._background_curve.y.sum() / self.t_bg * self.t_exp
             if not np.isnan(a):
                 n_bg += a
         n_bg += self._bg.value * len(self.fit.data.x)
+        if hasattr(self, '_n_ph_bg'):
+            self._n_ph_bg.value = n_bg
         return n_bg
 
     @property
     def n_ph_exp(self) -> int:
-        """Number of fluorescence photons
-        """
+        """Number of fluorescence photons."""
         if isinstance(self.fit.data, Curve):
             return self.fit.data.y.sum()
         else:
@@ -41,9 +41,11 @@ class Generic(FittingParameterGroup):
 
     @property
     def n_ph_fl(self) -> float:
-        """Number of fluorescence photons
-        """
-        return max(self.n_ph_exp - self.n_ph_bg, 1.0)
+        """Number of fluorescence photons."""
+        n_fl = max(self.n_ph_exp - self.n_ph_bg, 1.0)
+        if hasattr(self, '_n_ph_fl'):
+            self._n_ph_fl.value = n_fl
+        return n_fl
 
     @property
     def scatter(self) -> float:
@@ -153,6 +155,22 @@ class Generic(FittingParameterGroup):
             lb=1e-6,
             ub=1e9,
             bounds_on=True
+        )
+        self._n_ph_bg = FittingParameter(
+            value=float('nan'),
+            name='PhB',
+            fixed=True,
+            is_output=True,
+            label_text='#Ph<sub>B</sub>',
+            decimals=0
+        )
+        self._n_ph_fl = FittingParameter(
+            value=float('nan'),
+            name='PhF',
+            fixed=True,
+            is_output=True,
+            label_text='#Ph<sub>F</sub>',
+            decimals=0
         )
 
 

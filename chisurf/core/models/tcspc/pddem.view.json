@@ -58,24 +58,6 @@
           "type": "parameter_group_table",
           "target": "generic",
           "collapsible": false
-        },
-        {
-          "type": "value",
-          "target": "generic",
-          "attr": "n_ph_bg",
-          "kind": "float",
-          "read_only": true,
-          "label": "#PhB",
-          "decimals": 0
-        },
-        {
-          "type": "value",
-          "target": "generic",
-          "attr": "n_ph_fl",
-          "kind": "float",
-          "read_only": true,
-          "label": "#PhF",
-          "decimals": 0
         }
       ]
     },
@@ -183,7 +165,7 @@
             "pure",
             "excitation",
             "emission",
-            "α"
+            "\u03b1"
           ],
           "description": "Per-fluorophore quantities: each row is one quantity, the columns are fluorophore A and B. 'transfer' are the A->B / B->A rates, 'alpha' the resulting transfer efficiencies."
         }

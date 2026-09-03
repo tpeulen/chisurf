@@ -58,24 +58,6 @@
           "type": "parameter_group_table",
           "target": "generic",
           "collapsible": false
-        },
-        {
-          "type": "value",
-          "target": "generic",
-          "attr": "n_ph_bg",
-          "kind": "float",
-          "read_only": true,
-          "label": "#PhB",
-          "decimals": 0
-        },
-        {
-          "type": "value",
-          "target": "generic",
-          "attr": "n_ph_fl",
-          "kind": "float",
-          "read_only": true,
-          "label": "#PhF",
-          "decimals": 0
         }
       ]
     },
@@ -190,7 +172,7 @@
               "label": "Linker length",
               "kind": "float",
               "description": "Contour length of the dye linker in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
@@ -198,7 +180,7 @@
               "label": "Linker width",
               "kind": "float",
               "description": "Width of the dye linker in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
@@ -206,14 +188,14 @@
               "label": "Radius 1",
               "kind": "float",
               "description": "Radius of the dye sphere in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
               "attr": "radius2_1",
               "label": "Radius 2",
               "kind": "float",
-              "suffix": " Å",
+              "suffix": " \u00c5",
               "description": "Second AV3 sphere radius."
             },
             {
@@ -221,7 +203,7 @@
               "attr": "radius3_1",
               "label": "Radius 3",
               "kind": "float",
-              "suffix": " Å",
+              "suffix": " \u00c5",
               "description": "Third AV3 sphere radius."
             }
           ]
@@ -251,7 +233,7 @@
               "label": "Linker length",
               "kind": "float",
               "description": "Contour length of the dye linker in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
@@ -259,7 +241,7 @@
               "label": "Linker width",
               "kind": "float",
               "description": "Width of the dye linker in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
@@ -267,14 +249,14 @@
               "label": "Radius 1",
               "kind": "float",
               "description": "Radius of the dye sphere in Angstrom.",
-              "suffix": " Å"
+              "suffix": " \u00c5"
             },
             {
               "type": "value",
               "attr": "radius2_2",
               "label": "Radius 2",
               "kind": "float",
-              "suffix": " Å",
+              "suffix": " \u00c5",
               "description": "Second AV3 sphere radius."
             },
             {
@@ -282,7 +264,7 @@
               "attr": "radius3_2",
               "label": "Radius 3",
               "kind": "float",
-              "suffix": " Å",
+              "suffix": " \u00c5",
               "description": "Third AV3 sphere radius."
             }
           ]
@@ -292,7 +274,7 @@
           "attr": "simulation_grid_resolution",
           "label": "Resolution",
           "kind": "float",
-          "suffix": " Å",
+          "suffix": " \u00c5",
           "description": "Spacing of the accessible-volume simulation grid; smaller is finer and slower. Shared by both dyes."
         }
       ]
