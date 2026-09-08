@@ -74,6 +74,38 @@ be worse than the setting it replaced.
 Measured on the cal1 container: using the stored background instead of the typed
 zeros moves γ from 0.826 to 0.795 and α from 0.157 to 0.147.
 
+**And they can be fitted, which is usually what is wanted** — the background is
+rarely known. `fitted_background` reads it off the reference populations, each
+of which has one channel measuring background and nothing else: an
+acceptor-only burst has no donor, so the donor channel is background (`bg_dd`);
+a donor-only burst has no acceptor, so the acceptor-excitation channel is
+background (`bg_aa`); and the leakage relation `I_DA = α·I_DD + bg_da` gives the
+third **as its intercept**. Fitting that line is what separates leakage from
+background at all — the usual ratio-of-means shortcut folds the background into
+α and then subtracts it from every burst as though it scaled with donor
+brightness. Medians, not means, because these are the populations a mixture
+model is least sure of.
+
+It costs a second calibration pass, and the two passes are not the same pass
+twice: the populations must exist before the background can be read off them,
+and once it is subtracted the classification that found them is no longer the
+one the data supports, so it is made again. The first pass skips the bootstrap —
+only its split is used.
+
+Recovered on a simulation with planted backgrounds (5 / 3 / 7 counts and
+α = 0.06): `bg_dd` 5.00, `bg_aa` 7.00, `bg_da` 2.67, α 0.0613.
+
+## The z marginal is shown whether or not it gates
+
+**Four** places decided whether the third axis had a plot, all keyed on the
+"dynamic z-selection" checkbox: the histogram was not computed
+(`histogram_helpers.histogram_axes`), and three separate `setVisible` calls in
+`plot_update_helpers` hid the widget. But that box arms the *gate* — whether the
+z range filters the other plots — and hiding the distribution until the gate is
+armed asks for a range to be chosen before it can be seen. The marginal is now
+drawn like x and y whenever a third parameter is selected; the checkbox still
+decides only whether its range filters.
+
 ## Where to pick this up
 
 1. **Playback on a real burst folder.** The gate, the panel and the axis

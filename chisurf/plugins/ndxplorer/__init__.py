@@ -168,7 +168,16 @@ if __name__ == "plugin":
                     for name, value in held.items()
                 ]
             per_burst = result.get("background_per_burst") or []
-            if result.get("background") == "measurement":
+            fitted_bg = result.get("background_fitted") or {}
+            if result.get("background") == "fit":
+                lines += ["", (
+                    "Background, fitted from the reference populations: "
+                    + ", ".join(f"{k} = {v:.2f}" for k, v in fitted_bg.items())
+                ) if fitted_bg else (
+                    "Background: the reference populations were too small to fit "
+                    "one — the window's constants were used"
+                )]
+            elif result.get("background") == "measurement":
                 lines += ["", (
                     "Background: per burst, from this measurement's own "
                     f"estimate ({', '.join(per_burst)})" if per_burst else

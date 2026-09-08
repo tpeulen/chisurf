@@ -198,3 +198,70 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
     np.testing.assert_allclose(out["i_dd"], 0.5 * durations)   # green
     np.testing.assert_allclose(out["i_da"], 1.0 * durations)   # red
     np.testing.assert_allclose(out["i_aa"], 2.0 * durations)   # yellow
+
+
+# ── fitting the background, for when nobody knows it ─────────────────────────
+
+def _physical_window(bg_dd=5.0, bg_da=3.0, bg_aa=7.0, alpha=0.06, n=8000, seed=1):
+    """Bursts where the reference populations really lack a fluorophore.
+
+    An acceptor-only burst has NO donor: what is in the donor channel is
+    background and nothing else. That is what makes the background readable at
+    all, and a simulation that leaves a residual donor signal there is testing
+    something else.
+    """
+    rng = np.random.default_rng(seed)
+    kind = rng.choice([0, 1, 2], n, p=[0.30, 0.20, 0.50])
+    size = rng.gamma(4.0, 60.0, n)
+    E = np.where(kind == 2, rng.normal(0.55, 0.08, n), 0.0)
+    dd, da, aa = np.zeros(n), np.zeros(n), np.zeros(n)
+    m = kind == 0                      # donor-only: donor emits, acceptor leaks
+    dd[m], da[m], aa[m] = size[m], alpha * size[m], 0.0
+    m = kind == 1                      # acceptor-only: no donor at all
+    dd[m], da[m], aa[m] = 0.0, 0.0, size[m]
+    m = kind == 2                      # FRET
+    dd[m] = size[m] * (1 - E[m])
+    da[m] = size[m] * E[m] + alpha * size[m] * (1 - E[m])
+    aa[m] = size[m] * 0.8
+    dd += rng.poisson(bg_dd, n)
+    da += rng.poisson(bg_da, n)
+    aa += rng.poisson(bg_aa, n)
+
+    class _DataSource:
+        def __init__(self):
+            self.data = {"Number of Photons (green)": dd,
+                         "Number of Photons (red)": da,
+                         "Number of Photons (yellow)": aa}
+
+    class _Ndx:
+        def __init__(self):
+            self.data_source = _DataSource()
+            self.constants = {"gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
+                              "Bg": 0.0, "Br": 0.0, "By": 0.0, "PhiA": 1.0,
+                              "PhiD": 1.0, "forster_radius": 52.0, "tauD0": 4.0}
+
+    return _Ndx()
+
+
+def test_the_background_is_recovered_from_the_populations():
+    """Each reference population has one channel measuring background alone."""
+    result = _run(_physical_window(), background="fit")
+    assert result["ok"]
+    fitted = result["background_fitted"]
+    assert fitted["bg_dd"] == pytest.approx(5.0, abs=1.0)
+    assert fitted["bg_aa"] == pytest.approx(7.0, abs=1.0)
+    # The intercept of I_DA = alpha*I_DD + bg_da, which is what separates
+    # leakage from background; a ratio of means folds one into the other.
+    assert fitted["bg_da"] == pytest.approx(3.0, abs=1.5)
+
+
+def test_leakage_survives_the_background_fit():
+    """alpha must come out of the slope, not be inflated by the intercept."""
+    result = _run(_physical_window(alpha=0.06), background="fit")
+    assert result["determined"]["alpha"] == pytest.approx(0.06, abs=0.02)
+
+
+def test_too_few_reference_bursts_are_not_guessed_from():
+    """An absent estimate means 'not determined', not 'zero'."""
+    result = _run(_physical_window(n=8000), background="fit", min_population=100000)
+    assert result["background_fitted"] == {}

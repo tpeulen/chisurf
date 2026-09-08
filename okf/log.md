@@ -39210,3 +39210,35 @@ side of the line.
   α 0.157 → 0.147. (That container's stored *green* rate is 0.00 kHz —
   the unbounded-tail defect fixed earlier the same day; a fresh background
   run would change the numbers again.)
+
+- **2026-09-08 — the calibration can fit the backgrounds** (owner: "often
+  the bg is not known"). Each reference population has one channel
+  measuring background alone: an acceptor-only burst has no donor, so the
+  donor channel is `bg_dd`; a donor-only burst has no acceptor, so the
+  acceptor-excitation channel is `bg_aa`; and `I_DA = α·I_DD + bg_da`
+  gives the third as its **intercept** — fitting that line is what
+  separates leakage from background, where the usual ratio-of-means folds
+  one into the other. Medians, because these are the populations a mixture
+  model is least sure of. Two passes: the populations must exist before
+  the background can be read off them, and subtracting it changes the
+  classification, so it is made again.
+
+  Recovered on planted values (5 / 3 / 7 counts, α = 0.06): 5.00 / 2.67 /
+  7.00 and α 0.0613. **Trap when reading the test:** the simulation has to
+  give acceptor-only bursts *no* donor signal. A first version left them a
+  residual and the estimator faithfully reported it (23 instead of 5) —
+  correct behaviour, useless test.
+
+- **2026-09-08 — ndX's z marginal is shown whether or not it gates.** Four
+  places keyed it to the "dynamic z-selection" checkbox: the histogram was
+  never computed (`histogram_axes`), and three separate `setVisible` calls
+  in `plot_update_helpers` hid the widget — patching fewer than all four
+  leaves it invisible, which is how the first two attempts failed. That
+  box arms the *gate*; hiding the distribution until the gate is armed
+  asks for a range to be chosen before it can be seen.
+
+  **Not committed:** all four files are held by another agent
+  (`histogram_helpers.py`, `plot_helpers.py`, `plot_main.py`,
+  `plot_update_helpers.py` are all modified in the ndxplorer tree), as is
+  the store-refresh fix from earlier today. Verified in the working tree:
+  gate off, z plot shown, 500 counts in the marginal.

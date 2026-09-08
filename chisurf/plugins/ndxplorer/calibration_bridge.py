@@ -30,6 +30,7 @@ __all__ = [
     "push_unmixed_columns_to_ndx",
     "optimize_calibration_from_ndx",
     "measured_background",
+    "fitted_background",
     "refresh_column_selectors",
     "find_ndx_windows",
 ]
@@ -151,6 +152,75 @@ def find_ndx_windows() -> list:
     return windows
 
 
+
+
+def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> dict:
+    """Channel backgrounds estimated from the reference populations themselves.
+
+    Often nobody knows the background. But the measurement contains two
+    populations that are *defined* by a missing fluorophore, and in each of them
+    one channel is measuring background and nothing else:
+
+    * an **acceptor-only** burst has no donor, so what appears in the donor
+      channel under donor excitation is background — that is ``bg_dd``;
+    * a **donor-only** burst has no acceptor, so what appears under acceptor
+      excitation is background — that is ``bg_aa``;
+    * ``bg_da`` comes from the leakage relation on the donor-only bursts,
+      ``I_DA = alpha * I_DD + bg_da``. Fitting that as a **line with an
+      intercept** is what separates leakage from background at all; taking the
+      ratio of the means, which is the usual shortcut, silently folds the
+      background into alpha and then subtracts it from every burst as if it
+      scaled with donor brightness.
+
+    Medians, not means: these populations are the ones a mixture model is least
+    certain about, so a handful of misassigned bright bursts would otherwise set
+    the background for the whole measurement.
+
+    Parameters
+    ----------
+    i_dd, i_da, i_aa : array_like
+        The three channels. ``i_aa`` may be ``None``.
+    split : object
+        The population split from
+        :func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate`, with
+        boolean ``donor_only`` / ``acceptor_only`` masks.
+    min_population : int, optional
+        Smallest population accepted for an estimate. Below it the channel is
+        left out rather than guessed — an absent key means "not determined",
+        and the caller keeps whatever it had.
+
+    Returns
+    -------
+    dict
+        ``{"bg_dd": float, "bg_da": float, "bg_aa": float}`` for the channels
+        that could be estimated. Never negative.
+    """
+    out: dict[str, float] = {}
+    if split is None:
+        return out
+    donor_only = np.asarray(getattr(split, "donor_only", []), dtype=bool)
+    acceptor_only = np.asarray(getattr(split, "acceptor_only", []), dtype=bool)
+    dd = np.asarray(i_dd, dtype=float)
+    da = np.asarray(i_da, dtype=float)
+    aa = None if i_aa is None else np.asarray(i_aa, dtype=float)
+
+    if acceptor_only.size == dd.size and int(acceptor_only.sum()) >= min_population:
+        out["bg_dd"] = float(max(0.0, np.median(dd[acceptor_only])))
+    if aa is not None and donor_only.size == aa.size \
+            and int(donor_only.sum()) >= min_population:
+        out["bg_aa"] = float(max(0.0, np.median(aa[donor_only])))
+
+    if donor_only.size == dd.size and int(donor_only.sum()) >= min_population:
+        x, y = dd[donor_only], da[donor_only]
+        finite = np.isfinite(x) & np.isfinite(y)
+        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0:
+            slope, intercept = np.polyfit(x[finite], y[finite], 1)
+            del slope       # alpha is determined by the calibration, not here
+            out["bg_da"] = float(max(0.0, intercept))
+    return out
+
+
+
 #: Detector name in a measurement's background artifact → the channel it is the
 #: background of. The Seidel vocabulary, the same one the burst tables use.
 _BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
@@ -253,6 +323,7 @@ def optimize_calibration_from_ndx(
     use_priors: bool = True,
     factors: Sequence[str] | None = None,
     background: str = "constants",
+    min_population: int = 20,
     inject_columns: bool = True,
     recompute: bool = True,
 ) -> dict:
@@ -306,9 +377,14 @@ def optimize_calibration_from_ndx(
         *per-burst* quantity rather than one number for a file. ``"none"`` sets
         them to zero.
 
-        This is not a correction factor and is never fitted; it is an input, and
-        the one whose error is hardest to see — it moves the dim bursts and
-        leaves the bright ones, which looks like a sub-population.
+        ``"fit"`` estimates them from the reference populations themselves (see
+        :func:`fitted_background`) — for when nobody knows the background, which
+        is most of the time.
+
+        It is the input whose error is hardest to see: it moves the dim bursts
+        and leaves the bright ones, which looks like a sub-population.
+    min_population : int, optional
+        Smallest reference population accepted when fitting the backgrounds.
     factors : sequence of str, optional
         Which correction factors the calibration is allowed to change —
         any of ``"alpha"``, ``"beta"``, ``"gamma"``, ``"delta"``, ``"r0"``.
@@ -365,7 +441,7 @@ def optimize_calibration_from_ndx(
 
     constants = dict(getattr(ndx, "constants", {}) or {})
     calib = calibration_from_ndx_constants(constants)
-    if background == "none" or per_burst_background:
+    if background in ("none", "fit") or per_burst_background:
         # Subtracting per burst and zeroing the scalars is *identical* algebra --
         # the background only ever enters as ``counts - background`` -- and it is
         # the only way to carry a per-burst value through a calibration object
@@ -399,11 +475,31 @@ def optimize_calibration_from_ndx(
             return values
         return np.clip(np.asarray(values, dtype=float) - offset, 0.0, None)
 
-    result = auto_calibrate(
-        counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib, lightpath=lightpath,
-        tau_f=tau_f, line=line, donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
-        gamma_source=gamma_source, n_bootstrap=int(n_bootstrap), use_priors=use_priors,
-    )
+    def calibrate(bootstrap: int):
+        return auto_calibrate(
+            counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib,
+            lightpath=lightpath, tau_f=tau_f, line=line,
+            donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
+            gamma_source=gamma_source, n_bootstrap=bootstrap, use_priors=use_priors,
+        )
+
+    fitted: dict = {}
+    if background == "fit":
+        # Two passes, and they are not the same pass twice. The backgrounds are
+        # read off the *reference populations*, so the populations have to exist
+        # before they can be estimated -- and once they are subtracted, the
+        # classification that found those populations is no longer the one the
+        # data supports, so it is made again. The first pass skips the bootstrap:
+        # its factors are thrown away, only its split is used.
+        first = calibrate(0)
+        fitted = fitted_background(
+            pick("i_dd"), pick("i_da"), pick("i_aa"), first.split,
+            min_population=int(min_population),
+        )
+        for name, value in fitted.items():
+            setattr(calib, name, float(value))
+
+    result = calibrate(int(n_bootstrap))
 
     # Restore whatever the caller did not ask to have calibrated, *before* the
     # accurate columns below are computed from ``calib`` — otherwise the columns
@@ -459,6 +555,7 @@ def optimize_calibration_from_ndx(
         "applied_factors": list(selected),
         "background": background,
         "background_per_burst": sorted(per_burst_background),
+        "background_fitted": fitted,
         "held": {n: kept[n] for n in _FACTOR_NAMES if n not in selected},
     }
 

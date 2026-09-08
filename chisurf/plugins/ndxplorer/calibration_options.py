@@ -43,8 +43,10 @@ class CalibrationOptions:
         self.fit_beta: bool = True
         #: Förster radius. Not a correction factor; the distances depend on it.
         self.fit_r0: bool = False
-        #: Where the channel backgrounds come from. Not fitted — an input.
-        self.background: str = "measurement"
+        #: Where the channel backgrounds come from — including fitting them.
+        self.background: str = "fit"
+        #: Smallest reference population accepted when fitting a background.
+        self.min_population: int = 20
         #: Which route γ comes from.
         self.gamma_source: str = "auto"
         #: Combine the data estimates with the light-path priors.
@@ -73,6 +75,7 @@ class CalibrationOptions:
         return {
             "factors": self.factors(),
             "background": str(self.background),
+            "min_population": int(self.min_population),
             "gamma_source": str(self.gamma_source),
             "use_priors": bool(self.use_priors),
             "n_bootstrap": int(self.n_bootstrap),
