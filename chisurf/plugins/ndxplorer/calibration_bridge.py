@@ -162,8 +162,9 @@ def find_ndx_windows() -> list:
 
 
 
-def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> dict:
-    """Channel backgrounds estimated from the reference populations themselves.
+def fitted_background(i_dd, i_da, i_aa, split, *, durations=None,
+                      min_population: int = 20) -> dict:
+    """Channel background **rates** estimated from the reference populations.
 
     Often nobody knows the background. But the measurement contains two
     populations that are *defined* by a missing fluorophore, and in each of them
@@ -174,11 +175,21 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
     * a **donor-only** burst has no acceptor, so what appears under acceptor
       excitation is background — that is ``bg_aa``;
     * ``bg_da`` comes from the leakage relation on the donor-only bursts,
-      ``I_DA = alpha * I_DD + bg_da``. Fitting that as a **line with an
-      intercept** is what separates leakage from background at all; taking the
-      ratio of the means, which is the usual shortcut, silently folds the
-      background into alpha and then subtracts it from every burst as if it
-      scaled with donor brightness.
+      ``I_DA = alpha * I_DD + bg_da * T``. Fitting the duration term explicitly
+      is what separates leakage from background at all; taking the ratio of the
+      means, which is the usual shortcut, silently folds the background into
+      alpha and then subtracts it from every burst as if it scaled with donor
+      brightness.
+
+    **The answer is a rate (kHz), not a count.** What these populations give
+    directly is counts, and counts are not a property of the measurement: a 4 ms
+    burst carries four times the background of a 1 ms one. Dividing by the burst
+    duration is what makes the number comparable with the measured background
+    from the inter-photon-time fit -- and it is what the consumer expects, since
+    ndX's ``Bg``/``Br``/``By`` are rates (``Fg = Sg - Bg`` with ``Sg`` in kHz).
+    Returning counts here is what made a fitted background over-correct: a
+    median of 8 photons per burst arrived in the window as 8 kHz, against a real
+    background of about 3.
 
     Medians, not means: these populations are the ones a mixture model is least
     certain about, so a handful of misassigned bright bursts would otherwise set
@@ -192,6 +203,9 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
         The population split from
         :func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate`, with
         boolean ``donor_only`` / ``acceptor_only`` masks.
+    durations : array_like, optional
+        Per-burst durations in ms. Without them no rate can be formed and the
+        result is empty — better than returning counts labelled as rates.
     min_population : int, optional
         Smallest population accepted for an estimate. Below it the channel is
         left out rather than guessed — an absent key means "not determined",
@@ -200,31 +214,52 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
     Returns
     -------
     dict
-        ``{"bg_dd": float, "bg_da": float, "bg_aa": float}`` for the channels
-        that could be estimated. Never negative.
+        ``{"bg_dd": float, "bg_da": float, "bg_aa": float}`` in kHz, for the
+        channels that could be estimated. Never negative.
     """
     out: dict[str, float] = {}
-    if split is None:
+    if split is None or durations is None:
         return out
+    dt = np.asarray(durations, dtype=float)
     donor_only = np.asarray(getattr(split, "donor_only", []), dtype=bool)
     acceptor_only = np.asarray(getattr(split, "acceptor_only", []), dtype=bool)
     dd = np.asarray(i_dd, dtype=float)
     da = np.asarray(i_da, dtype=float)
     aa = None if i_aa is None else np.asarray(i_aa, dtype=float)
 
-    if acceptor_only.size == dd.size and int(acceptor_only.sum()) >= min_population:
-        out["bg_dd"] = float(max(0.0, np.median(dd[acceptor_only])))
-    if aa is not None and donor_only.size == aa.size \
-            and int(donor_only.sum()) >= min_population:
-        out["bg_aa"] = float(max(0.0, np.median(aa[donor_only])))
+    if dt.size != dd.size:
+        return out
+
+    def rate(counts, mask):
+        """Median of the per-burst rate — a median of ratios, not a ratio of
+        medians, so one long dim burst cannot stand in for the population."""
+        good = mask & np.isfinite(counts) & np.isfinite(dt) & (dt > 0)
+        if int(good.sum()) < min_population:
+            return None
+        return float(max(0.0, np.median(counts[good] / dt[good])))
+
+    if acceptor_only.size == dd.size:
+        value = rate(dd, acceptor_only)
+        if value is not None:
+            out["bg_dd"] = value
+    if aa is not None and donor_only.size == aa.size:
+        value = rate(aa, donor_only)
+        if value is not None:
+            out["bg_aa"] = value
 
     if donor_only.size == dd.size and int(donor_only.sum()) >= min_population:
-        x, y = dd[donor_only], da[donor_only]
-        finite = np.isfinite(x) & np.isfinite(y)
-        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0:
-            slope, intercept = np.polyfit(x[finite], y[finite], 1)
-            del slope       # alpha is determined by the calibration, not here
-            out["bg_da"] = float(max(0.0, intercept))
+        # I_DA = alpha * I_DD + bg_da * T, solved for both at once. The duration
+        # is a *regressor*, not a constant offset: fitting an intercept instead
+        # says every burst carries the same background whatever its length.
+        x, y, t = dd[donor_only], da[donor_only], dt[donor_only]
+        finite = np.isfinite(x) & np.isfinite(y) & np.isfinite(t) & (t > 0)
+        if int(finite.sum()) >= min_population and np.ptp(x[finite]) > 0 \
+                and np.ptp(t[finite]) > 0:
+            design = np.column_stack([x[finite], t[finite]])
+            solution, *_ = np.linalg.lstsq(design, y[finite], rcond=None)
+            # solution[0] is a leakage slope; alpha is determined by the
+            # calibration, not here, so only the rate is kept.
+            out["bg_da"] = float(max(0.0, solution[1]))
     return out
 
 
@@ -614,6 +649,19 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     return applied
 
 
+def burst_durations_ms(table, detector: str):
+    """That detector's per-burst durations in ms, else the burst's, else ``None``.
+
+    Both background routes need this and they must agree: a background is a
+    *rate*, and it becomes counts only through the length of the burst it fell
+    into.
+    """
+    for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
+        if name in table:
+            return np.asarray(table[name], dtype=float)
+    return None
+
+
 def measured_background(ndx, table) -> dict:
     """Per-burst background **counts** from the measurement's own estimate.
 
@@ -675,22 +723,22 @@ def measured_background(ndx, table) -> dict:
     if not rates:
         return {}
 
-    def duration_ms(detector: str):
-        """That detector's own burst durations, else the burst's."""
-        for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
-            if name in table:
-                return np.asarray(table[name], dtype=float)
-        return None
-
     out: dict[str, np.ndarray] = {}
     for detector, role in _BACKGROUND_ROLES.items():
         rate = rates.get(detector)
-        durations = duration_ms(detector)
+        durations = burst_durations_ms(table, detector)
         if rate is None or durations is None:
             continue
         # kHz x ms = counts, which is why no unit factor appears here.
         out[role] = np.clip(rate * durations, 0.0, None)
+        # The rate is what the *window* holds (its Bg/Br/By are rates), so it
+        # travels beside the counts rather than being re-read from the file.
+        out.setdefault("rates", {})[_ROLE_TO_BG[role]] = float(rate)
     return out
+
+
+#: Burst-table role → the calibration's background attribute for that channel.
+_ROLE_TO_BG = {"i_dd": "bg_dd", "i_da": "bg_da", "i_aa": "bg_aa"}
 
 
 #: The Hellenkamp correction factors this bridge can write, in the order the
@@ -831,8 +879,10 @@ def optimize_calibration_from_ndx(
     # Backgrounds first: everything below is computed from counts that already
     # have them subtracted.
     per_burst_background: dict = {}
+    background_rates: dict = {}
     if background == "measurement":
         per_burst_background = measured_background(ndx, table)
+        background_rates = dict(per_burst_background.pop("rates", {}) or {})
 
     constants = dict(getattr(ndx, "constants", {}) or {})
     calib = calibration_from_ndx_constants(constants)
@@ -893,10 +943,20 @@ def optimize_calibration_from_ndx(
         first = calibrate(0)
         fitted = fitted_background(
             pick("i_dd"), pick("i_da"), pick("i_aa"), first.split,
+            durations=burst_durations_ms(table, "green"),
             min_population=int(min_population),
         )
-        for name, value in fitted.items():
-            setattr(calib, name, float(value))
+        # A rate becomes counts through each burst's own duration -- the same
+        # conversion the measured route makes, and the reason the fit is worth
+        # anything: subtracting one number from every burst is wrong in opposite
+        # directions at the two ends of the duration distribution.
+        for role, detector in (("i_dd", "green"), ("i_da", "red"), ("i_aa", "yellow")):
+            rate = fitted.get(_ROLE_TO_BG.get(role, ""))
+            durations = burst_durations_ms(table, detector)
+            if rate is None or durations is None:
+                continue
+            per_burst_background[role] = np.clip(rate * durations, 0.0, None)
+        background_rates = dict(fitted)
 
     prefix = "pass 2 of 2: " if background == "fit" else ""
     result = calibrate(int(n_bootstrap))
@@ -937,6 +997,15 @@ def optimize_calibration_from_ndx(
             injected.append("Off static FRET line")
         refresh_column_selectors(ndx)
 
+    # The window's Bg/Br/By are **rates** (``Fg = Sg - Bg``, Sg in kHz), while
+    # the calibration carried the per-burst counts as zeros because the
+    # subtraction happened per burst. Push the rates, so ndX's own equation
+    # columns are corrected with the same background the accurate columns were.
+    # Neither route did: "fit" wrote a per-burst *count* into a rate constant
+    # (a median of 8 photons arriving as 8 kHz, against a real background near
+    # 3), and "measurement" wrote the zeros, leaving the equations uncorrected.
+    for attribute, value in background_rates.items():
+        setattr(calib, attribute, float(value))
     applied = push_calibration_to_ndx(ndx, calib, recompute=recompute)
     return {
         "ok": True,

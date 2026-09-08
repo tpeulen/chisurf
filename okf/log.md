@@ -39436,3 +39436,17 @@ side of the line.
   blank: publication export → "Export…", the equation editor's add/remove →
   "+"/"−". Verified on a rendered window: no button's size hint exceeds its
   width. ndxplorer commit 8b87746.
+
+- 2026-09-08 — **A fitted background over-corrected because a count was pushed
+  into a rate** (owner: "somehow fitting bg overcorrects, pulls the bg
+  countrates too high in fret calibration"). ndX's `Bg`/`Br`/`By` are rates
+  (`Fg = Sg − Bg`, `Sg` in kHz); the calibration core's `bg_dd`/`bg_da`/`bg_aa`
+  are per-burst counts. The bridge mapped them by name. `background="fit"` wrote
+  median counts into the rate constants — Bg 8, By 4 on the owner's file against
+  a real background near 3 kHz — and `background="measurement"` pushed the zeroed
+  scalars, leaving ndX's equation columns uncorrected while the injected accurate
+  columns were right. `fitted_background` now returns rates (median of
+  counts/duration; `I_DA = α·I_DD + bg_da·T` by least squares, duration as a
+  regressor rather than an intercept) and both routes push rates. Recovered
+  1.87/1.09/2.66 kHz against a truth of 2.0/1.2/2.8 on a duration-aware
+  simulation. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).

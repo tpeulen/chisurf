@@ -162,6 +162,40 @@ Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.
 
+## A background is a rate; the calibration works in counts
+
+The two meet at this bridge, and they were not converted. ndX computes
+`Fg = Sg - Bg` where `Sg` is a count **rate** in kHz, so its `Bg`/`Br`/`By` are
+rates. `chisurf.core.fluorescence.fret.accurate` works on **per-burst counts**
+and its `bg_dd`/`bg_da`/`bg_aa` are counts (`f_dd = i_dd - bg_dd`). The push
+mapped one onto the other by name.
+
+Both background routes were wrong, in opposite directions:
+
+* **`background="fit"`** estimated the background as the *median counts* of the
+  channel that has no fluorophore in each reference population, and wrote that
+  straight into the rate constant. On the owner's µs-ALEX file that put
+  **Bg = 8, By = 4** into a window whose real background is about **3 kHz** —
+  over-correction, and the more so for short bursts. The reported symptom.
+* **`background="measurement"`** did the per-burst algebra correctly (rate × the
+  burst's own duration) but then pushed the *zeroed* scalars, so ndX's own
+  equation columns were left with `Bg = 0` — uncorrected, while the injected
+  accurate columns were fine. Nobody had noticed, because the two sets of
+  columns are never compared.
+
+`fitted_background` now returns **rates**: a median of per-burst *ratios*
+`counts/T` for the two channels that measure background alone, and for `bg_da`
+a two-regressor least squares of `I_DA = alpha·I_DD + bg_da·T` — the duration is
+a regressor, not an intercept, because an intercept says a 4 ms burst carries no
+more background than a 1 ms one. Without a duration column it returns nothing
+rather than a count labelled as a rate. The rate is converted to per-burst counts
+for the calibration itself (through `burst_durations_ms`, the same helper the
+measured route uses) and pushed to the window as a rate.
+
+Recovered on a simulation where the background really is a rate (mean burst
+2.79 ms): 1.87 / 1.09 / 2.66 kHz against a truth of 2.0 / 1.2 / 2.8. The old
+path would have written 108 and 145 — the median counts.
+
 ## Saved calibrations are a FIFO of five, ordered by their own timestamp
 
 Saving a calibration appends to the measurement, and one working session was

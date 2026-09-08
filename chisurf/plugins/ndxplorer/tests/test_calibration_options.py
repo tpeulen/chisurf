@@ -204,17 +204,26 @@ def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch)
 
 # ── fitting the background, for when nobody knows it ─────────────────────────
 
-def _physical_window(bg_dd=5.0, bg_da=3.0, bg_aa=7.0, alpha=0.06, n=8000, seed=1):
+def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1):
     """Bursts where the reference populations really lack a fluorophore.
 
     An acceptor-only burst has NO donor: what is in the donor channel is
     background and nothing else. That is what makes the background readable at
     all, and a simulation that leaves a residual donor signal there is testing
     something else.
+
+    The backgrounds here are **rates in kHz**, and each burst gets its own
+    duration, so its background counts are ``rate x duration``. That is not a
+    refinement of the simulation, it is the thing under test: a background that
+    is the same count in every burst — which is what a constant-offset model
+    assumes — cannot distinguish a rate from a count, and it was exactly that
+    conflation that let a fitted background reach the window as kHz when it was
+    a photon count.
     """
     rng = np.random.default_rng(seed)
     kind = rng.choice([0, 1, 2], n, p=[0.30, 0.20, 0.50])
     size = rng.gamma(4.0, 60.0, n)
+    duration = rng.gamma(3.0, 0.8, n) + 0.4      # ms, mean ~2.8
     E = np.where(kind == 2, rng.normal(0.55, 0.08, n), 0.0)
     dd, da, aa = np.zeros(n), np.zeros(n), np.zeros(n)
     m = kind == 0                      # donor-only: donor emits, acceptor leaks
@@ -225,15 +234,16 @@ def _physical_window(bg_dd=5.0, bg_da=3.0, bg_aa=7.0, alpha=0.06, n=8000, seed=1
     dd[m] = size[m] * (1 - E[m])
     da[m] = size[m] * E[m] + alpha * size[m] * (1 - E[m])
     aa[m] = size[m] * 0.8
-    dd += rng.poisson(bg_dd, n)
-    da += rng.poisson(bg_da, n)
-    aa += rng.poisson(bg_aa, n)
+    dd += rng.poisson(bg_dd * duration)
+    da += rng.poisson(bg_da * duration)
+    aa += rng.poisson(bg_aa * duration)
 
     class _DataSource:
         def __init__(self):
             self.data = {"Number of Photons (green)": dd,
                          "Number of Photons (red)": da,
-                         "Number of Photons (yellow)": aa}
+                         "Number of Photons (yellow)": aa,
+                         "Duration (ms)": duration}
 
     class _Ndx:
         def __init__(self):
@@ -250,11 +260,50 @@ def test_the_background_is_recovered_from_the_populations():
     result = _run(_physical_window(), background="fit")
     assert result["ok"]
     fitted = result["background_fitted"]
-    assert fitted["bg_dd"] == pytest.approx(5.0, abs=1.0)
-    assert fitted["bg_aa"] == pytest.approx(7.0, abs=1.0)
-    # The intercept of I_DA = alpha*I_DD + bg_da, which is what separates
-    # leakage from background; a ratio of means folds one into the other.
-    assert fitted["bg_da"] == pytest.approx(3.0, abs=1.5)
+    assert fitted["bg_dd"] == pytest.approx(2.0, abs=0.5)
+    assert fitted["bg_aa"] == pytest.approx(2.8, abs=0.5)
+    # The duration coefficient of I_DA = alpha*I_DD + bg_da*T, which is what
+    # separates leakage from background; a ratio of means folds one into the
+    # other, and an intercept says a long burst carries no more background
+    # than a short one.
+    assert fitted["bg_da"] == pytest.approx(1.2, abs=0.6)
+
+
+def test_the_fitted_background_reaches_the_window_as_a_rate():
+    """What the window receives must be kHz, because that is what it means.
+
+    ndX computes ``Fg = Sg - Bg`` with ``Sg`` a count *rate*, so a per-burst
+    count written into ``Bg`` is a background inflated by roughly the burst
+    duration in ms — the over-correction that started this: a median of 8
+    photons per burst arriving as 8 kHz against a real background near 3.
+    """
+    window = _physical_window()
+    result = _run(window, background="fit")
+    assert result["ok"]
+
+    # Mean burst duration here is ~2.8 ms, so the old counts-as-rate path put
+    # roughly 2.8x each rate into these constants -- well outside the tolerance.
+    for constant, expected in (("Bg", 2.0), ("Br", 1.2), ("By", 2.8)):
+        assert float(window.constants[constant]) == pytest.approx(expected, abs=0.6), constant
+
+
+def test_a_window_without_durations_gets_no_fitted_background():
+    """No duration, no rate — and a count in its place would be wrong.
+
+    Returning the count would look like it worked and quietly over-correct,
+    which is the failure this whole path is being fixed for.
+    """
+    from chisurf.plugins.ndxplorer import calibration_bridge as bridge
+
+    class _Split:
+        donor_only = np.ones(50, dtype=bool)
+        acceptor_only = np.ones(50, dtype=bool)
+
+    fitted = bridge.fitted_background(
+        np.full(50, 9.0), np.full(50, 4.0), np.full(50, 7.0), _Split(),
+        durations=None, min_population=10,
+    )
+    assert fitted == {}
 
 
 def test_leakage_survives_the_background_fit():
