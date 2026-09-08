@@ -117,6 +117,12 @@ def _contiguous_runs(mask: np.ndarray) -> list[tuple[int, int]]:
     return runs
 
 
+def _run_length(run: tuple[int, int], n: int) -> int:
+    """Length of a (possibly wrapping) run of bins."""
+    start, stop = run
+    return (stop - start + 1) if start <= stop else (n - start + stop + 1)
+
+
 def auto_alex_windows(
     micro_times,
     routing_channels,
@@ -176,34 +182,76 @@ def auto_alex_windows(
     period = int(alex_period)
     edges = np.linspace(0, period, n_bins + 1)
     counts, _ = np.histogram(phase, bins=edges)
+    donor_counts, _ = np.histogram(
+        phase[np.isin(rc, list(donor_channels))], bins=edges)
+    acceptor_counts, _ = np.histogram(
+        phase[np.isin(rc, list(acceptor_channels))], bins=edges)
 
     nonzero = counts[counts > 0]
     if nonzero.size == 0:
         raise ValueError("no photons to detect ALEX windows from")
-    plateau = np.percentile(nonzero, 75)
-    on = counts > occupancy * plateau
-    runs = _contiguous_runs(on)
 
-    def run_counts(run: tuple[int, int]) -> int:
-        s, e = run
-        if s <= e:
-            return int(counts[s:e + 1].sum())
-        return int(counts[s:].sum() + counts[:e + 1].sum())
-
-    runs = sorted(runs, key=run_counts, reverse=True)
-    if len(runs) < 2:
+    # Dark bins first: on synthetic or heavily gated data the laser-off phase
+    # holds no photons at all, and such a bin belongs to neither window. On real
+    # data there are none -- which is the whole reason the split below is made
+    # on the detector ratio and not on occupancy.
+    lit = counts > occupancy * np.percentile(nonzero, 75)
+    if lit.sum() < 4:
         raise ValueError(
-            "could not find two ALEX laser windows in the phase histogram; "
-            "the data may be continuous-wave or the period/binning is wrong"
+            "too few occupied phase bins to detect ALEX windows from; "
+            "the period or the binning is wrong"
         )
-    runs = runs[:2]
+
+    # The split is a *ratio*, not a plateau. Real µs-ALEX has no laser-off gap
+    # to find: both lasers keep the sample emitting, so the total phase
+    # histogram is nearly flat and an occupancy threshold sees one window
+    # covering the whole period. What does alternate, sharply, is which detector
+    # the photons land on -- so the acceptor's share of each phase bin is a
+    # square wave even when the intensity is not.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        share = acceptor_counts / np.maximum(donor_counts + acceptor_counts, 1)
+    lit_share = share[lit]
+    low, high = np.percentile(lit_share, 10), np.percentile(lit_share, 90)
+    if high - low < 0.05:
+        raise ValueError(
+            "the acceptor's share of the phase bins does not alternate "
+            f"(spread {high - low:.3f}); the data may be continuous-wave, the "
+            "period wrong, or both detectors assigned to the same colour"
+        )
+    # Hysteresis, not a midpoint. Between the two laser windows is a phase where
+    # neither laser is fully on and the ratio sits *between* the two levels; a
+    # midpoint threshold assigns that band to whichever side it happens to fall,
+    # which merges it into one window and can wrap that window past phase zero.
+    # Requiring a bin to be clearly on one side leaves the transition in neither,
+    # which is what it is.
+    span = high - low
+    donor_lit = lit & (share <= low + 0.25 * span)
+    acceptor_lit = lit & (share >= high - 0.25 * span)
+
+    runs = []
+    for name, mask in (("donor", donor_lit), ("acceptor", acceptor_lit)):
+        candidates = _contiguous_runs(mask)
+        if not candidates:
+            raise ValueError(
+                f"the {name}-excitation window is empty; check the "
+                "donor/acceptor channel assignment"
+            )
+        runs.append(max(candidates, key=lambda r: _run_length(r, n_bins)))
 
     windows = []
-    for s, e in runs:
-        lo = float(edges[s])
-        hi = float(edges[e + 1]) if e + 1 < len(edges) else float(period)
-        width = (hi - lo) if hi > lo else (period - lo + hi)
-        margin = guard * width
+    for start, stop in runs:
+        if start > stop:
+            # A window that straddles phase zero cannot be written as one
+            # micro-time range, and every consumer downstream takes [lo, hi].
+            # The remedy is a period shift, which is what `apply_alex` takes.
+            raise ValueError(
+                f"an excitation window wraps past phase 0 "
+                f"(bins {start}..{stop} of {n_bins}); fold with a period shift "
+                f"of about {int(edges[start])} so both windows are contiguous"
+            )
+        lo = float(edges[start])
+        hi = float(edges[stop + 1]) if stop + 1 < len(edges) else float(period)
+        margin = guard * (hi - lo)
         windows.append((lo + margin, hi - margin))
 
     def donor_density(win: tuple[float, float]) -> float:
@@ -336,6 +384,115 @@ def detect_alex_period(
         "confidence": float(band_power[peak] / median),
         "power": power[band],
         "periods": periods[band],
+    }
+
+
+def detect_alex_channels(
+    micro_times,
+    routing_channels,
+    *,
+    alex_period: int,
+    channels=None,
+    n_bins: int = 200,
+) -> dict:
+    """Work out which detector is the donor and which the acceptor.
+
+    This is the old "channel flip" checkbox, decided from the data. One physical
+    fact settles it: **under acceptor excitation the donor detector sees
+    essentially nothing**, because the donor is not excited and does not accept
+    energy. Nothing else about the sample matters — not the FRET efficiency, not
+    the labelling fractions, not the laser powers.
+
+    So: fold the phase, split the period into its two halves by the detector
+    ratio (label-free, so this does not presuppose the answer), and count each
+    detector in each half. The half in which one detector is nearly dark is the
+    **acceptor-excitation** window, and the detector that is dark there is the
+    **donor**.
+
+    Getting this wrong is the error nothing downstream reports: a swapped
+    assignment produces a complete, plausible analysis with *E* reflected about
+    ½ and no fit statistic that says so.
+
+    Parameters
+    ----------
+    micro_times, routing_channels : array_like
+        The folded stream (after :func:`apply_alex`).
+    alex_period : int
+        The alternation period the stream was folded on.
+    channels : sequence of int, optional
+        The two routing channels to consider. Defaults to the two most populated
+        channels in the stream.
+    n_bins : int
+        Phase bins used for the split.
+
+    Returns
+    -------
+    dict
+        ``{"donor": [ch], "acceptor": [ch], "contrast": float}``. ``contrast``
+        is how dark the donor is under acceptor excitation, as a ratio of its
+        own donor-excitation rate — below ~0.3 the call is clear, near 1 it is
+        not a two-colour ALEX measurement.
+
+    Raises
+    ------
+    ValueError
+        If fewer than two channels carry photons, or the phase does not split.
+    """
+    phase = np.asarray(micro_times)
+    rc = np.asarray(routing_channels)
+    if channels is None:
+        present, counts_per_channel = np.unique(rc, return_counts=True)
+        if present.size < 2:
+            raise ValueError(
+                f"only channel {present.tolist()} carries photons; ALEX needs two"
+            )
+        order = np.argsort(counts_per_channel)[::-1][:2]
+        channels = sorted(int(present[i]) for i in order)
+    a, b = (int(c) for c in channels)
+
+    period = int(alex_period)
+    edges = np.linspace(0, period, n_bins + 1)
+    hist_a, _ = np.histogram(phase[rc == a], bins=edges)
+    hist_b, _ = np.histogram(phase[rc == b], bins=edges)
+    total = hist_a + hist_b
+    lit = total > 0.35 * np.percentile(total[total > 0], 75) if (total > 0).any() else total > 0
+    if lit.sum() < 4:
+        raise ValueError("too few occupied phase bins to assign the channels")
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        share = hist_a / np.maximum(total, 1)
+    low, high = np.percentile(share[lit], 10), np.percentile(share[lit], 90)
+    if high - low < 0.05:
+        raise ValueError(
+            f"the detector ratio does not alternate across the period "
+            f"(spread {high - low:.3f}); this is not two-colour ALEX data, or "
+            "the period is wrong"
+        )
+    first = lit & (share > 0.5 * (low + high))
+    second = lit & ~first
+
+    # Rates, not counts: the two windows need not be the same width.
+    def rate(hist, mask):
+        return float(hist[mask].sum()) / max(int(mask.sum()), 1)
+
+    rates = {
+        (a, "first"): rate(hist_a, first), (b, "first"): rate(hist_b, first),
+        (a, "second"): rate(hist_a, second), (b, "second"): rate(hist_b, second),
+    }
+    # For each candidate donor, how dark it is in the window where it is darkest,
+    # relative to the other window. The real donor is the one that goes dark.
+    best, best_contrast = None, np.inf
+    for donor, acceptor in ((a, b), (b, a)):
+        bright = max(rates[(donor, "first")], rates[(donor, "second")])
+        dark = min(rates[(donor, "first")], rates[(donor, "second")])
+        contrast = dark / bright if bright > 0 else np.inf
+        if contrast < best_contrast:
+            best, best_contrast = (donor, acceptor), contrast
+    donor, acceptor = best
+    return {
+        "donor": [donor],
+        "acceptor": [acceptor],
+        "contrast": float(best_contrast),
     }
 
 
@@ -482,6 +639,7 @@ __all__ = [
     "alex_histogram",
     "auto_alex_windows",
     "detect_alex_period",
+    "detect_alex_channels",
     "alex_stream_masks",
     "convert_file",
     "merge_files",

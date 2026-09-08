@@ -7,6 +7,8 @@ pinning is that it gets them right on data where they are known — and that it
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -202,3 +204,94 @@ def test_photon_counts_win_over_the_rates_beside_them():
     # An older table with only the rates still resolves -- on the rates.
     rates_only = [c for c in columns if "photons" not in c]
     assert "kHz" in guess_columns(rates_only)["i_dd"]
+
+
+# ── against a real measurement ──────────────────────────────────────────
+
+#: A real 300 s µs-ALEX measurement (Cy3B / ATTO647N dsDNA calibration sample),
+#: and what the ALEX-Suite program was configured with for it: a 100 µs
+#: alternation at 12.5 ns macro-time units = 8000 units, green 240-3760, red
+#: 4160-7680, channel_flip on (the donor is routing channel 1).
+REAL_FILE = pathlib.Path(
+    "~/dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n.sm"
+).expanduser()
+REAL_PERIOD = 8000
+REAL_GREEN = (240, 3760)
+REAL_RED = (4160, 7680)
+
+real_data = pytest.mark.skipif(
+    not REAL_FILE.is_file(), reason=f"{REAL_FILE} not available")
+
+
+@pytest.fixture(scope="module")
+def folded_real():
+    """Return the real measurement, folded on its true period."""
+    tttrlib = pytest.importorskip("tttrlib")
+    from chisurf.plugins.tttr.ptu_alex_creator.core import apply_alex
+
+    return apply_alex(tttrlib.TTTR(str(REAL_FILE), "SM"), REAL_PERIOD, 0)
+
+
+@real_data
+def test_the_period_of_a_real_measurement_is_found_exactly():
+    """8000 macro-time units — what the old program was configured with."""
+    tttrlib = pytest.importorskip("tttrlib")
+
+    tttr = tttrlib.TTTR(str(REAL_FILE), "SM")
+    result = detect_alex_period(
+        tttr.macro_times, tttr.routing_channels,
+        donor_channels=[1], acceptor_channels=[0])
+    assert result["period"] == REAL_PERIOD
+    assert result["confidence"] > 1000
+
+
+@real_data
+def test_the_channel_assignment_of_a_real_measurement_is_worked_out(folded_real):
+    """The donor is channel 1 here — the old 'channel flip', decided by physics.
+
+    Nothing about the sample settles it except that the donor detector goes dark
+    under acceptor excitation, and here it drops to a few per cent of its
+    donor-excitation rate.
+    """
+    from chisurf.plugins.tttr.ptu_alex_creator.core import detect_alex_channels
+
+    assignment = detect_alex_channels(
+        folded_real.micro_times, folded_real.routing_channels,
+        alex_period=REAL_PERIOD)
+    assert assignment["donor"] == [1]
+    assert assignment["acceptor"] == [0]
+    assert assignment["contrast"] < 0.2
+
+
+@real_data
+def test_the_windows_of_a_real_measurement_match_the_old_configuration(folded_real):
+    """The detected gates sit inside the edges the old program was given.
+
+    This is the case that broke the previous implementation: real µs-ALEX has
+    **no laser-off gap** — both lasers keep the sample emitting, so the folded
+    intensity is flat to within a factor of two and an occupancy threshold finds
+    one window covering the whole period. The detector *ratio* alternates 0.69
+    against 0.07 across the same period, which is what the split now uses.
+    """
+    windows = auto_alex_windows(
+        folded_real.micro_times, folded_real.routing_channels,
+        donor_channels=[1], acceptor_channels=[0], alex_period=REAL_PERIOD)
+    for name, (lo_true, hi_true) in (("green", REAL_GREEN), ("red", REAL_RED)):
+        lo, hi = windows[name]
+        assert lo_true <= lo < hi <= hi_true + 100, (name, lo, hi)
+        assert (hi - lo) > 0.7 * (hi_true - lo_true), name
+
+
+@real_data
+def test_a_flat_folded_intensity_is_what_makes_this_hard(folded_real):
+    """The measurement this is checked against really has no laser-off gap.
+
+    Without this the window test above would pass for the wrong reason — on data
+    that happens to be gated, where the old occupancy method also worked.
+    """
+    counts, _ = np.histogram(
+        np.asarray(folded_real.micro_times), bins=np.linspace(0, REAL_PERIOD, 41))
+    interior = counts[2:]  # the first bins hold the laser turn-on transient
+    assert interior.min() > 0.4 * interior.max(), (
+        "this file has laser-off gaps after all; pick one that does not"
+    )

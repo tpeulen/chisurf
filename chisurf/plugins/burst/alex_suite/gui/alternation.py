@@ -51,32 +51,69 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self._workflow = parent
         self._result: dict | None = None
         self._files: list[pathlib.Path] = []
+        #: The setup this panel last handed the workflow, so reflecting the
+        #: workflow's choice back into the combo does not re-publish it.
+        self._published_setup = ""
+        #: True while this panel is driving the combo itself.
+        self._setting_combo = False
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
 
+        # One line here; the explanation is the tooltip, and the long version is
+        # behind the ? button (help.md). A panel whose top third is prose is a
+        # panel nobody reads.
         intro = QtWidgets.QLabel(
-            "<b>µs-ALEX only.</b> The lasers alternate in time here, not within "
-            "one pulse period. This step finds the alternation, folds it into "
-            "the micro-time and names the two excitation gates — after which "
-            "the data is an ordinary PIE measurement and every later step is "
-            "the normal burst pipeline.<br>"
-            "<i>Already PIE / ns-ALEX (pulsed interleaved excitation)? "
-            "Skip this step.</i>"
+            "<b>µs-ALEX only</b> — already PIE / ns-ALEX? Skip this step.", self)
+        intro.setToolTip(
+            "In µs-ALEX the lasers alternate in time, so which laser was on is "
+            "in the photon's macro-time. This step measures the alternation and "
+            "folds it into the micro-time, after which the measurement is an "
+            "ordinary PIE one and every later step is the normal burst "
+            "pipeline.\n\nIn PIE / ns-ALEX that information is already in the "
+            "micro-time, so there is nothing to fold — pick your detector setup "
+            "above and go on to the burst search."
         )
-        intro.setWordWrap(True)
         layout.addWidget(intro)
+
+        # The setup selector belongs here, not only inside the burst-search
+        # step's Filter Settings where every other tool hides it. This is the
+        # step that *decides* the channel definition, so it is where someone
+        # asks "which setup am I using?" -- and someone whose data is already
+        # PIE, who skips the detection entirely, still needs to pick one.
+        from chisurf.gui.widgets.setup_selector import SetupSelector
+
+        setup_row = QtWidgets.QHBoxLayout()
+        setup_row.setContentsMargins(0, 0, 0, 0)
+        setup_row.addWidget(QtWidgets.QLabel("Detector setup", self))
+        self.setup_selector = SetupSelector(
+            self, placeholder="— none yet; press Detect to make one —",
+            loader=_merged_setups)
+        self.setup_selector.setToolTip(
+            "The detector setup every later step uses: which routing channels "
+            "are the donor and acceptor, and which micro-time window is which "
+            "excitation.\n\nDetecting writes one called “ALEX Suite (auto)” "
+            "and selects it. Already PIE data? Pick your own setup here and "
+            "skip the detection."
+        )
+        self.setup_selector.setupChanged.connect(self._on_setup_chosen)
+        setup_row.addWidget(self.setup_selector, 1)
+        layout.addLayout(setup_row)
 
         form = QtWidgets.QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)
-        self.donor_edit = QtWidgets.QLineEdit("0")
+        self.donor_edit = QtWidgets.QLineEdit("auto")
         self.donor_edit.setToolTip(
-            "Routing channels of the donor ('green') detector, comma separated."
+            "Routing channels of the donor ('green') detector, comma separated.\n"
+            "'auto' works it out from the data: under acceptor excitation the "
+            "donor detector sees essentially nothing, and nothing else about the "
+            "sample changes that."
         )
-        self.acceptor_edit = QtWidgets.QLineEdit("1")
+        self.acceptor_edit = QtWidgets.QLineEdit("auto")
         self.acceptor_edit.setToolTip(
-            "Routing channels of the acceptor ('red') detector, comma separated."
+            "Routing channels of the acceptor ('red') detector, comma separated.\n"
+            "'auto' works it out from the data."
         )
         form.addRow("Donor channels", self.donor_edit)
         form.addRow("Acceptor channels", self.acceptor_edit)
@@ -112,6 +149,43 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
     # ── workflow hand-off ───────────────────────────────────────────────
 
+    def _on_setup_chosen(self, name: str) -> None:
+        """Publish a hand-picked setup as the one the workflow uses.
+
+        The path for data that is already PIE: the user never presses Detect, so
+        nothing else would ever set the workflow's channel definition and every
+        later step would fall back to whatever setup it last saw.
+        """
+        # Repopulating the combo emits a change for whatever lands in it first,
+        # which would publish an unrelated setup as the workflow's the moment
+        # this panel refreshed itself.
+        if self._setting_combo or not name or name == self._published_setup:
+            return
+        setup = dict(self.setup_selector.current_setup_dict() or {})
+        if not setup:
+            return
+        setup.setdefault("setup_name", name)
+        adopt = getattr(self._workflow, "adopt_alex_conversion", None)
+        if callable(adopt):
+            self._published_setup = name
+            adopt(setup, [])
+        self.status_label.setText(
+            f"Using detector setup “{name}”. "
+            "Press Detect as well if this is µs-ALEX data."
+        )
+
+    def show_setup(self, name: str) -> None:
+        """Reflect the workflow's current setup in the selector."""
+        self._published_setup = name
+        self._setting_combo = True
+        try:
+            self.setup_selector.refresh()
+            self.setup_selector.set_current(name)
+        except Exception:
+            logger.warning(f"ALEX Suite: could not show the setup {name!r}")
+        finally:
+            self._setting_combo = False
+
     def set_files(self, files) -> None:
         """Adopt the raw files chosen upstream."""
         self._files = [pathlib.Path(p) for p in files]
@@ -136,6 +210,12 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             acceptor = _channels(self.acceptor_edit.text())
         except ValueError as exc:
             self.status_label.setText(f"Channels: {exc}")
+            return
+        if (donor is None) != (acceptor is None):
+            self.status_label.setText(
+                "Give both channel assignments or neither — 'auto' decides them "
+                "together, from which detector goes dark under acceptor excitation."
+            )
             return
 
         from chisurf.plugins.burst.alex_suite.api.convert import detect_and_convert
@@ -166,6 +246,12 @@ class AlexAlternationPanel(QtWidgets.QWidget):
                 task.close()
 
         self._result = outcome
+        # Show what was decided: an assignment the user never typed is exactly
+        # the thing they have to be able to check.
+        donor = outcome["donor_channels"]
+        acceptor = outcome["acceptor_channels"]
+        self.donor_edit.setText(", ".join(str(c) for c in donor))
+        self.acceptor_edit.setText(", ".join(str(c) for c in acceptor))
         period = outcome["period"]
         # Re-fold the first file only for the picture; the conversion above
         # already used these numbers on every file.
@@ -173,7 +259,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         folded = core.apply_alex(
             core.load(str(first), core.resolve_filetype("Auto", str(first))), period, 0)
         self._plot_phase(folded, outcome["windows"], donor, acceptor, period)
-        self._report(period, outcome["confidence"], outcome["windows"], folded)
+        self._report(period, outcome["confidence"], outcome["windows"], folded,
+                     outcome.get("channel_contrast"))
 
         setup = build_setup(outcome["windows"], donor, acceptor, period)
         self._publish(setup, outcome["converted"], outcome["failed"])
@@ -182,7 +269,9 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         """Save the detector setup and hand the converted files downstream."""
         adopt = getattr(self._workflow, "adopt_alex_conversion", None)
         if callable(adopt):
+            self._published_setup = SETUP_NAME
             adopt(setup, converted)
+        self.show_setup(SETUP_NAME)
         n = len(converted)
         if not n:
             self.status_label.setText(
@@ -199,7 +288,7 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         # this the window would still read "converting…" after it had finished.
         logger.info(message)
 
-    def _report(self, period, confidence, windows, folded) -> None:
+    def _report(self, period, confidence, windows, folded, contrast=None) -> None:
         """Show the detected numbers, in seconds as well as macro-time units."""
         try:
             resolution = float(folded.header.macro_time_resolution)
@@ -207,17 +296,29 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             resolution = 0.0
         micro = f" = {period * resolution * 1e6:.1f} µs" if resolution else ""
         verdict = (
-            "clear alternation" if confidence > 50 else
-            "weak alternation — check the channel assignment, "
-            "or this may not be µs-ALEX data"
+            "a clear alternation" if confidence > 50 else
+            "a weak alternation; check the channel assignment, or this may not "
+            "be µs-ALEX data"
         )
         g_lo, g_hi = windows["green"]
         r_lo, r_hi = windows["red"]
         self.detail_label.setText(
             f"<b>Period</b> {period}{micro} &nbsp;·&nbsp; "
-            f"<b>green gate</b> {g_lo:.0f}–{g_hi:.0f} &nbsp;·&nbsp; "
-            f"<b>red gate</b> {r_lo:.0f}–{r_hi:.0f} &nbsp;·&nbsp; "
-            f"contrast {confidence:.0f}× ({verdict})"
+            f"<b>green</b> {g_lo:.0f}–{g_hi:.0f} &nbsp;·&nbsp; "
+            f"<b>red</b> {r_lo:.0f}–{r_hi:.0f} &nbsp;·&nbsp; "
+            f"<b>contrast</b> {confidence:.0f}×"
+        )
+        channels = (
+            "" if contrast is None else
+            f"\n\nThe donor and acceptor channels were assigned from the data: "
+            f"the donor detector is {contrast:.0%} as bright under acceptor "
+            f"excitation, which is the only thing that settles which is which."
+        )
+        self.detail_label.setToolTip(
+            f"Alternation period {period} macro-time units{micro}.\n"
+            f"Donor-excitation gate {g_lo:.0f}–{g_hi:.0f}, acceptor-excitation "
+            f"gate {r_lo:.0f}–{r_hi:.0f} (both trimmed at the laser rise and "
+            f"fall).\nContrast {confidence:.0f}x — {verdict}.{channels}"
         )
 
     def _plot_phase(self, folded, windows, donor, acceptor, period) -> None:
@@ -296,12 +397,60 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
     }
 
 
-def _channels(text: str) -> list[int]:
-    """Parse ``"0, 8"`` into ``[0, 8]``."""
-    parts = [p.strip() for p in str(text).replace(";", ",").split(",") if p.strip()]
-    if not parts:
-        raise ValueError("give at least one routing channel")
+def _merged_setups(db_path=None) -> dict:
+    """Every saved detector setup, from *both* stores.
+
+    There are two, and they are not the same one: the RPC store
+    (``detector_setups.*``) writes the settings JSON, while the pickers read
+    through the wizard's loader, which reads MMFDB and — once MMFDB is in use —
+    never falls back to that JSON. A setup written to one is then invisible in
+    the other, so this step could publish a setup the combo beside it did not
+    list. Merging on read is the workaround; the split is recorded in
+    ``okf/references/known-issues.md``.
+
+    MMFDB wins on a name collision: it is the store the rest of the application
+    reads, so showing the JSON's copy of a name would misrepresent what the
+    other tools will use.
+    """
+    setups: dict = {}
+    last_used = ""
+    from chisurf.core.data_io.detector_setups import load_detector_setups as json_load
+
+    for load, kwargs in (
+        (json_load, {}),
+        (_wizard_loader(), {"db_path": db_path, "skip_migration": True}),
+    ):
+        if load is None:
+            continue
+        try:
+            data = load(**{k: v for k, v in kwargs.items() if v is not None}) or {}
+        except Exception:
+            continue
+        found = data.get("setups")
+        if isinstance(found, dict):
+            setups.update(found)
+        last_used = data.get("last_used") or last_used
+    return {"setups": setups, "last_used": last_used}
+
+
+def _wizard_loader():
+    """Return the wizard's MMFDB-aware loader, or ``None`` if unimportable."""
+    try:
+        from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
+            load_detector_setups,
+        )
+    except Exception:
+        return None
+    return load_detector_setups
+
+
+def _channels(text: str) -> list[int] | None:
+    """Parse ``"0, 8"`` into ``[0, 8]``; ``"auto"`` (or empty) into ``None``."""
+    stripped = str(text).strip().lower()
+    if not stripped or stripped == "auto":
+        return None
+    parts = [p.strip() for p in stripped.replace(";", ",").split(",") if p.strip()]
     try:
         return [int(p) for p in parts]
     except ValueError:
-        raise ValueError(f"{text!r} is not a list of integers") from None
+        raise ValueError(f"{text!r} is not 'auto' or a list of integers") from None

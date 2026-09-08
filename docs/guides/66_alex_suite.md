@@ -53,23 +53,38 @@ files appearing beside them. Everything later reads what you select here.
 ## 2 — Alternation, measured rather than typed
 
 This replaces the microscope dialog: alternation period, phase shift, four laser
-on/off edges, channel flip. Name the donor and acceptor routing channels, press
-**Detect alternation and convert**, and look at the plot.
+on/off edges, channel flip. Its first control is the **Detector setup** — the
+answer to "where do I choose the setup?", and what every later step reads.
+
+For µs-ALEX you do not choose it: press **Detect alternation and convert** and
+look at the plot. The channel fields say `auto` and fill themselves in. (For data
+that is already PIE, pick your own setup in that combo and skip the rest of the
+step.)
 
 ```{figure} figures/alex_suite_alternation.png
 :name: fig-alex-suite-alternation
 :width: 95%
 
-The alternation step on a simulated µs-ALEX measurement. Two plateaus with a gap
-between them; the donor detector brighter in the first, the acceptor in the
-second. The shaded bands are the detected excitation gates, and the *contrast*
-figure is how sharp the alternation line was.
+The alternation step. The folded *intensity* is nearly flat — real µs-ALEX has
+no laser-off gap — but the two detectors swap: donor bright in the first shaded
+gate, acceptor in the second. That swap is what the detection uses, and what you
+check.
 ```
 
 **That crossover is the check.** If the two curves track each other instead, the
 period is wrong or the channels are swapped. Contrast below about 50× means the
 same thing, and the step refuses to convert rather than folding a meaningless
 micro-time into every file.
+
+The **channel assignment is decided, not asked**. One physical fact settles it:
+under acceptor excitation the donor detector sees essentially nothing, whatever
+the sample's efficiency or labelling. On the µs-ALEX calibration measurement this
+was built against — a 300 s Cy3B/ATTO647N dsDNA file — the donor turns out to be
+routing channel **1** and is 5 % as bright under acceptor excitation, i.e. the
+"flipped" case the old program needed a checkbox for. The detected period (8000
+macro-time units = 100.0 µs) and gates (616–3784, 4278–7762) reproduce what that
+program was configured with (100 µs; 240–3760 and 4160–7680) to within the guard
+band trimmed off the laser rise and fall.
 
 Afterwards each measurement is a `.pto` whose micro-time *is* the alternation
 phase — ordinary PIE data — and a detector setup named **ALEX Suite (auto)** is

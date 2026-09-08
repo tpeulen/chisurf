@@ -14,6 +14,18 @@ related:
 
 ## Where to pick this up
 
+0. **Detector setups have two stores and a picker sees one of them.** The RPC
+   store (`detector_setups.*`, what this workflow publishes through) writes the
+   settings JSON; every `SetupSelector` reads the wizard loader, which reads
+   MMFDB and never falls back to that JSON. So a setup this step saves is
+   invisible in every picker. Worked around here only — the alternation step's
+   own picker reads a *merge* of both (`_merged_setups`), and the step writes to
+   both. **Trap when you go to fix it properly:** `save_detector_setups`
+   swallows an MMFDB failure and reports success (`FOREIGN KEY constraint
+   failed` on a database with no user row), so a store that is rejecting writes
+   is indistinguishable from an empty one. Full entry in
+   [known-issues](../references/known-issues.md).
+
 1. **The rate-vs-count defect in `.bur` is only half fixed.** The gated stream
    columns now come in two flavours — `S {window} {detector} (kHz)` and
    `… (photons)` — and every reader that goes through
@@ -95,8 +107,38 @@ The old dialog asked for seven numbers. All seven are in the data:
   spectral peak, then finish on an integer scan of the folded modulation. The
   integer matters: one macro-time unit out, over 10⁵ cycles, walks the phase
   across a laser window.
-- **laser edges** — `auto_alex_windows`, the two plateaus of the folded phase.
-- **channel flip** — which plateau the donor detector is brighter in.
+- **laser edges** — `auto_alex_windows`. **Not** the plateaus of the folded
+  intensity, which is what it used to look for and what fails on every real
+  measurement: both lasers keep the sample emitting, so there is no laser-off
+  gap and the intensity is flat to within a factor of two. What alternates is
+  the *detector ratio* — measured on the calibration file below: the acceptor's
+  share is 0.69 in one half of the period and 0.07 in the other. The split is
+  made on that, with hysteresis so the rise/fall band between the two levels
+  falls in neither window (a midpoint threshold absorbed it and produced a
+  window that wrapped past phase 0, which cannot be written as a micro-time
+  range at all).
+- **channel flip** — `detect_alex_channels`. One physical fact decides it:
+  **under acceptor excitation the donor detector sees essentially nothing**,
+  whatever the sample's efficiency or labelling.
+
+### Checked against a real measurement
+
+`~/dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n.sm` — a 300 s,
+3.77 M photon µs-ALEX file, and the one the window detection was rewritten
+against. The tests in `tests/test_alternation.py` skip when it is absent.
+
+| | detected | ALEX-Suite was configured with |
+|---|---|---|
+| period | 8000 units = 100.0 µs | `alex_period = 1e-4 s`, `time_resolution = 12.5e-9` |
+| green gate | 616–3784 | 240–3760 |
+| red gate | 4278–7762 | 4160–7680 |
+| donor | channel **1** | `channel_flip = True` |
+
+The donor is 5 % as bright under acceptor excitation, so the assignment is not a
+close call. The gates are the configured ones minus the 6 % guard trimmed at each
+laser edge. End to end: 7358 bursts, and the stoichiometry histogram has the
+three species it should — donor-only at S ≈ 1, acceptor-only at S ≈ 0.1, the
+doubly labelled population at S ≈ 0.6.
 
 The step then writes `<stem>_alex.pto` per file and publishes a detector setup
 named **ALEX Suite (auto)**.

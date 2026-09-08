@@ -15,9 +15,12 @@ import click
 import numpy as np
 
 
-def _channels(text: str) -> list[int]:
-    """Parse a ``"0,8"`` channel list."""
-    return [int(part) for part in str(text).replace(";", ",").split(",") if part.strip()]
+def _channels(text: str) -> list[int] | None:
+    """Parse a ``"0,8"`` channel list; ``"auto"`` means "work it out"."""
+    stripped = str(text).strip().lower()
+    if not stripped or stripped == "auto":
+        return None
+    return [int(part) for part in stripped.replace(";", ",").split(",") if part.strip()]
 
 
 @click.group("alex-suite")
@@ -27,8 +30,10 @@ def cli() -> None:
 
 @cli.command("alternation")
 @click.argument("files", nargs=-1, type=click.Path(exists=True), required=True)
-@click.option("--donor", default="0", help="Donor routing channels, comma separated.")
-@click.option("--acceptor", default="1", help="Acceptor routing channels, comma separated.")
+@click.option("--donor", default="auto",
+              help="Donor routing channels, comma separated, or 'auto'.")
+@click.option("--acceptor", default="auto",
+              help="Acceptor routing channels, comma separated, or 'auto'.")
 @click.option("--out-dir", type=click.Path(), default=None,
               help="Where the converted .pto containers go (default: beside the source).")
 @click.option("--detect-only", is_flag=True,
@@ -41,30 +46,24 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
     pipeline applies to it unchanged.
     """
     from chisurf.plugins.burst.alex_suite.api.convert import detect_and_convert
-    from chisurf.plugins.tttr.ptu_alex_creator import core
 
     donor_channels = _channels(donor)
     acceptor_channels = _channels(acceptor)
 
     if detect_only:
-        first = pathlib.Path(files[0])
-        tttr = core.load(str(first), core.resolve_filetype("Auto", str(first)))
-        detected = core.detect_alex_period(
-            tttr.macro_times, tttr.routing_channels,
-            donor_channels=donor_channels, acceptor_channels=acceptor_channels,
-        )
-        period = int(detected["period"])
-        folded = core.apply_alex(tttr, period, 0)
-        windows = core.auto_alex_windows(
-            folded.micro_times, folded.routing_channels,
-            donor_channels=donor_channels, acceptor_channels=acceptor_channels,
-            alex_period=period,
+        # Same code path as the conversion, minus the writing, so what is
+        # reported is what a real run would use.
+        outcome = detect_and_convert(
+            files[:1], donor_channels=donor_channels,
+            acceptor_channels=acceptor_channels, dry_run=True,
         )
         payload = {
-            "period": period,
-            "confidence": float(detected["confidence"]),
-            "green": [float(v) for v in windows["green"]],
-            "red": [float(v) for v in windows["red"]],
+            "period": outcome["period"],
+            "confidence": outcome["confidence"],
+            "donor": outcome["donor_channels"],
+            "acceptor": outcome["acceptor_channels"],
+            "green": [float(v) for v in outcome["windows"]["green"]],
+            "red": [float(v) for v in outcome["windows"]["red"]],
         }
     else:
         outcome = detect_and_convert(
@@ -75,6 +74,8 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
         payload = {
             "period": outcome["period"],
             "confidence": outcome["confidence"],
+            "donor": outcome["donor_channels"],
+            "acceptor": outcome["acceptor_channels"],
             "green": [float(v) for v in outcome["windows"]["green"]],
             "red": [float(v) for v in outcome["windows"]["red"]],
             "converted": [str(p) for p in outcome["converted"]],
@@ -86,6 +87,8 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
         return
     click.echo(f"period      {payload['period']} macro-time units")
     click.echo(f"confidence  {payload['confidence']:.0f}x")
+    click.echo(f"donor       channel(s) {payload['donor']}")
+    click.echo(f"acceptor    channel(s) {payload['acceptor']}")
     click.echo(f"green gate  {payload['green'][0]:.0f} - {payload['green'][1]:.0f}")
     click.echo(f"red gate    {payload['red'][0]:.0f} - {payload['red'][1]:.0f}")
     for path in payload.get("converted", []):

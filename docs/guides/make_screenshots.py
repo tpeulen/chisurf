@@ -1445,12 +1445,18 @@ def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
     macro = (t[order] / res).astype(np.uint64)
     e = e[order]
 
+    # Photons are NOT deleted outside the gates. Real µs-ALEX has no laser-off
+    # hole in the folded intensity -- both lasers keep the sample emitting, so
+    # the total is nearly flat and only the *detector ratio* alternates. A
+    # simulation that gates the photons away produces a picture the window
+    # detection finds trivially and a reader would not recognise.
     phase = macro % period
-    keep = ((phase >= green[0]) & (phase < green[1])) | (
-        (phase >= red[0]) & (phase < red[1]))
-    macro, e = macro[keep], e[keep]
-    donor_excited = (macro % period >= green[0]) & (macro % period < green[1])
-    p_acceptor = np.where(donor_excited, e, 0.95)
+    donor_excited = (phase >= green[0]) & (phase < green[1])
+    acceptor_excited = (phase >= red[0]) & (phase < red[1])
+    p_acceptor = np.where(
+        donor_excited, e,                     # donor excitation: E decides
+        np.where(acceptor_excited, 0.95,      # acceptor excitation: nearly all
+                 0.5))                        # the rise/fall, neither fully on
     routing = np.where(rng.random(macro.size) < p_acceptor, 1, 0).astype(np.int8)
 
     out = tttrlib.TTTR()

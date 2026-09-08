@@ -1,3 +1,34 @@
+## Detector setups have two stores, and a picker sees only one of them
+
+**Found 2026-09-08.** A detector setup can be written two ways and read two ways,
+and the pairs do not line up:
+
+| | writes to | reads from |
+|---|---|---|
+| `detector_setups.*` RPC (`DetectorSetupClient`) | the settings **JSON** (`chisurf.core.data_io.detector_setups`) | the same JSON |
+| every `SetupSelector` picker in the GUI | — | `chisurf.gui.widgets.wizard.tttr_channeldefinition.load_detector_setups` |
+
+The wizard loader reads **MMFDB** when MMFDB is in use, and in that branch it
+never falls back to the JSON — the pickers pass `skip_migration=True`, so the
+JSON is not imported either. A setup saved through the RPC store is therefore
+invisible in every picker, permanently and silently.
+
+Found because the ALEX Suite's alternation step publishes a setup through the
+RPC store and then shows it in a `SetupSelector` beside it: the combo listed
+nothing while the workflow, the burst search and Accurate FRET all had the setup
+and were using it.
+
+Worked around locally, not fixed: that one picker reads a **merge** of both
+stores (`_merged_setups` in
+`chisurf/plugins/burst/alex_suite/gui/alternation.py`), and the step writes to
+both. Every other picker in the application still reads MMFDB only.
+
+The real fix is a ruling on which store is authoritative, and it is not a
+drive-by: `save_detector_setups` swallows an MMFDB failure (seen here as
+`FOREIGN KEY constraint failed` in a scratch database with no user row) and
+reports success, so a store that is silently rejecting writes looks like one
+that is empty.
+
 ## A burst table's per-stream count *rates* are not proportional to its counts
 
 **Found 2026-09-08.** `E` and `S` are ratios of photon counts. The `.bur` schema

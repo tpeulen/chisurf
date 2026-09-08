@@ -29,6 +29,26 @@ which laser window it is brighter in) and the **`sm2burst` cache** (bursts are
 kept in the measurement's own `.pto`, so nothing can go stale against a settings
 change).
 
+## Where the detector setup is chosen
+
+**Step 2, the first control.** The setup says which routing channels are the
+donor and the acceptor and which micro-time window is which excitation, and
+everything after step 2 reads it — the burst search, Accurate FRET and BVA each
+show the same setup in their own combo, already filled in.
+
+* **µs-ALEX:** you do not choose it. *Detect alternation and convert* measures
+  the channel assignment and the gates and writes a setup called
+  **ALEX Suite (auto)**, then selects it. The two channel fields say `auto`
+  until it has run and then show what was decided, so you can check it.
+* **Already PIE / ns-ALEX:** pick your own setup in that combo and skip the
+  detection. That is the only thing step 2 is for in your case.
+
+The old *channel flip* checkbox is gone because the answer is in the data: under
+acceptor excitation the donor detector sees essentially nothing, whatever the
+sample's FRET efficiency or labelling. On the calibration file this was built
+against, the donor is routing channel **1** and is 5 % as bright under acceptor
+excitation — a flipped assignment that the old program needed a checkbox for.
+
 ## What comes out
 
 The same thing the PIE burst workflow produces, because it is the same code: one

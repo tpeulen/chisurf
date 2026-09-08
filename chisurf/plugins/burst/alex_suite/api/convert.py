@@ -19,6 +19,8 @@ from __future__ import annotations
 import logging
 import pathlib
 
+import numpy as np
+
 __all__ = ["alex_to_pto", "detect_and_convert", "MIN_CONFIDENCE"]
 
 #: Below this alternation contrast the stream is not alternating and the
@@ -86,11 +88,12 @@ def alex_to_pto(
 def detect_and_convert(
     paths,
     *,
-    donor_channels,
-    acceptor_channels,
+    donor_channels=None,
+    acceptor_channels=None,
     out_dir: str | pathlib.Path | None = None,
     progress=None,
     min_confidence: float = MIN_CONFIDENCE,
+    dry_run: bool = False,
 ) -> dict:
     """Detect the alternation on the first file and convert all of them.
 
@@ -102,8 +105,14 @@ def detect_and_convert(
     ----------
     paths : sequence of path-like
         The measurements, in the order they were selected.
-    donor_channels, acceptor_channels : sequence of int
-        Routing channels of the two detectors.
+    donor_channels, acceptor_channels : sequence of int, optional
+        Routing channels of the two detectors. ``None`` (the default) works them
+        out from the data — see
+        :func:`~chisurf.plugins.tttr.ptu_alex_creator.core.detect_alex_channels`,
+        which is the old "channel flip" checkbox decided by physics. Detecting
+        rather than asking matters because a swapped assignment is the error
+        nothing downstream reports: *E* comes out reflected about ½ and every
+        fit statistic is happy.
     out_dir : path-like, optional
         Where the containers go.
     progress : callable, optional
@@ -111,11 +120,17 @@ def detect_and_convert(
     min_confidence : float
         Refuse to convert below this alternation contrast (see
         :data:`MIN_CONFIDENCE`). Pass ``0`` to convert regardless.
+    dry_run : bool
+        Detect and report without writing anything — the same code path, so
+        what is reported is what a real run would use.
 
     Returns
     -------
     dict
-        ``{"period", "confidence", "windows", "converted", "failed"}``.
+        ``{"period", "confidence", "windows", "donor_channels",
+        "acceptor_channels", "channel_contrast", "converted", "failed"}``.
+        ``channel_contrast`` is ``None`` when the assignment was given rather
+        than detected.
 
     Raises
     ------
@@ -131,6 +146,23 @@ def detect_and_convert(
 
     first = paths[0]
     tttr = core.load(str(first), core.resolve_filetype("Auto", str(first)))
+
+    # The period does not depend on which detector is called the donor -- the
+    # signed stream only changes sign, and a power spectrum does not care -- so
+    # the period can be found before the assignment is known, and the assignment
+    # can then be made on the folded phase.
+    auto = donor_channels is None or acceptor_channels is None
+    if auto:
+        present, counts = np.unique(np.asarray(tttr.routing_channels),
+                                    return_counts=True)
+        if present.size < 2:
+            raise ValueError(
+                f"only routing channel {present.tolist()} carries photons; "
+                "µs-ALEX needs two detectors"
+            )
+        busiest = sorted(int(present[i]) for i in np.argsort(counts)[::-1][:2])
+        donor_channels, acceptor_channels = [busiest[0]], [busiest[1]]
+
     detected = core.detect_alex_period(
         tttr.macro_times, tttr.routing_channels,
         donor_channels=donor_channels, acceptor_channels=acceptor_channels,
@@ -145,6 +177,20 @@ def detect_and_convert(
             "µs-ALEX data — PIE / ns-ALEX needs no conversion."
         )
     folded = core.apply_alex(tttr, period, 0)
+    contrast = None
+    if auto:
+        assignment = core.detect_alex_channels(
+            folded.micro_times, folded.routing_channels, alex_period=period,
+            channels=list(donor_channels) + list(acceptor_channels),
+        )
+        donor_channels = assignment["donor"]
+        acceptor_channels = assignment["acceptor"]
+        contrast = assignment["contrast"]
+        logger.info(
+            f"ALEX: donor = channel {donor_channels[0]}, acceptor = "
+            f"{acceptor_channels[0]} (the donor is {contrast:.0%} as bright "
+            "under acceptor excitation)"
+        )
     windows = core.auto_alex_windows(
         folded.micro_times, folded.routing_channels,
         donor_channels=donor_channels, acceptor_channels=acceptor_channels,
@@ -153,7 +199,7 @@ def detect_and_convert(
 
     converted: list[pathlib.Path] = []
     failed: list[tuple[pathlib.Path, str]] = []
-    for i, path in enumerate(paths):
+    for i, path in enumerate([] if dry_run else paths):
         if progress is not None:
             progress(i, len(paths), path.name)
         try:
@@ -165,6 +211,9 @@ def detect_and_convert(
         "period": period,
         "confidence": confidence,
         "windows": {"green": windows["green"], "red": windows["red"]},
+        "donor_channels": list(donor_channels),
+        "acceptor_channels": list(acceptor_channels),
+        "channel_contrast": contrast,
         "converted": converted,
         "failed": failed,
     }

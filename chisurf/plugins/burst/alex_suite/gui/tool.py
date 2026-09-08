@@ -296,14 +296,41 @@ class AlexSuiteTool(BurstAnalysisTool):
             self._replace_files(self._workflow_panels.get("selection"), converted)
         if setup:
             name = str(setup.get("setup_name") or "")
-            try:
-                self._setup_client.save_setup(name, setup)
-                self._setup_client.set_current(setup)
-            except Exception as exc:
-                logger.warning(f"ALEX Suite: could not publish the setup — {exc}")
+            self._publish_setup(name, setup)
             self.workflow_context.channel_settings = setup
             self.workflow_context.setup_name = name
         self._apply_context_to_downstream()
+
+    def _publish_setup(self, name: str, setup: dict) -> None:
+        """Save a setup where every reader of one will find it.
+
+        Two stores, and they are not the same one. The RPC store
+        (``detector_setups.*``, what the workflow context and the headless
+        server read) writes the settings JSON; the *pickers* — every
+        ``SetupSelector`` in the application, including the burst search's own —
+        read through the wizard's loader, which reads MMFDB and, once MMFDB is
+        in use, never falls back to that JSON. A setup written to one is
+        invisible in the other, which is how this step could publish a setup the
+        picker beside it did not list. Writing through both is the honest
+        workaround until the two stores are one (recorded in
+        ``okf/references/known-issues.md``).
+        """
+        try:
+            self._setup_client.save_setup(name, setup)
+            self._setup_client.set_current(setup)
+        except Exception as exc:
+            logger.warning(f"ALEX Suite: could not publish the setup — {exc}")
+        try:
+            from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
+                save_detector_setups,
+            )
+
+            save_detector_setups({"setups": {name: setup}, "last_used": name})
+        except Exception as exc:
+            logger.warning(
+                f"ALEX Suite: the setup was published but not saved where the "
+                f"pickers read — {exc}"
+            )
 
     @staticmethod
     def _replace_files(panel, files) -> None:

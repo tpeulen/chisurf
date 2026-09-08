@@ -1,5 +1,60 @@
 # Update Log
 
+## 2026-09-08 (later)
+
+* **The ALEX window detection was wrong on real data; rewritten against a real
+  measurement.** Tested on
+  `~/dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n.sm` (300 s,
+  3.77 M photons, µs-ALEX). `detect_alex_period` got the period exactly right
+  (8000 macro-time units = 100.0 µs, contrast 155278x, matching what ALEX-Suite
+  was configured with), and `auto_alex_windows` then **failed outright**: it
+  looked for two occupied plateaus separated by laser-off gaps, and real µs-ALEX
+  has none — both lasers keep the sample emitting, so the folded intensity is
+  flat to within a factor of two and the occupancy threshold sees one window
+  covering the whole period. The synthetic data it was written against had gaps
+  only because the simulation deleted the photons outside them.
+  What alternates is the **detector ratio**: on this file the acceptor's share of
+  a phase bin is 0.69 in one half of the period and 0.07 in the other. The split
+  is made on that now, with hysteresis so the rise/fall band *between* the two
+  levels falls in neither window — a plain midpoint threshold absorbed it and
+  produced a window that wrapped past phase 0, which cannot be written as a
+  micro-time range at all (now an error naming the period shift as the remedy).
+  Detected gates 616-3784 and 4278-7762 against the configured 240-3760 and
+  4160-7680, i.e. the configured ones minus the 6 % guard.
+  The docs figure's simulator no longer deletes the out-of-gate photons either,
+  so the reproducible picture is the one a reader will recognise.
+
+* **The channel flip is decided, not asked** (`detect_alex_channels`, new). One
+  physical fact settles it — under acceptor excitation the donor detector sees
+  essentially nothing, whatever the sample's efficiency or labelling — so the
+  ALEX Suite's two channel fields now default to `auto` and fill themselves in.
+  On the calibration file the donor is routing channel **1** and is 5 % as bright
+  under acceptor excitation, i.e. the flipped case the old program needed a
+  checkbox for. End to end on that file: 7358 bursts, and the stoichiometry
+  histogram has its three species (donor-only at S ~ 1, acceptor-only at S ~ 0.1,
+  the doubly labelled population at S ~ 0.6).
+
+* **The detector setup is now chosen where it is asked about.** "Where does the
+  user select the setup?" had the answer "inside the burst-search step's Filter
+  Settings", which nobody would guess. The alternation step — the step that
+  *decides* the channel definition — now carries a `SetupSelector` as its first
+  control: detection writes `ALEX Suite (auto)` and selects it, and someone whose
+  data is already PIE picks their own there and skips the rest of the step.
+  Doing that surfaced a split-brain: **detector setups have two stores**. The RPC
+  store writes the settings JSON; every picker reads the wizard loader, which
+  reads MMFDB and never falls back to that JSON — so a setup saved through the
+  RPC store is invisible in every picker. Worked around for this one picker (it
+  reads a merge of both) and recorded in
+  [known-issues](references/known-issues.md); the real fix is a ruling on which
+  store is authoritative, and it is not a drive-by because `save_detector_setups`
+  swallows an MMFDB failure and reports success.
+
+* **Panel prose moved to tooltips** (owner: "move text to tooltips, this is a bit
+  too long, either tooltip of help btn"). The alternation and export steps opened
+  with a paragraph each; both are now one line with the explanation on the
+  tooltip and the long version behind the `?`, which is where it already was.
+
+
 ## 2026-09-08
 
 * **ALEX Suite — the legacy ALEX-Suite workflow, as a ChiSurf pipeline.**

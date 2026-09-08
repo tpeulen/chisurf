@@ -18,7 +18,7 @@
     },
     {
       "title": "2 — the microscope settings, measured for you",
-      "text": "This replaces the whole <i>Burst Search Settings → Microscope</i> dialog: the ALEX period, the phase shift, the four laser on/off edges and the channel-flip box. <b>All seven are in the data</b>, and this step measures them.<br/><br/>Say which routing channels are the donor and the acceptor detector, and press the button. Skip the step entirely if your data is already PIE / ns-ALEX.",
+      "text": "This replaces the whole <i>Burst Search Settings → Microscope</i> dialog: the ALEX period, the phase shift, the four laser on/off edges and the channel-flip box. <b>All seven are in the data</b>, and this step measures them — the channel fields say <code>auto</code> and fill themselves in.<br/><br/>The first control is where the <b>detector setup</b> is chosen. Detecting writes one called <i>ALEX Suite (auto)</i> and selects it, and every later step reads that. If your data is already PIE / ns-ALEX, pick your own setup there instead and skip the rest of this step.",
       "target": {
         "panel": "2. Alternation"
       },

@@ -30,15 +30,16 @@ class LegacyExportPanel(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         intro = QtWidgets.QLabel(
-            "Writes the five CSV files the old ALEX-Suite wrote — "
-            "<code>_meta</code>, <code>_hist_E</code>, <code>_hist_S</code>, "
-            "<code>_hist_2D</code>, <code>_original_bursts</code> — so scripts "
-            "and spreadsheets built on that layout keep working.<br>"
-            "<i>This is a convenience export. The analysis itself lives in the "
-            "<code>.pto</code> container and the burst companions beside it, "
-            "the same as every other ChiSurf burst workflow.</i>"
+            "The five CSV files the old ALEX-Suite wrote — for scripts built on "
+            "that layout.", self)
+        intro.setToolTip(
+            "Writes <stem>_meta.csv, _hist_E.csv, _hist_S.csv, _hist_2D.csv and "
+            "_original_bursts.csv with the same section headers the old program "
+            "used, so existing scripts and spreadsheets keep working.\n\n"
+            "It is a convenience export, not the storage. The analysis itself "
+            "lives in the .pto container and the burst companions beside it, the "
+            "same as every other ChiSurf burst workflow."
         )
-        intro.setWordWrap(True)
         layout.addWidget(intro)
 
         form = QtWidgets.QFormLayout()
