@@ -82,4 +82,56 @@ def make_ndxplorer(**kwargs: Any):
         client = make_inprocess_chisurf_client()
         if client is not None:
             kwargs["chisurf_rpc"] = client
-    return ndxplorer.NDXplorer(**kwargs)
+    return _measurement_aware(ndxplorer.NDXplorer)(**kwargs)
+
+
+def _measurement_aware(base):
+    """Subclass *base* so that opening a measurement restores its calibration.
+
+    A calibration belongs to the measurement it was determined on, and the
+    Accurate FRET step already writes it into the container. Nothing read it
+    back, so opening a container gave a window still holding the *previous*
+    measurement's constants — numbers that look determined, belong to another
+    file, and correct every burst by the wrong amounts. There is no signal for
+    "a load finished", but there is one place every load ends: the assignment to
+    ``data_source``. Hooking the property is therefore the whole of it.
+
+    Built lazily and cached so the class is created once, after ``ndxplorer``
+    has been imported.
+    """
+    cached = getattr(_measurement_aware, "_cache", None)
+    if cached is not None and cached.__bases__[0] is base:
+        return cached
+
+    class MeasurementAwareNDXplorer(base):
+        """An ndX window that adopts the calibration stored with its data."""
+
+        @property
+        def data_source(self):
+            """The loaded data (unchanged; only the setter does more)."""
+            return base.data_source.fget(self)
+
+        @data_source.setter
+        def data_source(self, value):
+            base.data_source.fset(self, value)
+            self._restore_stored_calibration()
+
+        def _restore_stored_calibration(self) -> None:
+            """Adopt the calibration the freshly loaded measurement carries.
+
+            Never fatal: a window that cannot read a calibration is a window
+            with the constants it already had, which is exactly where it was
+            before this existed.
+            """
+            try:
+                from chisurf.plugins.ndxplorer.calibration_bridge import (
+                    restore_calibration_from_container,
+                )
+
+                restore_calibration_from_container(self)
+            except Exception:
+                logging.debug("could not restore a stored calibration",
+                              exc_info=True)
+
+    _measurement_aware._cache = MeasurementAwareNDXplorer
+    return MeasurementAwareNDXplorer

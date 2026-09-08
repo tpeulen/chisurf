@@ -9,6 +9,8 @@ as those populations, and someone who determined γ on a reference sample wants
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -265,3 +267,83 @@ def test_too_few_reference_bursts_are_not_guessed_from():
     """An absent estimate means 'not determined', not 'zero'."""
     result = _run(_physical_window(n=8000), background="fit", min_population=100000)
     assert result["background_fitted"] == {}
+
+
+# ── a calibration belongs to its measurement ─────────────────────────────────
+
+def _container_with_calibration(tmp_path, **factors):
+    """A container carrying the artifact the Accurate FRET step writes."""
+    import shutil
+
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.plugins.ndxplorer.calibration_bridge import CALIBRATION_ARTIFACT
+
+    source = pathlib.Path.home() / (
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+    if not source.exists():
+        pytest.skip("the ALEX calibration container is not on this machine")
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+
+    n = 3
+    rows = {"label": np.arange(n, dtype=float), "E": np.array([0.02, 0.55, 0.81])}
+    # Constant over the populations, which is what makes any row the whole
+    # calibration — that is deliberate in the writer, and relied on here.
+    for name, value in factors.items():
+        rows[name] = np.full(n, float(value))
+    write_burst_artifact(
+        target, store_from_arrays(rows), name=CALIBRATION_ARTIFACT,
+        artifact_kind="parameter_table", operation_type="calibration",
+        row_grain="species", derived_from="bursts")
+    return target
+
+
+PLANTED = {"alpha": 0.0731, "beta": 1.234, "gamma": 0.8642,
+           "delta": 0.0519, "r0": 54.3}
+
+
+def test_a_stored_calibration_is_read_back(tmp_path):
+    from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
+
+    container = _container_with_calibration(tmp_path, **PLANTED)
+    read = calibration_from_container(container)
+    for name, value in PLANTED.items():
+        assert read[name] == pytest.approx(value), name
+
+
+def test_a_run_path_resolves_to_its_container(tmp_path):
+    """Every burst reader addresses a run; the calibration is on the file."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
+
+    container = _container_with_calibration(tmp_path, **PLANTED)
+    run = container / "sliding_window_All 0.1500#60"
+    assert calibration_from_container(run) == calibration_from_container(container)
+
+
+def test_a_measurement_without_one_changes_nothing(tmp_path):
+    """Absent is not zero: the window keeps the constants it had."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container,
+    )
+
+    ndx = _window(alpha=0.11)
+    before = dict(ndx.constants)
+    assert restore_calibration_from_container(ndx, "/nowhere/none.pto") == {}
+    assert ndx.constants == before
+
+
+def test_restoring_keeps_what_the_calibration_does_not_name(tmp_path):
+    """Backgrounds and quantum yields are the window's, not the artifact's."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container,
+    )
+
+    container = _container_with_calibration(tmp_path, **PLANTED)
+    ndx = _window(Bg=2.5, Br=3.5, By=4.5, PhiA=0.8, PhiD=0.4)
+    restore_calibration_from_container(ndx, container)
+    assert ndx.constants["alpha"] == pytest.approx(PLANTED["alpha"])
+    assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])   # ndX's name for delta
+    assert ndx.constants["forster_radius"] == pytest.approx(PLANTED["r0"])
+    for kept in ("Bg", "Br", "By"):
+        assert ndx.constants[kept] == pytest.approx({"Bg": 2.5, "Br": 3.5, "By": 4.5}[kept])

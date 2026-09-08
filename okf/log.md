@@ -39242,3 +39242,26 @@ side of the line.
   `plot_update_helpers.py` are all modified in the ndxplorer tree), as is
   the store-refresh fix from earlier today. Verified in the working tree:
   gate off, z plot shown, 500 counts in the marginal.
+
+- **2026-09-08 — opening a `.pto` in ndX restores the calibration stored
+  with it** (owner: "i expect that opening a .pto restores the parameters
+  saved with the measurement"). The saving half already existed — the
+  Accurate FRET step writes an `accurate fret calibration` artifact whose
+  factor columns are constant over the populations, so any row is the
+  whole calibration — and nothing ever read it back. A window opened on a
+  new container kept the *previous* measurement's constants: determined
+  numbers belonging to another file, correcting every burst by the wrong
+  amount, with nothing to say so.
+
+  `calibration_from_container` reads it (walking a run path up to the
+  container, since every burst reader addresses a run) and
+  `restore_calibration_from_container` applies it, replacing only the
+  stored factors — backgrounds and quantum yields stay the window's own.
+  ndX has no "load finished" signal, but every load ends at the assignment
+  to `data_source`, so `rpc_bridge._measurement_aware` subclasses the
+  window to hook that property; it therefore works whichever path opened
+  the file.
+
+  Round trip on a real container: α 0.0731, β 1.234, γ 0.8642, δ 0.0519,
+  R₀ 54.3 written and read back identically, landing as ndX's own names
+  (`gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β).

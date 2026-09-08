@@ -95,6 +95,30 @@ only its split is used.
 Recovered on a simulation with planted backgrounds (5 / 3 / 7 counts and
 α = 0.06): `bg_dd` 5.00, `bg_aa` 7.00, `bg_da` 2.67, α 0.0613.
 
+## Opening a measurement restores its calibration
+
+A calibration belongs to the measurement it was determined on. The Accurate FRET
+step already wrote it there — an `accurate fret calibration` artifact whose
+`alpha` / `beta` / `gamma` / `delta` / `r0` columns are **constant across the
+populations on purpose**, so any row carries the whole calibration. Nothing read
+it back. Opening a container therefore gave a window still holding the
+*previous* measurement's constants: numbers that look determined, belong to
+another file, and correct every burst by the wrong amounts.
+
+`calibration_from_container` reads it (walking up from a run path to the `.pto`,
+since every burst reader addresses a run), and `restore_calibration_from_container`
+applies it. Only the stored factors are replaced — the window's backgrounds and
+quantum yields survive, because those are not what the artifact describes.
+
+There is no "a load finished" signal in ndX, but there is one place every load
+ends: the assignment to `data_source`. `rpc_bridge._measurement_aware` subclasses
+the window to hook that property, so this works for every in-GUI ndX regardless
+of which path opened the file.
+
+Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
+δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
+`gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.
+
 ## The z marginal is shown whether or not it gates
 
 **Four** places decided whether the third axis had a plot, all keyed on the

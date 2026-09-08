@@ -19,6 +19,8 @@ no RPC needed.
 
 from __future__ import annotations
 
+import logging
+import pathlib
 from collections.abc import Sequence
 
 import numpy as np
@@ -31,6 +33,9 @@ __all__ = [
     "optimize_calibration_from_ndx",
     "measured_background",
     "fitted_background",
+    "calibration_from_container",
+    "restore_calibration_from_container",
+    "CALIBRATION_ARTIFACT",
     "refresh_column_selectors",
     "find_ndx_windows",
 ]
@@ -226,6 +231,107 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
 _BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
 
 
+#: Artifact the Accurate FRET step writes into a measurement. Its rows are the
+#: populations; the factor columns are constant across them on purpose, so any
+#: row carries the whole calibration.
+CALIBRATION_ARTIFACT = "accurate fret calibration"
+
+
+def calibration_from_container(source) -> dict:
+    """The correction factors stored in a measurement, or ``{}``.
+
+    A calibration belongs to the measurement it was determined on, and the
+    Accurate FRET step already writes it there — one ``parameter_table``
+    artifact whose ``alpha`` / ``beta`` / ``gamma`` / ``delta`` / ``r0`` columns
+    are constant over the populations. Nothing read it back, so opening the
+    container in ndX gave a window with the *previous* measurement's constants
+    still in it: numbers that look determined, belong to another file, and
+    correct every burst by the wrong amounts.
+
+    Parameters
+    ----------
+    source : path-like
+        The container, or a run path inside one.
+
+    Returns
+    -------
+    dict
+        ``{factor: value}`` in **Hellenkamp** names (the ones
+        :class:`~chisurf.core.fluorescence.fret.calibration.CalibrationParameters`
+        uses), empty when the measurement carries no calibration. Values that
+        are not finite are left out rather than applied.
+    """
+    from chisurf.core.fio.pto import Measurement
+
+    path = pathlib.Path(str(source))
+    while path.suffix.lower() != ".pto" and path.parent != path:
+        path = path.parent
+    if path.suffix.lower() != ".pto" or not path.is_file():
+        return {}
+
+    factors: dict[str, float] = {}
+    try:
+        with Measurement.open(path, writable=False) as measurement:
+            for obj in measurement.artifacts():
+                if getattr(obj, "name", "") != CALIBRATION_ARTIFACT:
+                    continue
+                store = measurement.get_store(obj.uid)
+                names = [store.column(i).name() for i in range(store.n_columns())]
+                for factor in _FACTOR_NAMES:
+                    if factor not in names:
+                        continue
+                    values = np.asarray(
+                        store.column(names.index(factor)).numpy(), dtype=float)
+                    finite = values[np.isfinite(values)]
+                    if finite.size:
+                        factors[factor] = float(finite[0])
+                break
+    except Exception:
+        logging.debug("could not read a calibration from %s", path, exc_info=True)
+        return {}
+    return factors
+
+
+def restore_calibration_from_container(ndx, source=None) -> dict:
+    """Apply a measurement's stored calibration to an ndX window.
+
+    Called when a container is opened, so the constants in the window are the
+    ones determined *on the data now loaded*.
+
+    Returns
+    -------
+    dict
+        The ndX constants actually written, empty when there was nothing to
+        restore.
+    """
+    from chisurf.core.fluorescence.fret.calibration import (
+        calibration_from_ndx_constants,
+    )
+
+    if source is None:
+        data_source = getattr(ndx, "data_source", None)
+        provenance = getattr(data_source, "provenance", None) or {}
+        source = provenance.get("container_path") or ""
+    if not source:
+        return {}
+    factors = calibration_from_container(source)
+    if not factors:
+        return {}
+
+    # Start from what the window holds, so backgrounds, quantum yields and
+    # anything else it carries survive; only the stored factors are replaced.
+    calib = calibration_from_ndx_constants(dict(getattr(ndx, "constants", {}) or {}))
+    for name, value in factors.items():
+        setattr(calib, name, float(value))
+    applied = push_calibration_to_ndx(ndx, calib, recompute=True)
+    logging.info(
+        "restored the calibration stored with %s: %s",
+        pathlib.Path(str(source)).name,
+        ", ".join(f"{k}={v:.4g}" for k, v in factors.items()),
+    )
+    return applied
+
+
 def measured_background(ndx, table) -> dict:
     """Per-burst background **counts** from the measurement's own estimate.
 
@@ -326,6 +432,7 @@ def optimize_calibration_from_ndx(
     min_population: int = 20,
     inject_columns: bool = True,
     recompute: bool = True,
+    progress=None,
 ) -> dict:
     """Optimize ndxplorer's correction constants against the data it has loaded.
 
@@ -401,6 +508,12 @@ def optimize_calibration_from_ndx(
         Also write the accurate per-burst ``E``/``S``/``R_DA``/population columns.
     recompute : bool, optional
         Recompute ndx's derived columns and refresh its plots afterwards.
+    progress : callable, optional
+        ``progress(step, total, message)``, forwarded to
+        :func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate` so a
+        caller can drive a bar. Return ``False`` from it to stop early. With
+        ``background="fit"`` the calibration runs twice, so the steps restart;
+        the message says which pass is running.
 
     Returns
     -------
@@ -481,9 +594,12 @@ def optimize_calibration_from_ndx(
             lightpath=lightpath, tau_f=tau_f, line=line,
             donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
             gamma_source=gamma_source, n_bootstrap=bootstrap, use_priors=use_priors,
+            progress=(None if progress is None else
+                      (lambda step, total, message: progress(step, total, prefix + message))),
         )
 
     fitted: dict = {}
+    prefix = ""
     if background == "fit":
         # Two passes, and they are not the same pass twice. The backgrounds are
         # read off the *reference populations*, so the populations have to exist
@@ -491,6 +607,7 @@ def optimize_calibration_from_ndx(
         # classification that found those populations is no longer the one the
         # data supports, so it is made again. The first pass skips the bootstrap:
         # its factors are thrown away, only its split is used.
+        prefix = "pass 1 of 2 (backgrounds): "
         first = calibrate(0)
         fitted = fitted_background(
             pick("i_dd"), pick("i_da"), pick("i_aa"), first.split,
@@ -499,6 +616,7 @@ def optimize_calibration_from_ndx(
         for name, value in fitted.items():
             setattr(calib, name, float(value))
 
+    prefix = "pass 2 of 2: " if background == "fit" else ""
     result = calibrate(int(n_bootstrap))
 
     # Restore whatever the caller did not ask to have calibrated, *before* the
