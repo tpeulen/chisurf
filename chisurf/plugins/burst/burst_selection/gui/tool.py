@@ -3132,7 +3132,11 @@ class BurstSelectionTool(ChisurfDockTool):
             + (f"\n\n\u26a0 {warning}" if warning else "")
         )
         if warning:
-            _LOG.warning("burst search: %s", warning.replace("\n", " "))
+            # NOTE: this logger is ``warning(message, **extra)`` -- printf-style
+            # positional arguments raise TypeError, and the caller below swallows
+            # that and clears the diagnostics, so a logging slip blanks the whole
+            # window. Keep the message in one string.
+            _LOG.warning(f"burst search: {warning}".replace("\n", " "))
 
     def _diagnostic_window(self) -> tuple[float | None, float]:
         """``(length_s, start_s)`` of the slice the diagnostics need.
@@ -3232,7 +3236,14 @@ class BurstSelectionTool(ChisurfDockTool):
             display_model = getattr(self, "_display_view_model", None)
             if display_model is not None:
                 display_model.notify_display()
-            self._show_preview_frames(diagnostics)
+            # Its own guard: the preview table is a convenience beside the
+            # plots, and a failure in it must not reach the handler below, which
+            # clears the diagnostics and leaves the window showing nothing. That
+            # is exactly what one bad logging call did.
+            try:
+                self._show_preview_frames(diagnostics)
+            except Exception as exc:
+                _LOG.warning(f"preview burst table failed: {exc}")
             self.update_burst_plots()
             self._status_bar.showMessage("Ready")
         except Exception as exc:

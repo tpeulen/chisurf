@@ -39034,3 +39034,19 @@ side of the line.
   all-non-finite **column** and reports which features a mean is over
   (`result["features"]`) — a constant zero column was degrading the fit
   before this anyway.
+
+- **2026-09-08 — one printf-style logging call blanked the whole
+  burst-selection window.** `_LOG` here is `RpcLogWriter`, whose
+  signature is `warning(message, **extra)` — no positional formatting
+  args. `_LOG.warning("burst search: %s", text)` therefore raised
+  `TypeError`, and `_load_tttr_for_plots` wraps everything it does in one
+  broad `except` **that clears the diagnostics** — so a logging slip in a
+  cosmetic step left every plot empty and the tool looking dead.
+
+  Two fixes, because the second is the one that matters: the call is an
+  f-string now, and the preview table has its own guard so a failure in it
+  can never reach the handler that throws the diagnostics away.
+  `tests/test_diagnostics_survive_preview_failure.py` pins both — the
+  plots still draw when the preview raises, and the logger really does
+  take exactly one positional argument, so the module is written against
+  the signature it has.
