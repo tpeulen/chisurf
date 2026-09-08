@@ -39134,3 +39134,37 @@ side of the line.
   them into the burst table, so a filter edit is now a diagnostics reload
   and nothing else. The whole measurement is searched when it is asked
   for — ▶ Run or Next — off the GUI thread and behind progress.
+
+- **2026-09-08 — ndX computed no equations for a container, depending on
+  which of two unrelated things happened first.** ndX loads its MFD
+  equations *and* their constants in `_deferred_init`, which runs when its
+  window is first shown. Embedded as step 7 it is handed files as soon as
+  the step's context is applied, and that can be first — the burst table
+  then loads with `equations = []`, so no derived column is computed. No
+  error, no empty plot: every burst column is present and E and S simply
+  do not exist. `AlexSuiteTool._ensure_ndx_equations` loads them before
+  the hand-off and leaves an already-loaded window alone (re-loading would
+  discard equations edited in the editor).
+
+  The equations themselves were never the problem: on the owner's
+  container `read_container` gives 44 270 bursts × 42 columns and a
+  compute takes it to 74, with `FRET efficiency(PIE)` finite for 43 602 of
+  them. Tested against a real `NDXplorer`, because `load_settings` also
+  restores the colormap, the axes and the equation editor — a stub would
+  have tested the stub.
+
+- **2026-09-08 — the TTTR cache budget was worth 2.2 GB.** It was counted
+  in photons at an assumed ~16 bytes each. Measured: a 11.7 M-photon
+  container costs **407 MB** resident — 35 bytes per photon — so the
+  64 M-photon budget was 2.2 GB held indefinitely in a GUI process, and
+  two background test runs were killed for memory while it was in place.
+  The bound is now **bytes** (512 MB), taken from
+  `tttrlib.get_memory_usage_bytes()` where available. The newest entry is
+  always kept however large: that is the measurement being worked on, and
+  refusing to hold one over budget would put the heaviest file back on the
+  read-it-every-time path.
+
+- **2026-09-08 — the trace viewer left the ALEX workflow** (owner: "no
+  trace viewer needed for alex workflow"). Panel, factory, context arm,
+  the optional `trace_browser` dependency and the four documentation
+  mentions.

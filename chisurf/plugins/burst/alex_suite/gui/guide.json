@@ -85,7 +85,7 @@
     },
     {
       "title": "Below the line: the Advanced Options",
-      "text": "<b>Burst properties</b> is the old burst-size / duration / per-channel histograms. <b>BVA</b> is BVA. <b>Trace viewer</b> is the trace viewer. <b>Titration</b> is the titration.<br/><br/>They are below the separator because they are not part of the pipeline: they read what the seven steps produced, in any order, as often as you like.",
+      "text": "<b>Burst properties</b> is the old burst-size / duration / per-channel histograms. <b>BVA</b> is BVA. <b>Titration</b> is the titration.<br/><br/>They are below the separator because they are not part of the pipeline: they read what the seven steps produced, in any order, as often as you like.",
       "target": {
         "panel": "Burst properties"
       }

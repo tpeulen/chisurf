@@ -37,7 +37,7 @@ convert.
 | *E vs S Histogram* **and** *Dataset Viewer* | **7. E–S histogram** (ndX) |
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
-| *BVA*, *Trace Viewer* | **BVA**, **Trace viewer** |
+| *BVA* | **BVA** |
 | *Export* (five CSVs) | **Export (ALEX-Suite CSV)** |
 
 Two things are gone rather than moved. The **channel-flip** checkbox: the

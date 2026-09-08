@@ -154,7 +154,7 @@ the embed is a synchronous 45 MB copy on the GUI thread that reads as a hang.
 That is what "dropping a .sm crashes it" was.
 | Burst properties | `burst_browser` | *Burst Properties* |
 | Titration | **new** | *Titration* |
-| BVA, Trace viewer | `burst_bva`, `trace_browser` | the *Advanced Options* half |
+| BVA | `burst_bva` | the *Advanced Options* half |
 | Export (ALEX-Suite CSV) | **new** | *Export* |
 
 ## The one that matters: alternation

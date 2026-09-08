@@ -134,15 +134,6 @@ def _es_explorer(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
-def _trace(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the trace viewer."""
-    from chisurf.plugins.tttr.trace_browser.gui.tool import TraceBrowserTool
-
-    widget = embed_mainwindow(TraceBrowserTool())
-    _bind(parent, "trace", widget)
-    return widget
-
-
 # ── the workflow ────────────────────────────────────────────────────────
 
 #: The pipeline, in the order the old program's windows were used. Six numbered
@@ -272,13 +263,6 @@ ALEX_PANELS = [
         "role": "bva",
     },
     {
-        "name": "Trace viewer",
-        "icon": "📈",
-        "description": "The binned photon trace of a measurement, per channel.",
-        "factory": _trace,
-        "role": "trace",
-    },
-    {
         "name": "Export (ALEX-Suite CSV)",
         "icon": Glyphs.SAVE,
         "description": (
@@ -344,8 +328,6 @@ class AlexSuiteTool(BurstAnalysisTool):
             self._apply_context_to_legacy_export(widget)
         elif role == "es":
             self._apply_context_to_es(widget)
-        elif role == "trace":
-            self._apply_context_to_trace(widget)
         else:
             super()._apply_context_to_panel(role, widget)
 
@@ -505,12 +487,47 @@ class AlexSuiteTool(BurstAnalysisTool):
         open_files = getattr(ndx, "open_files", None)
         if not callable(open_files):
             return
+        self._ensure_ndx_equations(ndx)
         try:
             open_files(file_handles=files, file_type=file_type)
         except Exception as exc:
             logger.warning(f"ALEX Suite: could not open the bursts in ndX — {exc}")
             return
         self._es_loaded = files
+
+    @staticmethod
+    def _ensure_ndx_equations(ndx) -> None:
+        """Make sure ndX has its MFD equations before it is given a file.
+
+        ndX loads its settings — the equations *and* the constants they use — in
+        ``_deferred_init``, which runs when the window is first shown. Embedded
+        in this workflow it is handed files as soon as the step's context is
+        applied, and that can be first: the table then loads with
+        ``equations = []``, so not one derived column is computed. No error, no
+        empty plot — the burst columns are all there, and E and S simply do not
+        exist. "ndX does not compute the equations" is this, and it depends on
+        the order two unrelated things happened in, which is why it comes and
+        goes.
+        """
+        if getattr(ndx, "equations", None):
+            return
+        try:
+            from ndxplorer import settings_helpers
+
+            settings_helpers.load_settings(
+                ndx,
+                settings_json_fn=str(
+                    settings_helpers.get_settings_path() / "mfd.settings.json"),
+            )
+            logger.info(
+                f"ALEX Suite: loaded {len(ndx.equations)} ndX equations before "
+                "handing it the bursts (its own deferred init had not run yet)."
+            )
+        except Exception as exc:
+            logger.warning(
+                f"ALEX Suite: could not load ndX's equations — E and S will be "
+                f"missing from the E-S step ({exc})"
+            )
 
     def _ndx_sources(self) -> tuple[list[str], str | None]:
         """Return the burst sources in the form ndX can actually open.
@@ -538,19 +555,6 @@ class AlexSuiteTool(BurstAnalysisTool):
         if containers and len(containers) == len(sources):
             return list(dict.fromkeys(containers)), "pto"
         return [str(p) for p in sources], None
-
-    def _apply_context_to_trace(self, widget: QtWidgets.QWidget) -> None:
-        """Point the trace viewer at the folder the measurements are in."""
-        browser = getattr(widget, "_embedded_mainwindow", widget)
-        files = self.workflow_context.raw_files
-        setter = getattr(browser, "set_folder", None)
-        if files and callable(setter):
-            try:
-                setter(str(Path(files[0]).parent))
-            except Exception as exc:
-                logger.warning(f"ALEX Suite: could not set the trace folder — {exc}")
-
-    # ── helpers ─────────────────────────────────────────────────────────
 
     def _calibration(self) -> dict:
         """Return the α/β/γ/δ stored on the current detector setup, if any."""

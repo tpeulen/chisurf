@@ -548,9 +548,11 @@ def open_tttr(
 #: entries: "four files" means 40 MB of one measurement and 4 GB of another.
 _TTTR_CACHE: "collections.OrderedDict[tuple, object]" = collections.OrderedDict()
 
-#: Photons the cache may hold in total. Roughly a gigabyte of records at
-#: tttrlib's ~16 bytes per photon, which is a few large measurements.
-_TTTR_CACHE_PHOTONS = 64_000_000
+#: Bytes the cache may hold in total. Measured, not assumed: a 11.7 M-photon
+#: container costs 407 MB resident — about 35 bytes per photon, not the ~16 a
+#: record count suggests — so a budget expressed in photons was quietly worth
+#: 2.2 GB. This is a GUI process; half a gigabyte is already generous.
+_TTTR_CACHE_BYTES = 512 * 1024 * 1024
 
 
 def _cache_key(path, selector, container, channel_luts, channel_shifts,
@@ -577,16 +579,26 @@ def _cache_key(path, selector, container, channel_luts, channel_shifts,
             bool(apply_lut), int(lut_seed), lut, shifts)
 
 
-def _cache_photons(tttr) -> int:
-    """How many photons an entry holds, for the size bound."""
-    try:
-        return int(len(tttr))
-    except Exception:
-        pass
-    try:
-        import numpy as np
+#: Fallback cost per photon when the reader cannot report its own footprint.
+#: Measured on an ALEX container (407 MB for 11.7 M photons).
+_BYTES_PER_PHOTON = 35
 
-        return int(np.asarray(tttr.macro_times).size)
+
+def _cache_bytes(tttr) -> int:
+    """What an entry costs in memory, for the size bound.
+
+    ``tttrlib`` knows its own footprint; the photon count is only the fallback,
+    and it is a poor one — the records carry macro time, micro time, routing
+    channel and event type, so a count understates the cost by about half.
+    """
+    for attribute in ("get_memory_usage_bytes", "nbytes"):
+        value = getattr(tttr, attribute, None)
+        try:
+            return int(value() if callable(value) else value)
+        except Exception:
+            continue
+    try:
+        return int(len(tttr)) * _BYTES_PER_PHOTON
     except Exception:
         return 0
 
@@ -602,18 +614,22 @@ def _cache_get(key):
 
 
 def _cache_store(key, tttr) -> None:
-    """Keep *tttr* under *key*, evicting least-recently-used entries."""
-    photons = _cache_photons(tttr)
-    if photons <= 0 or photons > _TTTR_CACHE_PHOTONS:
-        # A measurement larger than the whole budget is never cached: it would
-        # evict everything else and then itself.
+    """Keep *tttr* under *key*, evicting least-recently-used entries.
+
+    The newest entry is always kept, however large. That is the measurement the
+    user is working on, and every step of the workflow is about to ask for it
+    again; refusing to hold one bigger than the budget would put exactly the
+    heaviest file back on the read-it-every-time path. Everything older is
+    evicted until the total fits.
+    """
+    if _cache_bytes(tttr) <= 0:
         return
     _TTTR_CACHE[key] = tttr
     _TTTR_CACHE.move_to_end(key)
-    total = sum(_cache_photons(t) for t in _TTTR_CACHE.values())
-    while total > _TTTR_CACHE_PHOTONS and len(_TTTR_CACHE) > 1:
+    total = sum(_cache_bytes(t) for t in _TTTR_CACHE.values())
+    while total > _TTTR_CACHE_BYTES and len(_TTTR_CACHE) > 1:
         _, evicted = _TTTR_CACHE.popitem(last=False)
-        total -= _cache_photons(evicted)
+        total -= _cache_bytes(evicted)
 
 
 def clear_tttr_cache() -> None:
@@ -626,10 +642,10 @@ def clear_tttr_cache() -> None:
 
 
 def tttr_cache_stats() -> dict:
-    """``{"entries", "photons"}`` currently held. For diagnostics and tests."""
+    """``{"entries", "bytes"}`` currently held. For diagnostics and tests."""
     return {
         "entries": len(_TTTR_CACHE),
-        "photons": sum(_cache_photons(t) for t in _TTTR_CACHE.values()),
+        "bytes": sum(_cache_bytes(t) for t in _TTTR_CACHE.values()),
     }
 
 

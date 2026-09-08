@@ -21,7 +21,6 @@ Press **Guide** for the walk-through.
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
 | *BVA* | **BVA** |
-| *Trace Viewer* | **Trace viewer** |
 | *Export* (five CSVs) | **Export (ALEX-Suite CSV)** |
 
 Two things have no row because they are gone rather than moved: the **channel

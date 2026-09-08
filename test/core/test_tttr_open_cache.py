@@ -107,13 +107,17 @@ def test_a_rewritten_measurement_is_read_again(measurement):
 
 
 def test_the_cache_is_bounded(measurement, monkeypatch):
-    """Bounded by photons, not entries: files differ in size by orders."""
+    """Bounded by BYTES, not entries and not photons.
+
+    Measured rather than assumed: a container costs ~35 bytes per photon, so a
+    budget counted in photons was worth 2.2 GB in a GUI process.
+    """
     path, _ = measurement
-    monkeypatch.setattr(staging, "_TTTR_CACHE_PHOTONS", 2500)
+    monkeypatch.setattr(staging, "_TTTR_CACHE_BYTES", 2500 * staging._BYTES_PER_PHOTON)
     for i in range(5):
         p = path.parent / f"m{i}.ptu"
         p.write_bytes(b"z" * (10 + i))
         staging.open_tttr(str(p))
     stats = staging.tttr_cache_stats()
-    assert stats["photons"] <= 2500, stats
+    assert stats["bytes"] <= 2500 * staging._BYTES_PER_PHOTON, stats
     assert stats["entries"] <= 3, stats
