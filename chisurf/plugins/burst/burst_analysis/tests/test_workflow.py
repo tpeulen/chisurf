@@ -908,3 +908,63 @@ def test_registered_storage_mode_is_a_term_mmfdb_accepts() -> None:
     assert sent, "no storage_mode literal found — did the payload change?"
     for mode in sent:
         assert mode in STORAGE_MODES, f"{mode!r} is not one of {STORAGE_MODES}"
+
+
+def test_arriving_at_the_background_step_computes_the_distribution():
+    """The step computes on arrival instead of waiting for its own button.
+
+    It arrived showing an empty inter-photon-time plot and a fit window of
+    zero: the shell pushed the files and the detectors, which is not the same
+    as reading them, and nothing else ran. Nothing here needs a decision from
+    the user, and the photons come from the staging cache, so arriving from the
+    burst search costs no second read.
+    """
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+
+    class _Model:
+        diagnostics: dict = {}
+        estimated = False
+
+        def can_estimate(self):
+            return None
+
+        def estimate(self):
+            self.estimated = True
+            self.diagnostics = {"file": {}}
+
+    class _Widget:
+        def __init__(self):
+            self.model = _Model()
+
+    widget = _Widget()
+    # The method reads only its argument; an instance would need a live shell.
+    BurstAnalysisTool._populate_background(None, widget)
+    assert widget.model.estimated
+
+    # A second arrival must not recompute what is already there.
+    widget.model.estimated = False
+    BurstAnalysisTool._populate_background(None, widget)
+    assert not widget.model.estimated
+
+
+def test_the_background_step_stays_quiet_until_it_can_estimate():
+    """No files or no detectors is the panel's own message, not an exception."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+
+    class _Model:
+        diagnostics: dict = {}
+        estimated = False
+
+        def can_estimate(self):
+            return "Please load TTTR files first."
+
+        def estimate(self):  # pragma: no cover - must not be reached
+            self.estimated = True
+
+    class _Widget:
+        def __init__(self):
+            self.model = _Model()
+
+    widget = _Widget()
+    BurstAnalysisTool._populate_background(None, widget)
+    assert not widget.model.estimated

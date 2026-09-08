@@ -1357,3 +1357,29 @@ class BurstAnalysisTool(NavigationPanelTool):
                 widget._add_tttr_files([str(path) for path in self.workflow_context.raw_files])
             except Exception:
                 pass
+        self._populate_background(widget)
+
+    def _populate_background(self, widget: QtWidgets.QWidget) -> None:
+        """Compute the inter-photon-time distribution on arrival.
+
+        The step arrived showing an empty plot and a fit window of zero, because
+        pushing the files and the detectors is not the same as reading them and
+        nothing else ran: the panel waited for its own button on data it already
+        had. Nothing here asks a question the data cannot answer, so it computes
+        as soon as it can, like the burst-search preview does.
+
+        The read goes through the staging cache, so arriving from the burst
+        search costs no second read of the measurement. It is skipped when there
+        is already a result, so returning to the step does not recompute, and
+        when the panel cannot estimate yet (no files, no detectors) -- that is
+        the panel's own message to show, not an error.
+        """
+        model = getattr(widget, "model", None)
+        if model is None or getattr(model, "diagnostics", None):
+            return
+        if getattr(model, "can_estimate", lambda: "not ready")() is not None:
+            return
+        try:
+            model.estimate()
+        except Exception:
+            logger.debug("background: could not populate on arrival", exc_info=True)

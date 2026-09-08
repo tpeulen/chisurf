@@ -80,6 +80,21 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
 
+        # The file list reads the model when it is built and never again, so a
+        # workflow that pushes its measurements in (``_add_tttr_files``) left
+        # the Files dock empty while the estimate ran on files it did not show.
+        # Re-reading on the model's own notification is what makes the pushed
+        # state visible; ``sync`` only ever reads, so this cannot loop.
+        self.model.add_observer(self._on_model_event)
+
+    def _on_model_event(self, event: str) -> None:
+        """Re-read model-owned lists into their widgets when the model changes."""
+        if event in ("files", "computed"):
+            try:
+                self.auto_form.sync_fields()
+            except Exception:
+                logger.debug("background: could not sync fields", exc_info=True)
+
     # -- API kept for the workflow shell (_apply_context_to_background) --------
     @property
     def detector_wizard_page(self):

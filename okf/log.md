@@ -39413,3 +39413,17 @@ side of the line.
   the fifth calibration, not the ninth. Prune and readers now sort on the
   payload's `saved_utc`, written to the microsecond so back-to-back saves still
   order. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).
+
+- 2026-09-08 — **The ALEX background step showed an empty plot for three
+  independent reasons.** Its *Estimate background* button was not named
+  `toolAction_run`, so the shell's Next/fast-forward never ran the step at all;
+  nothing computed on arrival even though the photons were already in the
+  staging cache; and the shared fit window was seeded from the longest
+  inter-photon time in *any* detector, which on real µs-ALEX data opened it at
+  8.7–10.9 ms where green had no bins and was reported as 0.0 kHz (red and
+  yellow got one bin each). The seed is now per-detector quantiles widened until
+  every detector has bins (1.17–2.57 ms, 14 bins each on the same file), a
+  starved detector is named in the status line, and the step estimates on
+  arrival. Also: a `path_list` never re-read its model, so files pushed in by
+  the workflow stayed invisible. Recorded in
+  [okf/plugins/burst.md](plugins/burst.md).

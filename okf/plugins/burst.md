@@ -188,3 +188,50 @@ CPU-only and low-latency, backed by broad edge-case unit tests (targeting a ~20%
 accuracy improvement on public datasets).
 
 See also: [plugin system](/architecture/plugin-system.md), [Plugins target](/specs/plugins.md), [GUI & AutoForm](/subsystems/gui-autoform.md). The `.bst`/BUR/SL5 formats interoperate with an established multiparameter-fluorescence suite; a companion photon-data exploration tool can feed and receive burst selections.
+
+## The background step: three ways for it to show nothing
+
+Arriving at *5. Background* in the ALEX pipeline gave an empty inter-photon-time
+plot and a fit window of 0.001–0.001 ms. Three independent defects, each of
+which alone produces that picture, and none of which raises:
+
+1. **The panel had no primary action as far as the shell was concerned.** The
+   shell drives a step through the child named `toolAction_run`
+   (`NavigationPanelTool.process_current_step`), and the *Estimate background*
+   button was an unnamed `QToolButton`. So *Next* and the fast-forward walked
+   straight past the background step — and every later step then corrected with
+   backgrounds nobody had estimated.
+2. **Nothing computed on arrival.** `_apply_context_to_background` pushed the
+   files and the detectors, which is not the same as reading them. Nothing on
+   this step asks the user a question the data cannot answer, and the photons
+   come from the staging cache, so it now estimates on arrival like the
+   burst-search preview does — skipped when a result is already there, so
+   returning to the step does not recompute.
+3. **The seeded fit window could exclude a detector entirely.** One window is
+   shared by every detector (it is one band the user drags, and a background
+   *rate* is a property of the measurement), and it was seeded at
+   `tail_fraction × the longest inter-photon time in any detector`. That time is
+   the single largest gap in the file — an outlier, belonging to whichever
+   detector happens to own it. Measured on a real µs-ALEX container (green 5.0,
+   red 8.8, yellow 10.9 ms): the window opened at **8.7–10.9 ms**, where green
+   had *no bins at all* and reported **0.0 kHz** without complaint, while red
+   and yellow had one bin each — which is not a fit of a two-parameter
+   exponential. The seed is now a pair of quantiles per detector
+   (`SEED_QUANTILES`, q90–q99.9 first), widened until every detector has at
+   least `MIN_TAIL_BINS` populated bins: 1.17–2.57 ms, 14 bins each, on the same
+   data. A detector the window still starves is **named in the status line**,
+   because zero background is not a measurement — it is a missing one, and it is
+   the one value that passes through the corrections unnoticed.
+
+**There is no correct default window, and the tool should not pretend there
+is.** The fitted rate drifts smoothly with where the window starts (green
+3.4 → 2.8 kHz as the start moves 0.5 → 3.0 ms) with no plateau, because the
+interval distribution is a mixture: further out is less burst-contaminated and
+also has fewer counts. That is why the window is a control the user drags, and
+why the seed's job is only to be non-degenerate and visible.
+
+**A fourth, unrelated to the estimate: pushed state was invisible.** The
+`path_list` reads its model when it is built and never again, so a workflow that
+pushes measurements in afterwards left the Files dock empty while the estimate
+ran on files it did not show — which reads as "the tool has no data". The
+embedded widget now re-syncs on the model's own notification.

@@ -41,6 +41,22 @@ def det_color(name: str) -> tuple[int, int, int]:
     return _FALLBACK[hash(key) % len(_FALLBACK)]
 
 
+#: Candidate window edges, as quantiles of each detector's own inter-photon
+#: times, tried in order until one leaves every detector something to fit.
+#:
+#: The first pair is the one that should normally win: ~q90 is past the
+#: burst-dominated short intervals, and q99.9 stops before the far tail thins
+#: out to bins holding one count, which carry no information and visibly pull
+#: the fitted line. But the window is **shared** by every detector, so it has to
+#: live in the *intersection* of their useful ranges -- and detectors whose
+#: count rates differ by more than about a factor of four have no such
+#: intersection at these quantiles. Rather than seed a window that is empty for
+#: one of them, the seed widens: a start that is slightly too early costs some
+#: bias in the fitted rate, while a window with no bins costs the whole
+#: estimate, silently.
+SEED_QUANTILES = ((0.90, 0.999), (0.75, 0.9999), (0.50, 1.0))
+
+
 class BackgroundViewModel:
     """State + logic for the Burst Background Estimation tool (no Qt)."""
 
@@ -202,20 +218,66 @@ class BackgroundViewModel:
         placed by hand — that would change the rates without anything having
         been touched — so an existing window is kept and only re-clamped to the
         new scale.
+
+        **The seed is a pair of quantiles, not a fraction of the longest gap.**
+        One window is shared by every detector (it is one band the user drags,
+        and a background *rate* is a property of the measurement), so the seed
+        has to land where all of them have counts. A fraction of the largest
+        inter-photon time cannot do that: that time is the single longest gap in
+        the file, an outlier, and it belongs to whichever detector happens to
+        have the longest one. Measured on a real µs-ALEX container, 80 % of it
+        put the window at 8.7–10.9 ms, where green had **no bins at all** — a
+        rate of exactly 0.0 kHz reported without complaint — while red and
+        yellow had one bin each, which is not a fit of a two-parameter
+        exponential but a coincidence. The quantile seed puts the same window
+        at 1.2–2.6 ms with thousands of intervals per detector.
         """
-        spans = [
-            float(np.max(dt)) for per_detector in self._interphoton.values()
+        arrays = [
+            np.asarray(dt, dtype=float)
+            for per_detector in self._interphoton.values()
             for dt in per_detector.values()
-            if np.asarray(dt).size and np.isfinite(np.max(dt))
         ]
-        if not spans:
+        arrays = [a for a in arrays if a.size > 1 and np.isfinite(a).all()]
+        if not arrays:
             return
-        self.max_dt_ms = max(spans)
-        if self.fit_from_ms <= 0.0 or self.fit_to_ms <= self.fit_from_ms:
-            self.fit_from_ms = float(self.tail_fraction) * self.max_dt_ms
-            self.fit_to_ms = self.max_dt_ms
-        else:
+        # The scale the *slider* spans stays the true maximum: the user must be
+        # able to drag out to the end of the data even though nothing is seeded
+        # there.
+        self.max_dt_ms = max(float(np.max(a)) for a in arrays)
+        if self.fit_from_ms > 0.0 and self.fit_to_ms > self.fit_from_ms:
             self.fit_to_ms = min(self.fit_to_ms, self.max_dt_ms)
+            return
+        # Start past the burst-dominated short intervals of *every* detector,
+        # end before the sparse far tail of *any* of them -- widening until the
+        # window is one that can actually be fitted.
+        for q_low, q_high in SEED_QUANTILES:
+            low = max(float(np.quantile(a, q_low)) for a in arrays)
+            high = (min(float(np.max(a)) for a in arrays) if q_high >= 1.0 else
+                    min(float(np.quantile(a, q_high)) for a in arrays))
+            if high > low and self._window_is_fittable(arrays, low, high):
+                self.fit_from_ms, self.fit_to_ms = low, high
+                return
+        # Nothing fits -- keep the legacy fraction rule rather than no window,
+        # so the numbers are at worst the ones this tool used to produce.
+        self.fit_from_ms = float(self.tail_fraction) * self.max_dt_ms
+        self.fit_to_ms = self.max_dt_ms
+
+    def _window_is_fittable(self, arrays, low: float, high: float) -> bool:
+        """Does ``[low, high]`` hold enough populated bins for *every* stream?
+
+        Counting bins rather than events, because that is what the fit sees: a
+        thousand intervals in a single bin still constrain neither an amplitude
+        nor a rate.
+        """
+        binsize = max(float(self.binsize_ms), 1e-9)
+        edges = np.arange(low, high + binsize, binsize)
+        if edges.size < self.MIN_TAIL_BINS + 1:
+            return False
+        for a in arrays:
+            counts, _ = np.histogram(a, bins=edges)
+            if int((counts >= int(self.min_counts)).sum()) < self.MIN_TAIL_BINS:
+                return False
+        return True
 
     def fit_range(self) -> tuple[float, float] | None:
         """The fit window in ms, or ``None`` while the fraction rule still holds.
@@ -265,6 +327,29 @@ class BackgroundViewModel:
             f"{len({n for b in self.backgrounds.values() for n in b})} detector(s) "
             f"estimated; {where}."
         )
+        # A window that misses a detector's data entirely yields a rate of
+        # exactly zero, and zero background is not a measurement -- it is a
+        # missing one, and it propagates silently into every corrected
+        # efficiency downstream. Say so where the estimate is read.
+        starved = sorted(self._underdetermined())
+        if starved:
+            self.status += (
+                f" \u26a0 {', '.join(starved)}: too few bins in the window "
+                f"\u2014 widen it or lower 'Min. counts per bin'.")
+
+    #: Fewer tail bins than this cannot constrain an amplitude and a rate; the
+    #: fit returns a number either way, which is what makes it worth naming.
+    MIN_TAIL_BINS = 3
+
+    def _underdetermined(self) -> set[str]:
+        """Detectors whose fit window holds too few bins to fit two parameters."""
+        starved: set[str] = set()
+        for diags in self.diagnostics.values():
+            for name, diag in diags.items():
+                mask = np.asarray(getattr(diag, "tail_mask", ()), dtype=bool)
+                if int(mask.sum()) < self.MIN_TAIL_BINS:
+                    starved.add(name)
+        return starved
 
     def update(self) -> None:
         """AutoForm hook: a bound field changed.

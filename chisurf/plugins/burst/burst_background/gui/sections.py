@@ -83,6 +83,12 @@ class _RunSection(QtWidgets.QWidget):
             kind="run",
             tooltip="Estimate the per-detector background rate from every loaded file.",
         )
+        # The shell drives a step through the child named ``toolAction_run``.
+        # Without the name this panel had no primary action as far as the
+        # workflow was concerned: Next and the fast-forward walked straight past
+        # the background step, leaving every later step to correct with
+        # backgrounds nobody had estimated.
+        btn.setObjectName("toolAction_run")
         btn.clicked.connect(self._estimate)
         bar.addWidget(btn)
         bar.addStretch(1)
