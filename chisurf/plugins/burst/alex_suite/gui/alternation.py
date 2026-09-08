@@ -67,6 +67,10 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         #: no macro-time resolution. Kept so a gate edit can rewrite the summary
         #: line without re-opening the file.
         self._micro_suffix = ""
+        #: Arms the automatic detection *after* the panel has painted.
+        self._autorun_timer = QtCore.QTimer(self)
+        self._autorun_timer.setSingleShot(True)
+        self._autorun_timer.timeout.connect(self._autorun)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -113,6 +117,13 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self.run_button = QtWidgets.QToolButton(self)
         self.run_button.setObjectName("toolAction_run")
         self.run_button.setText("🚦 Detect alternation and convert")
+        self.run_button.setToolTip(
+            "Runs by itself when you arrive with files — this repeats it, which "
+            "is what you want after changing the donor/acceptor channels or "
+            "typing a period.\n\nDetection measures the instrument, so its "
+            "answer does not depend on anything you choose; what it produces is "
+            "for checking, and the gates below stay editable."
+        )
         self.run_button.setToolButtonStyle(QtCore.Qt.ToolButtonTextBesideIcon)
         self.run_button.clicked.connect(self.run)
         button_row.addWidget(self.run_button)
@@ -341,12 +352,32 @@ class AlexAlternationPanel(QtWidgets.QWidget):
     # ── workflow hand-off ───────────────────────────────────────────────
 
     def set_files(self, files) -> None:
-        """Adopt the raw files chosen upstream."""
+        """Adopt the raw files chosen upstream, and measure them straight away.
+
+        Detection is not a decision the user makes — it is a measurement of the
+        instrument, and every number it produces is shown for checking. So
+        arriving at this step with files runs it, rather than asking someone to
+        press a button whose answer is already determined. It is armed on a
+        zero-timer so the panel paints first: the measurement takes about a
+        second and a half, and running it inside the panel's own construction
+        would show a grey rectangle for that time instead of the step.
+        """
+        previous = list(self._files)
         self._files = [pathlib.Path(p) for p in files]
-        if self._files:
-            self.status_label.setText(
-                f"{len(self._files)} file(s) ready. Press Detect."
-            )
+        if not self._files:
+            return
+        if self._files == previous and self._result is not None:
+            return          # same measurement, already detected -- nothing to redo
+        self.status_label.setText(
+            f"{len(self._files)} file(s) — detecting the alternation…"
+        )
+        self._autorun_timer.start(0)
+
+    def _autorun(self) -> None:
+        """Measure the alternation on arrival — without writing anything."""
+        if self._result is not None or not self._files:
+            return
+        self.run(convert=False)
 
     def result(self) -> dict | None:
         """Return the last detection result, or ``None`` if it has not run."""
@@ -354,8 +385,17 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
     # ── the one action ──────────────────────────────────────────────────
 
-    def run(self) -> None:
-        """Detect the period, fold it, name the gates and convert every file."""
+    def run(self, *, convert: bool = True) -> None:
+        """Detect the alternation and, unless ``convert`` is false, convert.
+
+        The two halves are separable on purpose. **Detection is a measurement**
+        of the instrument: it opens the first file, finds the period, the
+        channel assignment and the gates, and writes nothing. **Conversion**
+        folds every file and writes a container — minutes of work and a new file
+        on disk. So arriving at the step detects (see :meth:`set_files`) and the
+        button converts; nobody has to press anything to see what the data says,
+        and nothing is written until they ask.
+        """
         if not self._files:
             self.status_label.setText("No files — pick them in step 1 first.")
             return
@@ -377,7 +417,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
         reporter = find_status_reporter(self)
         task = reporter.begin_task(
-            "ALEX: detecting the alternation…", len(self._files)) if reporter else None
+            "ALEX: detecting the alternation…",
+            len(self._files) if convert else 0) if reporter else None
 
         def report(done, total, what):
             if task is not None:
@@ -390,12 +431,21 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
         # A typed period overrides the measurement; 0 is the box's "auto".
         manual_period = int(self.period_spin.value()) or None
+        # Arriving at the step already measured this file. If nothing that feeds
+        # the fold has changed since, converting must not measure it again --
+        # detection is the expensive half (a spectrum and an integer scan over
+        # millions of photons), and re-running it to get an answer already on
+        # screen is the whole of the wait.
+        if convert and self._can_reuse_detection(manual_period, donor, acceptor):
+            self._convert_detected()
+            return
         try:
             outcome = detect_and_convert(
                 self._files,
                 donor_channels=donor, acceptor_channels=acceptor,
                 period=manual_period,
                 progress=report,
+                dry_run=not convert,
             )
         except Exception as exc:
             logger.warning(f"ALEX Suite: alternation detection failed — {exc}")
@@ -426,17 +476,73 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             self._updating = False
         self._rescale_edges(int(period))
         self._write_spins(outcome["windows"])
-        # Re-fold the first file only for the picture; the conversion above
-        # already used these numbers on every file.
-        first = self._files[0]
-        folded = core.apply_alex(
-            core.load(str(first), core.resolve_filetype("Auto", str(first))), period, 0)
+        # The detection folded the first file to find the gates; the plot draws
+        # that same stream rather than opening and folding it a second time.
+        folded = outcome.get("folded")
+        if folded is None:
+            first = self._files[0]
+            folded = core.apply_alex(
+                core.load(str(first), core.resolve_filetype("Auto", str(first))),
+                period, 0)
         self._plot_phase(folded, outcome["windows"], donor, acceptor, period)
         self._report(period, outcome["confidence"], outcome["windows"], folded,
                      outcome.get("channel_contrast"))
 
         setup = build_setup(outcome["windows"], donor, acceptor, period)
+        if not convert:
+            # Detected only. The gates are on screen to be checked and the setup
+            # is not published yet: publishing would point the rest of the
+            # pipeline at containers that do not exist.
+            self.status_label.setText(
+                f"Detected from {self._files[0].name}. Check the plot and the "
+                "gates, then press 🚦 to convert."
+            )
+            return
         self._publish(setup, outcome["converted"], outcome["failed"])
+
+    def _can_reuse_detection(self, period, donor, acceptor) -> bool:
+        """Whether the detection on screen still describes what would be run.
+
+        The gates are deliberately *not* part of this: they shape the published
+        setup, not the fold, so editing one must not cost a re-detection.
+        """
+        if self._result is None or self._converted:
+            return False
+        if period is not None and int(period) != int(self._result["period"]):
+            return False
+        for given, detected in ((donor, "donor_channels"),
+                                (acceptor, "acceptor_channels")):
+            if given is not None and list(given) != list(self._result[detected]):
+                return False
+        return True
+
+    def _convert_detected(self) -> None:
+        """Fold and embed every file using the detection already on screen."""
+        from chisurf.plugins.burst.alex_suite.api.convert import alex_to_pto
+
+        outcome = self._result
+        period = int(outcome["period"])
+        reporter = find_status_reporter(self)
+        task = reporter.begin_task(
+            f"ALEX: embedding {len(self._files)} file(s) into one .pto…",
+            0) if reporter else None
+        try:
+            container = alex_to_pto(self._files, alex_period=period)
+        except Exception as exc:
+            logger.warning(f"ALEX Suite: conversion failed — {exc}")
+            self.status_label.setText(f"Conversion failed: {exc}")
+            return
+        finally:
+            if task is not None:
+                task.close()
+
+        outcome["converted"] = [container]
+        outcome["failed"] = []
+        self._converted = [container]
+        windows = self._windows_from_spins() or outcome["windows"]
+        setup = build_setup(windows, outcome["donor_channels"],
+                            outcome["acceptor_channels"], period)
+        self._publish(setup, [container], [])
 
     def _publish(self, setup: dict, converted, failed) -> None:
         """Save the detector setup and hand the converted files downstream."""

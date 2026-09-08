@@ -38903,3 +38903,76 @@ side of the line.
   distinguishes "cannot guess these names" from "these numbers are not in
   this table" — the old message sent people hunting through a combo box
   that could not contain the answer.
+
+- **2026-09-08 — arriving at the burst-search step ran a full burst
+  search, twice.** Selecting a file (which is what the workflow shell does
+  when it hands the step its measurements) called `_analyze_file_frame`
+  synchronously on the GUI thread: 4.49 s for a 20 M-photon ALEX
+  container, no progress bar — and pressing Next then ran the same search
+  again through the threaded path, because that path keeps its own
+  fingerprint and the preview never set one. Entering a step is not
+  asking for a search. `_update_selected_files(..., preview=True)` shows a
+  cached table if one exists and searches nothing; ▶ Run and Next own the
+  search and already have progress and the repeat-skip. The diagnostics
+  that remain are filtered over the **visible window only**, reusing the
+  open file, and carry a status task. Entry 5.44 s → 0.41 s; moving the
+  window ~25 ms. The safety invariant — arrays stay full length, so every
+  global photon index still points where it did — is pinned by
+  `tests/test_diagnostic_window.py`.
+
+- **2026-09-08 — "the donor channel (I_DD) column is not mapped" was the
+  wrong *run*, not a mapping failure.** A `.pto` accumulates one analysis
+  per burst search, and a search made before the detector definitions
+  reached the step writes nine columns of burst geometry with no
+  per-detector split at all. `burst_sources()` took the newest run
+  regardless, so a later channel-less `countrate_All` search shadowed the
+  usable `sliding_window_All` one. It now picks the newest run whose
+  columns map (`burst.table.maps_fret_channels`, memoised on the
+  container's stat) and logs the one it passed over. Accurate FRET also
+  distinguishes "cannot guess these names" from "these numbers are not in
+  this table" — the old message sent people hunting through a combo box
+  that could not contain the answer.
+
+- **2026-09-08 — ALEX detection was 4.6 s, and 93 % of it was one loop.**
+  `detect_alex_period` refines the FFT's coarse estimate by scanning the
+  integers around it, scoring each on the folded phase — 322 candidates,
+  each a modulo over 2 M photons, 4.26 s. The period's *resolution* comes
+  from the length of the record, not the number of photons in it, so the
+  survey pass now reads a stride-thinned stream (150 k photons spanning
+  the whole measurement) and only the handful of survivors are re-scored
+  on every photon. Same scoring function, same answer (8000 on cal1),
+  4.26 s → 1.34 s. Photon arrival is Poisson, so an index stride is not
+  periodic in time and cannot alias with the alternation.
+
+  Two duplications went with it: `detect_and_convert` now returns the
+  **folded stream** it produced, because the panel was re-opening and
+  re-folding the same file purely to plot it; and pressing convert reuses
+  the detection already on screen instead of measuring the file again
+  (`_can_reuse_detection`).
+
+  A latent correctness bug was found and **not** fixed, with the failed
+  attempt recorded: the spectrum runs at 2.64 samples per period on this
+  file, just above Nyquist. See
+  [known-issues](references/known-issues.md).
+
+- **2026-09-08 — the ALEX step detects on arrival and writes nothing
+  until asked.** Detection is a measurement of the instrument, not a
+  decision, so there was nothing for a button to add: arriving with files
+  runs it (zero-timer, so the panel paints first) and shows the period,
+  the channel assignment and both gates for checking. Conversion — which
+  folds every file and writes a container — stays behind the button.
+  `run(convert=False)` is the split.
+
+- **2026-09-08 — the ALEX conversion no longer litters the data folder.**
+  `.pto` embeds an instrument file verbatim, so a *derived* stream has to
+  be a file before it can be embedded; those per-source `.ptu`
+  intermediates now go to a `TemporaryDirectory` instead of next to the
+  measurement. They were files that looked like results, and a crash or a
+  cancel left them behind for good — the temp directory is also cleaned
+  up on the failure path, which the old code was not.
+
+- **2026-09-08 — the visible-window slider re-filtered on every tick.**
+  Dragging emits a value per pixel of travel, and each one re-filtered the
+  photons (tens of ms), so the queue grew behind the mouse. The caption
+  and the photon range still follow the handle immediately; the re-filter
+  waits 120 ms for the drag to settle.

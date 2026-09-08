@@ -95,6 +95,16 @@ class _TimeWindowSection(QtWidgets.QWidget):
         self.slider.valueChanged.connect(self._on_changed)
         layout.addWidget(self.slider)
 
+        # Dragging the slider emits a value per pixel of travel. Re-filtering the
+        # photons for each of those is tens of milliseconds of work thrown away
+        # -- the queue simply grows behind the mouse and the control feels stuck.
+        # The caption and the photon range follow the handle immediately; the
+        # re-filter waits for the drag to settle.
+        self._reload_timer = QtCore.QTimer(self)
+        self._reload_timer.setSingleShot(True)
+        self._reload_timer.setInterval(120)
+        self._reload_timer.timeout.connect(self._apply_window)
+
         self.caption = QtWidgets.QLabel("Run a burst search to see the trace.", self)
         self.caption.setWordWrap(True)
         layout.addWidget(self.caption)
@@ -119,17 +129,24 @@ class _TimeWindowSection(QtWidgets.QWidget):
             return
         self.length_spin.setEnabled(self.enabled_box.isChecked())
         self.slider.setEnabled(self.enabled_box.isChecked())
+        self._relabel()
+        self._reload_timer.start()
+
+    def _apply_window(self) -> None:
+        """Re-filter the diagnostics for where the handle came to rest."""
+        span = float(self._model.timeline_span())
+        if span <= 0.0:
+            return
         if not self.enabled_box.isChecked():
             # Whole measurement: the diagnostics must cover it before the plots
             # are told to draw it, or the trace is empty outside the last window.
             self._model.set_diagnostic_window(None, 0.0)
             self._model.show_whole_timeline()
-        else:
-            start = self._position_s(span)
-            length = float(self.length_spin.value())
-            self._model.set_diagnostic_window(length, start)
-            self._model.show_time_window(start, length)
-        self._relabel()
+            return
+        start = self._position_s(span)
+        length = float(self.length_spin.value())
+        self._model.set_diagnostic_window(length, start)
+        self._model.show_time_window(start, length)
 
     def _refresh(self) -> None:
         """Re-read the timeline after a search (its span and files changed)."""

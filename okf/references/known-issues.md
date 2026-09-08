@@ -1,3 +1,32 @@
+## The ALEX period spectrum runs at 2.6 samples per period
+
+**Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor
+stream and takes the peak of its power spectrum. `bin_width` is chosen to make
+the FFT fit in `max_bins`, so it grows with the **length** of the measurement
+while the period it is looking for is a fixed hardware setting. On the 159 s
+analysed span of the cal1 file that is `bin_width = 3027` against a period of
+`8000` — **2.64 samples per period**, a hair above Nyquist. A longer recording,
+or a shorter alternation period, crosses it: the line aliases and the detector
+returns a confident wrong number.
+
+**Tried and reverted:** binning finely over a short leading slice instead
+(`coarse_span = max_bins × min_period//16`, ~524 cycles). It fixes the sampling
+and makes the FFT 16× cheaper, and it **returns 78400 for a period of 8000** —
+the spectral line's power grows with the number of cycles seen, so over half a
+thousand cycles it loses to low-frequency drift. The long span is doing real
+work; do not shorten it without replacing what it provides.
+
+**The shape of a real fix** is two passes: a short fine-binned window to get the
+order of magnitude, then a second spectrum binned at `P0/8` over a long span —
+properly sampled *and* many cycles, both FFTs small. Not done here because a
+first pass that is off by 10× (as the reverted attempt was) would pick a
+`bin_width` that aliases the second, so it needs its own guard rather than a
+straight substitution.
+
+Not urgent: the integer scan that follows is what sets the final answer, and it
+is now measured over the full record (see the log entry for 2026-09-08), so the
+FFT only has to land within 2 %.
+
 ## The background estimator's default tail window can fit an empty range
 
 **Measured 2026-09-08** on `001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto`.

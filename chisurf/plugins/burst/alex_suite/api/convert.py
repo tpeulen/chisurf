@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import tempfile
 
 import numpy as np
 
@@ -89,22 +90,33 @@ def alex_to_pto(
     target_dir = pathlib.Path(out_dir) if out_dir is not None else sources[0].parent
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # The folding is written as PTU rather than straight into the container:
-    # `.pto` embeds an instrument file verbatim and never rewrites it, so each
-    # converted stream has to *be* a file before it can be embedded.
-    intermediates = []
-    for source in sources:
-        intermediate = target_dir / f"{source.stem}{suffix}.ptu"
-        core.convert_file(
-            str(source), str(intermediate),
-            alex_period=int(alex_period), period_shift=int(period_shift),
-            output_format="PTU", input_format="Auto",
-        )
-        intermediates.append(intermediate)
+    # The folding is written as PTU rather than straight into the container
+    # because `.pto` embeds an instrument file **verbatim** and never rewrites
+    # it — that byte-for-byte copy is what makes its provenance checkable — so a
+    # *derived* stream has to be a file before it can be embedded.
+    #
+    # In a temporary directory, though, not beside the measurement. These are
+    # scaffolding: one per source file, each the size of the source, deleted as
+    # soon as the container verifies. Writing them into the data folder meant a
+    # conversion briefly littered it with files that look like results, and a
+    # crash or a cancel left them there for good. A temp directory also gets
+    # cleaned up on the failure path, which the old code did not.
+    with tempfile.TemporaryDirectory(prefix="alex_convert_") as scratch:
+        staging = pathlib.Path(scratch)
+        intermediates = []
+        for source in sources:
+            intermediate = staging / f"{source.stem}{suffix}.ptu"
+            core.convert_file(
+                str(source), str(intermediate),
+                alex_period=int(alex_period), period_shift=int(period_shift),
+                output_format="PTU", input_format="Auto",
+            )
+            intermediates.append(intermediate)
 
-    # keep_original=False deletes the intermediates — but only after the
-    # container has verified its own checksum, so a failed write costs nothing.
-    return pack_container(intermediates, keep_original=False, out_dir=target_dir)
+        # One container for the whole list. keep_original=False deletes the
+        # intermediates, but only after the container has verified its own
+        # checksum, so a failed write costs nothing.
+        return pack_container(intermediates, keep_original=False, out_dir=target_dir)
 
 
 def detect_and_convert(
@@ -157,8 +169,10 @@ def detect_and_convert(
     Returns
     -------
     dict
-        ``{"period", "confidence", "windows", "donor_channels",
+        ``{"period", "confidence", "folded", "windows", "donor_channels",
         "acceptor_channels", "channel_contrast", "converted", "failed"}``.
+        ``folded`` is the first file with its alternation already folded into
+        the micro time — what the phase plot draws.
         ``channel_contrast`` is ``None`` when the assignment was given rather
         than detected.
 
@@ -250,6 +264,11 @@ def detect_and_convert(
     return {
         "period": period,
         "confidence": confidence,
+        # The folded stream itself, so the caller can draw the phase plot from
+        # what was just computed. Without it the panel re-opened and re-folded
+        # the same measurement purely to plot it -- the detection's own work,
+        # done a second time.
+        "folded": folded,
         "windows": {"green": windows["green"], "red": windows["red"]},
         "donor_channels": list(donor_channels),
         "acceptor_channels": list(acceptor_channels),

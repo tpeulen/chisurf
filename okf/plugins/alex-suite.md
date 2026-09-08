@@ -14,7 +14,18 @@ related:
 
 ## Where to pick this up
 
-0. **The alternation gates are editable now — the remaining half is the
+0. **Detection runs on arrival; conversion still needs the button.** Reaching
+   the step with files measures the instrument straight away (armed on a
+   zero-timer so the panel paints first, ~1.9 s on the cal1 file) and fills in
+   the period, the channel assignment and both gates for checking — it writes
+   nothing. The button converts, and reuses that detection rather than repeating
+   it (`_can_reuse_detection`: the gates are deliberately excluded, since they
+   shape the published setup and not the fold). **Where this is still soft:** a
+   re-arrival with a *different* file set re-detects, which is right, but there
+   is no cache keyed on the files, so bouncing between two selections re-measures
+   each time.
+
+0a. **The alternation gates are editable now — the remaining half is the
    *period*.** Detection writes the period and both gates into spin boxes, the
    shaded bands on the plot are the same values (drag or type, they stay in
    step), and a gate change republishes the setup without reconverting, because
@@ -26,14 +37,14 @@ related:
    which the panel no longer holds after step 2 replaced them with the
    containers.
 
-0a. **The setup step's own combo does not show the detected setup's name.** The
+0b. **The setup step's own combo does not show the detected setup's name.** The
    *tables* are filled in correctly (step 3 writes them through
    `load_data_into_tables`), and everything downstream uses the right
    definition — but the `Setup:` combo at the top of step 1 stays blank, because
    the name lives in a store the page's own selector does not read. Same root
    cause as the next item; harmless but it looks unfinished.
 
-0b. **Detector setups have two stores and a picker sees one of them.** The RPC
+0c. **Detector setups have two stores and a picker sees one of them.** The RPC
    store (`detector_setups.*`, what this workflow publishes through) writes the
    settings JSON; every `SetupSelector` reads the wizard loader, which reads
    MMFDB and never falls back to that JSON. So a setup this step saves is
