@@ -39427,3 +39427,12 @@ side of the line.
   arrival. Also: a `path_list` never re-read its model, so files pushed in by
   the workflow stayed invisible. Recorded in
   [okf/plugins/burst.md](plugins/burst.md).
+
+- 2026-09-08 — **ndX button labels lost their emoji** (owner: "remove the
+  emoticons, there is not enough space"). The plot toolbar packs Browse,
+  Screenshot, Data, Clear, Update, Contrast and the export button into one
+  narrow column, and the emoji plus its spacing was about a fifth of each
+  caption. Two buttons were emoji-only, so they gained words instead of going
+  blank: publication export → "Export…", the equation editor's add/remove →
+  "+"/"−". Verified on a rendered window: no button's size hint exceeds its
+  width. ndxplorer commit 8b87746.
