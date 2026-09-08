@@ -371,13 +371,57 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self.status_label.setText(
             f"{len(self._files)} file(s) — detecting the alternation…"
         )
+        self.detail_label.setText("")
         self._autorun_timer.start(0)
 
     def _autorun(self) -> None:
-        """Measure the alternation on arrival — without writing anything."""
+        """Measure the alternation on arrival, and convert if it is µs-ALEX.
+
+        Detecting without converting was the wrong half to automate. This step
+        is declared *optional*, and the shell never runs an optional step for
+        you — so **Next walks straight past it**, and the burst search then runs
+        on files whose alternation is still in the macro time: gates that select
+        no photons, every per-detector count zero, and a container written per
+        file out of unconverted data. Two people in a row met that trap, which
+        is one more than it deserved.
+
+        Converting here is safe because the decision is not a judgement:
+        :func:`detect_and_convert` refuses below ``MIN_CONFIDENCE``, so data
+        that does not alternate is left alone, and :meth:`_needs_conversion`
+        skips a measurement whose micro-time is already populated — PIE, or a
+        container this step produced earlier. It is also cheap: 1.5 s for a
+        3.8 M-photon file.
+        """
         if self._result is not None or not self._files:
             return
-        self.run(convert=False)
+        self.run(convert=self._needs_conversion())
+
+    def _needs_conversion(self) -> bool:
+        """Whether these files still carry their alternation in the macro time.
+
+        A measurement whose micro-time is already populated is either PIE data
+        (nothing to fold) or a container this step has already produced. Folding
+        it again would overwrite a real micro-time with a phase — the one way
+        this step can destroy information — so it is checked before, not after.
+        """
+        from chisurf.core.fio.staging import open_tttr
+
+        try:
+            tttr = open_tttr(str(self._files[0]))
+            micro_times = np.asarray(tttr.micro_times)
+        except Exception as exc:
+            logger.warning(
+                f"ALEX Suite: could not read {self._files[0].name} to decide "
+                f"whether it needs converting — {exc}"
+            )
+            return False
+        if micro_times.size and int(micro_times.max()) > 0:
+            logger.info(
+                f"ALEX Suite: {self._files[0].name} already has a micro-time; "
+                "detecting only, not converting."
+            )
+            return False
+        return True
 
     def result(self) -> dict | None:
         """Return the last detection result, or ``None`` if it has not run."""

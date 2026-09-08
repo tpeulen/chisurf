@@ -39081,3 +39081,28 @@ side of the line.
   created a container per file from the unconverted data. `_blocked_reason`
   stops the run before anything is written and names the remedy (the
   Alternation step's convert button). An ungated setup is unaffected.
+
+- **2026-09-08 — Next walked past the ALEX conversion, and that is why
+  every per-detector count was zero.** The alternation step is declared
+  `optional`; the shell's `process_current_step` refuses to run an
+  optional panel *by design*, so pressing Next moved to the burst search
+  without converting. The search then gated a micro-time of zeros: green,
+  red and yellow selecting no photons, and `open_measurement` creating a
+  container per unconverted file — which is also why no merged `.pto`
+  appeared. Diagnosed from the owner's log, where only four seconds
+  separate the detection line from the burst-search warning.
+
+  **The conversion itself was never broken.** Measured: one 3.8 M-photon
+  `.sm` converts in 1.5 s to a container with micro range 0..7999 whose
+  gates select 1,439,783 / 662,633 / 1,078,165 photons; three files merge
+  into one `.pto` of 11,691,236 photons — the exact sum — in 2.4 s, with
+  no intermediates left behind. It simply was not being run.
+
+  `_autorun` now converts as well as detects. Safe because the decision is
+  not a judgement: detection refuses below `MIN_CONFIDENCE` (PIE data is
+  left alone) and `_needs_conversion` skips a measurement that already has
+  a micro-time, since folding that would overwrite it with a phase.
+  `tests/test_arrival_converts.py` pins both halves *and* the fact that
+  they are load-bearing together — the step must stay optional (or Next
+  runs it on PIE data) and must keep the auto-run (or the conversion is
+  skipped again).

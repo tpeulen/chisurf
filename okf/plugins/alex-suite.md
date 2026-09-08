@@ -14,7 +14,27 @@ related:
 
 ## Where to pick this up
 
-0. **Detection runs on arrival; conversion still needs the button.** Reaching
+0. **Arriving converts — and it has to, because Next does not.** The step is
+   declared `optional`, and the shell's `process_current_step` returns early on
+   an optional panel *by design* ("walking past a step must not silently change
+   the analysis"). For µs-ALEX that meant **Next skipped the conversion**, and
+   the burst search then ran on files whose alternation was still in the macro
+   time: gates over a micro-time of zeros, every per-detector count 0, and a
+   container written *per file* out of unconverted data. Reported twice from
+   real use before it was found; the give-away in the log is only four seconds
+   between the detection line and the burst-search warning, where a real
+   conversion is 1.5 s per file plus the container write.
+
+   So `_autorun` detects **and converts**. Two conditions keep that safe and
+   both are pinned by `tests/test_arrival_converts.py`: detection refuses below
+   `MIN_CONFIDENCE`, so PIE data is left alone, and `_needs_conversion` skips a
+   measurement whose micro-time is already populated — folding that would
+   overwrite a real micro-time with a phase, which is the one way this step can
+   destroy information. **If either half is ever changed alone the trap comes
+   back**: making the step non-optional would run it on PIE data from Next;
+   removing the auto-run while it stays optional restores the original bug.
+
+0a. **Superseded: "detection runs on arrival; conversion needs the button".** Reaching
    the step with files measures the instrument straight away (armed on a
    zero-timer so the panel paints first, ~1.9 s on the cal1 file) and fills in
    the period, the channel assignment and both gates for checking — it writes

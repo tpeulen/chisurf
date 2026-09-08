@@ -174,9 +174,17 @@ ALEX_PANELS = [
         "factory": _data_selection,
         "role": "data",
     },
-    # Optional, and the shell therefore walks past it without running it: this
-    # step *rewrites the measurements*, and pressing Next should never do that
-    # on data that is already PIE.
+    # Optional, so the shell walks past it without running it -- which is right
+    # for PIE data and was a trap for every µs-ALEX user: Next skipped the
+    # conversion, and the burst search then ran on files whose alternation was
+    # still in the macro time (gates selecting no photons, every per-detector
+    # count zero, a container written per file from unconverted data).
+    #
+    # The step therefore converts *itself* on arrival rather than relying on
+    # Next: see AlexAlternationPanel._autorun. Safe because the decision is not
+    # a judgement -- detection refuses below MIN_CONFIDENCE, so PIE data is left
+    # alone, and a measurement that already has a micro-time is never folded
+    # again.
     {
         "name": "3. Alternation (µs-ALEX)",
         "icon": "🚦",
