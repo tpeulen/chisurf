@@ -23,6 +23,36 @@ running without ChiSurf is a broken environment, not a supported configuration �
 but every chisurf import is lazy or guarded, so nothing pulls the GUI stack at
 module import time.
 
+## The calibration button asks what it may determine
+
+"🎯 Optimize FRET calibration" runs
+`chisurf.core.fluorescence.fret.accurate.auto_calibrate` — **the** accurate-FRET
+implementation, the same code the Accurate FRET step runs, not a second one. ndX
+evaluates the corrected columns from constants; determining those constants
+happens here, and `calibration_bridge.py` is the join.
+
+It used to take every default and write every factor, which is right exactly
+once. After that it is usually wrong in one way: γ from a measurement's own
+populations is only as good as those populations, and someone who determined γ
+on a reference sample wants α and δ fitted *around* it rather than replaced by a
+worse estimate. So the action now asks first (`calibration_options.py` +
+`.view.json`): which of α, δ, γ, β, R₀ may be written, which route γ comes from,
+whether the light-path priors are used, the bootstrap count, τ_D(0) and the
+linker width, and whether the accurate per-burst columns are added.
+
+**The calibration still runs in full** whatever is selected — the report shows
+what every factor came out as, including the ones held fixed, because holding
+one is a decision and the number it was held against is what justifies it.
+
+**The trap, if this is ever touched:** `auto_calibrate` refines the calibration
+object *in place*, so a factor to be kept has to be snapshotted **before** the
+call. Reading it back afterwards returns the refined value, and "held fixed"
+would silently mean "applied". Pinned by
+`tests/test_calibration_options.py::test_a_held_factor_keeps_the_window_value`.
+
+R₀ is off by default: it is not a correction factor but a property of the dye
+pair and its environment, and the distance columns depend on it.
+
 ## Where to pick this up
 
 1. **Playback on a real burst folder.** The gate, the panel and the axis

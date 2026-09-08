@@ -19,6 +19,8 @@ no RPC needed.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from chisurf.core.fluorescence.fret.calibration import calibration_to_ndx_constants
@@ -148,6 +150,12 @@ def find_ndx_windows() -> list:
     return windows
 
 
+#: The Hellenkamp correction factors this bridge can write, in the order the
+#: paper introduces them. ``r0`` is not a correction but is carried with them
+#: because the distance columns depend on it.
+_FACTOR_NAMES = ("alpha", "beta", "gamma", "delta", "r0")
+
+
 def optimize_calibration_from_ndx(
     ndx,
     *,
@@ -158,6 +166,7 @@ def optimize_calibration_from_ndx(
     n_bootstrap: int = 50,
     lightpath: dict | None = None,
     use_priors: bool = True,
+    factors: Sequence[str] | None = None,
     inject_columns: bool = True,
     recompute: bool = True,
 ) -> dict:
@@ -203,6 +212,18 @@ def optimize_calibration_from_ndx(
         :func:`chisurf.plugins.burst.accurate_fret.core.lightpath_prior`).
     use_priors : bool, optional
         Combine the data estimates with the optics priors.
+    factors : sequence of str, optional
+        Which correction factors the calibration is allowed to change —
+        any of ``"alpha"``, ``"beta"``, ``"gamma"``, ``"delta"``, ``"r0"``.
+        ``None`` (the default) applies all of them.
+
+        The others keep the value the window already had. That is the point of
+        the option: γ from a measurement's own populations is only as good as
+        the populations, and someone who has determined γ properly on a
+        reference sample wants α and δ fitted *around* it rather than replaced
+        by a worse estimate. The calibration is still run in full — the report
+        shows what each factor came out as — but only the named ones are
+        written.
     inject_columns : bool, optional
         Also write the accurate per-burst ``E``/``S``/``R_DA``/population columns.
     recompute : bool, optional
@@ -241,6 +262,9 @@ def optimize_calibration_from_ndx(
 
     constants = dict(getattr(ndx, "constants", {}) or {})
     calib = calibration_from_ndx_constants(constants)
+    # ``auto_calibrate`` refines ``calib`` in place, so anything the caller wants
+    # kept has to be remembered before the call, not read back after it.
+    kept = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
     tau_d0 = donor_lifetime
     if tau_d0 is None:
         tau_d0 = float(constants.get("tauD0", 4.0) or 4.0)
@@ -255,6 +279,17 @@ def optimize_calibration_from_ndx(
         tau_f=tau_f, line=line, donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
         gamma_source=gamma_source, n_bootstrap=int(n_bootstrap), use_priors=use_priors,
     )
+
+    # Restore whatever the caller did not ask to have calibrated, *before* the
+    # accurate columns below are computed from ``calib`` — otherwise the columns
+    # would be corrected with factors the window is not going to carry.
+    selected = _FACTOR_NAMES if factors is None else [
+        name for name in _FACTOR_NAMES if name in set(factors)
+    ]
+    determined = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
+    for name in _FACTOR_NAMES:
+        if name not in selected:
+            setattr(calib, name, kept[name])
 
     injected: list[str] = []
     if inject_columns and data is not None:
@@ -292,6 +327,12 @@ def optimize_calibration_from_ndx(
         "columns": mapping,
         "injected": injected,
         "populations": result.populations,
+        # What the calibration determined, and which of those were written.
+        # A factor the caller held fixed still appears here, so the report can
+        # show "gamma would have been 0.91; kept 1.00".
+        "determined": determined,
+        "applied_factors": list(selected),
+        "held": {n: kept[n] for n in _FACTOR_NAMES if n not in selected},
     }
 
 

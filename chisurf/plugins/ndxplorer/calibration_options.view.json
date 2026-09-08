@@ -1,0 +1,47 @@
+{
+  "_comment": "Options for the ndX 'Optimize FRET calibration' action. The factor toggles are the point: the calibration always runs in full, but only the selected factors are written into the window, so a gamma determined on a reference sample is not replaced by a worse one fitted from this measurement's own populations.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Determine",
+      "n_col": 2,
+      "description": "Which correction factors this calibration is allowed to change. The others keep the value the window already has.",
+      "sections": [
+        {"type": "toggle", "label": "α leakage", "attr": "fit_alpha",
+         "description": "Donor emission detected in the acceptor channel. Taken from the donor-only population, so it needs one."},
+        {"type": "toggle", "label": "δ direct excitation", "attr": "fit_delta",
+         "description": "Acceptor excited by the donor laser. Taken from the acceptor-only population, so it needs one."},
+        {"type": "toggle", "label": "γ detection / QY", "attr": "fit_gamma",
+         "description": "Detection efficiency times quantum-yield ratio. From the 1/S = Ω + Σ·E fit across FRET sub-populations, or from the donor lifetime. Turn this off to keep a γ you determined on a reference sample."},
+        {"type": "toggle", "label": "β excitation flux", "attr": "fit_beta",
+         "description": "Ratio of the two lasers' excitation flux and cross-sections. Comes from the same E-S fit as γ."},
+        {"type": "toggle", "label": "R₀ Förster radius", "attr": "fit_r0",
+         "description": "Not a correction factor — it converts efficiency to distance. Off by default: it belongs to the dye pair and its environment, not to this measurement."}
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "How",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {"type": "choice", "label": "γ from", "attr": "gamma_source",
+         "options": ["auto", "es", "lifetime", "combined"],
+         "description": "'es' is the 1/S = Ω + Σ·E fit and needs at least two FRET sub-populations; 'lifetime' uses the static FRET line and works on a single population, but needs a per-burst donor lifetime and a trustworthy τ_D(0); 'combined' is the precision-weighted mean; 'auto' takes the E-S fit and falls back to the lifetime. The two routes are independent, so their disagreement is itself a diagnostic."},
+        {"type": "toggle", "label": "Use light-path priors", "attr": "use_priors",
+         "description": "Combine the data estimates with the optical model's excitation/emission probabilities, so the result is a posterior: data where the data speaks, optics where it does not."},
+        {"type": "value", "label": "Bootstrap resamples", "attr": "n_bootstrap",
+         "kind": "int", "minimum": 0, "maximum": 2000, "step": 10,
+         "description": "Resamples used for the factor uncertainties, with the population assignment held fixed. 0 skips them. It is cheap — the classification, not the resampling, is what costs."},
+        {"type": "value", "label": "τ_D(0) (ns)", "attr": "donor_lifetime",
+         "kind": "float", "minimum": 0.01, "maximum": 100.0, "step": 0.1, "decimals": 3,
+         "description": "Donor-only lifetime, which anchors the static FRET line. Only used by the lifetime route; a wrong value there shows up as γ disagreeing between the two routes."},
+        {"type": "value", "label": "Linker σ (Å)", "attr": "linker_sigma",
+         "kind": "float", "minimum": 0.0, "maximum": 30.0, "step": 0.5, "decimals": 2,
+         "description": "Width of the dye-linker distance distribution, which sets the curvature of the static FRET line."},
+        {"type": "toggle", "label": "Add accurate E / S / R_DA columns", "attr": "inject_columns",
+         "description": "Write the corrected per-burst columns under new names. Not redundant with applying the constants: ndX's own efficiency equation has no direct-excitation term, so constants alone cannot make its native column accurate. Its own columns are left untouched."}
+      ]
+    }
+  ]
+}

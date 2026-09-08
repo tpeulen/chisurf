@@ -129,8 +129,17 @@ if __name__ == "plugin":
         from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
         def _optimize_calibration() -> None:
-            """Determine alpha/beta/gamma/delta from the loaded bursts and apply them."""
-            result = optimize_calibration_from_ndx(ndx)
+            """Ask what to determine, then determine it from the loaded bursts."""
+            from chisurf.plugins.ndxplorer.calibration_options import (
+                ask_calibration_options,
+            )
+
+            constants = dict(getattr(ndx, "constants", {}) or {})
+            options = ask_calibration_options(
+                ndx, donor_lifetime=float(constants.get("tauD0", 4.0) or 4.0))
+            if options is None:
+                return
+            result = optimize_calibration_from_ndx(ndx, **options.as_kwargs())
             if not result.get("ok"):
                 dialogs.warning(
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
@@ -145,6 +154,19 @@ if __name__ == "plugin":
                 f"  {name}: {before.get(name)!s} → {value:.4f}"
                 for name, value in result["constants"].items()
             ]
+            # What was deliberately not written, and what it would have been.
+            # A factor held fixed is a decision, and the number it was held
+            # against is the only way to judge whether it was a good one.
+            held = result.get("held") or {}
+            if held:
+                determined = result.get("determined") or {}
+                lines += ["", "Held fixed (not calibrated):"]
+                lines += [
+                    f"  {name}: kept {value:.4f}"
+                    + (f" — this measurement would have given {determined[name]:.4f}"
+                       if name in determined else "")
+                    for name, value in held.items()
+                ]
             if result["injected"]:
                 lines += ["", "New columns: " + ", ".join(result["injected"])]
             dialogs.information(
@@ -159,8 +181,13 @@ if __name__ == "plugin":
         calibrate_action = calibration_toolbar.addAction("🎯 Optimize FRET calibration")
         calibrate_action.setToolTip(
             "Find the donor-only / acceptor-only / FRET populations in the loaded "
-            "bursts, determine alpha, beta, gamma and delta from them, apply them "
-            "to this window and add the accurate E / S / R_DA columns."
+            "bursts and determine the correction factors from them.\n\n"
+            "Asks first which factors it may write — the calibration always runs "
+            "in full and reports every one, but a \u03b3 you determined on a "
+            "reference sample should not be replaced by a worse estimate from "
+            "this measurement's own populations.\n\n"
+            "Runs chisurf's accurate-FRET calibration (auto_calibrate): the same "
+            "code as the Accurate FRET step, not a second implementation."
         )
         calibrate_action.triggered.connect(_optimize_calibration)
 

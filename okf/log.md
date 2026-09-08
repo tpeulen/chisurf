@@ -39168,3 +39168,22 @@ side of the line.
   trace viewer needed for alex workflow"). Panel, factory, context arm,
   the optional `trace_browser` dependency and the four documentation
   mentions.
+
+- **2026-09-08 — ndX's "Optimize FRET calibration" asks what it may
+  determine.** It runs `auto_calibrate` — the single accurate-FRET
+  implementation, the same code the Accurate FRET step uses — but the
+  toolbar action took every default and wrote every factor. That is right
+  exactly once; afterwards a γ determined on a reference sample gets
+  replaced by a worse estimate from this measurement's own populations.
+  The action now opens an AutoForm dialog: which of α, δ, γ, β, R₀ may be
+  written (R₀ off by default — it belongs to the dye pair, not the
+  measurement), the γ route, light-path priors, bootstrap count, τ_D(0),
+  linker σ, and whether the accurate per-burst columns are added.
+
+  The calibration still runs in full whatever is chosen, and the report
+  names what each held factor *would* have been — holding one is a
+  decision, and that number is what justifies it. **Trap for whoever
+  touches this next:** `auto_calibrate` refines the calibration in place,
+  so a factor to be kept is snapshotted before the call; reading it back
+  afterwards would make "held fixed" silently mean "applied". Pinned by
+  `chisurf/plugins/ndxplorer/tests/test_calibration_options.py`.
