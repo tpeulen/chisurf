@@ -1,5 +1,25 @@
 # Update Log
 
+## 2026-09-08
+
+* **The startup autologin probe was locking the desktop user out of MMFDB.**
+  Symptom: "Login failed: Too many failed login attempts" on the embedded
+  database, with the correct `user`/`user` in the dialog. `_run_startup_auth`
+  asks each start whether the account is passwordless (`login(user,
+  password="")`); `user` has a password, so every start recorded a brute-force
+  failure, and five inside the fifteen-minute window locked the only account —
+  with no way out, because a *successful* login never cleared the counter. Three
+  fixes, one per link in that chain: a login that offered no password is stamped
+  `PROBE_REASON` and audited but not counted (nothing can be guessed with it —
+  no provider authenticates an empty password); a success clears the counter,
+  the last one located by `attempt_id`, not by the one-second-resolution
+  `attempted_at`; and the GUI now tries the known desktop credentials *before*
+  the probe, so a normal start records nothing. A wrong password still throttles
+  after five tries. Recorded in
+  [architecture/mmfdb](architecture/mmfdb.md#what-may-lock-an-account-out);
+  guards in `modules/mmfdb/tests/test_auth_hardening.py` and
+  `test/core/test_mmfdb_desktop_bootstrap.py`.
+
 ## 2026-09-08 (evening)
 
 * **One container for the whole set** (owner: "the pto file should include all

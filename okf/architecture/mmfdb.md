@@ -230,6 +230,29 @@ Both claims are narrow in the same way: only while the row is still a bare stub.
 A password, admin rights or passwordless login make it somebody's account, and
 it is left untouched.
 
+### What may lock an account out
+
+The brute-force throttle (`is_throttled`, five failures in fifteen minutes) has
+to survive a client that *asks questions*. Startup does exactly that: before
+offering the desktop password it calls `login(user, password="")` to find out
+whether the account is passwordless. `user` has a password, so the answer is
+"no" — and while those answers were counted as failed guesses, five ChiSurf
+starts inside the window locked the desktop user out of their own database, with
+the correct credentials sitting in the dialog and no way to clear the counter.
+Three rules keep the throttle honest:
+
+- An attempt that offered **no password** is stamped `PROBE_REASON` and audited
+  but never counted. Nothing can be guessed with it: no provider authenticates
+  an empty password, so it only ever succeeds against an account explicitly
+  marked `allow_passwordless_login`.
+- A **successful sign-in clears the counter** — the failures before it are not
+  counted, located by `attempt_id` rather than `attempted_at`, whose one-second
+  resolution would silently drop same-second failures *after* the success.
+- The GUI tries **known credentials before the probe** (`_run_startup_auth`
+  builds one ordered candidate list), so a normal start records nothing at all.
+
+A wrong password still throttles, unchanged.
+
 ChiSurf's `MMFDBClient` (in the `mmfdb_admin` plugin) picks a transport from the
 `mmfdb.client.mode` setting: `embedded` (local ZMQ / in-process) or
 `remote` (HTTP JSON-RPC to a standalone `base_url`). Remote URLs must be HTTPS

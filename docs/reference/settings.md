@@ -747,6 +747,13 @@ create no account unless `admin.user`/`admin.password` are configured (or the
 variables are set), and a reset there restores exactly that configured
 administrator.
 
+**If a login is refused as "Too many failed login attempts".** Five *wrong
+passwords* for one account inside fifteen minutes stop further attempts. Only
+real password guesses count: a client that offers no password is asking whether
+the account is passwordless, and that question is never counted. The lockout
+also ends as soon as any sign-in succeeds, so the correct password works again
+once the window passes — nothing has to be reset.
+
 ---
 
 ## 2. `experiment_configs.yaml` (experiment registry)

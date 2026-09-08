@@ -2075,50 +2075,40 @@ def get_app():
                     except Exception as exc:
                         logging.info(f"MMFDB stored-token autologin declined for {default_user}: {exc}")
                         delete_session_token(credential_host, credential_port, default_user)
-                if trigger_login:
-                    try:
-                        result = client.login(user_id=default_user, password="", quiet=True)
-                        trigger_login = not (result.get("ok") or result.get("authenticated"))
-                        if not trigger_login:
-                            token = result.get("token", "")
-                            store_runtime_session_token(
-                                credential_host, credential_port, default_user, token
-                            )
-                            store_session_token(
-                                credential_host, credential_port, default_user, token
-                            )
-                    except Exception as exc:
-                        logging.info(f"MMFDB passwordless autologin declined for {default_user}: {exc}")
-
-                # Embedded local server: fall back to the known desktop
-                # credentials so the login screen never interrupts local use.
-                # Both the working account and the administrator qualify — which
-                # one is used follows the configured identity.
-                if trigger_login and is_embedded:
+                # Order matters. The empty password is a *probe* — it asks
+                # whether the account is passwordless — and on the embedded
+                # server we already know the account's real password, so
+                # probing first only recorded a failed attempt on every start.
+                # Known credentials first, probe last.
+                candidates = []
+                if is_embedded:
                     from chisurf.core.mmfdb_services import (
                         DEFAULT_DESKTOP_USER,
                         DESKTOP_CREDENTIALS,
                     )
 
-                    user = default_user or DEFAULT_DESKTOP_USER
-                    password = DESKTOP_CREDENTIALS.get(user)
-                    if password is not None:
-                        try:
-                            result = client.login(user_id=user, password=password, quiet=True)
-                            ok = result.get("ok") or result.get("authenticated")
-                            trigger_login = not ok
-                            if not trigger_login:
-                                token = result.get("token", "")
-                                store_runtime_session_token(
-                                    credential_host, credential_port, user, token
-                                )
-                                store_session_token(
-                                    credential_host, credential_port, user, token
-                                )
-                        except Exception as exc:
-                            logging.info(
-                                f"MMFDB embedded desktop autologin declined for {user}: {exc}"
+                    desktop_user = default_user or DEFAULT_DESKTOP_USER
+                    desktop_password = DESKTOP_CREDENTIALS.get(desktop_user)
+                    if desktop_password is not None:
+                        candidates.append((desktop_user, desktop_password))
+                candidates.append((default_user, ""))
+
+                for user, password in candidates:
+                    if not trigger_login:
+                        break
+                    try:
+                        result = client.login(user_id=user, password=password, quiet=True)
+                        trigger_login = not (result.get("ok") or result.get("authenticated"))
+                        if not trigger_login:
+                            token = result.get("token", "")
+                            store_runtime_session_token(
+                                credential_host, credential_port, user, token
                             )
+                            store_session_token(
+                                credential_host, credential_port, user, token
+                            )
+                    except Exception as exc:
+                        logging.info(f"MMFDB autologin declined for {user}: {exc}")
 
             if trigger_login:
                 login_dialog = LoginDialog()

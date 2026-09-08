@@ -187,3 +187,28 @@ def test_headless_server_prepares_embedded_but_not_remote_mmfdb(monkeypatch) -> 
     monkeypatch.setitem(cs_settings, "mmfdb", {"client": {"mode": "remote"}})
     ChiSurfServer._prepare_embedded_mmfdb()
     assert prepared == []
+
+
+def test_repeated_startups_never_lock_the_desktop_account_out(tmp_path: Path) -> None:
+    """Starting ChiSurf many times must not throttle the only local account.
+
+    Startup asks the configured account whether it is passwordless before
+    offering the known desktop password. ``user`` has a password, so that
+    question fails every time — and while those answers counted as brute-force
+    failures, five starts inside the throttle window left the desktop user
+    staring at "Too many failed login attempts" with the correct credentials in
+    the dialog.
+    """
+    from mmfdb.security.auth import MAX_FAILED_ATTEMPTS, AuthError, is_throttled
+
+    database = tmp_path / "desktop.db"
+    ensure_default_desktop_admin(database)
+
+    with MFDatabase(database) as db:
+        for _ in range(MAX_FAILED_ATTEMPTS + 1):
+            try:
+                login(db.conn, user_id="user", password="")
+            except AuthError:
+                pass
+            assert login(db.conn, user_id="user", password="user")["authenticated"] is True
+        assert not is_throttled(db.conn, "user")
