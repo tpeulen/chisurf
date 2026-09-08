@@ -191,3 +191,28 @@ class BurstDisplayViewModel:
         finally:
             low.blockSignals(False)
         high.setValue(int(last))
+
+    # ── the slice the diagnostics are computed over ────────────────────
+
+    def diagnostic_window(self) -> tuple[float | None, float]:
+        """``(length_s, start_s)`` of the visible window, for the diagnostics.
+
+        ``(None, 0.0)`` when the whole measurement is shown, which is what the
+        viewport's unchecked state means.
+        """
+        return getattr(self, "_diagnostic_window", (None, 0.0))
+
+    def set_diagnostic_window(self, length_s: float | None, start_s: float = 0.0) -> None:
+        """Record the visible window and re-filter the diagnostics for it.
+
+        The diagnostics are computed over the *visible* slice, so a slider that
+        moved without this would walk into a region nothing had been computed
+        for and draw an empty plot.
+        """
+        window = (None if length_s is None else float(length_s), float(start_s))
+        if getattr(self, "_diagnostic_window", None) == window:
+            return
+        self._diagnostic_window = window
+        reload_diagnostics = getattr(self._tool, "reload_diagnostics_window", None)
+        if callable(reload_diagnostics):
+            reload_diagnostics()

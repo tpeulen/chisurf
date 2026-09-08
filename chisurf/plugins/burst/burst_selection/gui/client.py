@@ -217,6 +217,9 @@ class BurstSelectionClient:
         self,
         path: Path,
         settings: dict[str, Any],
+        window_s: float | None = None,
+        window_start_s: float = 0.0,
+        tttr: Any = None,
     ) -> dict[str, Any]:
         """Load diagnostic plot data for a TTTR file.
 
@@ -230,6 +233,25 @@ class BurstSelectionClient:
             TTTR file path.
         settings : dict
             Analysis settings as JSON-compatible dict.
+        window_s : float, optional
+            Filter and search only ``window_s`` seconds of the measurement,
+            starting at ``window_start_s``. The plots draw a window of the file, so computing the
+            whole of it is work nobody sees: on a 20 M-photon container the
+            filter pass alone is 0.55 s of a 0.9 s load. The returned arrays
+            keep their **full length** — photons outside the window are simply
+            unselected — because every index downstream (the burst start/stop
+            pairs, the per-file offsets, the timeline the window slider is drawn
+            on) is a global photon index, and shortening the arrays would move
+            all of them.
+
+        window_start_s : float, optional
+            Where that window starts, in seconds from the first photon. This is
+            the position of the visible-window slider, so moving the slider
+            re-filters a different slice rather than showing an empty plot.
+        tttr : tttrlib.TTTR, optional
+            An already-open file for ``path``. Opening a 20 M-photon container
+            is 0.33 s of a 0.41 s load, and moving the slider re-reads the same
+            file every time — so the caller passes back what it already holds.
 
         Returns
         -------
@@ -253,12 +275,26 @@ class BurstSelectionClient:
             analysis_settings = settings_from_dict(settings) if settings else AnalysisSettings()
             if analysis_settings.photon_filter.microtime_ranges is None:
                 analysis_settings.photon_filter.microtime_ranges = []
-            tttr = load_tttr(str(path))
-            selected = apply_photon_filters(
-                tttr,
-                analysis_settings.photon_filter,
-                burst_detection=analysis_settings.burst_detection,
-            )
+            if tttr is None:
+                tttr = load_tttr(str(path))
+            window = self._window_indices(tttr, window_s, window_start_s)
+            if window is None:
+                selected = apply_photon_filters(
+                    tttr,
+                    analysis_settings.photon_filter,
+                    burst_detection=analysis_settings.burst_detection,
+                )
+            else:
+                import numpy as _np
+
+                first, last = window
+                sliced = apply_photon_filters(
+                    tttr[_np.arange(first, last)],
+                    analysis_settings.photon_filter,
+                    burst_detection=analysis_settings.burst_detection,
+                )
+                selected = _np.zeros(len(_np.asarray(tttr.macro_times)), dtype=bool)
+                selected[first:first + len(sliced)] = _np.asarray(sliced, dtype=bool)
             # The bounds `analyze_file` applies, applied here too. This function
             # feeds the diagnostic plots *of the run beside it*, so a different
             # gap (this took `find_bursts`'s own default of 4 regardless of the
@@ -281,6 +317,38 @@ class BurstSelectionClient:
         except Exception:
             logger.exception("Failed to load burst-selection diagnostics for %s", path)
             return {}
+
+    @staticmethod
+    def _window_indices(tttr, window_s: float | None, start_s: float = 0.0):
+        """Photon indices of ``[start_s, start_s + window_s]``, or ``None``.
+
+        ``None`` whenever the window covers the whole measurement anyway, so the
+        common case takes the plain path and nothing about it changes.
+        """
+        if not window_s or window_s <= 0.0:
+            return None
+        import numpy as _np
+
+        macro_times = _np.asarray(tttr.macro_times)
+        if macro_times.size == 0:
+            return None
+        try:
+            resolution_s = float(tttr.header.macro_time_resolution)
+        except Exception:
+            return None
+        if resolution_s <= 0.0:
+            return None
+        span_s = float(macro_times[-1] - macro_times[0]) * resolution_s
+        if start_s <= 0.0 and span_s <= float(window_s):
+            return None
+        origin = float(macro_times[0])
+        low = origin + max(0.0, float(start_s)) / resolution_s
+        high = origin + (max(0.0, float(start_s)) + float(window_s)) / resolution_s
+        first = int(_np.searchsorted(macro_times, low, side="left"))
+        last = int(_np.searchsorted(macro_times, high, side="right"))
+        first = max(0, min(first, macro_times.size - 1))
+        last = max(first + 1, min(last, macro_times.size))
+        return first, last
 
     # ── internals ──────────────────────────────────────────────────
 

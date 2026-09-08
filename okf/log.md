@@ -38824,3 +38824,82 @@ side of the line.
   micro-time depends on the period alone. `detect_and_convert` also takes
   an explicit `period=` now, and still reports the *measured* contrast, so
   a typed period that is wrong is visible rather than silently accepted.
+
+- **2026-09-08 — the automatic FRET calibration was 6x slower than it
+  needed to be, in seeding rather than in fitting.** `auto_calibrate` on
+  7 358 bursts took 2.70 s, and 2.2 s of it was `_kmeans_lloyd` +
+  `_kmeanspp_seed` in `chisurf/core/ml/cluster/_kmeans.py` — kernels
+  written as element-at-a-time loops over samples, features and clusters,
+  in the shape a JIT would compile away, with a module docstring calling
+  them "pure numba functionals" and **nothing jitted**. The mixture they
+  seed is one-dimensional; the fit itself was 0.35 s. Rewritten
+  vectorised in plain NumPy (no numba — the owner does not want it, and a
+  JIT would add warm-up to a 0.4 s call): 2.70 s → 0.435 s with
+  **bit-identical factors**. `test/ml/test_kmeans_vectorisation.py` keeps
+  the old loops as the oracle — seed, Lloyd sweeps, inertia, sweep count,
+  the empty-cluster reseed branch, and the distance blocking — plus a
+  guardrail against a sample loop returning. Every consumer (KMeans,
+  GaussianMixture, HMM emission seeding, H2MM) is faster for free.
+
+- **2026-09-08 — the burst-search diagnostics draw a time window, not
+  every photon of every file.** Six 300 s files concatenate to 1 800 s and
+  millions of photons in a trace a thousand pixels wide, and the only way
+  in was typing photon indices. New `gui/timeline.py` (Qt-free) maps the
+  concatenated timeline to photon indices; a `burst_time_window` AutoForm
+  section gives a window length (10 s default), a slider that walks it,
+  and a caption naming the file it has reached
+  (`1074.0–1084.0 s of 1800.0 s · 004_….sm (4/6)`). It writes the
+  existing `plot_min_spin`/`plot_max_spin`, so it is a second way of
+  asking rather than a second mechanism, and unchecking it restores the
+  old whole-measurement view.
+
+- **2026-09-08 — the background tail fit gained an upper edge, and the
+  window is now draggable.** The fraction rule had no upper bound, so on
+  the ALEX calibration measurement it fitted 17.4–21.8 ms where the red
+  detector has no counts and returned **0.00 kHz** background (entry in
+  [known-issues](references/known-issues.md)). `tail_range_ms` in
+  `chisurf/core/fluorescence/burst/background.py`; `fit_from_ms` /
+  `fit_to_ms` as log-scaled sliders coupled both ways to a movable band on
+  the inter-photon-time plot. Two readability fixes came with it: the
+  fitted line is drawn only where it predicts ≥ 0.5 counts (a steep fit
+  reached 1e-15 and autoscaled the log axis over twenty decades), and the
+  x axis labels once per decade instead of smearing every minor tick
+  together.
+
+- **2026-09-08 — the ALEX alternation gates are editable, both ways.**
+  Detection fills the period and the two laser gates into spin boxes, and
+  the shaded bands on the folded-phase plot are the same values: drag a
+  band or type an edge, they stay in step. A gate change republishes the
+  detector setup and reconverts nothing, because the fold into the
+  micro-time depends on the period alone. `detect_and_convert` also takes
+  an explicit `period=` now, and still reports the *measured* contrast, so
+  a typed period that is wrong is visible rather than silently accepted.
+
+- **2026-09-08 — arriving at the burst-search step ran a full burst
+  search, twice.** Selecting a file (which is what the workflow shell does
+  when it hands the step its measurements) called `_analyze_file_frame`
+  synchronously on the GUI thread: 4.49 s for a 20 M-photon ALEX
+  container, no progress bar — and pressing Next then ran the same search
+  again through the threaded path, because that path keeps its own
+  fingerprint and the preview never set one. Entering a step is not
+  asking for a search. `_update_selected_files(..., preview=True)` shows a
+  cached table if one exists and searches nothing; ▶ Run and Next own the
+  search and already have progress and the repeat-skip. The diagnostics
+  that remain are filtered over the **visible window only**, reusing the
+  open file, and carry a status task. Entry 5.44 s → 0.41 s; moving the
+  window ~25 ms. The safety invariant — arrays stay full length, so every
+  global photon index still points where it did — is pinned by
+  `tests/test_diagnostic_window.py`.
+
+- **2026-09-08 — "the donor channel (I_DD) column is not mapped" was the
+  wrong *run*, not a mapping failure.** A `.pto` accumulates one analysis
+  per burst search, and a search made before the detector definitions
+  reached the step writes nine columns of burst geometry with no
+  per-detector split at all. `burst_sources()` took the newest run
+  regardless, so a later channel-less `countrate_All` search shadowed the
+  usable `sliding_window_All` one. It now picks the newest run whose
+  columns map (`burst.table.maps_fret_channels`, memoised on the
+  container's stat) and logs the one it passed over. Accurate FRET also
+  distinguishes "cannot guess these names" from "these numbers are not in
+  this table" — the old message sent people hunting through a combo box
+  that could not contain the answer.

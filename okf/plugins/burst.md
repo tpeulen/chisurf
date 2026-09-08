@@ -53,12 +53,44 @@ one detector ([known-issues](/references/known-issues.md)). In the GUI the windo
 is two log-scaled sliders and a draggable band on the inter-photon-time plot,
 coupled both ways.
 
-**The burst-search diagnostics draw a time window.** `burst_selection` still
-takes a photon-index range internally, but `gui/timeline.py` maps the
-concatenated multi-file timeline onto it, and the `burst_time_window` section
-offers a window length (10 s), a slider that walks the measurement, and a
-caption naming the file under it. Without it a six-file selection drew eleven
-million photons into one trace.
+**The burst-search diagnostics draw a time window — and are *computed* over
+one.** Arriving at the step used to run a full burst search synchronously on the
+GUI thread: 4.5 s for a 20 M-photon container, no progress bar, and then Next ran
+the same search again through the threaded path. Entering a step is not asking
+for a search. `_update_selected_files(..., preview=True)` now shows a cached
+table if there is one and searches nothing; the search belongs to ▶ Run and to
+Next, which already run it off the GUI thread behind `ChiSurfProgress` and skip
+an identical repeat by fingerprint. The diagnostics that remain are filtered
+over the **visible window only** (`load_diagnostics(window_s=, window_start_s=,
+tttr=)`), and the already-open file is passed back so moving the slider costs a
+filter pass rather than a re-read.
+
+| entering the step, 20 M photons | before | after |
+|---|---|---|
+| full analysis | 4.49 s | not run |
+| diagnostics | 0.95 s | 0.41 s |
+| **total** | **5.44 s** | **0.41 s** |
+
+Moving the window afterwards is ~25 ms. **The invariant that makes the slicing
+safe:** the returned arrays keep their *full length* — photons outside the
+window are merely unselected — because the burst start/stop pairs, the per-file
+offsets and the timeline the slider is drawn on are all global photon indices,
+and a shortened array moves every one of them silently. Pinned by
+`tests/test_diagnostic_window.py` and `tests/test_preview_does_not_search.py`.
+
+**A container holds several searches, and only some of them are usable.** A
+burst search run before the detector definitions reach the step writes a table
+with **no per-detector split at all** — nine columns of burst geometry and
+nothing that can be called I_DD. Taking simply the newest run therefore handed
+accurate FRET a table it could only reject, reported as "the donor channel
+(I_DD) column is not mapped", which reads like a mapping bug and is really the
+wrong run. `burst_sources()` now picks the newest run whose columns actually map
+(`chisurf.core.fluorescence.burst.table.maps_fret_channels`, memoised on the
+container's stat) and falls back to the newest only if none do; it logs which
+run it passed over and why. Accurate FRET separately distinguishes "I could not
+guess these names" from "these numbers are not in this table" — telling someone
+to hand-map a column that does not exist sends them through a combo box that
+cannot contain the answer.
 
 `accurate_fret` is the user-facing face of the [FRET-calibration reference](/references/fret-calibration.md). Its Qt-free layers are `chisurf/core/fluorescence/fret/accurate.py` (population finding, the self-consistent factor iteration, the optics-prior posterior, error propagation) and `chisurf/core/fluorescence/fret/lines.py` (analytic static/dynamic FRET lines, model-free so calibration does not need a fit object). The plugin adds the AutoForm view, a burst-table reader with column auto-mapping, a live bridge to an open ndX window in both directions, `csc accurate-fret`, and the `accurate_fret.calibrate{,_file}` RPC methods. **Which route determines γ is itself a diagnostic**: the E-S population fit and the FRET line are independent, so their disagreement means either sub-burst dynamics or a wrong τ_D(0) — the tool reports both numbers rather than one.
 

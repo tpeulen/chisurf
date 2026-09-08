@@ -127,12 +127,37 @@ class AccurateFretViewModel:
         self._result = None
         missing = [k for k in ("i_dd", "i_da")
                    if not getattr(self, f"column_{k}")]
-        self.results_text = (
-            f"{pathlib.Path(path).name}: {len(next(iter(self._columns.values())))} bursts, "
+        head = (
+            f"{pathlib.Path(path).name}: "
+            f"{len(next(iter(self._columns.values())))} bursts, "
             f"{len(self._columns)} columns."
-            + (f" Please map {', '.join(missing)} by hand." if missing else " Press Calibrate.")
         )
+        if not missing:
+            self.results_text = head + " Press Calibrate."
+        elif not self._has_detector_columns():
+            # Distinguish "I could not guess the names" from "the numbers are
+            # not in this table": no hand-mapping can fix the second, and
+            # telling someone to map a column that does not exist sends them
+            # looking through a combo box that cannot contain the answer.
+            self.results_text = (
+                head + " This burst search has **no per-detector columns** — it "
+                "was run without detector definitions, so there is no donor or "
+                "acceptor signal in it to map. Set the detectors in the setup "
+                "step and search again, or pick a burst table that has them."
+            )
+        else:
+            self.results_text = head + f" Please map {', '.join(missing)} by hand."
         self.notify("file")
+
+    def _has_detector_columns(self) -> bool:
+        """Whether the loaded table splits its photons by detector at all."""
+        from chisurf.core.fluorescence.burst.table import DETECTOR_ROLE_WORDS
+
+        words = tuple(DETECTOR_ROLE_WORDS)
+        return any(
+            any(word in str(name).lower() for word in words)
+            for name in self._columns
+        )
 
     def load_from_ndxplorer(self) -> str:
         """Take the burst columns from an open ndX window.

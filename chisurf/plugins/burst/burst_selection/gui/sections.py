@@ -120,10 +120,15 @@ class _TimeWindowSection(QtWidgets.QWidget):
         self.length_spin.setEnabled(self.enabled_box.isChecked())
         self.slider.setEnabled(self.enabled_box.isChecked())
         if not self.enabled_box.isChecked():
+            # Whole measurement: the diagnostics must cover it before the plots
+            # are told to draw it, or the trace is empty outside the last window.
+            self._model.set_diagnostic_window(None, 0.0)
             self._model.show_whole_timeline()
         else:
             start = self._position_s(span)
-            self._model.show_time_window(start, float(self.length_spin.value()))
+            length = float(self.length_spin.value())
+            self._model.set_diagnostic_window(length, start)
+            self._model.show_time_window(start, length)
         self._relabel()
 
     def _refresh(self) -> None:

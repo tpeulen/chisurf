@@ -24,7 +24,8 @@ import numpy as np
 from chisurf.core.datastore import column_names
 
 __all__ = ["COLUMN_HINTS", "DETECTOR_ROLE_WORDS", "gated_stream_columns",
-           "guess_columns", "read_burst_table", "columns_from_data"]
+           "guess_columns", "read_burst_table", "columns_from_data",
+           "maps_fret_channels"]
 
 #: Column-name fragments (lower case) identifying each channel role. Matched in
 #: order, exact match first, so a more specific name wins over a substring.
@@ -382,3 +383,66 @@ def columns_from_data(data) -> dict[str, np.ndarray]:
         if values.size and np.any(np.isfinite(values)):
             columns[str(name)] = values
     return columns
+
+
+#: Memo for :func:`maps_fret_channels`, keyed by ``(path, mtime, size)``. A run
+#: inside a container is not a file of its own, so the container's stat is what
+#: changes when a new search is written into it.
+_MAPS_CACHE: dict[tuple, bool] = {}
+
+
+def maps_fret_channels(path, extra_hints: dict | None = None) -> bool:
+    """Whether a burst table carries the columns a FRET analysis needs.
+
+    A burst search run **without detector definitions** writes a table with no
+    per-detector split at all — nine columns of burst geometry (`First Photon`,
+    `Duration (ms)`, `Number of Photons`, …) and nothing to call I_DD. No
+    mapping can recover the channels from it, so a tool handed that run can only
+    report that the donor column is unmapped, which reads like a mapping bug
+    rather than what it is: the wrong run.
+
+    Use it to *choose* a run rather than to validate one — a container commonly
+    holds several searches, and only some of them were run with channels.
+
+    Parameters
+    ----------
+    path : path-like
+        A ``.bur``, a burst folder, or a container run
+        (``m000.pto/sliding_window_All 0.1500#60``).
+    extra_hints : dict, optional
+        Passed through to :func:`guess_columns`.
+
+    Returns
+    -------
+    bool
+        ``True`` when both ``i_dd`` and ``i_da`` map. ``i_aa`` is not required:
+        a two-colour measurement legitimately has none.
+    """
+    import pathlib as _pathlib
+
+    resolved = _pathlib.Path(str(path))
+    stat_target = resolved
+    while stat_target != stat_target.parent and not stat_target.exists():
+        stat_target = stat_target.parent
+    try:
+        info = stat_target.stat()
+        key = (str(resolved), info.st_mtime_ns, info.st_size)
+    except OSError:
+        key = (str(resolved), 0, 0)
+    if extra_hints:
+        key = key + (tuple(sorted(map(str, extra_hints))),)
+    cached = _MAPS_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    try:
+        columns = read_burst_table(resolved)
+        names = list(columns)
+        mapped = guess_columns(names, extra_hints=extra_hints)
+        ok = bool(mapped.get("i_dd")) and bool(mapped.get("i_da"))
+    except Exception:
+        # Unreadable is not "does not map" -- it is unknown, and refusing a run
+        # this cannot open would silently drop the only search there is.
+        ok = True
+    _MAPS_CACHE[key] = ok
+    return ok

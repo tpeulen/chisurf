@@ -31,6 +31,7 @@ from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.navigation import find_status_reporter
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
@@ -816,6 +817,12 @@ class BurstSelectionTool(ChisurfDockTool):
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         return panel
+
+    #: Files already opened for the diagnostics, by resolved path. Moving the
+    #: visible-window slider re-filters a slice of the same measurement, and
+    #: re-opening a 20 M-photon container for each drag is 0.33 s the user waits
+    #: through for nothing.
+    _open_tttr: dict = {}
 
     def _ensure_display_widgets(self) -> None:
         """Create the widgets that *hold* the display settings, once.
@@ -1915,21 +1922,48 @@ class BurstSelectionTool(ChisurfDockTool):
         self._last_result = {"metadata": metadata, "settings": settings}
         self.summary.setPlainText(json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str))
 
-    def _update_selected_files(self, paths: list[Path], settings: AnalysisSettings) -> None:
-        """Update cached results or analyze selected files, then load diagnostics."""
+    def _update_selected_files(self, paths: list[Path], settings: AnalysisSettings,
+                               *, preview: bool = False) -> None:
+        """Show what is already known about these files, then load diagnostics.
+
+        ``preview=True`` is the *arriving at the step* path: selecting a file,
+        or the workflow shell handing the step its measurements. It shows a
+        cached burst table if one exists and otherwise **searches nothing**.
+
+        That distinction is the whole point. A full search of a converted ALEX
+        container (20 M photons) takes ~4.5 s on the GUI thread with no progress
+        bar, and it ran here — so opening the step froze the window, and then
+        pressing Next ran the very same search a second time. The search belongs
+        to the Run button and to Next, both of which already run it off the GUI
+        thread behind :class:`ChiSurfProgress` and skip an identical repeat via
+        the fingerprint cache. Arriving at a step is not asking for it.
+
+        The diagnostic plots still load, because they are what the step is for:
+        they cost a TTTR open and a filter pass (under a second), and they draw
+        only the visible window.
+        """
+        # Frame and file index are built together: a cached frame and a fresh
+        # one must stay paired with the file each came from, and pairing them
+        # afterwards by position silently mislabels every frame as soon as one
+        # file in the middle of the selection is the uncached one.
         frames: list = []
-        missing: list[Path] = []
+        file_indices: list[int] = []
         for path in paths:
             frame = self._frame_for_path(path)
             if frame is None:
-                missing.append(path)
-            else:
-                frames.append(frame)
-        for path in missing:
-            frame, _metadata = self._analyze_file_frame(path, settings)
+                if preview:
+                    continue
+                frame, _metadata = self._analyze_file_frame(path, settings)
             frames.append(frame)
-        file_indices = [self._file_index_for_path(path) for path in paths]
-        self._display_frame_set(frames, settings, file_indices)
+            file_indices.append(self._file_index_for_path(path))
+        if frames:
+            self._display_frame_set(frames, settings, file_indices)
+        elif preview:
+            self.summary.setPlainText(
+                "Diagnostics only — no burst search has run on these files yet.\n"
+                "The plots below show the visible window; press ▶ Run (or Next) "
+                "to search every photon and build the burst table."
+            )
         if paths:
             self._load_tttr_for_plots(paths, settings)
 
@@ -2841,7 +2875,8 @@ class BurstSelectionTool(ChisurfDockTool):
                 _LOG.debug("using current controls for diagnostic settings")
                 settings = self._settings_from_controls()
             _LOG.debug("updating selected file results", paths=[str(path) for path in selected_paths])
-            self._update_selected_files(selected_paths, settings)
+            # Selecting a file is a request to *look*, not to search.
+            self._update_selected_files(selected_paths, settings, preview=True)
         except Exception as exc:
             self._status_bar.showMessage(f"Error selecting file: {exc}")
             _LOG.error("error selecting file", error=str(exc))
@@ -2876,6 +2911,38 @@ class BurstSelectionTool(ChisurfDockTool):
         self._file_paths.clear()
         self._refresh_file_list()
 
+    def _diagnostic_window(self) -> tuple[float | None, float]:
+        """``(length_s, start_s)`` of the slice the diagnostics need.
+
+        ``(None, 0.0)`` means the whole measurement — what a tool used stand-alone
+        with no visible-window control does.
+
+        The plots draw a window, so filtering the rest is work nobody sees: on a
+        20 M-photon container it is 0.55 s of a 0.95 s load. The file is still
+        *opened* whole, because the slider is drawn on the full timeline and the
+        Run button's burst table covers everything.
+        """
+        model = getattr(self, "_display_view_model", None)
+        if model is None:
+            return None, 0.0
+        window = getattr(model, "diagnostic_window", None)
+        if not callable(window):
+            return None, 0.0
+        return window()
+
+    def reload_diagnostics_window(self) -> None:
+        """Re-filter the visible window after the slider moved.
+
+        Only the slice changes, so the already-open files are reused and this
+        costs a filter pass over the window rather than a re-read of the
+        measurement.
+        """
+        paths = self._selected_file_paths_from_list() or self._file_paths[:1]
+        if not paths:
+            return
+        settings = self._last_settings or self._settings_from_controls()
+        self._load_tttr_for_plots(paths, settings)
+
     def _load_tttr_for_plots(self, paths: Path | list[Path], settings: AnalysisSettings) -> None:
         """Load TTTR diagnostics file-by-file for diagnostic plots."""
         path_list = [paths] if isinstance(paths, Path) else list(paths)
@@ -2884,13 +2951,29 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage("No TTTR files selected for diagnostics.")
             return
         diagnostics: list[dict[str, Any]] = []
+        # The TTTR objects this produces are handed straight to the plots, so it
+        # stays on the GUI thread -- but it opens and filters every photon of
+        # every file (about a second for a 20 M-photon container), and without a
+        # task the window simply stops responding with nothing to say why.
+        reporter = find_status_reporter(self)
+        task = reporter.begin_task(
+            "Loading burst diagnostics…", len(path_list)) if reporter else None
         try:
             settings_dict = asdict(settings) if settings else {}
-            for path in path_list:
+            for index, path in enumerate(path_list):
                 _LOG.debug("loading TTTR diagnostics", path=str(path))
                 _LOG.debug("TTTR diagnostic settings prepared", settings=settings_dict)
                 self._status_bar.showMessage(f"Loading diagnostics for {path.name}...")
-                diag = self._client.load_diagnostics(path, settings_dict)
+                if task is not None:
+                    task.setValue(index)
+                    task.setLabelText(
+                        f"Reading {path.name} ({index + 1}/{len(path_list)})…")
+                window_s, window_start_s = self._diagnostic_window()
+                diag = self._client.load_diagnostics(
+                    path, settings_dict,
+                    window_s=window_s, window_start_s=window_start_s,
+                    tttr=self._open_tttr.get(path.resolve()),
+                )
                 _LOG.debug("TTTR diagnostics loaded", keys=list(diag.keys()) if diag else [])
                 if not diag or "tttr" not in diag:
                     _LOG.warning("TTTR diagnostics returned no data", path=str(path))
@@ -2898,6 +2981,9 @@ class BurstSelectionTool(ChisurfDockTool):
                 diag["path"] = path
                 diagnostics.append(diag)
             self._last_diagnostics = diagnostics
+            self._open_tttr = {
+                Path(diag["path"]).resolve(): diag["tttr"] for diag in diagnostics
+            }
             first = diagnostics[0]
             self._last_tttr = first["tttr"]
             self._last_selected = first["selected"]
@@ -2935,6 +3021,9 @@ class BurstSelectionTool(ChisurfDockTool):
             self._last_diagnostics.clear()
             self.summary.append(f"Diagnostic plots unavailable for {first_path}: {exc}")
             self._status_bar.showMessage(f"Error loading {first_path.name}: {exc}")
+        finally:
+            if task is not None:
+                task.close()
 
     def _fill_table(self, frame) -> None:
         """Fill the table widget from a GUI table (a DataStore, not a DataFrame).

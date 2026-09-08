@@ -908,8 +908,29 @@ class BurstAnalysisTool(NavigationPanelTool):
         except Exception as exc:
             logger.warning(f"ALEX Suite: could not list the runs of {folder} — {exc}")
             return []
-        # Newest last: the run the user just produced is the one to show.
-        return [folder / run for run in runs[-1:]]
+        if not runs:
+            return []
+        # Newest last -- but newest is not automatically *usable*. A container
+        # accumulates runs, and a search made before the detector definitions
+        # reached the step writes a table with no per-detector split at all:
+        # nine columns of burst geometry and nothing that can be called I_DD.
+        # Handing that to accurate FRET or the E-S step produces "the donor
+        # channel is not mapped", which reads like a mapping bug and is really
+        # the wrong run. So: the newest run whose columns *map*, and only if
+        # none of them do, the newest run there is.
+        from chisurf.core.fluorescence.burst.table import maps_fret_channels
+
+        for run in reversed(runs):
+            candidate = folder / run
+            if maps_fret_channels(candidate):
+                if run != runs[-1]:
+                    logger.info(
+                        f"burst analysis: using the run '{run}' — the newer "
+                        f"'{runs[-1]}' has no per-detector columns (it was "
+                        "searched without detector definitions)."
+                    )
+                return [candidate]
+        return [folder / runs[-1]]
 
     def analysis_path(self) -> Path | None:
         """The burst analysis a folder-taking tool should read.
