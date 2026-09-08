@@ -39356,3 +39356,30 @@ side of the line.
   diffstat *before* committing a file in a shared tree, not after. The
   term now sits uncommitted; see
   [known-issues](references/known-issues.md).
+
+- **2026-09-08 — gG/gR was not restoring because a JSON artifact aborted
+  the whole scan.** ndX's *Save calibration* writes a `fret_calibration`
+  artifact encoded as **json**; the owner's container holds thirteen of
+  them. `Measurement.get_store` raises on anything that is not a `dstore`,
+  and both readers guarded the *loop* rather than each artifact — so the
+  first JSON blob stopped every later artifact from being seen. That is
+  why gG/gR never came back **and** why the background quietly stopped
+  restoring too: it sits after those blobs in the container.
+
+  Two fixes. Each artifact is now guarded individually, so an unreadable
+  one is skipped instead of ending the scan. And the saved calibration is
+  read: `saved_constants_from_container` returns its `constants` block,
+  which is ndX's own names — **gG/gR included**, the one quantity neither
+  other source carries, since the factor table stores γ and gG/gR is only
+  recoverable from it together with both quantum yields. Measured on the
+  owner's container: gG/gR 9.99 → 0.49807, α → 0.1534, r → 1.0350.
+
+  Where two sources name the same constant, the **newer artifact** wins
+  (`_artifact_age`), not the one whose type seemed more authoritative — a
+  first attempt let a calibration saved last week override a background
+  measured this morning, and the tests caught it immediately.
+
+  **Also: the tests filled the disk.** Each copied the 85 MB container into
+  its own `tmp_path`. They now build one 6 MB container per module and
+  copy that. Recorded because the symptom — `ENOSPC` inside an unrelated
+  pytest fixture — looks nothing like its cause.

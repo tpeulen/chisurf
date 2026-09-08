@@ -35,6 +35,7 @@ __all__ = [
     "fitted_background",
     "calibration_from_container",
     "background_from_container",
+    "saved_constants_from_container",
     "restore_calibration_from_container",
     "refresh_stored_parameters",
     "CALIBRATION_ARTIFACT",
@@ -233,6 +234,105 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
 _BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
 
 
+#: Artifact ndX's "Save calibration" writes: a JSON blob whose ``constants``
+#: block is this window's own constant names, gG/gR included.
+SAVED_CALIBRATION_ARTIFACT = "fret_calibration"
+
+
+def _artifacts(measurement):
+    """Every artifact, newest first, skipping any that cannot be described.
+
+    Newest first because a container *keeps* what it is given: pressing Save
+    calibration a second time adds beside the first rather than replacing it.
+    """
+    try:
+        return list(reversed(list(measurement.artifacts())))
+    except Exception:
+        return []
+
+
+def saved_constants_from_container(source) -> dict:
+    """The constants of the most recent explicitly saved calibration.
+
+    ndX's *Save calibration* writes a JSON artifact holding this window's own
+    constants -- ``gG/gR``, ``PhiA``, ``PhiD``, the backgrounds -- which is a
+    different thing from the ``accurate fret calibration`` table the Accurate
+    FRET step writes, and the only one that carries the detection-efficiency
+    ratio directly. Reading only the table meant a user who had pressed Save got
+    nothing back.
+
+    Returns
+    -------
+    dict
+        ndX constant names to values, empty when the measurement has no saved
+        calibration.
+    """
+    import json
+
+    from chisurf.core.fio.pto import Measurement
+
+    path = _container_of(source)
+    if path is None:
+        return {}
+    try:
+        with Measurement.open(path, writable=False) as measurement:
+            for obj in _artifacts(measurement):
+                if getattr(obj, "name", "") != SAVED_CALIBRATION_ARTIFACT:
+                    continue
+                try:
+                    blob = measurement.get_blob(obj.uid)
+                except Exception:
+                    continue
+                try:
+                    if isinstance(blob, (bytes, bytearray)):
+                        blob = blob.decode("utf-8")
+                    payload = json.loads(blob)
+                except Exception:
+                    continue
+                constants = payload.get("constants")
+                if isinstance(constants, dict) and constants:
+                    return {
+                        str(k): float(v) for k, v in constants.items()
+                        if isinstance(v, (int, float))
+                        and np.isfinite(float(v))
+                    }
+    except Exception:
+        logging.debug("could not read a saved calibration from %s", path,
+                      exc_info=True)
+    return {}
+
+
+def _artifact_age(source, name: str) -> int:
+    """How far back an artifact sits, newest first; ``-1`` when absent.
+
+    A container keeps everything it is given, so "which of these two is current"
+    is a question about *position*, not about type. Deciding it by type instead
+    meant a calibration saved last week overrode a background measured this
+    morning.
+    """
+    from chisurf.core.fio.pto import Measurement
+
+    path = _container_of(source)
+    if path is None:
+        return -1
+    try:
+        with Measurement.open(path, writable=False) as measurement:
+            for index, obj in enumerate(_artifacts(measurement)):
+                if getattr(obj, "name", "") == name:
+                    return index
+    except Exception:
+        return -1
+    return -1
+
+
+def _container_of(source):
+    """Walk a run path up to the ``.pto`` it lives in, or ``None``."""
+    path = pathlib.Path(str(source))
+    while path.suffix.lower() != ".pto" and path.parent != path:
+        path = path.parent
+    return path if path.suffix.lower() == ".pto" and path.is_file() else None
+
+
 #: Detector in a measurement's background artifact -> the ndX constant that
 #: holds its rate. ndX's Bg/Br/By are subtracted from the **kHz** stream columns
 #: (``Fg(PIE) = Sg(PIE) - Bg`` where ``Sg(PIE)`` is ``S prompt green (kHz)``),
@@ -267,10 +367,18 @@ def background_from_container(source) -> dict:
             # estimates it has been given, so re-running the background step
             # leaves an older one in front of the newer. Reading the first meant
             # a corrected estimate was ignored in favour of the one it replaced.
-            for obj in reversed(list(measurement.artifacts())):
+            for obj in _artifacts(measurement):
                 if getattr(obj, "name", "") != "background":
                     continue
-                store = measurement.get_store(obj.uid)
+                try:
+                    store = measurement.get_store(obj.uid)
+                except Exception:
+                    # A container holds artifacts of several encodings, and
+                    # ``get_store`` raises on anything that is not a dstore.
+                    # Guarding the *loop* instead of each artifact meant one
+                    # JSON blob stopped every later artifact from being read --
+                    # which is exactly what a saved calibration is.
+                    continue
                 names = [store.column(i).name() for i in range(store.n_columns())]
                 if "Detector" not in names or "Rate" not in names:
                     continue
@@ -332,10 +440,13 @@ def calibration_from_container(source) -> dict:
         with Measurement.open(path, writable=False) as measurement:
             # The most recent calibration, for the reason given in
             # ``background_from_container``: a re-run adds, it does not replace.
-            for obj in reversed(list(measurement.artifacts())):
+            for obj in _artifacts(measurement):
                 if getattr(obj, "name", "") != CALIBRATION_ARTIFACT:
                     continue
-                store = measurement.get_store(obj.uid)
+                try:
+                    store = measurement.get_store(obj.uid)
+                except Exception:
+                    continue
                 names = [store.column(i).name() for i in range(store.n_columns())]
                 # By the declared schema, not by guessing the headers: the same
                 # file the writer emits from, so the two cannot drift. It also
@@ -392,7 +503,21 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     # equations use most directly.
     factors = calibration_from_container(source)
     rates = background_from_container(source)
-    if not factors and not rates:
+    # An explicitly saved calibration is ndX's own constants -- gG/gR included,
+    # which is the one thing neither of the other two carries: the factor table
+    # stores gamma, and gG/gR is only recoverable from it together with both
+    # quantum yields.
+    saved = saved_constants_from_container(source)
+    if saved and rates:
+        # Both name Bg/Br/By, so one has to win, and it is the *newer* of the
+        # two artifacts -- not the saved one by fiat. Re-measuring the
+        # background after saving a calibration is the ordinary order of work,
+        # and the newer estimate is the one meant.
+        saved_age = _artifact_age(source, SAVED_CALIBRATION_ARTIFACT)
+        background_age = _artifact_age(source, "background")
+        if 0 <= background_age < saved_age:
+            saved = {k: v for k, v in saved.items() if k not in rates}
+    if not factors and not rates and not saved:
         return {}
 
     # Applied once per *value*, not once per open. Re-running the background
@@ -401,7 +526,7 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     # not moved must be left exactly as it is, because anything the user tuned
     # in the meantime is theirs. So the comparison is against what was last
     # restored from this container, not against what the window now holds.
-    stored = {**factors, **rates}
+    stored = {**factors, **rates, **{f"saved:{k}": v for k, v in saved.items()}}
     key = str(pathlib.Path(str(source)).resolve())
     seen = getattr(ndx, "_restored_parameters", None)
     if not isinstance(seen, dict):
@@ -424,7 +549,44 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     for attribute, constant in (("bg_dd", "Bg"), ("bg_da", "Br"), ("bg_aa", "By")):
         if constant in rates:
             setattr(calib, attribute, float(rates[constant]))
-    applied = push_calibration_to_ndx(ndx, calib, recompute=True)
+    applied = push_calibration_to_ndx(ndx, calib, recompute=not saved)
+
+    if saved:
+        # Written through the same seam, so the parameter table follows and the
+        # recompute throttle cannot revert them on the next event.
+        editor = getattr(ndx, "parameter_control", None)
+        apply_values = getattr(editor, "apply_values", None)
+        if callable(apply_values):
+            apply_values(saved)
+        constants_map = getattr(ndx, "constants", None)
+        update = getattr(constants_map, "update", None)
+        if callable(update):
+            update(saved)
+        elif constants_map is not None:
+            merged = dict(constants_map)
+            merged.update(saved)
+            ndx.constants = merged
+        if callable(apply_values):
+            try:
+                ndx._prev_constants = dict(editor.dict)
+            except Exception:
+                pass
+        applied.update(saved)
+        data_source = getattr(ndx, "data_source", None)
+        if data_source is not None and hasattr(data_source, "compute_columns"):
+            try:
+                data_source.compute_columns(
+                    constants=ndx.constants,
+                    equations=getattr(ndx, "equations", None))
+            except Exception:
+                pass
+        for refresh in ("update_plots", "refresh_column_selectors"):
+            method = getattr(ndx, refresh, None)
+            if callable(method):
+                try:
+                    method()
+                except Exception:
+                    pass
     seen[key] = stored
     try:
         ndx._restored_parameters = seen
@@ -437,6 +599,9 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         ", ".join(
             [f"{k}={v:.4g}" for k, v in factors.items()]
             + [f"{k}={v:.4g} kHz" for k, v in rates.items()]
+            + ([f"saved calibration ({len(saved)} constants, "
+                f"gG/gR={saved['gG/gR']:.4g})"] if "gG/gR" in saved else
+               [f"saved calibration ({len(saved)} constants)"] if saved else [])
         ) or "nothing",
     )
     return applied

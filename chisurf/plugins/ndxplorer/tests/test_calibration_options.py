@@ -271,21 +271,13 @@ def test_too_few_reference_bursts_are_not_guessed_from():
 
 # ── a calibration belongs to its measurement ─────────────────────────────────
 
-def _container_with_calibration(tmp_path, **factors):
+def _container_with_calibration(container, **factors):
     """A container carrying the artifact the Accurate FRET step writes."""
-    import shutil
-
     from chisurf.core.datastore import store_from_arrays
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
     from chisurf.plugins.ndxplorer.calibration_bridge import CALIBRATION_ARTIFACT
 
-    source = pathlib.Path.home() / (
-        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
-    if not source.exists():
-        pytest.skip("the ALEX calibration container is not on this machine")
-    target = tmp_path / source.name
-    shutil.copy2(source, target)
-
+    target = container
     n = 3
     rows = {"label": np.arange(n, dtype=float), "E": np.array([0.02, 0.55, 0.81])}
     # Constant over the populations, which is what makes any row the whole
@@ -303,22 +295,22 @@ PLANTED = {"alpha": 0.0731, "beta": 1.234, "gamma": 0.8642,
            "delta": 0.0519, "r0": 54.3}
 
 
-def test_a_stored_calibration_is_read_back(tmp_path):
+def test_a_stored_calibration_is_read_back(container):
     from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
 
-    container = _container_with_calibration(tmp_path, **PLANTED)
-    read = calibration_from_container(container)
+    target = _container_with_calibration(container, **PLANTED)
+    read = calibration_from_container(target)
     for name, value in PLANTED.items():
         assert read[name] == pytest.approx(value), name
 
 
-def test_a_run_path_resolves_to_its_container(tmp_path):
+def test_a_run_path_resolves_to_its_container(container):
     """Every burst reader addresses a run; the calibration is on the file."""
     from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
 
-    container = _container_with_calibration(tmp_path, **PLANTED)
-    run = container / "sliding_window_All 0.1500#60"
-    assert calibration_from_container(run) == calibration_from_container(container)
+    target = _container_with_calibration(container, **PLANTED)
+    run = target / "sliding_window_All 0.1500#60"
+    assert calibration_from_container(run) == calibration_from_container(target)
 
 
 def test_a_measurement_without_one_changes_nothing(tmp_path):
@@ -333,7 +325,7 @@ def test_a_measurement_without_one_changes_nothing(tmp_path):
     assert ndx.constants == before
 
 
-def test_restoring_keeps_what_the_measurement_does_not_carry(tmp_path):
+def test_restoring_keeps_what_the_measurement_does_not_carry(container):
     """Quantum yields are the window's; backgrounds are the measurement's.
 
     The container stores per-detector background rates, and ndX's Bg/Br/By are
@@ -344,9 +336,9 @@ def test_restoring_keeps_what_the_measurement_does_not_carry(tmp_path):
         restore_calibration_from_container,
     )
 
-    container = _container_with_calibration(tmp_path, **PLANTED)
+    target = _container_with_calibration(container, **PLANTED)
     ndx = _window(Bg=2.5, Br=3.5, By=4.5, PhiA=0.8, PhiD=0.4)
-    restore_calibration_from_container(ndx, container)
+    restore_calibration_from_container(ndx, target)
     assert ndx.constants["alpha"] == pytest.approx(PLANTED["alpha"])
     assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])   # ndX's name for delta
     assert ndx.constants["forster_radius"] == pytest.approx(PLANTED["r0"])
@@ -374,13 +366,13 @@ def test_the_schema_is_flrcif_s_not_chisurf_s():
     assert declared["forster_radius"] == "_flr_fret_forster_radius.forster_radius"
 
 
-def test_a_container_written_before_the_schema_still_restores(tmp_path):
+def test_a_container_written_before_the_schema_still_restores(container):
     """A file on disk cannot be asked to follow a newer schema."""
     from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
 
     # 'r0' is what earlier versions wrote for the Forster radius.
-    container = _container_with_calibration(tmp_path, r0=57.1, gamma=0.77)
-    read = calibration_from_container(container)
+    target = _container_with_calibration(container, r0=57.1, gamma=0.77)
+    read = calibration_from_container(target)
     assert read["r0"] == pytest.approx(57.1)
     assert read["gamma"] == pytest.approx(0.77)
 
@@ -475,6 +467,22 @@ def _window_on(container):
     return _Ndx()
 
 
+def _write_saved_calibration(container, constants):
+    """Write what ndX's *Save calibration* writes: a JSON blob of constants."""
+    import json
+
+    from chisurf.core.fio.pto import Measurement
+
+    with Measurement.open(container, writable=True) as measurement:
+        measurement.put_blob(
+            "fret_calibration",
+            json.dumps({"constants": dict(constants)}).encode("utf-8"),
+            artifact_kind="analysis_result",
+            data_format="json",
+            operation_type="calibration",
+            mime_type="application/json")
+
+
 def _write_background(container, green, red, yellow):
     from chisurf.core.datastore import store_from_arrays
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
@@ -490,22 +498,39 @@ def _write_background(container, green, red, yellow):
         derived_from="bursts")
 
 
+@pytest.fixture(scope="module")
+def master_container(tmp_path_factory):
+    """One small container, built once for the whole module.
+
+    Copying the 85 MB ALEX container per test filled the disk -- these tests
+    only need a `.pto` that ``write_burst_artifact`` can open, so this is built
+    from the smallest measurement to hand (6 MB) and copied from.
+    """
+    source = min(
+        (pathlib.Path.home() / "dev/tttr-data/sm/cal1").glob("*.sm"),
+        key=lambda p: p.stat().st_size, default=None)
+    if source is None:
+        pytest.skip("no measurement to build a container from")
+    from chisurf.plugins.core.tttr_to_pto.api import convert
+
+    out = tmp_path_factory.mktemp("master")
+    return pathlib.Path(convert([source], keep_original=True, out_dir=out))
+
+
 @pytest.fixture
-def container(tmp_path):
+def container(master_container, tmp_path):
+    """A private copy, so a test that writes into it cannot reach another."""
     import shutil
 
-    source = pathlib.Path.home() / (
-        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
-    if not source.exists():
-        pytest.skip("the ALEX calibration container is not on this machine")
-    target = tmp_path / source.name
-    shutil.copy2(source, target)
+    target = tmp_path / master_container.name
+    shutil.copy2(master_container, target)
     return target
 
 
 def test_a_revisit_with_nothing_changed_is_a_no_op(container):
     from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
 
+    _write_background(container, 1.0, 2.0, 3.0)
     ndx = _window_on(container)
     assert refresh_stored_parameters(ndx), "the first visit must populate"
     assert refresh_stored_parameters(ndx) == {}, "a revisit re-applied it"
@@ -515,6 +540,7 @@ def test_a_value_the_user_tuned_survives_a_revisit(container):
     """The window is theirs between updates; only a *changed* estimate wins."""
     from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
 
+    _write_background(container, 1.0, 2.0, 3.0)
     ndx = _window_on(container)
     refresh_stored_parameters(ndx)
     ndx.constants["Bg"] = 42.0
@@ -526,6 +552,7 @@ def test_re_running_the_background_step_repopulates(container):
     """The container is the shared surface: a new estimate reaches the window."""
     from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
 
+    _write_background(container, 9.0, 9.0, 9.0)
     ndx = _window_on(container)
     refresh_stored_parameters(ndx)
     _write_background(container, 2.24, 3.17, 1.05)
@@ -626,3 +653,56 @@ def test_gamma_is_the_detection_ratio_and_the_yields_together():
     # ndX stores the detection ratio and the yields, and implies gamma; its
     # efficiency equation uses (1/(gG/gR)) * (PhiA/PhiD), which is that gamma.
     assert (1.0 / gg_gr) * (phi_a / phi_d) == pytest.approx(gamma)
+
+
+# ── the saved calibration, and the artifact that hid it ──────────────────────
+
+def test_gg_gr_restores_from_a_saved_calibration(container):
+    """Only the saved calibration carries the detection-efficiency ratio.
+
+    The factor table stores gamma, and gG/gR is recoverable from it only
+    together with both quantum yields. ndX's *Save calibration* writes the
+    window's own constants, gG/gR included, so that is what a user who pressed
+    it expects back.
+    """
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container, saved_constants_from_container,
+    )
+
+    _write_saved_calibration(container, {"gG/gR": 0.498, "alpha": 0.153, "r": 1.035})
+    saved = saved_constants_from_container(container)
+    assert "gG/gR" in saved
+    ndx = _window()
+    ndx.constants["gG/gR"] = 9.99
+    restore_calibration_from_container(ndx, container)
+    assert ndx.constants["gG/gR"] == pytest.approx(saved["gG/gR"])
+
+
+def test_one_unreadable_artifact_does_not_hide_the_rest(container):
+    """The bug behind "still not restoring", and the shape it will recur in.
+
+    A container holds artifacts of several encodings and ``get_store`` raises on
+    anything that is not a dstore. The readers guarded the whole *loop*, so the
+    first JSON blob — which is what a saved calibration is — stopped every later
+    artifact from being seen, including the background. Guarding each artifact
+    is the difference between skipping one and losing all of them.
+    """
+    from chisurf.plugins.ndxplorer.calibration_bridge import background_from_container
+
+    # A JSON artifact first, a dstore one after it: the order that broke.
+    _write_saved_calibration(container, {"gG/gR": 0.5})
+    _write_background(container, 1.0, 2.0, 3.0)
+    rates = background_from_container(container)
+    assert rates == pytest.approx({"Bg": 1.0, "Br": 2.0, "By": 3.0}), (
+        "a JSON artifact aborted the scan before the background was reached"
+    )
+
+
+def test_a_measurement_with_no_stored_parameters_is_left_alone(tmp_path):
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container,
+    )
+
+    ndx = _window(alpha=0.42)
+    assert restore_calibration_from_container(ndx, tmp_path / "absent.pto") == {}
+    assert ndx.constants["alpha"] == pytest.approx(0.42)
