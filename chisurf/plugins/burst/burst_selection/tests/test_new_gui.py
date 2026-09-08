@@ -18,7 +18,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
     _resolve_active_user_id,
     setup_id_for_name,
 )
-from chisurf.core import analysis_cache
+from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_selection import USE_LEGACY_GUI
 from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 from chisurf.plugins.burst.burst_selection.gui import tool as tool_module
@@ -778,6 +778,9 @@ def test_burst_plot_update_refreshes_embedded_filter_settings_plot(tmp_path: Pat
         def setYRange(self, *args: object, **kwargs: object) -> None:
             self.y_range = (args, kwargs)
 
+        def setTitle(self, *args: object, **kwargs: object) -> None:
+            self.title = (args, kwargs)
+
     class FakeSpinBox:
         """Minimal spin box stand-in."""
 
@@ -936,6 +939,9 @@ def test_mcs_plot_offsets_use_seconds_for_time_axis() -> None:
         def setLabel(self, *_args: object, **_kwargs: object) -> None:
             return
 
+        def setTitle(self, *_args: object, **_kwargs: object) -> None:
+            return
+
     class FakeHeader:
         """TTTR header stand-in."""
 
@@ -1002,6 +1008,9 @@ def test_mcs_plot_draws_all_before_selected_and_respects_toggles() -> None:
         def setLabel(self, *_args: object, **_kwargs: object) -> None:
             return
 
+        def setTitle(self, *_args: object, **_kwargs: object) -> None:
+            return
+
     class FakeTTTR:
         """TTTR stand-in that distinguishes full and selected traces."""
 
@@ -1036,8 +1045,12 @@ def test_mcs_plot_draws_all_before_selected_and_respects_toggles() -> None:
     BurstSelectionTool._update_mcs_plot(tool, 1, 4)
 
     assert len(tool.mcs_plot.plots) == 2
-    assert tool.mcs_plot.plots[0]["args"][1].tolist() == [1.0, 2.0, 3.0]
-    assert tool.mcs_plot.plots[1]["args"][1].tolist() == [10.0]
+    # The trace is drawn as a count *rate* in Hz, not as counts per bin: at the
+    # 0.25 ms bin width above that is x 4000. Plotting counts made the y axis
+    # depend on a display setting, so the same burst read 80 at 0.25 ms and 40
+    # at 0.125 ms and no threshold could be quoted against it.
+    assert tool.mcs_plot.plots[0]["args"][1].tolist() == [4000.0, 8000.0, 12000.0]
+    assert tool.mcs_plot.plots[1]["args"][1].tolist() == [40000.0]
     assert FakeTTTR.calls == [[1, 2, 3], [2]]
 
     tool.mcs_show_all_check.checked = False
@@ -1045,7 +1058,7 @@ def test_mcs_plot_draws_all_before_selected_and_respects_toggles() -> None:
     BurstSelectionTool._update_mcs_plot(tool, 1, 4)
 
     assert len(tool.mcs_plot.plots) == 1
-    assert tool.mcs_plot.plots[0]["args"][1].tolist() == [10.0]
+    assert tool.mcs_plot.plots[0]["args"][1].tolist() == [40000.0]
     assert FakeTTTR.calls == [[2]]
 
 

@@ -53,6 +53,26 @@ one detector ([known-issues](/references/known-issues.md)). In the GUI the windo
 is two log-scaled sliders and a draggable band on the inter-photon-time plot,
 coupled both ways.
 
+**The MCS trace is a count rate, and it starts where the window does.** Two
+defects sat on top of each other. The y axis was labelled "Intensity" with no
+unit under a plot titled "Count rate display" — and it was neither: it plotted
+*counts per bin*, so halving the bin width halved every peak and no threshold
+could be quoted against it. It is now a rate in Hz with `units="Hz"` on the
+axis, so pyqtgraph applies the SI prefix itself and the label reads kHz. And
+`get_intensity_trace` bins from macro time **zero of the file** rather than from
+the first photon it is handed, so a ten-second window at 65 s came back as a
+75-second trace with 260 000 empty leading bins — the flat line from 0 to 65 s,
+*and* the whole decimation budget spent on zeros. `_trace_rate_hz` drops them
+and shifts the time axis by exactly as many: 40 001 points instead of 300 001,
+spanning the 65–75 s asked for.
+
+**The visible-window control lives in a toolbar, not a dock.** It governs what
+every dock draws — the trace, the dT plot, the filter view, the decay — so
+inside one of them it read as that dock's own setting. It is now a second
+toolbar row across the top of the window
+(`BurstSelectionTool._setup_viewport_toolbar`, compact single-line layout); the
+Display panel keeps the two photon-index boxes for typing an exact range.
+
 **The burst-search diagnostics draw a time window — and are *computed* over
 one.** Arriving at the step used to run a full burst search synchronously on the
 GUI thread: 4.5 s for a 20 M-photon container, no progress bar, and then Next ran

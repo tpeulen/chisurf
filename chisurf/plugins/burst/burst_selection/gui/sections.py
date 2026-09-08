@@ -48,14 +48,21 @@ class _TimeWindowSection(QtWidgets.QWidget):
     thing rather than a second mechanism.
     """
 
-    def __init__(self, model, parent=None):
+    def __init__(self, model, parent=None, *, compact: bool = False):
         super().__init__(parent)
         self._model = model
         self._updating = False
+        self._compact = bool(compact)
 
-        layout = QtWidgets.QVBoxLayout(self)
+        # Compact lays everything on one line, for the toolbar across the top of
+        # the window. It belongs there rather than inside a dock because it
+        # governs *every* dock -- the trace, the dT plot, the filter view and the
+        # decay all draw the window it selects -- and a control that lives in one
+        # dock reads as belonging to that dock alone.
+        layout = (QtWidgets.QHBoxLayout(self) if self._compact
+                  else QtWidgets.QVBoxLayout(self))
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        layout.setSpacing(4 if not self._compact else 6)
 
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
@@ -83,7 +90,8 @@ class _TimeWindowSection(QtWidgets.QWidget):
         )
         self.length_spin.valueChanged.connect(self._on_changed)
         row.addWidget(self.length_spin)
-        row.addStretch(1)
+        if not self._compact:
+            row.addStretch(1)
         layout.addLayout(row)
 
         self.slider = QtWidgets.QSlider(QtCore.Qt.Horizontal, self)
@@ -93,7 +101,7 @@ class _TimeWindowSection(QtWidgets.QWidget):
             "says which file it has reached."
         )
         self.slider.valueChanged.connect(self._on_changed)
-        layout.addWidget(self.slider)
+        layout.addWidget(self.slider, 1 if self._compact else 0)
 
         # Dragging the slider emits a value per pixel of travel. Re-filtering the
         # photons for each of those is tens of milliseconds of work thrown away
@@ -106,7 +114,12 @@ class _TimeWindowSection(QtWidgets.QWidget):
         self._reload_timer.timeout.connect(self._apply_window)
 
         self.caption = QtWidgets.QLabel("Run a burst search to see the trace.", self)
-        self.caption.setWordWrap(True)
+        self.caption.setWordWrap(not self._compact)
+        if self._compact:
+            # A fixed width, so the caption changing from "1074.0-1084.0 s of
+            # 1800.0 s - 004_....sm (4/6)" to "Whole measurement" does not resize
+            # the slider beside it on every drag.
+            self.caption.setMinimumWidth(320)
         layout.addWidget(self.caption)
 
         model.add_display_observer(self._refresh)

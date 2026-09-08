@@ -345,6 +345,88 @@ class BatchProcessingDialog(QtWidgets.QDialog):
         return [Path(item.text()) for item_index in range(self.list_widget.count()) for item in [self.list_widget.item(item_index)]]
 
 
+def _trace_rate_hz(tttr_slice, bin_width_s: float, bin_width_ms: float, offset_s: float):
+    """A photon slice as ``(time_s, rate_hz)``, without the empty run in front.
+
+    ``get_intensity_trace`` bins from macro time **zero of the file**, not from
+    the first photon it is given. So a ten-second window taken at 65 s comes
+    back as a *75-second* trace whose first 260 000 bins are empty — drawn as a
+    flat line from 0 to 65 s that looks like an acquisition problem, and worse,
+    spending the whole decimation budget on zeros so the ten seconds anyone
+    wanted are drawn from what is left.
+
+    The leading bins are dropped and the time axis is shifted by exactly as
+    many, so the trace still sits where it belongs on the file's clock.
+
+    Parameters
+    ----------
+    tttr_slice : tttrlib.TTTR
+        The photons to draw.
+    bin_width_s, bin_width_ms : float
+        One bin, in seconds (what the trace call takes) and in milliseconds
+        (what the rate conversion takes).
+    offset_s : float
+        Where this file starts on the shared timeline.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(time_s, rate_hz)``, both empty when the slice holds no photons.
+    """
+    trace = np.asarray(
+        tttr_slice.get_intensity_trace(time_window_length=bin_width_s), dtype=float)
+    macro_times = np.asarray(getattr(tttr_slice, "macro_times", []))
+    skip = 0
+    if macro_times.size and trace.size:
+        try:
+            resolution_s = float(tttr_slice.header.macro_time_resolution)
+        except Exception:
+            resolution_s = 0.0
+        if resolution_s > 0.0 and bin_width_s > 0.0:
+            skip = int(float(macro_times[0]) * resolution_s / bin_width_s)
+            skip = max(0, min(skip, trace.size))
+            trace = trace[skip:]
+    time_s = (np.arange(trace.size) + skip) * bin_width_s + offset_s
+    return time_s, _as_count_rate_hz(trace, bin_width_ms)
+
+
+def _as_count_rate_hz(counts, bin_width_ms: float):
+    """Photons per bin as a **count rate in Hz**.
+
+    The MCS trace is filled as counts per bin, and the y axis was labelled
+    "Intensity" with no unit under a plot titled "Count rate display" — two
+    different claims about the same numbers, neither of them checkable. Counts
+    per bin is also not comparable to anything: halve the bin width and every
+    peak halves, so a burst that looks like 80 at 0.25 ms looks like 40 at
+    0.125 ms and the threshold that separated it moves with the setting.
+
+    A rate does not move. It is also the unit the burst search itself works in,
+    and the unit the background estimate reports, so the trace, the threshold
+    and the background can finally be read against one another.
+
+    Returned in Hz rather than kHz on purpose: the axis carries ``units="Hz"``
+    and pyqtgraph applies the SI prefix itself, so the label reads kHz or MHz as
+    the data requires instead of being fixed to one decade.
+
+    Parameters
+    ----------
+    counts : array_like
+        Photons per bin.
+    bin_width_ms : float
+        Width of one bin, in milliseconds.
+
+    Returns
+    -------
+    numpy.ndarray
+        Count rate in Hz, or the counts unchanged if the bin width is not
+        usable (a zero width would otherwise fill the trace with infinities).
+    """
+    values = np.asarray(counts, dtype=float)
+    if not np.isfinite(bin_width_ms) or bin_width_ms <= 0.0:
+        return values
+    return values * 1000.0 / float(bin_width_ms)
+
+
 class BurstSelectionTool(ChisurfDockTool):
     """Migrated Burst Selection GUI with legacy-style controls and plots."""
 
@@ -869,6 +951,50 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         self.plot_max_spin.hide()
 
+    def _ensure_display_view_model(self):
+        """The display view-model, created once.
+
+        Shared by the visible-window toolbar and the Display form: both are
+        views of the same setting, and a second model would be a second answer
+        to "which slice is on screen".
+        """
+        model = getattr(self, "_display_view_model", None)
+        if model is None:
+            from .display_view_model import BurstDisplayViewModel
+
+            self._ensure_display_widgets()
+            model = BurstDisplayViewModel(self)
+            self._display_view_model = model
+        return model
+
+    def _setup_viewport_toolbar(self) -> None:
+        """Put the visible-window control across the top, outside every dock.
+
+        It governs what *all* the docks draw — the trace, the dT plot, the
+        filter view, the decay — so it does not belong inside one of them,
+        where it reads as that dock's own setting. A toolbar row spans the
+        window and sits above the dock area, which is what it controls.
+        """
+        from . import sections as _display_sections
+
+        try:
+            self.addToolBarBreak()
+            toolbar = self.addToolBar("Visible window")
+            toolbar.setObjectName("burstSelectionViewportToolbar")
+            toolbar.setMovable(False)
+            toolbar.setFloatable(False)
+            widget = _display_sections._TimeWindowSection(
+                self._ensure_display_view_model(), compact=True)
+            widget.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            toolbar.addWidget(widget)
+            self._viewport_toolbar = toolbar
+            self._viewport_section = widget
+        except Exception:
+            _LOG.warning("could not build the visible-window toolbar", exc_info=True)
+
     def _build_display_form(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """The display settings, rendered by AutoForm from ``burst_display.view.json``.
 
@@ -885,9 +1011,7 @@ class BurstSelectionTool(ChisurfDockTool):
         from .display_view_model import BurstDisplayViewModel
 
         assert _display_sections is not None
-        self._ensure_display_widgets()
-        self._display_view_model = BurstDisplayViewModel(self)
-        form = AutoForm(self._display_view_model, parent)
+        form = AutoForm(self._ensure_display_view_model(), parent)
         form.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Maximum,
@@ -1041,8 +1165,8 @@ class BurstSelectionTool(ChisurfDockTool):
 
         self.mcs_plot = pg.PlotWidget(self)
         self.mcs_plot.setLabel("bottom", "Time (s)")
-        self.mcs_plot.setLabel("left", "Intensity")
-        self.mcs_plot.setTitle("Count rate display")
+        self.mcs_plot.setLabel("left", "Count rate", units="Hz")
+        self.mcs_plot.setTitle("Count rate")
 
         self.decay_plot = pg.PlotWidget(self)
         self.decay_plot.setLabel("bottom", "Microtime (ns)")
@@ -1228,6 +1352,7 @@ class BurstSelectionTool(ChisurfDockTool):
         help_menu.addAction(about_action)
 
         self._setup_toolbar()
+        self._setup_viewport_toolbar()
 
     def _connect_histogram_controls(self, slot: Any) -> None:
         """Connect histogram controls to a common update slot."""
@@ -1958,12 +2083,6 @@ class BurstSelectionTool(ChisurfDockTool):
             file_indices.append(self._file_index_for_path(path))
         if frames:
             self._display_frame_set(frames, settings, file_indices)
-        elif preview:
-            self.summary.setPlainText(
-                "Diagnostics only — no burst search has run on these files yet.\n"
-                "The plots below show the visible window; press ▶ Run (or Next) "
-                "to search every photon and build the burst table."
-            )
         if paths:
             self._load_tttr_for_plots(paths, settings)
 
@@ -2492,7 +2611,9 @@ class BurstSelectionTool(ChisurfDockTool):
         if not diagnostics:
             self.mcs_plot.clear()
             return
-        bin_width = float(self.mcs_bin_spin.value()) / 1000.0
+        # The spin box is in milliseconds; the trace call takes seconds.
+        bin_width_ms = float(self.mcs_bin_spin.value())
+        bin_width = bin_width_ms / 1000.0
         show_all = self._show_all_photons()
         show_selected = self._show_selected_photons()
         self.mcs_plot.clear()
@@ -2516,8 +2637,9 @@ class BurstSelectionTool(ChisurfDockTool):
             if show_all:
                 try:
                     range_indices = np.arange(local_start, local_stop)
-                    trace_all = tttr[range_indices].get_intensity_trace(time_window_length=bin_width)
-                    time_all = np.arange(len(trace_all)) * bin_width + offsets_ms[file_index] / 1000.0
+                    time_all, trace_all = _trace_rate_hz(
+                        tttr[range_indices], bin_width, bin_width_ms,
+                        offsets_ms[file_index] / 1000.0)
                     time_all, trace_all = thin_for_plot(time_all, trace_all, max_points=plot_point_budget)
                     self.mcs_plot.plot(
                         time_all,
@@ -2531,8 +2653,9 @@ class BurstSelectionTool(ChisurfDockTool):
                 selected_indices = np.where(selected[local_start:local_stop])[0] + local_start
                 try:
                     if selected_indices.size:
-                        trace_selected = tttr[selected_indices].get_intensity_trace(time_window_length=bin_width)
-                        time_selected = np.arange(len(trace_selected)) * bin_width + offsets_ms[file_index] / 1000.0
+                        time_selected, trace_selected = _trace_rate_hz(
+                            tttr[selected_indices], bin_width, bin_width_ms,
+                            offsets_ms[file_index] / 1000.0)
                         time_selected, trace_selected = thin_for_plot(
                             time_selected, trace_selected, max_points=plot_point_budget
                         )
@@ -2550,7 +2673,8 @@ class BurstSelectionTool(ChisurfDockTool):
         if not plotted:
             self.mcs_plot.plot([], [], pen=pg.mkPen((255, 255, 255, 120), width=1))
         self.mcs_plot.setLabel("bottom", "Time (s)")
-        self.mcs_plot.setLabel("left", "Intensity")
+        self.mcs_plot.setLabel("left", "Count rate", units="Hz")
+        self.mcs_plot.setTitle(f"Count rate ({bin_width_ms:g} ms bins)")
 
     def _update_decay_plot(self) -> None:
         """Update the microtime decay plot file-by-file."""
@@ -2911,6 +3035,59 @@ class BurstSelectionTool(ChisurfDockTool):
         self._file_paths.clear()
         self._refresh_file_list()
 
+    def _show_preview_frames(self, diagnostics) -> None:
+        """Fill the burst table and summary from the *visible window*.
+
+        The diagnostics already found the bursts in the window — that is what
+        the trace draws — so the table beside it is the same bursts summarised,
+        through the same generator the full search uses. Building it here is
+        what stops arriving at the step (or moving the window) from leaving the
+        Bursts, Decay and Summary tabs blank while the trace shows data.
+
+        The result is **not** written into ``_last_frames_by_file``: that cache
+        belongs to the full search, and seeding it with a window's worth of
+        bursts would make the next Next hand a partial table downstream while
+        every fingerprint said it was complete.
+        """
+        if not diagnostics:
+            return
+        from ..api.selection import summarize_bursts
+
+        windows = getattr(self.wizard, "windows", None) or {}
+        detectors = getattr(self.wizard, "detectors", None) or {}
+        frames, indices, n_bursts = [], [], 0
+        for diag in diagnostics:
+            start_stop = diag.get("start_stop")
+            tttr = diag.get("tttr")
+            if tttr is None or start_stop is None or len(start_stop) == 0:
+                continue
+            try:
+                frame = summarize_bursts(
+                    start_stop, diag.get("path") or "", tttr,
+                    windows=windows, detectors=detectors)
+            except Exception:
+                _LOG.debug("preview burst table failed", exc_info=True)
+                continue
+            frames.append(frame)
+            indices.append(self._file_index_for_path(Path(diag["path"]))
+                           if diag.get("path") else 0)
+            n_bursts += int(len(start_stop))
+        if not frames:
+            return
+        settings = self._last_settings or self._settings_from_controls()
+        self._display_frame_set(frames, settings, indices)
+        window_s, start_s = self._diagnostic_window()
+        where = (
+            "the whole measurement" if window_s is None else
+            f"{start_s:.1f}\u2013{start_s + window_s:.1f} s"
+        )
+        self.summary.setPlainText(
+            f"Preview of {where}: {n_bursts} burst(s) in "
+            f"{len(frames)} file(s).\n\n"
+            "These are the bursts of the visible window only. Press \u25b6 Run "
+            "(or Next) to search every photon and write the burst table."
+        )
+
     def _diagnostic_window(self) -> tuple[float | None, float]:
         """``(length_s, start_s)`` of the slice the diagnostics need.
 
@@ -3009,6 +3186,7 @@ class BurstSelectionTool(ChisurfDockTool):
             display_model = getattr(self, "_display_view_model", None)
             if display_model is not None:
                 display_model.notify_display()
+            self._show_preview_frames(diagnostics)
             self.update_burst_plots()
             self._status_bar.showMessage("Ready")
         except Exception as exc:

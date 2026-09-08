@@ -38976,3 +38976,38 @@ side of the line.
   photons (tens of ms), so the queue grew behind the mouse. The caption
   and the photon range still follow the handle immediately; the re-filter
   waits 120 ms for the drag to settle.
+
+- **2026-09-08 — the MCS trace had no unit, and 65 seconds of nothing in
+  front of it.** The y axis said "Intensity" under a title saying "Count
+  rate display" and plotted neither: *counts per bin*, so the same burst
+  read 80 at a 0.25 ms bin and 40 at 0.125 ms and no threshold could be
+  quoted against it. Now a rate, in Hz with `units="Hz"` on the axis so
+  the SI prefix (kHz) is applied by the axis rather than baked in.
+  Separately, `get_intensity_trace` bins from macro time **zero of the
+  file**, not from the first photon handed to it, so the 10 s window at
+  65 s came back as a 75 s trace with 260 000 empty leading bins — the
+  flat line the owner saw, and the decimation budget spent on zeros.
+  `_trace_rate_hz` drops them and shifts the time axis by the same count:
+  40 001 points instead of 300 001, spanning exactly 65–75 s.
+
+- **2026-09-08 — the visible-window control moved out of the docks.** It
+  decides what *every* dock draws, so living inside one of them made it
+  read as that dock's setting; it is now a toolbar row across the top of
+  the window, in a compact single-line layout. The Display panel keeps
+  the photon-index boxes for an exact range.
+
+- **2026-09-08 — ndX: a constant edit reached the table and not the
+  picture.** `DataSource` keeps two copies of every column — the
+  DataFrame, and a `tttrlib.DataStore` that **gates are evaluated in and
+  histograms fill out of**. `_store` was built once and invalidated
+  nowhere, so editing a correction factor moved every derived FRET column
+  and left the drawn histogram bit-identical (reproduced: mean E
+  0.468 → 0.603, histogram arrays equal). `compute_columns` now writes the
+  recomputed columns back into the store by position — the contract
+  `_invalidate_caches` already documented — and drops the store when the
+  positions cannot match; the `data` setter drops it outright, since the
+  store is positional and a new table cannot reuse it. **Not committed:**
+  another agent holds `data_source.py` with ~200 lines of in-flight
+  refactor, so the fix and its four tests sit in the working tree for them
+  to carry. Measured A/B on the ndX suite: HEAD's `data_source` 161
+  failures, with the fix 108 — 53 fixed, none broken.

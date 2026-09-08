@@ -54,11 +54,16 @@ def _update(recorder, paths, *, preview):
 
 
 def test_a_preview_searches_nothing():
+    """No *full* search — the whole point.
+
+    The window's own bursts still reach the table, but they come from the
+    diagnostics (``_show_preview_frames``), not from analysing every photon of
+    every file.
+    """
     rec = _Recorder()
     _update(rec, ["/data/a.pto", "/data/b.pto"], preview=True)
     assert rec.analysed == []                      # the point
     assert len(rec.diagnostics_for) == 1           # but the plots still load
-    assert "no burst search has run" in rec.summary_text
 
 
 def test_a_preview_still_shows_a_table_it_already_has():

@@ -1,5 +1,5 @@
 {
-  "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). The visible-window section is the humane form of the photon-index range: a length in seconds and a slider over the concatenated timeline, which writes those same two spin boxes. Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
+  "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). The visible-window control is NOT here: it governs every dock, so it lives in a toolbar row across the top of the window (BurstSelectionTool._setup_viewport_toolbar). It writes the two photon-index spin boxes below, which remain for typing an exact range. Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
   "sections": [
     {
       "type": "panel",
@@ -8,12 +8,6 @@
       "collapsed": false,
       "n_col": 2,
       "sections": [
-        {
-          "type": "custom",
-          "key": "burst_time_window",
-          "title": "Visible window",
-          "description": "Which slice of the measurement the diagnostic plots draw. Every file is concatenated into one timeline, so the slider walks through the whole selection and its label says which file it has reached."
-        },
         {
           "type": "toggle",
           "label": "All photons",

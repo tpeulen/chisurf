@@ -61,14 +61,21 @@ The plots draw a **window of the measurement**, not all of it. Ten seconds by
 default: a six-file selection is half an hour and millions of photons, and drawn
 whole it is an envelope with no individual burst visible in it.
 
+The control sits in its own toolbar row across the top of the window rather than
+in one of the docks, because it decides what *all* of them draw.
+
 **Show a window of** sets the length and the slider walks it through the
 selection. The caption under the slider says where you are and, because the
 files are laid end to end on one timeline, which file you are looking at —
 `1074.0–1084.0 s of 1800.0 s · 004_….sm (4/6)`. Unchecking it draws everything,
 which is what the plots did before.
 
-The window is the same setting as **First photon** / **Last photon** underneath;
-type there when you want an exact photon range.
+The window is the same setting as the **First photon** / **Last photon** boxes in
+the Display panel; type there when you want an exact photon range.
+
+The MCS trace is a **count rate**, in kHz, not counts per bin — so changing the
+bin width sharpens or smooths the trace without moving it up and down, and a
+burst can be compared against the background rate from step 5 directly.
 
 ## See also
 
