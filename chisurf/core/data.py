@@ -6,6 +6,8 @@ from chisurf import typing
 import numpy as np
 import yaml
 
+import IMP.bff as _bff
+
 import chisurf.core.base
 import chisurf.core.curve
 import chisurf.core.fio
@@ -146,7 +148,7 @@ class ExperimentalData(chisurf.core.base.Data):
         return d
 
 
-class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
+class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset):
     """One-dimensional experimental curve with error estimates.
 
     Combines :class:`chisurf.core.curve.Curve` with :class:`ExperimentalData`
@@ -229,6 +231,9 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             *args,
             **kwargs
     ):
+        # Before the chisurf half, because `super().__init__` writes the
+        # arrays and `set_data` syncs into a Dataset that must already exist.
+        _bff.Dataset.__init__(self)
         super().__init__(
             x=x,
             y=y,
@@ -263,6 +268,11 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         if load_filename_on_init and filename:
             if pathlib.Path(filename).is_file():
                 self.load(filename, **kwargs)
+
+        # A curve built with `x=`/`y=` never routes through `set_data`, so
+        # without this the Dataset half stays empty until something asks for
+        # the calculus and syncs it — and `get_size()` would read 0 meanwhile.
+        self._sync_dataset()
 
     def _resize_companions(self, size: int) -> None:
         """Keep ``ex``, ``ey`` and ``mask`` at the curve's number of samples.
@@ -460,6 +470,11 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
                 file_type=file_type,
                 **kwargs
             )
+        # `load` assigns x/y/ex/ey/mask directly rather than through
+        # `set_data`, so without this the Dataset half would still hold what
+        # the constructor put there. Third write path, and the one every
+        # file-backed curve takes.
+        self._sync_dataset()
 
     def save(
             self,
@@ -609,6 +624,52 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         self.ex = ex
         self.ey = ey
         self.mask = mask
+        self._sync_dataset()
+
+    def _sync_dataset(self) -> None:
+        """Push the arrays into the `IMP.bff.Dataset` half of this curve.
+
+        `DataCurve` keeps its own numpy arrays and inherits the probability
+        calculus -- variance, residuals, objective, uncertainty propagation --
+        from `Dataset` rather than growing a second copy of it beside every
+        curve class. Two stores mean they can disagree, so this runs wherever
+        the arrays change: `set_data`, which every write funnels through, and
+        the calculus entry points below, which cost microseconds and remove
+        the hazard for a caller who assigned `y` directly.
+
+        The arrays go through the ndarray setters, not the list ones: 316 us
+        against 3.9 ms for 117k points. A sync costing more than the
+        arithmetic gets skipped, and then the halves drift.
+
+        On the noise family: an `ey` that is present and not all zero is taken
+        as a stored variance of `ey**2`; otherwise the values are counts.
+
+        `DataCurve` defaults `ey` to **ones**, and that is deliberate rather
+        than an oversight -- zeros would divide into NaN, and ones mean "use
+        the differences as they are". The mapping preserves it exactly: a
+        stored variance of one gives `(y - model)`, which is what an
+        unweighted fit is. So a curve with no measured errors keeps scoring
+        the way it always has.
+
+        The one thing it cannot express is the difference between "no errors
+        were given" and "the errors are all 1.0", because both arrive here as
+        the same array and produce the same arithmetic. Nothing depends on
+        telling them apart today.
+        """
+        _bff.sync_dataset(self, self.y, self.ey, self.x, self.mask)
+
+    # -- the calculus, synced first so a direct `y = ...` cannot go stale ----
+    def objective(self, model):
+        self._sync_dataset()
+        return _bff.Dataset.objective(self, model)
+
+    def variance(self, model):
+        self._sync_dataset()
+        return _bff.Dataset.variance(self, model)
+
+    def residuals(self, model, kind):
+        self._sync_dataset()
+        return _bff.Dataset.residuals(self, model, kind)
 
     def set_weights(self, w: np.array):
         """Set y-weights (inverse of y-errors).
