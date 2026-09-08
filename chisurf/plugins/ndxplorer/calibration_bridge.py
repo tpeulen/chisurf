@@ -277,11 +277,18 @@ def calibration_from_container(source) -> dict:
                     continue
                 store = measurement.get_store(obj.uid)
                 names = [store.column(i).name() for i in range(store.n_columns())]
-                for factor in _FACTOR_NAMES:
-                    if factor not in names:
+                # By the declared schema, not by guessing the headers: the same
+                # file the writer emits from, so the two cannot drift. It also
+                # understands what older containers were written with.
+                from chisurf.plugins.burst.accurate_fret.calibration_columns import (
+                    factor_for_column,
+                )
+
+                for index, column in enumerate(names):
+                    factor = factor_for_column(str(column))
+                    if factor is None:
                         continue
-                    values = np.asarray(
-                        store.column(names.index(factor)).numpy(), dtype=float)
+                    values = np.asarray(store.column(index).numpy(), dtype=float)
                     finite = values[np.isfinite(values)]
                     if finite.size:
                         factors[factor] = float(finite[0])

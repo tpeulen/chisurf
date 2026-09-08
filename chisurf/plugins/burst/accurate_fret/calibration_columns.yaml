@@ -1,0 +1,44 @@
+# The FRET calibration, as the dictionaries already define it.
+#
+# These factors are not a chisurf invention and must not be named as though
+# they were: flrCIF has carried `_flr_fret_calibration_parameters` -- alpha,
+# alpha_sd, beta, gamma, delta, gG_gR_ratio, phi_acceptor -- and
+# `_flr_fret_forster_radius.forster_radius` all along. Writing a calibration
+# under ad-hoc headers made the one artifact that most needs to be readable by
+# something other than chisurf readable only by chisurf.
+#
+# `column` is the header written into the container; `term` anchors it in the
+# central vocabulary (the general rule: analysis I/O is declared in settings and
+# every declared feature carries a term; a missing term is created in mmfdb's
+# `mmfdb_flr_ext.dic`, never invented here). Enforced by
+# `test/core/test_analysis_feature_terms.py`.
+#
+# `factor` is the name the same quantity has on
+# `chisurf.core.fluorescence.fret.calibration.CalibrationParameters`, which is
+# what makes this file a two-way map: the writer takes the factor and emits the
+# column, the reader takes the column and restores the factor.
+columns:
+  - {column: alpha,          factor: alpha, term: _flr_fret_calibration_parameters.alpha,
+     units: dimensionless,
+     description: "Donor emission detected in the acceptor channel (leakage)."}
+  - {column: alpha_sd,       factor: alpha_sd, term: _flr_fret_calibration_parameters.alpha_sd,
+     units: dimensionless,
+     description: "Standard deviation of alpha, when the calibration bootstrapped one."}
+  - {column: beta,           factor: beta, term: _flr_fret_calibration_parameters.beta,
+     units: dimensionless,
+     description: "Excitation-flux / cross-section ratio of the two lasers."}
+  - {column: gamma,          factor: gamma, term: _flr_fret_calibration_parameters.gamma,
+     units: dimensionless,
+     description: "Detection-efficiency times quantum-yield ratio."}
+  - {column: delta,          factor: delta, term: _flr_fret_calibration_parameters.delta,
+     units: dimensionless,
+     description: "Direct excitation of the acceptor by the donor laser."}
+  - {column: gG_gR_ratio,    factor: gG_gR_ratio, term: _flr_fret_calibration_parameters.gG_gR_ratio,
+     units: dimensionless,
+     description: "Green-to-red detection-efficiency ratio, as ndX names it."}
+  - {column: phi_acceptor,   factor: phi_acceptor, term: _flr_fret_calibration_parameters.phi_acceptor,
+     units: dimensionless,
+     description: "Acceptor fluorescence quantum yield."}
+  - {column: forster_radius, factor: r0, term: _flr_fret_forster_radius.forster_radius,
+     units: angstroms,
+     description: "Forster radius of the dye pair; converts efficiency to distance."}

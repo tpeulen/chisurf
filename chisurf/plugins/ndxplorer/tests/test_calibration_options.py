@@ -347,3 +347,45 @@ def test_restoring_keeps_what_the_calibration_does_not_name(tmp_path):
     assert ndx.constants["forster_radius"] == pytest.approx(PLANTED["r0"])
     for kept in ("Bg", "Br", "By"):
         assert ndx.constants[kept] == pytest.approx({"Bg": 2.5, "Br": 3.5, "By": 4.5}[kept])
+
+
+def test_the_schema_is_flrcif_s_not_chisurf_s():
+    """The factors are standard, and are stored under the standard names.
+
+    ``_flr_fret_calibration_parameters`` has carried alpha, beta, gamma, delta,
+    gG_gR_ratio and phi_acceptor all along, and the Forster radius has its own
+    category. Writing a calibration under ad-hoc headers made the one artifact
+    that most needs to be readable by something other than chisurf readable only
+    by chisurf.
+    """
+    from chisurf.plugins.burst.accurate_fret.calibration_columns import (
+        calibration_columns,
+    )
+
+    declared = {spec["column"]: spec["term"] for spec in calibration_columns()}
+    assert declared["alpha"] == "_flr_fret_calibration_parameters.alpha"
+    assert declared["gamma"] == "_flr_fret_calibration_parameters.gamma"
+    assert declared["delta"] == "_flr_fret_calibration_parameters.delta"
+    assert declared["forster_radius"] == "_flr_fret_forster_radius.forster_radius"
+
+
+def test_a_container_written_before_the_schema_still_restores(tmp_path):
+    """A file on disk cannot be asked to follow a newer schema."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
+
+    # 'r0' is what earlier versions wrote for the Forster radius.
+    container = _container_with_calibration(tmp_path, r0=57.1, gamma=0.77)
+    read = calibration_from_container(container)
+    assert read["r0"] == pytest.approx(57.1)
+    assert read["gamma"] == pytest.approx(0.77)
+
+
+def test_the_writer_and_the_reader_share_one_declaration():
+    """Two directions, one file — that is what stops them drifting."""
+    from chisurf.plugins.burst.accurate_fret.calibration_columns import (
+        calibration_columns, column_for_factor, factor_for_column,
+    )
+
+    for spec in calibration_columns():
+        assert column_for_factor(spec["factor"]) == spec["column"]
+        assert factor_for_column(spec["column"]) == spec["factor"]

@@ -39265,3 +39265,22 @@ side of the line.
   Round trip on a real container: α 0.0731, β 1.234, γ 0.8642, δ 0.0519,
   R₀ 54.3 written and read back identically, landing as ndX's own names
   (`gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β).
+
+- **2026-09-08 — the stored calibration now uses flrCIF's schema, which
+  already existed** (owner: "the data scheme for calibration is likely
+  already in flrciff and/or mmfdb" — it was).
+  `_flr_fret_calibration_parameters` defines `alpha`, `alpha_sd`, `beta`,
+  `gamma`, `delta`, `gG_gR_ratio` and `phi_acceptor`, and
+  `_flr_fret_forster_radius.forster_radius` the rest; all eight resolve in
+  the bundled dictionaries. The Accurate FRET writer had invented its own
+  headers instead, which made the one artifact that most needs to be
+  readable by something other than chisurf readable only by chisurf — and
+  it broke the repo's own rule that every declared feature carries a term.
+
+  `accurate_fret/calibration_columns.yaml` is now that declaration, added
+  to `test/core/test_analysis_feature_terms.py` so a term that does not
+  resolve fails. Writer and reader both emit from it — one file, two
+  directions, which is what stops a stored artifact and its loader
+  drifting. `r0` (the old header for the Förster radius) still reads: a
+  file on disk cannot be asked to follow a newer schema. Both schemas
+  verified round-tripping through a real container.

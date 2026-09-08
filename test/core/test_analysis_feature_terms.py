@@ -20,6 +20,8 @@ yaml_files = [
         "chisurf/plugins/microscopy/img_pixel_mle/core/result_columns.yaml"),
     pathlib.Path(
         "chisurf/plugins/microscopy/region_mle/core/result_columns.yaml"),
+    pathlib.Path(
+        "chisurf/plugins/burst/accurate_fret/calibration_columns.yaml"),
 ]
 
 

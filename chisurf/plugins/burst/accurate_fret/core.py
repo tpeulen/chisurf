@@ -101,7 +101,7 @@ class CalibrationResult:
         # A table cell renders one flat string, so the symbols come from
         # Unicode rather than markup. ``r0`` is spelled ``R_0`` only to be
         # typeset; the row keys stay the plain factor names.
-        from chisurf.core.labels import to_unicode
+        from chisurf.core.support.labels import to_unicode
 
         symbol = {key: to_unicode(key) for key in ("alpha", "beta", "gamma", "delta")}
         symbol["r0"] = to_unicode("R_0")
@@ -461,9 +461,16 @@ def write_container(
         # The factors are constant over the populations, and that is the point:
         # they describe the calibration all of them share, so every row can be
         # read on its own without a header comment to go and find.
-        for key in ("alpha", "beta", "gamma", "delta", "r0"):
-            rows[key] = np.full(
-                len(populations), float(result.factors.get(key, float("nan")))
+        #
+        # Under the names flrCIF gives them, from the declaration beside this
+        # file -- these factors are not a chisurf invention and
+        # `_flr_fret_calibration_parameters` has carried them all along.
+        from .calibration_columns import calibration_columns
+
+        for spec in calibration_columns():
+            rows[spec["column"]] = np.full(
+                len(populations),
+                float(result.factors.get(spec["factor"], float("nan"))),
             )
         write_burst_artifact(
             source, store_from_arrays(rows),
@@ -476,8 +483,9 @@ def write_container(
             source_row_column="Population",
             target_row_column="label",
             units={
+                **{spec["column"]: spec["units"] for spec in calibration_columns()},
                 "distance": "angstroms", "sigma_distance": "angstroms",
-                "r0": "angstroms", "tau_f": "nanoseconds",
+                "tau_f": "nanoseconds",
                 "E": "dimensionless", "sigma_E": "dimensionless",
                 "S": "dimensionless", "deviation": "dimensionless",
                 "alpha": "dimensionless", "beta": "dimensionless",

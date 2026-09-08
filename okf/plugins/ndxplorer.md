@@ -115,6 +115,19 @@ ends: the assignment to `data_source`. `rpc_bridge._measurement_aware` subclasse
 the window to hook that property, so this works for every in-GUI ndX regardless
 of which path opened the file.
 
+**Under flrCIF's names, not chisurf's.** `_flr_fret_calibration_parameters`
+has carried `alpha`, `alpha_sd`, `beta`, `gamma`, `delta`, `gG_gR_ratio` and
+`phi_acceptor` all along, and the Förster radius has its own category
+(`_flr_fret_forster_radius.forster_radius`). The writer had invented its own
+headers, which made the one artifact that most needs to be readable by something
+other than chisurf readable only by chisurf.
+`accurate_fret/calibration_columns.yaml` declares the schema with those terms —
+covered by `test/core/test_analysis_feature_terms.py`, the guard that requires
+every declared feature to resolve in the dictionaries — and the writer *and* the
+reader both emit from it, which is what stops a stored artifact and the code
+that loads it drifting apart. Headers earlier versions wrote (`r0`) still
+restore: a file already on disk cannot be asked to follow a newer schema.
+
 Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.
