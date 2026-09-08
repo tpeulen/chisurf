@@ -341,12 +341,15 @@ def calibration_from_container(source) -> dict:
                 # file the writer emits from, so the two cannot drift. It also
                 # understands what older containers were written with.
                 from chisurf.plugins.burst.accurate_fret.calibration_columns import (
-                    factor_for_column,
+                    factor_for_column, is_derived,
                 )
 
                 for index, column in enumerate(names):
                     factor = factor_for_column(str(column))
-                    if factor is None:
+                    # A derived column is written for readers of the file and
+                    # never applied: restoring gG/gR on top of the gamma and the
+                    # yields it derives from is how the two stop agreeing.
+                    if factor is None or is_derived(str(column)):
                         continue
                     values = np.asarray(store.column(index).numpy(), dtype=float)
                     finite = values[np.isfinite(values)]

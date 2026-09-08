@@ -533,3 +533,96 @@ def test_re_running_the_background_step_repopulates(container):
     assert ndx.constants["Bg"] == pytest.approx(2.24)
     assert ndx.constants["Br"] == pytest.approx(3.17)
     assert ndx.constants["By"] == pytest.approx(1.05)
+
+
+# ── the quantum yields, and what is derived from them ────────────────────────
+
+FULL = {"alpha": 0.07, "beta": 1.2, "gamma": 0.86, "delta": 0.05,
+        "forster_radius": 54.3, "phi_acceptor": 0.32, "phi_donor": 0.45}
+
+
+def _write_full_calibration(container):
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.plugins.ndxplorer.calibration_bridge import CALIBRATION_ARTIFACT
+
+    rows = {"label": np.arange(3, dtype=float)}
+    for name, value in FULL.items():
+        rows[name] = np.full(3, float(value))
+    rows["gG_gR_ratio"] = np.full(
+        3, (FULL["phi_acceptor"] / FULL["phi_donor"]) / FULL["gamma"])
+    write_burst_artifact(
+        container, store_from_arrays(rows), name=CALIBRATION_ARTIFACT,
+        artifact_kind="parameter_table", operation_type="calibration",
+        row_grain="species", derived_from="bursts")
+
+
+def test_the_quantum_yields_are_restored(container):
+    """gamma without the yields it was measured against cannot be reapplied.
+
+    They are inputs the calibration was determined *with*, not outputs of it, so
+    ``result.factors`` never held them — which is why they were neither written
+    nor restored.
+    """
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container,
+    )
+
+    _write_full_calibration(container)
+    ndx = _window(PhiA=1.0, PhiD=1.0)
+    restore_calibration_from_container(ndx, container)
+    assert ndx.constants["PhiA"] == pytest.approx(FULL["phi_acceptor"])
+    assert ndx.constants["PhiD"] == pytest.approx(FULL["phi_donor"])
+
+
+def test_gg_gr_follows_from_what_was_restored(container):
+    """Recomputed, not copied — so it cannot disagree with its own inputs."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        restore_calibration_from_container,
+    )
+
+    _write_full_calibration(container)
+    ndx = _window()
+    restore_calibration_from_container(ndx, container)
+    expected = (FULL["phi_acceptor"] / FULL["phi_donor"]) / FULL["gamma"]
+    assert ndx.constants["gG/gR"] == pytest.approx(expected)
+
+
+def test_a_derived_column_is_never_applied_back(container):
+    """Reading it as a factor would let it drift from gamma and the yields."""
+    from chisurf.plugins.burst.accurate_fret.calibration_columns import is_derived
+    from chisurf.plugins.ndxplorer.calibration_bridge import calibration_from_container
+
+    _write_full_calibration(container)
+    assert is_derived("gG_gR_ratio")
+    assert "gG_gR_ratio" not in calibration_from_container(container)
+
+
+def test_the_donor_yield_has_a_dictionary_term():
+    """IHM-FLR defines only the acceptor's; the donor's was added centrally.
+
+    The rule is that a missing term is created in mmfdb's extension dictionary,
+    never invented in a plugin — so this asserts the term resolves, not that a
+    string matches.
+    """
+    mmfdb = pytest.importorskip("mmfdb.schema.pdbx_metadata")
+    dictionary = mmfdb.MmcifDictionary.load_bundled()
+    assert dictionary.get_item(
+        "_flr_fret_calibration_parameters.phi_donor") is not None
+
+
+def test_gamma_is_the_detection_ratio_and_the_yields_together():
+    """gG/gR is an instrument property; the yields belong to the dyes.
+
+    gamma = (gR*phi_A)/(gG*phi_D) is one number standing for both, which is why
+    a stored gamma alone cannot be moved to another instrument or another dye
+    pair. Four quantities, one relation: store three, derive the fourth. This
+    pins the relation the declaration's descriptions claim.
+    """
+    gg_gr, phi_a, phi_d = 1.35, 0.32, 0.45
+    gamma = (1.0 / gg_gr) * (phi_a / phi_d)
+    # The container stores gamma and the yields, and derives the detection ratio.
+    assert (phi_a / phi_d) / gamma == pytest.approx(gg_gr)
+    # ndX stores the detection ratio and the yields, and implies gamma; its
+    # efficiency equation uses (1/(gG/gR)) * (PhiA/PhiD), which is that gamma.
+    assert (1.0 / gg_gr) * (phi_a / phi_d) == pytest.approx(gamma)

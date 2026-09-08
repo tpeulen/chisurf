@@ -17,7 +17,8 @@ import pathlib
 
 import yaml
 
-__all__ = ["calibration_columns", "column_for_factor", "factor_for_column"]
+__all__ = ["calibration_columns", "column_for_factor", "factor_for_column",
+           "is_derived"]
 
 _DECLARATION = pathlib.Path(__file__).with_name("calibration_columns.yaml")
 
@@ -40,6 +41,19 @@ def column_for_factor(factor: str) -> str | None:
         if spec["factor"] == factor:
             return spec["column"]
     return None
+
+
+def is_derived(column: str) -> bool:
+    """Whether a column is a function of the others.
+
+    ``gG/gR`` is ``(phi_a/phi_d)/gamma``. It is written so the file can be read
+    without recomputing it, and never applied back — restoring a derived value
+    on top of the quantities it derives from is how the two stop agreeing.
+    """
+    for spec in calibration_columns():
+        if spec["column"] == column:
+            return bool(spec.get("derived", False))
+    return False
 
 
 def factor_for_column(column: str) -> str | None:

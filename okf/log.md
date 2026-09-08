@@ -39325,3 +39325,34 @@ side of the line.
   the window currently holds. A revisit with nothing changed is a no-op; a
   constant the user tuned in between is theirs and survives; a re-run
   reaches the window. All three pinned by tests.
+
+- **2026-09-08 — the quantum yields are restored too, and gG/gR is named
+  correctly** (owner: "what about gG/gR quantum yields, etc. all not
+  restoring", then "gG/gR is the detection efficiency ratio not the
+  quantum yield ratio", "QY, det eff go together to make a gamma").
+
+  They were never *written*: the writer filled from `result.factors`,
+  which holds only what the calibration determines — α, β, γ, δ, R₀ — while
+  the quantum yields are inputs it was determined *with*. So a stored γ
+  could not be separated back into the instrument's half and the sample's,
+  and could not be reapplied anywhere. The writer now fills from the
+  calibration *object*, which carries `phi_a`/`phi_d`.
+
+  The physics, stated properly in the declaration: gG/gR is the ratio of
+  the two channels' **detection efficiencies** — an instrument property,
+  nothing to do with the dyes — and the quantum yields belong to the dyes.
+  γ = (gR·φ_A)/(gG·φ_D) is one number standing for both. Four quantities,
+  one relation: store three and the fourth follows. The container stores γ
+  and both yields and derives gG/gR; ndX keeps the opposite three (gG/gR
+  and both yields, γ implied by its own equations). A derived column is
+  written for readers and never applied back, or the two stop agreeing.
+
+  **Process failure worth recording:** the `phi_donor` dictionary term was
+  committed to mmfdb and the commit swept in ~470 lines of another agent's
+  uncommitted work in the same file. Caught by reading the diffstat
+  afterwards — 482 insertions for a 15-line addition — and undone with
+  `git update-ref` back to the parent, working tree untouched. The lesson
+  is the one already in CLAUDE.md and not followed here: check the
+  diffstat *before* committing a file in a shared tree, not after. The
+  term now sits uncommitted; see
+  [known-issues](references/known-issues.md).

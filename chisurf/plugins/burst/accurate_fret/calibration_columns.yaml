@@ -13,6 +13,10 @@
 # `mmfdb_flr_ext.dic`, never invented here). Enforced by
 # `test/core/test_analysis_feature_terms.py`.
 #
+# `derived: true` marks a column that is written for the file's readers but
+# never set back onto the calibration: gamma and the two quantum yields are the
+# independent quantities, and gG/gR is a function of them.
+#
 # `factor` is the name the same quantity has on
 # `chisurf.core.fluorescence.fret.calibration.CalibrationParameters`, which is
 # what makes this file a two-way map: the writer takes the factor and emits the
@@ -29,16 +33,38 @@ columns:
      description: "Excitation-flux / cross-section ratio of the two lasers."}
   - {column: gamma,          factor: gamma, term: _flr_fret_calibration_parameters.gamma,
      units: dimensionless,
-     description: "Detection-efficiency times quantum-yield ratio."}
+     description: "gamma = (gR*phi_acceptor)/(gG*phi_donor). It is one number standing
+       for two independent things -- the detection efficiencies of the two channels and
+       the quantum yields of the two dyes -- which is why it is stored beside both rather
+       than on its own: the same gamma means different corrections on a different
+       instrument or with a different dye pair."}
   - {column: delta,          factor: delta, term: _flr_fret_calibration_parameters.delta,
      units: dimensionless,
      description: "Direct excitation of the acceptor by the donor laser."}
-  - {column: gG_gR_ratio,    factor: gG_gR_ratio, term: _flr_fret_calibration_parameters.gG_gR_ratio,
+  - {column: gG_gR_ratio,    factor: gG_gR_ratio, derived: true,
+     term: _flr_fret_calibration_parameters.gG_gR_ratio,
      units: dimensionless,
-     description: "Green-to-red detection-efficiency ratio, as ndX names it."}
-  - {column: phi_acceptor,   factor: phi_acceptor, term: _flr_fret_calibration_parameters.phi_acceptor,
+     description: "Ratio of the two channels' DETECTION EFFICIENCIES, gG/gR -- a property
+       of the instrument's optics and detectors, and nothing to do with the dyes.
+       It is not a quantum-yield ratio: the two are separate physical quantities that
+       combine into gamma = (gR*phi_acceptor)/(gG*phi_donor), which is why gamma alone
+       cannot be moved to another instrument. Four quantities, one relation among them:
+       store three and the fourth follows. This file stores gamma and the two yields
+       because those are what the calibration determines and is determined with, so
+       gG/gR = (phi_acceptor/phi_donor)/gamma is the derived one -- written for whoever
+       reads the file, never applied back. (ndX keeps the opposite three: gG/gR and both
+       yields, with gamma implied.)"}
+  - {column: phi_acceptor,   factor: phi_a, term: _flr_fret_calibration_parameters.phi_acceptor,
      units: dimensionless,
      description: "Acceptor fluorescence quantum yield."}
+  - {column: phi_donor,      factor: phi_d, term: _flr_fret_calibration_parameters.phi_donor,
+     units: dimensionless,
+     description: "Donor fluorescence quantum yield -- a property of the DYE in its
+       environment, not of the instrument. IHM-FLR defines only the acceptor's, so this
+       term was added to mmfdb_flr_ext.dic. Both are needed because gamma is
+       (gR*phi_acceptor)/(gG*phi_donor): the detection efficiencies and the quantum
+       yields are what combine to make it, and a stored gamma whose yields are unknown
+       cannot be separated back into the instrument's half and the sample's."}
   - {column: forster_radius, factor: r0, term: _flr_fret_forster_radius.forster_radius,
      units: angstroms,
      description: "Forster radius of the dye pair; converts efficiency to distance."}

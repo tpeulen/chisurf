@@ -1,3 +1,17 @@
+## `_flr_fret_calibration_parameters.phi_donor` is uncommitted
+
+**2026-09-08.** IHM-FLR defines `phi_acceptor` and no donor counterpart,
+although γ = (gR·φ_A)/(gG·φ_D) needs both. The term was added to
+`mmfdb_flr_ext.dic` (the central spot, per the rule) and **cannot be committed**:
+that file carries another agent's in-flight rewrite — 1791 insertions, 981
+deletions — so committing it would take their work.
+
+**Consequence:** `accurate_fret/calibration_columns.yaml` references a term that
+resolves only in *this* working tree. `test/core/test_analysis_feature_terms.py`
+passes here and would fail on a checkout without the addition. Whoever lands
+that dictionary rewrite should check `phi_donor` survives it; if their version
+defines an equivalent, the declaration should point at theirs instead.
+
 ## The ALEX period spectrum runs at 2.6 samples per period
 
 **Measured 2026-09-08.** `detect_alex_period` bins the signed donor−acceptor

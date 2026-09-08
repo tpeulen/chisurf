@@ -467,11 +467,30 @@ def write_container(
         # `_flr_fret_calibration_parameters` has carried them all along.
         from .calibration_columns import calibration_columns
 
+        # From the calibration *object*, falling back to the factor dict. The
+        # dict holds only what the calibration determined -- alpha, beta, gamma,
+        # delta, r0 -- while the quantum yields are inputs it was determined
+        # *with*, and gG/gR is a function of all three. Writing only the
+        # determined half stored a calibration nobody could reproduce: gamma
+        # without the yields it was measured against is not a number that can be
+        # applied to another instrument.
+        source_calibration = getattr(result, "calibration", None)
         for spec in calibration_columns():
-            rows[spec["column"]] = np.full(
-                len(populations),
-                float(result.factors.get(spec["factor"], float("nan"))),
-            )
+            factor = spec["factor"]
+            value = getattr(source_calibration, factor, None)
+            if value is None:
+                value = result.factors.get(factor, float("nan"))
+            rows[spec["column"]] = np.full(len(populations), float(value))
+
+        # The derived one, written for whoever reads the file rather than
+        # recomputed by them.
+        phi_a = float(rows["phi_acceptor"][0])
+        phi_d = float(rows["phi_donor"][0])
+        gamma = float(rows["gamma"][0])
+        rows["gG_gR_ratio"] = np.full(
+            len(populations),
+            (phi_a / phi_d) / gamma if phi_d and gamma else float("nan"),
+        )
         write_burst_artifact(
             source, store_from_arrays(rows),
             name="accurate fret calibration",
