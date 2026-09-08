@@ -333,8 +333,13 @@ def test_a_measurement_without_one_changes_nothing(tmp_path):
     assert ndx.constants == before
 
 
-def test_restoring_keeps_what_the_calibration_does_not_name(tmp_path):
-    """Backgrounds and quantum yields are the window's, not the artifact's."""
+def test_restoring_keeps_what_the_measurement_does_not_carry(tmp_path):
+    """Quantum yields are the window's; backgrounds are the measurement's.
+
+    The container stores per-detector background rates, and ndX's Bg/Br/By are
+    exactly those rates, so those *are* restored. What has no counterpart in the
+    measurement — PhiA, PhiD — is left alone.
+    """
     from chisurf.plugins.ndxplorer.calibration_bridge import (
         restore_calibration_from_container,
     )
@@ -345,8 +350,8 @@ def test_restoring_keeps_what_the_calibration_does_not_name(tmp_path):
     assert ndx.constants["alpha"] == pytest.approx(PLANTED["alpha"])
     assert ndx.constants["beta"] == pytest.approx(PLANTED["delta"])   # ndX's name for delta
     assert ndx.constants["forster_radius"] == pytest.approx(PLANTED["r0"])
-    for kept in ("Bg", "Br", "By"):
-        assert ndx.constants[kept] == pytest.approx({"Bg": 2.5, "Br": 3.5, "By": 4.5}[kept])
+    for kept, value in (("PhiA", 0.8), ("PhiD", 0.4)):
+        assert ndx.constants[kept] == pytest.approx(value), kept
 
 
 def test_the_schema_is_flrcif_s_not_chisurf_s():
@@ -389,3 +394,64 @@ def test_the_writer_and_the_reader_share_one_declaration():
     for spec in calibration_columns():
         assert column_for_factor(spec["factor"]) == spec["column"]
         assert factor_for_column(spec["column"]) == spec["factor"]
+
+
+# ── the background is a stored parameter too ─────────────────────────────────
+
+def test_the_stored_background_rates_are_read(tmp_path):
+    """ndX's Bg/Br/By are rates, so a stored rate goes in as it stands.
+
+    ``Fg(PIE) = Sg(PIE) - Bg`` and ``Sg(PIE)`` is ``S prompt green (kHz)``, so
+    the constant is in kHz — the same unit the background step writes. No
+    duration, no conversion.
+    """
+    from chisurf.plugins.ndxplorer.calibration_bridge import background_from_container
+
+    source = pathlib.Path.home() / (
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+    if not source.exists():
+        pytest.skip("the ALEX calibration container is not on this machine")
+    rates = background_from_container(source)
+    assert set(rates) <= {"Bg", "Br", "By"}
+    assert rates, "this container carries a background artifact"
+    for value in rates.values():
+        assert np.isfinite(value) and value >= 0.0
+
+
+def test_a_measurement_with_only_a_background_still_restores(tmp_path):
+    """The ordinary state: background measured, factors not yet determined.
+
+    Requiring a calibration before anything is restored would throw away the
+    part the equations use most directly.
+    """
+    import shutil
+
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+    from chisurf.plugins.ndxplorer.calibration_bridge import (
+        calibration_from_container, restore_calibration_from_container,
+    )
+
+    source = pathlib.Path.home() / (
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+    if not source.exists():
+        pytest.skip("the ALEX calibration container is not on this machine")
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    write_burst_artifact(
+        target,
+        store_from_arrays({
+            "Detector": np.array(["green", "red", "yellow"], dtype=object),
+            "Rate": np.array([1.25, 2.5, 3.75]),
+        }),
+        name="background", artifact_kind="background_data",
+        operation_type="background_correction", row_grain="channel",
+        derived_from="bursts")
+
+    assert calibration_from_container(target) == {}, "no factors in this fixture"
+    ndx = _window(Bg=99.0, Br=99.0, By=99.0)
+    applied = restore_calibration_from_container(ndx, target)
+    assert applied, "a background alone must still restore"
+    assert ndx.constants["Bg"] == pytest.approx(1.25)
+    assert ndx.constants["Br"] == pytest.approx(2.5)
+    assert ndx.constants["By"] == pytest.approx(3.75)

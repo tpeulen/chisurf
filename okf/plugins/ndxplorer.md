@@ -128,6 +128,26 @@ reader both emit from it, which is what stops a stored artifact and the code
 that loads it drifting apart. Headers earlier versions wrote (`r0`) still
 restore: a file already on disk cannot be asked to follow a newer schema.
 
+**The background comes back with it.** A measurement usually has its background
+measured long before its factors are determined, and ndX's `Bg` / `Br` / `By`
+are *rates*: `Fg(PIE) = Sg(PIE) − Bg` where `Sg(PIE)` is
+`S prompt green (kHz)`. So the container's per-detector rates go in as they
+stand — no duration, no conversion — and a measurement carrying only a
+background still restores something, which is the part the equations use most
+directly. They travel on the calibration object, because
+`calibration_to_ndx_constants` already maps `bg_dd`/`bg_da`/`bg_aa` onto
+`Bg`/`Br`/`By`, so one push carries both.
+
+**Two traps, both load-bearing.** Writing constants directly is not enough: the
+values must reach the parameter *table*, since ndX's recompute throttle resets
+`constants` from that table on the next parameter event — a value written the
+short way is correct only until something happens. And the table is built in
+`_deferred_init`, which runs on first show, while a measurement can be handed
+over before that; the restore therefore waits for the table rather than applying
+into a window that will overwrite it. Both readers also take the **last**
+matching artifact: a container keeps every estimate it is given, so re-running
+the background step leaves the older one in front.
+
 Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.

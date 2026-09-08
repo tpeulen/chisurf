@@ -34,6 +34,7 @@ __all__ = [
     "measured_background",
     "fitted_background",
     "calibration_from_container",
+    "background_from_container",
     "restore_calibration_from_container",
     "CALIBRATION_ARTIFACT",
     "refresh_column_selectors",
@@ -231,6 +232,62 @@ def fitted_background(i_dd, i_da, i_aa, split, *, min_population: int = 20) -> d
 _BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
 
 
+#: Detector in a measurement's background artifact -> the ndX constant that
+#: holds its rate. ndX's Bg/Br/By are subtracted from the **kHz** stream columns
+#: (``Fg(PIE) = Sg(PIE) - Bg`` where ``Sg(PIE)`` is ``S prompt green (kHz)``),
+#: so a stored rate goes in as it stands -- no duration, no unit factor.
+_BACKGROUND_CONSTANTS = {"green": "Bg", "red": "Br", "yellow": "By"}
+
+
+def background_from_container(source) -> dict:
+    """The per-detector background **rates** stored in a measurement.
+
+    Returns
+    -------
+    dict
+        ``{"Bg": kHz, "Br": kHz, "By": kHz}`` for the detectors the measurement
+        has an estimate for; empty when it carries none. A detector whose rate
+        is not finite is left out rather than written as zero -- "not measured"
+        and "measured as nothing" are different claims, and only one of them is
+        safe to subtract.
+    """
+    from chisurf.core.fio.pto import Measurement
+
+    path = pathlib.Path(str(source))
+    while path.suffix.lower() != ".pto" and path.parent != path:
+        path = path.parent
+    if path.suffix.lower() != ".pto" or not path.is_file():
+        return {}
+
+    rates: dict[str, float] = {}
+    try:
+        with Measurement.open(path, writable=False) as measurement:
+            # The LAST matching artifact, not the first: a container keeps the
+            # estimates it has been given, so re-running the background step
+            # leaves an older one in front of the newer. Reading the first meant
+            # a corrected estimate was ignored in favour of the one it replaced.
+            for obj in reversed(list(measurement.artifacts())):
+                if getattr(obj, "name", "") != "background":
+                    continue
+                store = measurement.get_store(obj.uid)
+                names = [store.column(i).name() for i in range(store.n_columns())]
+                if "Detector" not in names or "Rate" not in names:
+                    continue
+                detectors = store.column(names.index("Detector"))
+                values = np.asarray(
+                    store.column(names.index("Rate")).numpy(), dtype=float)
+                for row in range(store.n_rows()):
+                    detector = str(detectors.string_at(row)).lower()
+                    constant = _BACKGROUND_CONSTANTS.get(detector)
+                    if constant and np.isfinite(values[row]):
+                        rates[constant] = float(values[row])
+                break
+    except Exception:
+        logging.debug("could not read a background from %s", path, exc_info=True)
+        return {}
+    return rates
+
+
 #: Artifact the Accurate FRET step writes into a measurement. Its rows are the
 #: populations; the factor columns are constant across them on purpose, so any
 #: row carries the whole calibration.
@@ -272,7 +329,9 @@ def calibration_from_container(source) -> dict:
     factors: dict[str, float] = {}
     try:
         with Measurement.open(path, writable=False) as measurement:
-            for obj in measurement.artifacts():
+            # The most recent calibration, for the reason given in
+            # ``background_from_container``: a re-run adds, it does not replace.
+            for obj in reversed(list(measurement.artifacts())):
                 if getattr(obj, "name", "") != CALIBRATION_ARTIFACT:
                     continue
                 store = measurement.get_store(obj.uid)
@@ -321,20 +380,41 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         source = provenance.get("container_path") or ""
     if not source:
         return {}
+
+    # Everything the measurement carries about how to correct it -- the factors
+    # *and* the backgrounds. A measurement that has had its background measured
+    # but not its factors determined (the ordinary state, since the background
+    # step comes first) still has something to restore, and it is the part the
+    # equations use most directly.
     factors = calibration_from_container(source)
-    if not factors:
+    rates = background_from_container(source)
+    if not factors and not rates:
         return {}
 
-    # Start from what the window holds, so backgrounds, quantum yields and
-    # anything else it carries survive; only the stored factors are replaced.
-    calib = calibration_from_ndx_constants(dict(getattr(ndx, "constants", {}) or {}))
+    constants = dict(getattr(ndx, "constants", {}) or {})
+    # Start from what the window holds, so quantum yields and anything else it
+    # carries survive; only what the measurement stores is replaced.
+    calib = calibration_from_ndx_constants(constants)
     for name, value in factors.items():
         setattr(calib, name, float(value))
+    # The backgrounds travel on the calibration too -- ``calibration_to_ndx_constants``
+    # already maps bg_dd/bg_da/bg_aa onto Bg/Br/By -- so one push carries both.
+    # That matters more than it looks: writing constants directly leaves the
+    # *parameter table* holding the old values, and ndX's recompute throttle
+    # resets ``constants`` from that table on the next parameter event. A value
+    # written the short way is correct only until something happens.
+    for attribute, constant in (("bg_dd", "Bg"), ("bg_da", "Br"), ("bg_aa", "By")):
+        if constant in rates:
+            setattr(calib, attribute, float(rates[constant]))
     applied = push_calibration_to_ndx(ndx, calib, recompute=True)
+
     logging.info(
-        "restored the calibration stored with %s: %s",
+        "restored from %s: %s",
         pathlib.Path(str(source)).name,
-        ", ".join(f"{k}={v:.4g}" for k, v in factors.items()),
+        ", ".join(
+            [f"{k}={v:.4g}" for k, v in factors.items()]
+            + [f"{k}={v:.4g} kHz" for k, v in rates.items()]
+        ) or "nothing",
     )
     return applied
 

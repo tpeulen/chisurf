@@ -116,14 +116,27 @@ def _measurement_aware(base):
             base.data_source.fset(self, value)
             self._restore_stored_calibration()
 
-        def _restore_stored_calibration(self) -> None:
-            """Adopt the calibration the freshly loaded measurement carries.
+        def _restore_stored_calibration(self, _attempt: int = 0) -> None:
+            """Adopt what the freshly loaded measurement carries.
 
-            Never fatal: a window that cannot read a calibration is a window
-            with the constants it already had, which is exactly where it was
-            before this existed.
+            Deferred while the window has no ``parameter_control``. That is not
+            an optimisation: the values have to reach the parameter *table*, and
+            ndX's recompute throttle resets ``constants`` from that table on the
+            next parameter event -- so a restore applied before the table exists
+            is correct only until the event loop turns. The table is built in
+            ``_deferred_init``, which runs on first show, and a measurement can
+            easily be handed over before that.
+
+            Never fatal: a window that cannot restore is a window with the
+            constants it already had, which is where it was before this existed.
             """
+            from qtpy import QtCore
+
             try:
+                if getattr(self, "parameter_control", None) is None and _attempt < 50:
+                    QtCore.QTimer.singleShot(
+                        20, lambda: self._restore_stored_calibration(_attempt + 1))
+                    return
                 from chisurf.plugins.ndxplorer.calibration_bridge import (
                     restore_calibration_from_container,
                 )

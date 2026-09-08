@@ -39284,3 +39284,29 @@ side of the line.
   drifting. `r0` (the old header for the Förster radius) still reads: a
   file on disk cannot be asked to follow a newer schema. Both schemas
   verified round-tripping through a real container.
+
+- **2026-09-08 — opening a measurement populates its background too, not
+  only its calibration** (owner: "ndx does not populate the parameter from
+  .pto - if embedded should populate"). The container in hand had no
+  calibration yet — the ordinary state, since the background step comes
+  first — so restoring only factors restored nothing. ndX's `Bg`/`Br`/`By`
+  are *rates* (`Fg(PIE) = Sg(PIE) - Bg`, and `Sg(PIE)` is
+  `S prompt green (kHz)`), which is exactly what the background step
+  stores, so the rates go in as they stand. They ride on the calibration
+  object, since `calibration_to_ndx_constants` already maps
+  `bg_dd`/`bg_da`/`bg_aa` onto them.
+
+  Two traps found on the way. Writing `constants` directly leaves the
+  parameter **table** holding the old values, and the recompute throttle
+  resets `constants` from that table on the next parameter event — so the
+  push must go through `apply_values`, and the restore now *waits* for the
+  table, which `_deferred_init` builds on first show, rather than applying
+  into a window that will overwrite it. And both readers now take the
+  **last** matching artifact: a container keeps every estimate it is
+  given, so a re-run leaves the older one in front — reading the first
+  meant a corrected background was ignored in favour of the one it
+  replaced (found by a test, on the very container whose green rate is
+  0.00 kHz from the tail-fit defect).
+
+  Verified end to end on the real container: `Bg/Br/By` 1.2/0.6/0.6 →
+  0.0/0.7897/0.8636 in the constants *and* in the parameter table.
