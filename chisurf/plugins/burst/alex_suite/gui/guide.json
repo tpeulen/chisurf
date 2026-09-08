@@ -1,0 +1,106 @@
+{
+  "_comment": "Guided tour for the ALEX Suite. Written for someone whose habits come from the old ALEX-Suite: each step says which of that program's windows it replaces, and what is now measured rather than typed. The steps point at the navigation rows and WAIT for the user to press them.",
+  "steps": [
+    {
+      "title": "Your old workflow, same order",
+      "text": "The list on the left is ALEX-Suite's workflow: files, microscope settings, burst search, then the analyses. Six numbered steps, then the tools that were under <i>Advanced Options</i>.<br/><br/>Underneath, each one is a ChiSurf tool, so what comes out is a normal ChiSurf burst analysis — <b>one <code>.pto</code> file per measurement</b> with the bursts inside it. Not an ALEX-only format, and not a folder of cache CSVs.<br/><br/>About three minutes. You press the rows; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "1 — the files (this was <i>Select Directory</i>)",
+      "text": "Drop files or a whole folder. <b><code>.sm</code> files work directly</b> — no conversion, no <code>sm2burst</code>, no cache files beside them.<br/><br/>Everything later reads what you select here and opens nothing else, so any number can be traced back to the file it came from.",
+      "target": {
+        "panel": "1. Files"
+      },
+      "await": {
+        "hint": "Select <b>1. Files</b> in the list on the left."
+      }
+    },
+    {
+      "title": "2 — the microscope settings, measured for you",
+      "text": "This replaces the whole <i>Burst Search Settings → Microscope</i> dialog: the ALEX period, the phase shift, the four laser on/off edges and the channel-flip box. <b>All seven are in the data</b>, and this step measures them.<br/><br/>Say which routing channels are the donor and the acceptor detector, and press the button. Skip the step entirely if your data is already PIE / ns-ALEX.",
+      "target": {
+        "panel": "2. Alternation"
+      },
+      "await": {
+        "hint": "Select <b>2. Alternation (µs-ALEX)</b>."
+      }
+    },
+    {
+      "title": "Look at the plot before you go on",
+      "text": "Two plateaus with a gap between them, and the <b>donor detector brighter in one, the acceptor in the other</b>. That crossover is the whole check: it is what the old channel-flip checkbox was guessing at.<br/><br/>If the two curves track each other instead, the period is wrong or the channels are swapped. The contrast figure under the button says the same thing — below about 50, do not trust it.<br/><br/>Afterwards your measurement is ordinary PIE data, and every remaining step is ChiSurf's normal burst pipeline.",
+      "target": {
+        "panel": "2. Alternation"
+      }
+    },
+    {
+      "title": "3 — the burst search (APBS and DCBS)",
+      "text": "The old <i>APBS</i> is a search over all photons; <i>DCBS</i> additionally demands a coincident rate rise in <b>both</b> excitation streams, which throws out singly-labelled molecules before they reach the histogram.<br/><br/>One habit worth changing: <b>search permissively and cut on burst size afterwards</b>. A minimum-photon cut applied inside the search interacts with the threshold and biases which molecules you ever see — dim ones go first, and dim usually correlates with something you care about.",
+      "target": {
+        "panel": "3. Burst search"
+      },
+      "await": {
+        "hint": "Select <b>3. Burst search</b>."
+      }
+    },
+    {
+      "title": "4 — the background, measured",
+      "text": "These are the <code>bkg_DD</code> / <code>bkg_DA</code> / <code>bkg_AA</code> fields you used to fill in by hand. They come from the inter-photon-time distribution of your own measurement.<br/><br/>It is not a detail. Every corrected quantity is a count <i>minus a background</i>, and getting it wrong moves <i>E</i> for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population.",
+      "target": {
+        "panel": "4. Background"
+      },
+      "await": {
+        "hint": "Select <b>4. Background</b>."
+      }
+    },
+    {
+      "title": "5 — α, δ, γ and β, from your own bursts",
+      "text": "You used to type the <i>position of the donor-only peak</i> and the <i>position of the acceptor-only peak</i> and read γ and β off a plot. This step classifies the bursts itself, takes α from the donor-only ones and δ from the acceptor-only ones, and gets γ and β from the <code>1/S = Ω + Σ·E</code> fit across the FRET sub-populations — then repeats, because the classification depends on the factors it is finding.<br/><br/>The check that catches most errors is the one you already use: <b>donor-only must land at E ≈ 0</b>.",
+      "target": {
+        "panel": "5. Accurate FRET"
+      },
+      "await": {
+        "hint": "Select <b>5. Accurate FRET</b>."
+      }
+    },
+    {
+      "title": "6 — E vs S <i>and</i> the Dataset Viewer, in one",
+      "text": "ndX is both of the old windows: the E–S map with its projections, and \"plot any burst property against any other\". Drawing a region here selects those bursts everywhere, so a population you gate is a population the other tools see.<br/><br/>Fitting the map with Gaussians, tagging populations and giving each one its own γ — the things the old <i>Populations</i> panel did — are here too.",
+      "target": {
+        "panel": "6. E–S histogram"
+      },
+      "await": {
+        "hint": "Select <b>6. E–S histogram</b>."
+      }
+    },
+    {
+      "title": "Below the line: the Advanced Options",
+      "text": "<b>Burst properties</b> is the old burst-size / duration / per-channel histograms. <b>BVA</b> is BVA. <b>Trace viewer</b> is the trace viewer. <b>Titration</b> is the titration.<br/><br/>They are below the separator because they are not part of the pipeline: they read what the six steps produced, in any order, as often as you like.",
+      "target": {
+        "panel": "Burst properties"
+      }
+    },
+    {
+      "title": "Titration — fit the series, not the histograms",
+      "text": "One burst file per ligand concentration. All of them are fitted <b>together</b>, with the population positions and widths shared across the series and only the amounts free — the old \"fixed x0 and sigma\" preset, made the default because it is almost always what you want.<br/><br/>Fitting each histogram on its own lets a noisy condition move a peak further than the amplitude change you are measuring, and the isotherm then reports that noise as affinity.",
+      "target": {
+        "panel": "Titration"
+      },
+      "await": {
+        "hint": "Select <b>Titration</b>."
+      }
+    },
+    {
+      "title": "Your old CSVs, if you want them",
+      "text": "The last row writes the five files the old export wrote — <code>_meta</code>, <code>_hist_E</code>, <code>_hist_S</code>, <code>_hist_2D</code>, <code>_original_bursts</code> — with the same section headers, so scripts and spreadsheets built on that layout keep working.<br/><br/>It is a convenience, not the storage. The analysis itself lives in the <code>.pto</code> container, which is also why you can carry on in the <b>Burst Analysis</b> window (2CDE, per-burst lifetimes, H2MM) and come back here with nothing converted.",
+      "target": {
+        "panel": "Export"
+      }
+    },
+    {
+      "title": "Three checks, then believe it",
+      "text": "1. <b>Two plateaus in step 2</b>, donor and acceptor swapping between them.<br/>2. <b>Vary the burst threshold by a factor of two.</b> A real population survives; an artefact does not.<br/>3. <b>Donor-only at S ≈ 1, E ≈ 0</b> after step 5. A swapped channel assignment produces a complete, plausible analysis with <i>E</i> reflected about ½, and no fit statistic anywhere reports it.<br/><br/>The <b>?</b> button beside Guide has the full map of where each old window went.",
+      "target": {}
+    }
+  ]
+}

@@ -164,6 +164,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [2CDE](burst_2cde.md) *(hidden)* | FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012). |
+| [ALEX Suite](alex_suite.md) | The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow. |
 | [BVA](burst_bva.md) *(hidden)* | Burst Variance Analysis for single-molecule FRET experiments. |
 | [Burst Background Estimation](burst_background.md) *(hidden)* | Estimate detector background rates from TTTR burst data. |
 | [Burst Browser](burst_browser.md) *(hidden)* | Inspect burstwise analysis tables and plots. |

@@ -114,7 +114,31 @@ def embed_mainwindow(mw: QtWidgets.QWidget) -> QtWidgets.QWidget:
         # second stretch would fight it and re-centre the row.
         if not has_spacer:
             button_row.addStretch(1)
-        layout.addLayout(button_row)
+        # A rich tool (ndX has about twenty toolbar actions) does not fit the
+        # width a panel gives it, and Qt's answer is to elide every label to
+        # "M...t" / "P...w" -- a row of buttons nobody can read, which is worse
+        # than a row they have to scroll. Put the row in a horizontal scroller
+        # instead, sized to what it actually needs.
+        row_widget = QtWidgets.QWidget()
+        row_widget.setLayout(button_row)
+        scroller = QtWidgets.QScrollArea()
+        scroller.setWidgetResizable(True)
+        scroller.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroller.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        scroller.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        scroller.setWidget(row_widget)
+        scroller.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        # The hint has to be taken after the row is installed on a widget, or it
+        # is the empty layout's -- and the horizontal scroll bar lives *inside*
+        # the fixed height, so without its share the buttons are cropped top and
+        # bottom by exactly the bar's thickness.
+        scroller.setFixedHeight(
+            row_widget.sizeHint().height()
+            + scroller.horizontalScrollBar().sizeHint().height()
+            + 6
+        )
+        layout.addWidget(scroller)
         # Only now is the row installed on a widget and the adopted widgets
         # actually reparented -- and the reparent is what carries Qt's hidden
         # state over from the toolbar. Showing them before this point sets the
@@ -551,6 +575,8 @@ class NavigationPanelTool(ChisurfDockTool):
         self._settings_key = settings_key
         self._status_logger_name = status_logger
         self._status_log_handler: _StatusLogHandler | None = None
+        #: The status logger's own level before the handler was installed.
+        self._status_logger_level = logging.NOTSET
         #: Walking the whole pipeline: every completion takes the next step off
         #: the queue below.
         self._fast_forward = False
@@ -789,17 +815,32 @@ class NavigationPanelTool(ChisurfDockTool):
         self.status_logged.connect(self._on_log_status)
 
     def _install_status_log_handler(self, logger_name: str) -> None:
-        """Route ``logger_name`` (INFO+) into the shared status bar."""
+        """Route ``logger_name`` (INFO+) into the shared status bar.
+
+        The *logger's* level has to admit INFO as well, not only the handler's.
+        ChiSurf runs at WARNING, so an embedded tool's ``logger.info("Done - 7
+        bursts")`` was discarded before any handler saw it and the whole
+        "report status through normal logging" contract was quietly dead: the
+        bar kept whatever caption the last progress task left on it. The
+        previous level is restored on close, so nothing else's verbosity is
+        changed for the life of the process.
+        """
         handler = _StatusLogHandler(self)
         handler.setLevel(logging.INFO)
-        logging.getLogger(logger_name).addHandler(handler)
+        logger = logging.getLogger(logger_name)
+        self._status_logger_level = logger.level
+        if not logger.isEnabledFor(logging.INFO):
+            logger.setLevel(logging.INFO)
+        logger.addHandler(handler)
         self._status_log_handler = handler
 
     def _remove_status_log_handler(self) -> None:
-        """Detach the status-bar log handler (on close)."""
+        """Detach the status-bar log handler and restore the logger's level."""
         handler = self._status_log_handler
         if handler is not None and self._status_logger_name:
-            logging.getLogger(self._status_logger_name).removeHandler(handler)
+            logger = logging.getLogger(self._status_logger_name)
+            logger.removeHandler(handler)
+            logger.setLevel(getattr(self, "_status_logger_level", logging.NOTSET))
         self._status_log_handler = None
 
     def _on_log_status(self, msg: str) -> None:

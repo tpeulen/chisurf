@@ -35,6 +35,7 @@ from chisurf.core.datastore import (
     take_where,
 )
 from chisurf.core.fio.fluorescence import burst as burstio
+from chisurf.core.fio.fluorescence import burst_tree
 
 logger = logging.getLogger(__name__)
 
@@ -165,9 +166,37 @@ class BurstBrowserViewModel:
         self.refresh()
         self.notify("data")
 
+    def _load_container(self, path) -> None:
+        """Load the burst table of a `.pto` run (or the file's first run)."""
+        from chisurf.core.fio.fluorescence.burst import read_burst_analysis
+
+        try:
+            table, _ = read_burst_analysis(path, "PTO")
+        except Exception as exc:
+            logger.warning("BurstBrowser: could not read %s: %s", path, exc)
+            return
+        if table is None or row_count(table) == 0:
+            logger.info("No bursts in: %s", path)
+            return
+        self.path_text = str(path)
+        self._prepare_table(table)
+        self._load_setup_info(pathlib.Path(path).parent)
+        self.refresh()
+        self.notify("data")
+
     def load_folder(self, folder) -> None:
-        """Load and concatenate every ``.bur`` (+ companions) under *folder*."""
+        """Load a burst analysis: a folder of ``.bur`` files, or a container.
+
+        A `.pto` is addressed like a folder and *is* where a container-backed
+        burst search puts its results, so a workflow that hands this browser its
+        output hands it a container path — which ``is_dir()`` answers ``False``
+        for. The browser then logged "Folder does not exist" and showed nothing,
+        with the analysis sitting in the file it had just been given.
+        """
         folder = pathlib.Path(folder)
+        if burst_tree.is_container_path(folder):
+            self._load_container(folder)
+            return
         if not folder.exists() or not folder.is_dir():
             logger.warning("Folder does not exist: %s", folder)
             return
@@ -208,26 +237,43 @@ class BurstBrowserViewModel:
         red_col = green_col = None
         derived: dict[str, np.ndarray] = {}
 
+        # Which columns are the FRET channels is a question the shared burst-table
+        # conventions answer -- including the case that matters here: on a
+        # PIE/ALEX table the *gated* streams are the channels, and the
+        # whole-detector "Number of Photons (red)" beside them sums the acceptor
+        # over BOTH excitation periods. Deriving E from those un-gated columns
+        # gave (DA + AA) / (DD + DA + AA + AD), which is not a proximity ratio
+        # and put the populations of a two-state sample at the wrong efficiency.
+        from chisurf.core.fluorescence.burst.es import apparent_es
+        from chisurf.core.fluorescence.burst.table import guess_columns
+
+        mapping = guess_columns(names)
+        green_col, red_col = mapping.get("i_dd"), mapping.get("i_da")
+        yellow_col = mapping.get("i_aa")
+
         if "E" in names:
             self._col_E, self.have_E = "E", True
         elif "Proximity Ratio" in names:
             self._col_E, self.have_E = "Proximity Ratio", True
-        else:
-            photon_cols = [c for c in names if "Number of Photons (" in c]
-            red_candidates = [c for c in photon_cols if "red" in c.lower()]
-            green_candidates = [c for c in photon_cols if "green" in c.lower()]
-            if red_candidates and green_candidates:
-                red_col, green_col = red_candidates[0], green_candidates[0]
-                red = numeric_column(table, red_col)
-                green = numeric_column(table, green_col)
-                denom = red + green
-                with np.errstate(divide="ignore", invalid="ignore"):
-                    derived["E"] = np.where(denom > 0, red / denom, np.nan)
-                self._col_E, self.have_E = "E", True
+        elif green_col and red_col:
+            i_dd = numeric_column(table, green_col)
+            i_da = numeric_column(table, red_col)
+            i_aa = numeric_column(table, yellow_col) if yellow_col else None
+            values = apparent_es(i_dd, i_da, i_aa)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                derived["E"] = np.where(i_dd + i_da > 0, values["E"], np.nan)
+                if values["S"] is not None:
+                    total = i_dd + i_da + i_aa
+                    derived["S"] = np.where(total > 0, values["S"], np.nan)
+            self._col_E, self.have_E = "E", True
 
         if "S" in names:
             self._col_S, self.have_S = "S", True
+        elif "S" in derived:
+            self._col_S, self.have_S = "S", True
         elif self.have_E and red_col and green_col and "Number of Photons" in names:
+            # No acceptor-excitation channel: the closest thing to a
+            # stoichiometry is the FRET pair's share of all the burst's photons.
             nd = numeric_column(table, green_col)
             na = numeric_column(table, red_col)
             total = numeric_column(table, "Number of Photons")

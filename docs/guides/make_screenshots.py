@@ -1408,6 +1408,147 @@ def _grab_burst_export_table():
     _grab(widget, "burst_export_table.png")
 
 
+def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
+    """Write a small synthetic µs-ALEX measurement, with a known alternation.
+
+    Two FRET populations, a background, and the laser alternation encoded in the
+    macro time — the shape the ALEX Suite's first step exists to recognise. The
+    header is borrowed from a bundled PTU so the macro-time resolution is real.
+    """
+    import tttrlib
+
+    rng = np.random.default_rng(seed)
+    # The header decides what a macro-time unit *is*, so the simulation has to
+    # read it rather than assume: writing 50 ns photons under a 20 us header
+    # makes the tool report a 80 ms alternation, which is not a thing.
+    source = pathlib.Path("test/data/clsm/Leica_SP5.ptu")
+    header = tttrlib.TTTR(str(source)).header
+    res = float(header.macro_time_resolution)
+    period = int(round(200e-6 / res))   # a 200 us alternation
+    green = (int(0.05 * period), int(0.45 * period))
+    red = (int(0.55 * period), int(0.95 * period))
+
+    def stream(rate, t0, t1, efficiency):
+        n = rng.poisson(rate * (t1 - t0))
+        return rng.uniform(t0, t1, n), np.full(n, efficiency)
+
+    times, effs = zip(*(
+        [stream(1.5e3, 0.0, duration, 0.05)]
+        + [stream(90e3, start, start + 1.5e-3, e)
+           for start, e in zip(
+               rng.uniform(0.0, duration - 2e-3, 900),
+               np.where(rng.random(900) < frac_high, 0.68, 0.22))]
+    ))
+    t = np.concatenate(times)
+    e = np.concatenate(effs)
+    order = np.argsort(t)
+    macro = (t[order] / res).astype(np.uint64)
+    e = e[order]
+
+    phase = macro % period
+    keep = ((phase >= green[0]) & (phase < green[1])) | (
+        (phase >= red[0]) & (phase < red[1]))
+    macro, e = macro[keep], e[keep]
+    donor_excited = (macro % period >= green[0]) & (macro % period < green[1])
+    p_acceptor = np.where(donor_excited, e, 0.95)
+    routing = np.where(rng.random(macro.size) < p_acceptor, 1, 0).astype(np.int8)
+
+    out = tttrlib.TTTR()
+    out.append_events(macro, np.zeros(macro.size, np.uint16), routing,
+                      np.zeros(macro.size, np.int8), True, 0)
+    out.write(str(path), header)
+    return path
+
+
+def _grab_alex_suite_alternation():
+    """Grab the alternation step, run on a simulated µs-ALEX measurement."""
+    from chisurf.plugins.burst.alex_suite.gui.tool import AlexSuiteTool
+
+    workdir = pathlib.Path(tempfile.mkdtemp(prefix="alex_suite_"))
+    _simulate_us_alex(workdir / "alex_demo.ptu")
+
+    tool = AlexSuiteTool()
+    tool.resize(1180, 780)
+    tool.show()
+    QApplication.instance().processEvents()
+
+    def row(fragment):
+        for i in range(tool.nav_list.count()):
+            if fragment in tool.nav_list.item(i).text():
+                return i
+        raise LookupError(fragment)
+
+    tool.nav_list.setCurrentRow(row("1. Files"))
+    QApplication.instance().processEvents()
+    tool._workflow_panels["data"].add_paths([workdir / "alex_demo.ptu"])
+    for _ in range(20):
+        QApplication.instance().processEvents()
+
+    tool.nav_list.setCurrentRow(row("2. Alternation"))
+    QApplication.instance().processEvents()
+    tool._workflow_panels["alternation"].run()
+    for _ in range(30):
+        QApplication.instance().processEvents()
+    _grab(tool, "alex_suite_alternation.png")
+
+
+def _grab_alex_suite_titration():
+    """Grab the titration step, fitted on a simulated concentration series."""
+    import csv
+
+    from chisurf.plugins.burst.alex_suite.gui.tool import AlexSuiteTool
+
+    workdir = pathlib.Path(tempfile.mkdtemp(prefix="alex_titration_"))
+    rng = np.random.default_rng(5)
+    kd, rows = 50.0, []
+    for concentration in (0.0, 5.0, 15.0, 50.0, 150.0, 500.0, 2000.0):
+        bound = concentration / (kd + concentration)
+        n = 4000
+        n_high = int(round(n * bound))
+        efficiencies = np.concatenate([
+            np.full(n - n_high, 0.22), np.full(n_high, 0.68)])
+        total = rng.poisson(200, n).astype(float) + 20.0
+        green = total * 0.5
+        i_da = rng.binomial(green.astype(int), efficiencies).astype(float)
+        path = workdir / f"c{concentration:g}.csv"
+        with open(path, "w", newline="", encoding="utf-8") as fh:
+            writer = csv.writer(fh, delimiter="\t")
+            writer.writerow(["Number of Photons (green)",
+                             "Number of Photons (red)",
+                             "Number of Photons (yellow)", "Duration (ms)"])
+            for a, b, c in zip(green - i_da, i_da, total - green):
+                writer.writerow([a, b, c, 1.0])
+        rows.append((concentration, path))
+
+    tool = AlexSuiteTool()
+    tool.resize(1180, 780)
+    tool.show()
+    QApplication.instance().processEvents()
+    for i in range(tool.nav_list.count()):
+        if "Titration" in tool.nav_list.item(i).text():
+            tool.nav_list.setCurrentRow(i)
+            break
+    QApplication.instance().processEvents()
+
+    panel = tool._workflow_panels["titration"]
+    panel.model.add_files([str(path) for _, path in rows])
+    for index, (concentration, _) in enumerate(rows):
+        panel.model.update_series_cell(index, "concentration", concentration)
+    panel.model.min_photons = 0
+    panel.model.run()
+    for _ in range(30):
+        QApplication.instance().processEvents()
+    # The step is a scrolling page; the plots are its lower half.
+    from qtpy.QtWidgets import QScrollArea
+
+    for area in panel.findChildren(QScrollArea):
+        bar = area.verticalScrollBar()
+        bar.setValue(bar.maximum())
+    for _ in range(15):
+        QApplication.instance().processEvents()
+    _grab(tool, "alex_suite_titration.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -1443,6 +1584,8 @@ def main():
         _grab_ai_assistant,
         _grab_lumis_quest,
         _grab_burst_export_table,
+        _grab_alex_suite_alternation,
+        _grab_alex_suite_titration,
     ):
         try:
             grab()

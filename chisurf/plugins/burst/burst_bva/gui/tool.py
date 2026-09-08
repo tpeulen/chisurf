@@ -62,7 +62,7 @@ from chisurf.gui.widgets.tool_buttons import (
     flag_attention,
 )
 
-from chisurf.core import analysis_cache  # noqa: E402
+from chisurf.core.runtime import analysis_cache  # noqa: E402
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs  # noqa: E402
 
 #: Bump in the same change that alters what this tool computes, so results
@@ -532,8 +532,19 @@ class BVATool(ChisurfDockTool):
             self._set_folder(folder)
 
     def _set_folder(self, path: str):
+        """Adopt a burst analysis: a folder of ``.bur`` files, or a `.pto` run.
+
+        A container-backed burst search writes no folder at all -- the bursts
+        live in the measurement's own file, addressed like a folder
+        (``m000.pto/sliding_window_All 0.1500#60``). ``is_dir()`` is ``False``
+        for that, and this method used to return in silence, so a workflow that
+        handed BVA its output left the panel reading "Select a data folder
+        first" with the analysis already made.
+        """
+        from chisurf.core.fio.fluorescence import burst_tree
+
         p = pathlib.Path(path)
-        if p.is_dir():
+        if p.is_dir() or burst_tree.is_container_path(p):
             self.data_folder = p
             self.analysis_folder = p
             self._folder_field.setText(str(p))
@@ -547,8 +558,10 @@ class BVATool(ChisurfDockTool):
         used. Rather than swallowing it — the old field-level drop wrote the
         rejected path into the folder box and then ignored it — say so.
         """
+        from chisurf.core.fio.fluorescence import burst_tree
+
         for path in paths:
-            if path.is_dir():
+            if path.is_dir() or burst_tree.is_container_path(path):
                 self.Information.not_a_folder.clear()
                 self._set_folder(str(path))
                 return

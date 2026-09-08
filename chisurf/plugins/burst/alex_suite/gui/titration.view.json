@@ -1,0 +1,197 @@
+{
+  "_comment": "ALEX Suite titration step: a concentration/file table, three settings, one Fit button, the stack plot, the binding isotherm and the numbers. Everything the old TitrationViewController showed, without the panel-per-option layout.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Series",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "info",
+          "text": "One burst file per ligand concentration. All of them are histogrammed and fitted **together**, with the populations held at one shared position and width — only their amounts are free. That is what makes the amounts comparable between concentrations.",
+          "is_markdown": true,
+          "max_height": 70
+        },
+        {
+          "type": "table",
+          "source": "series_rows",
+          "editable": true,
+          "update_call": "update_series_cell",
+          "height": 190,
+          "columns": [
+            {
+              "key": "concentration",
+              "label": "Concentration",
+              "width": 130,
+              "description": "Ligand concentration of this measurement. Any unit — the fitted K_d comes back in the same one."
+            },
+            {
+              "key": "name",
+              "label": "Burst file",
+              "width": 260,
+              "description": "The .bur/.pto burst table this concentration was measured in."
+            }
+          ]
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "➕ Add burst files…",
+              "action": "browse_files",
+              "description": "Add one row per burst file; then type each concentration."
+            },
+            {
+              "label": "➖",
+              "action": "remove_last_row",
+              "description": "Remove the last row."
+            },
+            {
+              "label": "🗑️",
+              "action": "clear_rows",
+              "description": "Remove every row."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Fit",
+      "collapsed": false,
+      "n_col": 4,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "n_populations",
+          "label": "Populations",
+          "kind": "int",
+          "minimum": 1,
+          "maximum": 6,
+          "step": 1,
+          "description": "How many FRET populations the whole series is described with. Two is the usual case: free and bound."
+        },
+        {
+          "type": "choice",
+          "attr": "binding_model",
+          "label": "Isotherm",
+          "options_source": "binding_model_options",
+          "description": "hill fits the cooperativity too; one_site holds the Hill coefficient at 1."
+        },
+        {
+          "type": "value",
+          "attr": "concentration_unit",
+          "label": "Unit",
+          "kind": "str",
+          "description": "Only a label — the fit never converts. The K_d is reported in this unit."
+        },
+        {
+          "type": "toggle",
+          "attr": "fix_peak_positions",
+          "label": "Fix peak positions",
+          "description": "Hold the shared centres and widths at their starting values instead of fitting them. Use it when a control measurement has already established where the populations are."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Burst filters",
+      "collapsed": true,
+      "n_col": 3,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "min_photons",
+          "label": "Min. photons",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 100000,
+          "step": 10,
+          "description": "Bursts with fewer photons than this are dropped, in every condition alike."
+        },
+        {
+          "type": "value",
+          "attr": "bins",
+          "label": "E bins",
+          "kind": "int",
+          "minimum": 11,
+          "maximum": 501,
+          "step": 10,
+          "description": "Bins of the efficiency histogram."
+        },
+        {
+          "type": "value",
+          "attr": "s_low",
+          "label": "S gate from",
+          "kind": "float",
+          "minimum": -1.0,
+          "maximum": 2.0,
+          "step": 0.05,
+          "description": "Only bursts inside this stoichiometry band enter the E histogram — the gate that removes donor-only and acceptor-only species."
+        },
+        {
+          "type": "value",
+          "attr": "s_high",
+          "label": "S gate to",
+          "kind": "float",
+          "minimum": -1.0,
+          "maximum": 2.0,
+          "step": 0.05,
+          "description": "Upper edge of the stoichiometry gate."
+        },
+        {
+          "type": "value",
+          "attr": "gamma",
+          "label": "γ",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "step": 0.05,
+          "description": "Detection/quantum-yield ratio. Take it from the Accurate FRET step."
+        },
+        {
+          "type": "value",
+          "attr": "beta",
+          "label": "β",
+          "kind": "float",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "step": 0.05,
+          "description": "Excitation-flux ratio, which enters the stoichiometry only."
+        }
+      ]
+    },
+    {
+      "type": "custom",
+      "key": "alex_titration_run",
+      "title": "Run"
+    },
+    {
+      "type": "plot",
+      "source": "stack_series",
+      "title": "Stack plot",
+      "x_label": "FRET efficiency E",
+      "y_label": "Bursts (offset)",
+      "legend": true,
+      "description": "One efficiency histogram per concentration, offset upwards; the dashed curve on each is the shared-shape fit.",
+      "height": 320
+    },
+    {
+      "type": "plot",
+      "source": "binding_series",
+      "axes_source": "binding_axes",
+      "title": "Binding isotherm",
+      "legend": true,
+      "description": "The fraction of the reporting population against ligand concentration, with the fitted isotherm.",
+      "height": 280
+    },
+    {
+      "type": "info",
+      "source": "summary",
+      "is_markdown": true,
+      "title": "Result",
+      "max_height": 240,
+      "height": 210
+    }
+  ]
+}

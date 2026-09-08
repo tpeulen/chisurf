@@ -17,12 +17,14 @@ channel), ``i_aa`` (acceptor emission under acceptor excitation) and ``tau_f``
 from __future__ import annotations
 
 import pathlib
+import re
 
 import numpy as np
 
 from chisurf.core.datastore import column_names
 
-__all__ = ["COLUMN_HINTS", "guess_columns", "read_burst_table", "columns_from_data"]
+__all__ = ["COLUMN_HINTS", "DETECTOR_ROLE_WORDS", "gated_stream_columns",
+           "guess_columns", "read_burst_table", "columns_from_data"]
 
 #: Column-name fragments (lower case) identifying each channel role. Matched in
 #: order, exact match first, so a more specific name wins over a substring.
@@ -36,6 +38,125 @@ COLUMN_HINTS: dict[str, tuple[str, ...]] = {
     "tau_f": ("tau_f", "tau (green)", "taud(a)", "lifetime green", "green lifetime",
               "donor lifetime", "tau green"),
 }
+
+
+#: Name fragments (lower case) that identify a detector or an excitation window
+#: as donor-side or acceptor-side. Used to read the *gated* stream columns of a
+#: PIE/ALEX table, where the role is carried by the window and detector names
+#: rather than by the column header's own vocabulary.
+DETECTOR_ROLE_WORDS: dict[str, tuple[str, ...]] = {
+    "donor": ("green", "donor", "prompt", "d"),
+    "acceptor": ("red", "acceptor", "delay", "delayed", "yellow", "a"),
+}
+
+#: A window x detector column of a burst table, as
+#: ``chisurf/core/fio/fluorescence/burst_features.yaml`` declares it:
+#: ``S {window} {detector} (photons|kHz) | {r0}-{r1}``.
+_GATED_COLUMN = re.compile(
+    r"^s\s+(?P<middle>.+?)\s+\((?P<unit>khz|photons)\)\s*\|\s*\d+\s*-\s*\d+$")
+
+#: ``Number of Photons ({detector})`` — how the detector names are recovered.
+_DETECTOR_COLUMN = re.compile(r"^number of photons \((?P<detector>.+)\)$")
+
+
+def _role_of(name: str) -> str:
+    """Return ``"donor"``, ``"acceptor"`` or ``""`` for a window/detector name."""
+    low = str(name).strip().lower()
+    for role, words in DETECTOR_ROLE_WORDS.items():
+        # Longest word first: "delayed" must win over the bare "d" of the donor
+        # list, which any name containing a d would otherwise match.
+        for word in sorted(words, key=len, reverse=True):
+            if low == word or word in low.split():
+                return role
+    return ""
+
+
+def gated_stream_columns(names) -> dict[str, str]:
+    """Map the channel roles onto a PIE/ALEX table's *gated* stream columns.
+
+    A burst table from a two-window setup carries both the whole-detector counts
+    (``Green Count Rate (KHz)``) and the four window x detector streams
+    (``S green green (kHz) | 296-1704``, ...). Only the second set is the ALEX
+    channels: ``Green Count Rate`` sums the donor detector over *both*
+    excitation periods, so using it as ``I_DD`` folds the acceptor-excitation
+    donor signal into the FRET efficiency — an error that shifts E without
+    making any histogram look broken.
+
+    Returns
+    -------
+    dict
+        ``{"i_dd": name, "i_da": name, "i_aa": name}`` for the roles that could
+        be resolved; empty when the table has no gated columns (a single-window
+        measurement, or a foreign table).
+    """
+    originals = [str(n) for n in names]
+    detectors = []
+    for name in originals:
+        match = _DETECTOR_COLUMN.match(name.strip().lower())
+        if match:
+            detectors.append(match.group("detector").strip())
+    if not detectors:
+        return {}
+
+    # Photon counts win over the rate beside them: E and S are ratios of counts,
+    # and each rate divides by *its own* stream's span, so the four rates of one
+    # burst have four different denominators and their ratios are not the count
+    # ratios. A table written before the count columns existed still resolves,
+    # on the rates -- see okf/references/known-issues.md.
+    gated: dict[tuple[str, str], str] = {}
+    rates: dict[tuple[str, str], str] = {}
+    for name in originals:
+        match = _GATED_COLUMN.match(name.strip().lower())
+        if not match:
+            continue
+        middle = match.group("middle")
+        target = gated if match.group("unit") == "photons" else rates
+        for detector in detectors:
+            if middle == detector or middle.endswith(" " + detector):
+                window = middle[: len(middle) - len(detector)].strip()
+                if window:
+                    target[(window, detector)] = name
+                break
+    for key, name in rates.items():
+        gated.setdefault(key, name)
+    if not gated:
+        return {}
+
+    def pick(role: str, candidates) -> str:
+        for candidate in candidates:
+            if _role_of(candidate) == role:
+                return candidate
+        return ""
+
+    windows = list(dict.fromkeys(window for window, _ in gated))
+    w_donor = pick("donor", windows)
+    w_acceptor = pick("acceptor", windows)
+    d_donor = pick("donor", detectors)
+    acceptors = [d for d in detectors if _role_of(d) == "acceptor"]
+    d_da = acceptors[0] if acceptors else ""
+    # The acceptor-excitation channel prefers a *second* acceptor detector when
+    # the setup lists one. That is the Seidel convention -- ``red`` and
+    # ``yellow`` are the same physical detector entered twice, once per
+    # excitation window -- and each entry carries only its own window's photons.
+    # So the cross product still writes an ``S delayed red`` column and it is
+    # all zeros; reading I_AA from it puts every burst at S = 1 without any
+    # column being missing.
+    d_aa = next((d for d in acceptors[1:]), d_da)
+
+    out: dict[str, str] = {}
+    for role, key in (
+        ("i_dd", (w_donor, d_donor)),
+        ("i_da", (w_donor, d_da)),
+        ("i_aa", (w_acceptor, d_aa)),
+    ):
+        if all(key) and key in gated:
+            out[role] = gated[key]
+    # All or nothing on the FRET pair: half a gated mapping mixed with half an
+    # ungated one would put I_DD and I_DA on different photon selections, which
+    # is worse than using neither.
+    if "i_dd" not in out or "i_da" not in out:
+        return {}
+    return out
 
 
 def guess_columns(names, extra_hints: dict | None = None) -> dict[str, str]:
@@ -57,9 +178,15 @@ def guess_columns(names, extra_hints: dict | None = None) -> dict[str, str]:
         roles that could not be matched left out. A column is never assigned to
         two roles.
     """
-    out: dict[str, str] = {}
+    names = list(names)
+    # The gated streams win when the table has them: they are the ALEX channels,
+    # while the whole-detector columns beside them sum over both excitation
+    # periods (see :func:`gated_stream_columns`).
+    out: dict[str, str] = gated_stream_columns(names)
     lowered = [(str(n), str(n).strip().lower()) for n in names]
     for role, hints in COLUMN_HINTS.items():
+        if role in out:
+            continue
         hints = tuple((extra_hints or {}).get(role, ())) + tuple(hints)
         for hint in hints:
             match = next((original for original, low in lowered
@@ -77,10 +204,16 @@ def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
     an auto-detected separator; ``.npz`` archives are read directly. Non-numeric
     columns are dropped.
 
+    A **container run** is also a burst table. A burst search over a `.pto` keeps
+    its results inside the measurement and writes no ``.bur`` at all, so "the
+    burst table" is a path like ``m000.pto/sliding_window_All 0.1500#60`` -- not
+    a file on disk, and previously an error from every tool that read a table by
+    name while the bursts sat in the file it had just been handed.
+
     Parameters
     ----------
     path : str or pathlib.Path
-        The burst table.
+        The burst table: a delimited file, an ``.npz``, or a `.pto` run.
 
     Returns
     -------
@@ -93,6 +226,8 @@ def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
         If the file holds no numeric column.
     """
     path = pathlib.Path(path)
+    if _is_container_run(path):
+        return _read_container_run(path)
     if path.suffix.lower() == ".npz":
         with np.load(path) as data:
             return {k: np.asarray(data[k], dtype=float).ravel() for k in data.files}
@@ -100,6 +235,30 @@ def read_burst_table(path: str | pathlib.Path) -> dict[str, np.ndarray]:
     columns = _read_delimited(path)
     if not columns:
         raise ValueError(f"no numeric columns found in {path}")
+    return columns
+
+
+def _is_container_run(path: pathlib.Path) -> bool:
+    """Whether *path* addresses a burst run inside a `.pto` container."""
+    from chisurf.core.fio.fluorescence import burst_tree
+
+    return bool(burst_tree.is_container_path(path))
+
+
+def _read_container_run(path: pathlib.Path) -> dict[str, np.ndarray]:
+    """Read the burst table of a `.pto` run into ``{column: array}``."""
+    from chisurf.core.datastore import column_names, numeric_column
+    from chisurf.core.fio.fluorescence.burst import read_burst_analysis
+
+    table, _ = read_burst_analysis(path, "PTO")
+    columns: dict[str, np.ndarray] = {}
+    for name in column_names(table):
+        try:
+            columns[name] = np.asarray(numeric_column(table, name), dtype=float)
+        except Exception:
+            continue  # a text column (the measurement names) -- not a channel
+    if not columns:
+        raise ValueError(f"no numeric columns in {path}")
     return columns
 
 

@@ -933,18 +933,17 @@ def setup_gui(
                     )
                     continue
 
-                # Determine which file to run: wizard.py if it exists, else __init__.py
-                plugin_dir = package_dir
-                wizard_file = plugin_dir / "wizard.py"
-                script_file = wizard_file if wizard_file.is_file() else (plugin_dir / "__init__.py")
+                # One launcher, shared with the toolbar: it opens the plugin
+                # through its manifest's ``entrypoints.gui`` when it has one and
+                # falls back to executing ``wizard.py`` / ``__init__.py`` as a
+                # macro when it does not. The menu used to go straight to the
+                # macro path, so a plugin that declares a widget class in its
+                # manifest -- the current standard -- had a menu entry that ran
+                # its ``__init__`` and opened nothing, without a log line.
+                from chisurf.gui.misc_helpers import run_plugin_from_dir
 
-                # Build the callback
-                callback = partial(
-                    window.onRunMacro,
-                    str(script_file),
-                    executor='exec',
-                    globals={'__name__': 'plugin'}
-                )
+                plugin_dir = package_dir
+                callback = partial(run_plugin_from_dir, window, str(plugin_dir))
 
                 # Check for icon (manifest, module metadata, then icon files)
                 icon = None

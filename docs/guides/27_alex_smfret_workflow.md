@@ -69,5 +69,7 @@ $S$ distributions.
 
 ## See also
 
+- The same pipeline as a guided window, in the order the ALEX-Suite program had
+  it: [Coming from ALEX-Suite](66_alex_suite.md).
 - Guided facade: {src}`chisurf/plugins/burst/burst_analysis/api/workflow.py`.
 - Population selection: [tutorial 28](28_selecting_fret_populations.md); histogram fitting: [tutorial 29](29_fret_histogram_fitting.md).

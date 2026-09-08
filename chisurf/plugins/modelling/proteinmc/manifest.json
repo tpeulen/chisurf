@@ -12,5 +12,6 @@
   ],
   "entrypoints": {
     "cli": "proteinmc=chisurf.plugins.modelling.proteinmc.cli:cli"
-  }
+  },
+  "menu_hidden": true
 }

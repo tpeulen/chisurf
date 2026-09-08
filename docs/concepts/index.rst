@@ -55,6 +55,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
    :maxdepth: 1
 
    smfret_bursts
+   us_alex
    accurate_fret
    burst_2cde
    burst_fusion

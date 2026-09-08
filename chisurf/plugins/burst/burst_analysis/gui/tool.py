@@ -571,7 +571,23 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     The pipeline runs at two grains — bursts (steps 2-5) and the segments H2MM
     cuts them into (steps 6-7) — and the step names say which.
+
+    The class is also the base for *other* burst pipelines with a different step
+    order — the ALEX Suite is one. Everything below the panel list is generic:
+    the context is threaded between panels by ``role``, so a subclass that swaps
+    :attr:`PANELS` (and adds its own roles to :meth:`_apply_context_to_panel`)
+    inherits the whole hand-off layer unchanged.
     """
+
+    #: Step list of this pipeline. Subclasses override it; nothing else here
+    #: names a step.
+    PANELS: list[dict[str, Any]] = BURST_PANELS
+    #: Window title of this pipeline.
+    TITLE = "Burst Analysis"
+    #: Left-list width. Long step labels need a wider list, so it goes with the
+    #: panel list rather than being fixed here.
+    NAVIGATION_WIDTH = 310
+    NAVIGATION_MIN_WIDTH = 290
 
     def __init__(self, parent=None):
         """Create the integrated burst workflow tool."""
@@ -587,16 +603,16 @@ class BurstAnalysisTool(NavigationPanelTool):
         # ``detector_setups.*`` RPC store (same as the Imaging Tools window).
         self._setup_client = DetectorSetupClient()
         super().__init__(
-            title="Burst Analysis",
-            panels=BURST_PANELS,
+            title=self.TITLE,
+            panels=self.PANELS,
             parent=parent,
             minimum_size=(950, 620),
             initial_size=(1180, 760),
             # Wide enough for the longest step label ("6. Burst segmentation
             # (H2MM)"); at 270 it was clipped mid-word and the list grew a
             # horizontal scroll bar.
-            navigation_width=310,
-            navigation_min_width=290,
+            navigation_width=self.NAVIGATION_WIDTH,
+            navigation_min_width=self.NAVIGATION_MIN_WIDTH,
             # Embedded panels report status via normal logging; the shared status
             # bar shows any INFO record from the burst plugin package.
             status_logger="chisurf.plugins.burst",
@@ -848,14 +864,66 @@ class BurstAnalysisTool(NavigationPanelTool):
         )
         return output_folder
 
+    def burst_sources(self) -> list[Path]:
+        """Return the burst tables this workflow has produced, however stored.
+
+        A burst search over a `.pto` keeps its bursts **inside the measurement**
+        and writes no ``.bur`` at all — the ordinary case here, since step 2
+        converts every measurement into a container. So a step that reads only
+        ``bur_files`` sees nothing after a perfectly successful run.
+
+        Both shapes come back as paths: a loose ``.bur``, or a container run
+        addressed like a folder (``m000.pto/sliding_window_All 0.1500#60``),
+        which every burst reader in ChiSurf understands.
+        """
+        if self.workflow_context.bur_files:
+            return list(self.workflow_context.bur_files)
+        folder = self.workflow_context.burst_folder
+        if folder is None:
+            return []
+        from chisurf.core.fio.fluorescence import burst_tree
+
+        if not burst_tree.is_container_path(folder):
+            return []
+        if folder.suffix.lower() != burst_tree.SUFFIX:
+            return [folder]  # the path already names one run
+        try:
+            runs = burst_tree.list_runs(folder)
+        except Exception as exc:
+            logger.warning(f"ALEX Suite: could not list the runs of {folder} — {exc}")
+            return []
+        # Newest last: the run the user just produced is the one to show.
+        return [folder / run for run in runs[-1:]]
+
+    def analysis_path(self) -> Path | None:
+        """The burst analysis a folder-taking tool should read.
+
+        The burst folder as it stands, except when it is a `.pto` container:
+        a container holds one analysis *per run*, and the tools read a run, not
+        the file. Returns the newest run in that case.
+        """
+        folder = self.workflow_context.burst_folder
+        if folder is None:
+            return None
+        from chisurf.core.fio.fluorescence import burst_tree
+
+        if folder.suffix.lower() != burst_tree.SUFFIX:
+            return folder
+        sources = self.burst_sources()
+        return sources[0] if sources else folder
+
     def _apply_context_to_downstream(self) -> None:
-        """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "fusion", "bva", "two_cde", "mle", "h2mm", "segment_mle",
-                     "browser", "burst_fcs", "burst_gs", "accurate_fret",
-                     "background", "irf_bg"):
-            widget = self._workflow_panels.get(role)
-            if widget is not None:
-                self._apply_context_to_panel(role, widget)
+        """Apply current workflow context to every loaded panel but the source.
+
+        Driven by what is *loaded*, not by a hard-coded role list: a subclass
+        that adds a step used to have to remember to name it here too, and a
+        role missing from that list silently never received the burst folder.
+        ``data`` is excluded because it is where the context comes from.
+        """
+        for role, widget in self._workflow_panels.items():
+            if role == "data" or widget is None:
+                continue
+            self._apply_context_to_panel(role, widget)
 
     def _apply_context_to_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
         """Apply current workflow context to one panel."""
@@ -965,9 +1033,10 @@ class BurstAnalysisTool(NavigationPanelTool):
                     widget._refresh_detector_combos()
                 except Exception:
                     pass
-            if self.workflow_context.burst_folder is not None:
+            analysis = self.analysis_path()
+            if analysis is not None:
                 try:
-                    widget._set_folder(str(self.workflow_context.burst_folder))
+                    widget._set_folder(str(analysis))
                 except Exception:
                     pass
 
@@ -979,7 +1048,7 @@ class BurstAnalysisTool(NavigationPanelTool):
         it again. ``set_folder`` only fills the folder field (it does not auto-run),
         so this is a cheap, side-effect-free hand-off.
         """
-        folder = self.workflow_context.burst_folder
+        folder = self.analysis_path()
         set_folder = getattr(widget, "set_folder", None)
         if folder is not None and callable(set_folder):
             try:
@@ -997,9 +1066,10 @@ class BurstAnalysisTool(NavigationPanelTool):
                 widget._refresh_detector_combos()
             except Exception:
                 pass
-        if self.workflow_context.burst_folder is not None:
+        analysis = self.analysis_path()
+        if analysis is not None:
             try:
-                widget._set_folder(str(self.workflow_context.burst_folder))
+                widget._set_folder(str(analysis))
             except Exception:
                 pass
 
@@ -1141,10 +1211,11 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_browser(self, widget: QtWidgets.QWidget) -> None:
         """Load upstream burst results in Burst Browser."""
-        if self.workflow_context.burst_folder is None or getattr(widget, "table", None) is not None:
+        analysis = self.analysis_path()
+        if analysis is None or getattr(widget, "table", None) is not None:
             return
         try:
-            widget.load_folder(self.workflow_context.burst_folder)
+            widget.load_folder(analysis)
         except Exception:
             pass
 
@@ -1192,12 +1263,13 @@ class BurstAnalysisTool(NavigationPanelTool):
         if model is None:
             return
         self._apply_setup_to_accurate_fret(model)
-        if not self.workflow_context.bur_files:
+        sources = self.burst_sources()
+        if not sources:
             return
         if getattr(model, "filename", ""):
             return  # a table is already loaded here
         try:
-            model.set_filename(str(self.workflow_context.bur_files[0]))
+            model.set_filename(str(sources[0]))
         except Exception:
             pass
 

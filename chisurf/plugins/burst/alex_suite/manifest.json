@@ -1,0 +1,37 @@
+{
+  "id": "alex_suite",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:ALEX Suite",
+  "description": "The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Spectroscopy",
+    "Single-Molecule",
+    "FRET"
+  ],
+  "icon": "🚦",
+  "state_namespace": "alex_suite",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": "alex_suite_window"
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.burst.alex_suite.gui.tool:AlexSuiteTool",
+    "cli": "alex-suite=chisurf.plugins.burst.alex_suite.cli.main:cli"
+  },
+  "requires": {
+    "burst_analysis": "*"
+  },
+  "optional_requires": {
+    "ndxplorer": "*",
+    "ptu_alex_creator": "*",
+    "trace_browser": "*",
+    "tttr_to_pto": "*"
+  },
+  "menu_hidden": false
+}

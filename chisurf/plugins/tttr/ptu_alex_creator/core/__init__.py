@@ -220,6 +220,125 @@ def auto_alex_windows(
     }
 
 
+def detect_alex_period(
+    macro_times,
+    routing_channels,
+    *,
+    donor_channels,
+    acceptor_channels,
+    min_period: int = 64,
+    max_period: int | None = None,
+    n_photons: int = 2_000_000,
+    max_bins: int = 1 << 22,
+) -> dict:
+    """Find the µs-ALEX alternation period from the photon stream itself.
+
+    The period is a hardware setting nobody wants to type in, and typing it
+    wrong is silent: the folded phase is then a smear with no plateaus, the
+    windows land on nothing, and the analysis proceeds with a stoichiometry
+    histogram that has one peak instead of three.
+
+    What makes it findable is that the *donor and acceptor detectors alternate*.
+    Assign +1 to every donor photon and −1 to every acceptor photon, bin that
+    signed stream in macro time, and the alternation is a single sharp line in
+    its power spectrum — much sharper than in either detector's own intensity,
+    which is modulated by the sample as well as by the lasers. The peak
+    frequency gives the period; a short integer scan around it fixes the exact
+    macro-time count, which is what :func:`apply_alex` needs.
+
+    Parameters
+    ----------
+    macro_times, routing_channels : array_like
+        The photon stream (``tttr.macro_times``, ``tttr.routing_channels``).
+    donor_channels, acceptor_channels : sequence of int
+        Routing channels of the two detection colours.
+    min_period : int
+        Smallest period to consider, in macro-time units. Also sets the
+        binning: the signal is binned at ``min_period / 16``.
+    max_period : int, optional
+        Largest period to consider. Defaults to a fiftieth of the analysed
+        span, so at least 50 alternation cycles are seen.
+    n_photons : int
+        Photons from the start of the file used for the estimate.
+    max_bins : int
+        Cap on the FFT length; the bin width is widened if the span needs more.
+
+    Returns
+    -------
+    dict
+        ``{"period": int, "confidence": float, "power": ndarray,
+        "periods": ndarray}`` — ``confidence`` is the peak power divided by the
+        median power of the searched band, so ``< 5`` means "no clear
+        alternation, this is probably not µs-ALEX".
+
+    Raises
+    ------
+    ValueError
+        If there are too few photons in the two detector groups to look at.
+    """
+    macro = np.asarray(macro_times)
+    rc = np.asarray(routing_channels)
+    is_donor = np.isin(rc, list(donor_channels))
+    is_acceptor = np.isin(rc, list(acceptor_channels))
+    keep = is_donor | is_acceptor
+    if keep.sum() < 1000:
+        raise ValueError(
+            "fewer than 1000 photons in the donor/acceptor channels — check the "
+            "channel assignment before detecting the ALEX period"
+        )
+    idx = np.flatnonzero(keep)[:int(n_photons)]
+    t = macro[idx].astype(np.int64)
+    t = t - t[0]
+    sign = np.where(is_donor[idx], 1.0, -1.0)
+
+    span = int(t[-1]) + 1
+    if max_period is None:
+        max_period = max(int(span // 50), min_period * 2)
+    bin_width = max(1, int(min_period // 16), -(-span // max_bins))
+    n_bins = int(span // bin_width) + 1
+    signal = np.bincount(t // bin_width, weights=sign, minlength=n_bins)
+    signal -= signal.mean()
+
+    spectrum = np.fft.rfft(signal)
+    power = np.abs(spectrum) ** 2
+    # k = 0 is the (already removed) mean; period = total length / k.
+    k = np.arange(power.size)
+    with np.errstate(divide="ignore"):
+        periods = np.where(k > 0, n_bins * bin_width / np.maximum(k, 1), np.inf)
+    band = (periods >= min_period) & (periods <= max_period)
+    if not band.any():
+        raise ValueError(
+            f"no candidate period between {min_period} and {max_period} "
+            f"macro-time units in a {span}-unit span"
+        )
+    band_power = np.where(band, power, 0.0)
+    peak = int(np.argmax(band_power))
+    coarse = float(periods[peak])
+    median = float(np.median(power[band])) or 1.0
+
+    # The FFT bin is `bin_width` wide in period; `apply_alex` folds on an
+    # integer, and being one unit out over 10^5 cycles walks the phase right
+    # across a laser window. So finish on the photons: scan the integers around
+    # the coarse estimate and keep the one whose folded phase is most modulated.
+    lo = max(min_period, int(coarse * 0.98))
+    hi = min(max_period, int(coarse * 1.02) + 1)
+    best, best_score = int(round(coarse)), -np.inf
+    step = max(1, (hi - lo) // 400)
+    for candidate in range(lo, hi + 1, step):
+        phase = (t % candidate) * 32 // candidate
+        counts = np.bincount(phase, weights=sign, minlength=32)[:32]
+        score = float(np.sum(counts ** 2))
+        if score > best_score:
+            best, best_score = candidate, score
+
+    return {
+        "period": int(best),
+        "confidence": float(band_power[peak] / median),
+        "power": power[band],
+        "periods": periods[band],
+    }
+
+
 def alex_stream_masks(
     micro_times,
     routing_channels,
@@ -362,6 +481,7 @@ __all__ = [
     "apply_alex",
     "alex_histogram",
     "auto_alex_windows",
+    "detect_alex_period",
     "alex_stream_masks",
     "convert_file",
     "merge_files",

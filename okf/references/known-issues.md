@@ -1,3 +1,68 @@
+## A burst table's per-stream count *rates* are not proportional to its counts
+
+**Found 2026-09-08.** `E` and `S` are ratios of photon counts. The `.bur` schema
+writes each PIE window x detector stream as a **count rate**
+(`S prompt green (kHz) | …`), and `_span_features`
+(`chisurf/core/fio/fluorescence/burst.py`) computes that rate as
+
+```
+count_rate_khz = n_photons_in_the_stream / duration_of_that_stream's_own_span
+```
+
+— the span of the *selected* photons, not of the burst. So the four rates of one
+burst have four different denominators, and their ratios are not the count
+ratios. An `E` built on them carries a per-burst bias that no histogram looks
+wrong for. The same holds for the whole-detector `Green Count Rate (KHz)` /
+`Red Count Rate (KHz)`, from which `Proximity ratio` is defined.
+
+Two more artefacts of the same definition: an empty stream is written as `-1`
+(the `_SPAN_EMPTY` sentinel), and a one-photon stream as `NaN` (zero span).
+Both propagate straight into a ratio.
+
+**Half fixed.** `burst_features.yaml` now declares a photon-**count** column
+beside every rate (`S {window} {detector} (photons) | {r0}-{r1}`), and
+`chisurf.core.fluorescence.burst.table.guess_columns` prefers the counts, so
+everything that maps channel roles through it (Accurate FRET, Burst Browser, the
+ALEX Suite, the burst-table API) is now correct. Additive: nothing that reads
+the kHz columns changed.
+
+**Still wrong: ndX's shipped MFD equations.**
+`modules/ndxplorer/ndxplorer/settings/mfd.equations.yaml` defines `Sg`, `Sr`,
+`Sg(PIE)`, `Sr(PIE)` and `Sy(PIE)` on the kHz columns, so ndX's
+`Proximity ratio`, `FRET efficiency` and `Stoichiometry (PIE)` still carry the
+bias. Not changed here because it moves every existing ndX session's numbers,
+and because a `.bur` written before today has no `(photons)` column to fall back
+to — the equations need a fallback or the analysis needs re-running. Decide
+deliberately; do not swap the column names in passing.
+
+## Four burst tools silently reject a `.pto` burst analysis
+
+**Found 2026-09-08.** A burst search over a `.pto` container keeps its results
+**inside the measurement** and writes no folder at all: its output is a path like
+`m000.pto/sliding_window_All 0.1500#60`, addressed like a folder but not one.
+That is the *default* output of the burst pipeline.
+
+Every tool that takes an "analysis folder" guards with `pathlib.Path(p).is_dir()`
+and returns without a word when it is `False`, so handing one its own upstream
+output leaves the panel reading "Select a data folder first" with the analysis
+already made.
+
+Fixed on the burst workflows' path: `burst_browser.load_folder`,
+`burst_bva._set_folder` (and its drop handler), and
+`chisurf.core.fluorescence.burst.table.read_burst_table`, which now reads a
+container run.
+
+Still silent, each one line plus a check that the reader behind it copes:
+
+| tool | site |
+|---|---|
+| `burst_2cde` | `gui/tool.py:270`, `:299` |
+| `burst_h2mm` | `gui/tool.py:852` |
+| `burst_fcs_correlator` | `gui/tool.py:301` |
+| `burst_fusion` | `gui/view_model.py:255` |
+
+The predicate is `p.is_dir() or burst_tree.is_container_path(p)`.
+
 ## flc_2d cannot delegate to tttrlib yet: importing it segfaults the widget tests
 
 **Found 2026-08-11.** A delegation of `plugins/fcs/flc_2d/core.py` to

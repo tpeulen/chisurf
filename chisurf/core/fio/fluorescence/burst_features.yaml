@@ -60,6 +60,14 @@ groups:
   - scope: window_detector
     columns:
       - {column: "S {window} {detector} (kHz) | {r0}-{r1}", source: count_rate_khz, term: _flr_analysis_feature.count_rate_khz}
+      # The photon COUNT of each PIE window x detector stream, beside its rate.
+      # E and S are ratios of counts; the rate beside it is each stream's photons
+      # divided by *that stream's own span*, so the four rates of one burst do
+      # not share a denominator and their ratios are not the count ratios. Every
+      # E/S built on the rates alone therefore carries a per-burst bias that no
+      # histogram looks wrong for. Additive: readers select by header name, so
+      # nothing that reads the kHz columns is affected.
+      - {column: "S {window} {detector} (photons) | {r0}-{r1}", source: n_photons, term: _flr_analysis_feature.n_photons}
   - scope: detector
     columns:
       - {column: "Mean Microtime ({detector}) (ns)", source: mean_micro_time_ns, term: _flr_analysis_feature.mean_micro_time_ns}

@@ -12,5 +12,6 @@
   ],
   "entrypoints": {
     "cli": "fcs-convert=chisurf.plugins.fcs.fcs_convert.cli:cli"
-  }
+  },
+  "menu_hidden": true
 }

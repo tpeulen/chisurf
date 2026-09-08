@@ -49,6 +49,7 @@ fret_calibration
 07_rcm_calibration
 25_rcm_from_fret_samples
 27_alex_smfret_workflow
+66_alex_suite
 28_selecting_fret_populations
 29_fret_histogram_fitting
 36_multispot

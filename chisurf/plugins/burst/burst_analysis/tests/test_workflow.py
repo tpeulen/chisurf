@@ -502,19 +502,33 @@ def test_run_button_is_identical_across_plugins(qapp) -> None:
         QtWidgets.QApplication.processEvents()
 
 
-def test_h2mm_role_wired_into_downstream_propagation() -> None:
-    """H2MM inherits the upstream folder on step change, like BVA/2CDE.
+def test_every_loaded_panel_gets_upstream_changes() -> None:
+    """Downstream propagation reaches every loaded panel, whatever its role.
 
-    Regression: ``h2mm`` was missing from ``_apply_context_to_downstream``'s role
-    tuple, so the H2MM panel only picked up the folder on (re)bind, not when the
-    upstream selection changed.
+    Regression: the propagation used to iterate a hard-coded role tuple, and a
+    role missing from it (``h2mm``, once) picked the folder up only on (re)bind
+    and never when the upstream selection changed. It now iterates what is
+    *loaded*, so a new step cannot be forgotten -- which is what this asserts,
+    by propagating with a role that is in no such list.
     """
-    import inspect
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
 
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+    seen: list[str] = []
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    tool.workflow_context = BurstWorkflowContext()
+    tool._workflow_panels = {
+        "data": object(),          # the source; must not be re-applied to
+        "h2mm": object(),
+        "a_role_no_tuple_ever_held": object(),
+    }
+    tool._apply_context_to_panel = lambda role, widget: seen.append(role)
+    tool._apply_context_to_downstream()
 
-    src = inspect.getsource(BurstAnalysisTool._apply_context_to_downstream)
-    assert '"h2mm"' in src
+    assert "data" not in seen
+    assert {"h2mm", "a_role_no_tuple_ever_held"} <= set(seen)
 
 
 def test_h2mm_adopts_folder_via_downstream(tmp_path: Path) -> None:
@@ -830,13 +844,20 @@ def test_accurate_fret_setup_hand_off_is_idempotent(tmp_path: Path) -> None:
     assert len(applied) == 1, "an unchanged setup is applied once, not on every refresh"
 
 
-def test_new_panels_are_wired_into_downstream_propagation() -> None:
-    """A panel that is not in the role tuple only ever sees stale context."""
+def test_every_panel_of_the_pipeline_can_receive_context() -> None:
+    """Every declared step has an applier, so none of them sees stale context.
+
+    The propagation itself is role-agnostic now (see
+    :func:`test_every_loaded_panel_gets_upstream_changes`); what can still be
+    forgotten is the *applier* for a new role, which is what
+    :func:`test_every_panel_role_has_an_applier` covers. This adds the panels
+    that are reached only through the side-tool list.
+    """
     import inspect
 
     from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
 
-    src = inspect.getsource(BurstAnalysisTool._apply_context_to_downstream)
+    src = inspect.getsource(BurstAnalysisTool._apply_context_to_panel)
     for role in ('"burst_fcs"', '"burst_gs"', '"accurate_fret"'):
         assert role in src, f"{role} misses upstream changes"
 
