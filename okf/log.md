@@ -39383,3 +39383,13 @@ side of the line.
   its own `tmp_path`. They now build one 6 MB container per module and
   copy that. Recorded because the symptom — `ENOSPC` inside an unrelated
   pytest fixture — looks nothing like its cause.
+
+- 2026-09-08 — **Saved calibrations bounded to a FIFO of five, ordered by their
+  own timestamp.** A session left thirteen `fret_calibration` artifacts in one
+  container. `calibration_io.CALIBRATION_HISTORY` now caps the history and
+  `_prune_calibrations` trims after each save. The ordering was the real defect:
+  removing an object frees a slot the next write reuses, so after the first
+  prune `objects()` order no longer reflects write order — nine saves returned
+  the fifth calibration, not the ninth. Prune and readers now sort on the
+  payload's `saved_utc`, written to the microsecond so back-to-back saves still
+  order. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).

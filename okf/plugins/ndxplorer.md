@@ -162,6 +162,31 @@ Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.
 
+## Saved calibrations are a FIFO of five, ordered by their own timestamp
+
+Saving a calibration appends to the measurement, and one working session was
+enough to leave thirteen `fret_calibration` artifacts in a container — every
+reader then walks them all to find one. Keeping only the newest is the other
+extreme: the previous calibration is what you compare against when a new one
+comes out differently, and the one before that is what you go back to when it
+turns out worse. So `calibration_io.CALIBRATION_HISTORY` bounds the history at
+five and `_prune_calibrations` drops the excess after each save.
+
+**The trap is the ordering, and it only appears after the first prune.**
+Removing an object frees its slot and the next `put_blob` reuses it, so from
+that point `objects()` is not even a permutation of write order — a FIFO that
+trusts position starts discarding the *newest* save, and the reader starts
+returning a stale calibration while the file looks perfectly healthy. Measured
+directly: nine saves of a distinguishable `gG/gR`, and the value that came back
+was the fifth (0.5), not the ninth (0.9). Both the prune and every reader
+(`stored_calibrations`, `calibration_bridge.saved_constants_from_container`)
+therefore sort on the payload's own `saved_utc`, which is written to the
+**microsecond** — at one-second resolution two saves in the same second tie and
+the ordering is back to being position's. Pinned by
+`tests/test_calibration_io.py::test_history_is_bounded_and_drops_the_oldest`
+and `::test_history_bound_survives_repeated_pruning`, which fail on positional
+order.
+
 ## The z marginal is shown whether or not it gates
 
 **Four** places decided whether the third axis had a plot, all keyed on the

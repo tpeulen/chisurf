@@ -276,7 +276,11 @@ def saved_constants_from_container(source) -> dict:
         return {}
     try:
         with Measurement.open(path, writable=False) as measurement:
-            for obj in _artifacts(measurement):
+            # By the timestamp in the payload, because the container reuses the
+            # slots of removed objects: once the saved-calibration history has
+            # been pruned even once, position no longer says which is newest.
+            candidates = []
+            for index, obj in enumerate(_artifacts(measurement)):
                 if getattr(obj, "name", "") != SAVED_CALIBRATION_ARTIFACT:
                     continue
                 try:
@@ -291,11 +295,14 @@ def saved_constants_from_container(source) -> dict:
                     continue
                 constants = payload.get("constants")
                 if isinstance(constants, dict) and constants:
-                    return {
-                        str(k): float(v) for k, v in constants.items()
-                        if isinstance(v, (int, float))
-                        and np.isfinite(float(v))
-                    }
+                    candidates.append((
+                        str(payload.get("saved_utc", "")), -index,
+                        {str(k): float(v) for k, v in constants.items()
+                         if isinstance(v, (int, float)) and np.isfinite(float(v))},
+                    ))
+            if candidates:
+                candidates.sort(key=lambda entry: (entry[0], entry[1]))
+                return candidates[-1][2]
     except Exception:
         logging.debug("could not read a saved calibration from %s", path,
                       exc_info=True)
