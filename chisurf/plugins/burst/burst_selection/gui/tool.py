@@ -3035,6 +3035,47 @@ class BurstSelectionTool(ChisurfDockTool):
         self._file_paths.clear()
         self._refresh_file_list()
 
+    @staticmethod
+    def _gate_mismatch_warning(tttr, detectors) -> str | None:
+        """Warn when the detector gates cannot match the photons at all.
+
+        A micro-second ALEX measurement carries the laser alternation in the
+        **macro** time; its micro time is empty until the alternation is folded
+        into it. So a setup whose detectors gate on a micro-time range — which
+        is what the ALEX step writes — selects *nothing* on an unconverted file:
+        every per-detector count is zero, and every quantity derived from them
+        (the proximity ratio first) has nothing to be computed from.
+
+        Nothing fails while this happens. The burst search still finds bursts,
+        the table still has its columns, and the histogram of a ratio that was
+        never computable used to show a single hard spike. This is the sentence
+        that says why.
+        """
+        if not detectors:
+            return None
+        gated = [
+            name for name, info in detectors.items()
+            if any(int(hi) > int(lo) for lo, hi in (info or {}).get(
+                "micro_time_ranges", []) or [])
+        ]
+        if not gated:
+            return None
+        try:
+            micro_times = np.asarray(tttr.micro_times)
+        except Exception:
+            return None
+        if micro_times.size == 0 or int(micro_times.max()) > 0:
+            return None
+        return (
+            "This measurement has no micro-time — every photon reads 0 — but "
+            f"the detector setup gates {', '.join(sorted(gated))} on a "
+            "micro-time range, so those detectors select no photons and every "
+            "per-detector count is zero.\n\n"
+            "That is what an unconverted \u00b5s-ALEX file looks like: the laser "
+            "alternation is still in the macro time. Run the Alternation step "
+            "(and press its convert button) before searching bursts."
+        )
+
     def _show_preview_frames(self, diagnostics) -> None:
         """Fill the burst table and summary from the *visible window*.
 
@@ -3081,12 +3122,17 @@ class BurstSelectionTool(ChisurfDockTool):
             "the whole measurement" if window_s is None else
             f"{start_s:.1f}\u2013{start_s + window_s:.1f} s"
         )
+        warning = self._gate_mismatch_warning(
+            diagnostics[0].get("tttr"), detectors)
         self.summary.setPlainText(
             f"Preview of {where}: {n_bursts} burst(s) in "
             f"{len(frames)} file(s).\n\n"
             "These are the bursts of the visible window only. Press \u25b6 Run "
             "(or Next) to search every photon and write the burst table."
+            + (f"\n\n\u26a0 {warning}" if warning else "")
         )
+        if warning:
+            _LOG.warning("burst search: %s", warning.replace("\n", " "))
 
     def _diagnostic_window(self) -> tuple[float | None, float]:
         """``(length_s, start_s)`` of the slice the diagnostics need.

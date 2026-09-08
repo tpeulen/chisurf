@@ -39011,3 +39011,26 @@ side of the line.
   refactor, so the fix and its four tests sit in the working tree for them
   to carry. Measured A/B on the ndX suite: HEAD's `data_source` 161
   failures, with the fix 108 — 53 fixed, none broken.
+
+- **2026-09-08 — a proximity ratio that could not be computed was drawn
+  as zero.** `extract_features` filled the `fret` feature with zeros
+  whenever no per-detector column existed, so every burst sat at exactly
+  PR = 0 and the histogram showed one hard spike — indistinguishable from
+  a real population of zero-efficiency molecules, and the one answer
+  worse than none. It is NaN now, which draws nothing.
+
+  The ordinary way in is an **unconverted µs-ALEX file**: the alternation
+  is still in the macro time, so the micro time is all zeros, and the
+  ALEX setup's micro-time gates select no photons at all. Every
+  per-detector count is then zero with nothing failing anywhere.
+  `BurstSelectionTool._gate_mismatch_warning` names that case in the
+  summary and the log ("this measurement has no micro-time … run the
+  Alternation step").
+
+  Turning the zeros into NaN cost three GMM tests, and the fix is the
+  real one: `fit_gmm` required *every* feature finite per row, so one
+  all-NaN feature discarded every burst and returned "0 components" for
+  data that clusters fine on the other four. It now drops an
+  all-non-finite **column** and reports which features a mean is over
+  (`result["features"]`) — a constant zero column was degrading the fit
+  before this anyway.

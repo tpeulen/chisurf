@@ -119,9 +119,18 @@ def extract_features(frames: Sequence[Any]) -> Any:
         else:
             # Derive the proximity ratio from green/red photon counts when there is
             # no explicit column (generate_burst_dataframe records per-detector
-            # counts but no Proximity Ratio column) — otherwise every burst was 0.
+            # counts but no Proximity Ratio column).
+            #
+            # NaN, not zero, when there is nothing to derive it from. A burst
+            # table searched without detector definitions has no per-detector
+            # column at all, and filling that with zeros put every burst at
+            # exactly PR = 0: a single hard spike in the histogram that looks
+            # like a measured population of zero-efficiency molecules. It is the
+            # worst possible answer — a plausible picture of data that was never
+            # computed. NaN draws nothing, which is what "there is no proximity
+            # ratio here" should look like.
             pr = proximity_ratio(frame)
-            fret = pr if pr is not None else np.zeros(_rows(frame))
+            fret = pr if pr is not None else np.full(_rows(frame), np.nan)
         # Column-wise, not one record per burst: the arrays are already the
         # right shape, and building a million dicts to take them apart again was
         # the whole cost of this function.
@@ -166,9 +175,18 @@ def fit_gmm(features, settings: GMMSettings | None = None) -> dict[str, Any]:
             "means": [],
         }
 
-    matrix = np.column_stack(
-        [numeric_column(features, name) for name in _FEATURE_COLUMNS]
-    )
+    columns = list(_FEATURE_COLUMNS)
+    matrix = np.column_stack([numeric_column(features, name) for name in columns])
+    # A feature that could not be computed *at all* carries no information, and
+    # dropping it is not the same as dropping the bursts. The row filter below
+    # requires every column finite, so one all-NaN feature — a proximity ratio
+    # on a table with no per-detector counts is the ordinary way to get one —
+    # discarded every burst and returned "0 components" for data that clusters
+    # perfectly well on the other four.
+    usable = np.isfinite(matrix).any(axis=0)
+    if usable.any() and not usable.all():
+        matrix = matrix[:, usable]
+        columns = [name for name, keep in zip(columns, usable) if keep]
     finite_mask = np.isfinite(matrix).all(axis=1)
     if not finite_mask.any():
         return {
@@ -226,4 +244,8 @@ def fit_gmm(features, settings: GMMSettings | None = None) -> dict[str, Any]:
         "labels": best_labels.astype(int).tolist(),
         "weights": best_model.weights_.astype(float).tolist(),
         "means": best_model.means_.astype(float).tolist(),
+        # Which features each mean is over. Not always all five: a feature that
+        # could not be computed is dropped, and without this the caller cannot
+        # tell which column a mean belongs to.
+        "features": columns,
     }
