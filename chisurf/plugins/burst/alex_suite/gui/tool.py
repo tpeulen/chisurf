@@ -482,6 +482,12 @@ class AlexSuiteTool(BurstAnalysisTool):
         """
         ndx = getattr(widget, "_embedded_mainwindow", widget)
         files, file_type = self._ndx_sources()
+        # Before the early return: the *files* may be the same while what the
+        # measurement stores about them has changed -- re-running the background
+        # step writes a new estimate into the same container. Returning to this
+        # step should show the current numbers, and this is a no-op when they
+        # have not moved.
+        self._refresh_ndx_parameters(ndx)
         if not files or files == self._es_loaded:
             return
         open_files = getattr(ndx, "open_files", None)
@@ -494,6 +500,23 @@ class AlexSuiteTool(BurstAnalysisTool):
             logger.warning(f"ALEX Suite: could not open the bursts in ndX — {exc}")
             return
         self._es_loaded = files
+
+    @staticmethod
+    def _refresh_ndx_parameters(ndx) -> None:
+        """Bring ndX's constants up to date with what the measurement stores."""
+        try:
+            from chisurf.plugins.ndxplorer.calibration_bridge import (
+                refresh_stored_parameters,
+            )
+
+            applied = refresh_stored_parameters(ndx)
+            if applied:
+                logger.info(
+                    "ALEX Suite: ndX adopted the measurement's stored "
+                    f"parameters ({', '.join(sorted(applied))})."
+                )
+        except Exception as exc:
+            logger.debug(f"ALEX Suite: could not refresh ndX's parameters — {exc}")
 
     @staticmethod
     def _ensure_ndx_equations(ndx) -> None:

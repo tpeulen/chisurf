@@ -455,3 +455,81 @@ def test_a_measurement_with_only_a_background_still_restores(tmp_path):
     assert ndx.constants["Bg"] == pytest.approx(1.25)
     assert ndx.constants["Br"] == pytest.approx(2.5)
     assert ndx.constants["By"] == pytest.approx(3.75)
+
+
+# ── and it repopulates when the measurement changes ──────────────────────────
+
+def _window_on(container):
+    class _DataSource:
+        provenance = {"container_path": str(container)}
+
+    class _Ndx:
+        def __init__(self):
+            self.data_source = _DataSource()
+            self.constants = {
+                "gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
+                "Bg": 9.0, "Br": 9.0, "By": 9.0, "PhiA": 1.0, "PhiD": 1.0,
+                "forster_radius": 52.0, "tauD0": 4.0,
+            }
+
+    return _Ndx()
+
+
+def _write_background(container, green, red, yellow):
+    from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
+
+    write_burst_artifact(
+        container,
+        store_from_arrays({
+            "Detector": np.array(["green", "red", "yellow"], dtype=object),
+            "Rate": np.array([green, red, yellow], dtype=float),
+        }),
+        name="background", artifact_kind="background_data",
+        operation_type="background_correction", row_grain="channel",
+        derived_from="bursts")
+
+
+@pytest.fixture
+def container(tmp_path):
+    import shutil
+
+    source = pathlib.Path.home() / (
+        "dev/tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto")
+    if not source.exists():
+        pytest.skip("the ALEX calibration container is not on this machine")
+    target = tmp_path / source.name
+    shutil.copy2(source, target)
+    return target
+
+
+def test_a_revisit_with_nothing_changed_is_a_no_op(container):
+    from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
+
+    ndx = _window_on(container)
+    assert refresh_stored_parameters(ndx), "the first visit must populate"
+    assert refresh_stored_parameters(ndx) == {}, "a revisit re-applied it"
+
+
+def test_a_value_the_user_tuned_survives_a_revisit(container):
+    """The window is theirs between updates; only a *changed* estimate wins."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
+
+    ndx = _window_on(container)
+    refresh_stored_parameters(ndx)
+    ndx.constants["Bg"] = 42.0
+    assert refresh_stored_parameters(ndx) == {}
+    assert ndx.constants["Bg"] == pytest.approx(42.0)
+
+
+def test_re_running_the_background_step_repopulates(container):
+    """The container is the shared surface: a new estimate reaches the window."""
+    from chisurf.plugins.ndxplorer.calibration_bridge import refresh_stored_parameters
+
+    ndx = _window_on(container)
+    refresh_stored_parameters(ndx)
+    _write_background(container, 2.24, 3.17, 1.05)
+    assert refresh_stored_parameters(ndx), "a re-run must reach the window"
+    assert ndx.constants["Bg"] == pytest.approx(2.24)
+    assert ndx.constants["Br"] == pytest.approx(3.17)
+    assert ndx.constants["By"] == pytest.approx(1.05)

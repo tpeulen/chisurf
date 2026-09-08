@@ -36,6 +36,7 @@ __all__ = [
     "calibration_from_container",
     "background_from_container",
     "restore_calibration_from_container",
+    "refresh_stored_parameters",
     "CALIBRATION_ARTIFACT",
     "refresh_column_selectors",
     "find_ndx_windows",
@@ -391,6 +392,20 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
     if not factors and not rates:
         return {}
 
+    # Applied once per *value*, not once per open. Re-running the background
+    # step writes a new estimate into the container while this window is up, and
+    # the window should follow it -- but a window whose stored parameters have
+    # not moved must be left exactly as it is, because anything the user tuned
+    # in the meantime is theirs. So the comparison is against what was last
+    # restored from this container, not against what the window now holds.
+    stored = {**factors, **rates}
+    key = str(pathlib.Path(str(source)).resolve())
+    seen = getattr(ndx, "_restored_parameters", None)
+    if not isinstance(seen, dict):
+        seen = {}
+    if seen.get(key) == stored:
+        return {}
+
     constants = dict(getattr(ndx, "constants", {}) or {})
     # Start from what the window holds, so quantum yields and anything else it
     # carries survive; only what the measurement stores is replaced.
@@ -407,6 +422,11 @@ def restore_calibration_from_container(ndx, source=None) -> dict:
         if constant in rates:
             setattr(calib, attribute, float(rates[constant]))
     applied = push_calibration_to_ndx(ndx, calib, recompute=True)
+    seen[key] = stored
+    try:
+        ndx._restored_parameters = seen
+    except Exception:
+        pass
 
     logging.info(
         "restored from %s: %s",
@@ -946,3 +966,18 @@ def push_unmixed_columns_to_ndx(
                 pass
 
     return injected
+
+
+def refresh_stored_parameters(ndx) -> dict:
+    """Re-read the open measurement's stored parameters and apply any change.
+
+    Called when a step that owns an ndX window is revisited. The container is
+    the shared surface between the steps: the background step writes into it,
+    the calibration step writes into it, and a window opened before either of
+    them ran is holding numbers that have since been superseded on disk.
+
+    Cheap enough to call on every revisit -- one container open and two small
+    artifact reads -- and a no-op when nothing has changed, which is what keeps
+    it from overwriting values the user tuned themselves.
+    """
+    return restore_calibration_from_container(ndx)

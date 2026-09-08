@@ -148,6 +148,16 @@ into a window that will overwrite it. Both readers also take the **last**
 matching artifact: a container keeps every estimate it is given, so re-running
 the background step leaves the older one in front.
 
+**And it repopulates.** Restoring on *open* alone is not enough: the container
+is the shared surface between the steps, so re-running the background step
+writes a new estimate into the same file while the ndX window is still up.
+`refresh_stored_parameters` is called whenever a step that owns an ndX window is
+revisited — cheap enough for that (one container open, two small artifact reads)
+because it compares against **what was last restored from that container**, not
+against what the window now holds. So a revisit with nothing changed is a no-op,
+a value the user tuned in between is theirs and survives, and a re-run of the
+background step reaches the window.
+
 Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.

@@ -39310,3 +39310,18 @@ side of the line.
 
   Verified end to end on the real container: `Bg/Br/By` 1.2/0.6/0.6 →
   0.0/0.7897/0.8636 in the constants *and* in the parameter table.
+
+- **2026-09-08 — and it repopulates** (owner: "so does it repopulate?" —
+  it did not). Restoring on *open* alone missed the case that matters
+  most: the container is the shared surface between the steps, so
+  re-running the background step writes a new estimate into the same file
+  while the ndX window is still up, and returning to the step showed the
+  superseded numbers. Worse, the ALEX step returns early when the file set
+  is unchanged, which it always is.
+
+  `refresh_stored_parameters` now runs on every revisit, *before* that
+  early return. What makes it safe to call that often is the comparison:
+  against **what was last restored from that container**, not against what
+  the window currently holds. A revisit with nothing changed is a no-op; a
+  constant the user tuned in between is theirs and survives; a re-run
+  reaches the window. All three pinned by tests.
