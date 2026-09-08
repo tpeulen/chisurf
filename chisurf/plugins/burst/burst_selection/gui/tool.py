@@ -2186,6 +2186,19 @@ class BurstSelectionTool(ChisurfDockTool):
         if not self._file_paths:
             self.summary.setPlainText("No TTTR files selected.")
             return
+        # Refuse rather than produce a table of zeros. A search whose detectors
+        # gate on a micro-time the data does not have writes a burst run, and a
+        # container to hold it, in which every per-detector count is 0 -- a
+        # complete, plausible-looking analysis of nothing, and one that has
+        # already created files on disk by the time anyone reads a warning.
+        blocked = self._blocked_reason()
+        if blocked is not None:
+            self.summary.setPlainText(blocked)
+            self._status_bar.showMessage(
+                "Burst search not run: the measurement needs the Alternation step."
+            )
+            _LOG.warning(f"burst search refused: {blocked}".replace("\n", " "))
+            return
         settings = self._settings_from_controls()
         if not settings.output_formats and not self._mmfdb_output_selected():
             self.summary.setPlainText("No output format selected.")
@@ -3034,6 +3047,36 @@ class BurstSelectionTool(ChisurfDockTool):
         """Clear all files from the file list."""
         self._file_paths.clear()
         self._refresh_file_list()
+
+    def _blocked_reason(self) -> str | None:
+        """Why a full burst search must not run, or ``None`` if it may.
+
+        One case so far, and it is the one that costs files: micro-second ALEX
+        data that has not been through the Alternation step, under a detector
+        setup whose gates are micro-time ranges. The setup persists between
+        sessions — ``ALEX Suite (auto)`` is still selected in step 1 long after
+        the containers it describes were made — so it is entirely ordinary to
+        arrive here with last week's setup and this week's raw files.
+        """
+        detectors = getattr(self.wizard, "detectors", None) or {}
+        if not detectors:
+            return None
+        from chisurf.core.fio.staging import open_tttr
+
+        for path in self._file_paths[:1]:
+            try:
+                tttr = open_tttr(str(path))
+            except Exception:
+                return None
+            reason = self._gate_mismatch_warning(tttr, detectors)
+            if reason is not None:
+                return (
+                    "Burst search not run.\n\n" + reason + "\n\n"
+                    "Nothing was written. Go back to "
+                    "3. Alternation (\u00b5s-ALEX) and press its convert button; "
+                    "the search then runs on the converted measurement."
+                )
+        return None
 
     @staticmethod
     def _gate_mismatch_warning(tttr, detectors) -> str | None:

@@ -105,3 +105,43 @@ def test_an_uncomputable_feature_does_not_discard_every_burst():
     assert result["n_components"] >= 1, "an all-NaN feature discarded every burst"
     assert "fret" not in result["features"]
     assert len(result["means"][0]) == len(result["features"])
+
+
+def test_the_search_refuses_unconverted_alex_data():
+    """A warning was not enough: by the time it is read, files exist.
+
+    A search whose detectors gate on a micro-time the data does not have writes
+    a burst run — and a container to hold it — in which every per-detector count
+    is zero. The setup persists between sessions, so arriving here with last
+    week's ``ALEX Suite (auto)`` and this week's raw files is ordinary.
+    """
+    from pathlib import Path
+
+    from chisurf.plugins.burst.burst_selection.gui.tool import BurstSelectionTool
+
+    class _Tttr:
+        micro_times = np.zeros(1000, dtype=int)
+
+    tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    tool._file_paths = [Path("/data/a.sm")]
+
+    class _Wizard:
+        detectors = {"green": {"chs": [1], "micro_time_ranges": [[616, 3784]]}}
+
+    tool.wizard = _Wizard()
+
+    import chisurf.core.fio.staging as staging
+
+    real = staging.open_tttr
+    staging.open_tttr = lambda *_a, **_k: _Tttr()
+    try:
+        reason = BurstSelectionTool._blocked_reason(tool)
+        assert reason is not None
+        assert "Nothing was written" in reason
+        assert "Alternation" in reason
+
+        # An ungated setup is not blocked.
+        _Wizard.detectors = {"green": {"chs": [1]}}
+        assert BurstSelectionTool._blocked_reason(tool) is None
+    finally:
+        staging.open_tttr = real

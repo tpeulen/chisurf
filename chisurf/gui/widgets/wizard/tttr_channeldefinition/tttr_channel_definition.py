@@ -1309,7 +1309,11 @@ class DetectorWizardPage(QWizardPage):
             # Open RAW (apply_lut=False, bypassing the active-setup context);
             # _update_microtime_preview applies THIS page's LUT, so opening
             # LUT-aware here would double-apply.
-            tttr = open_tttr(str(path), routine, apply_lut=False)
+                        # cache=False: this page applies the setup's LUT to the object
+            # it holds (``_apply_setup_lut_to_tttr``), and a shared handle
+            # mutated in place would hand the corrected decay to every other
+            # reader of the same file -- including the one asking for raw.
+            tttr = open_tttr(str(path), routine, apply_lut=False, cache=False)
             _update_microtime_preview(self, tttr, file_path=str(path))
         except Exception:
             pass
@@ -1903,7 +1907,7 @@ class DetectorWizardPage(QWizardPage):
             from mmfdb.repository import MFDatabase
             from mmfdb.store.database_resolver import resolve_database_path
 
-            from .tttr_setup_utils import setup_id_for_name
+            from chisurf.core.fio.setup_store import setup_id_for_name
 
             setup_id = setup_id_for_name(setup_name, _resolve_active_user_id())
             self.calibration_combo.blockSignals(True)
@@ -1937,7 +1941,7 @@ class DetectorWizardPage(QWizardPage):
             from mmfdb.repository import MFDatabase
             from mmfdb.store.database_resolver import resolve_database_path
 
-            from .tttr_setup_utils import setup_id_for_name
+            from chisurf.core.fio.setup_store import setup_id_for_name
 
             setup_id = setup_id_for_name(self.current_setup_name, _resolve_active_user_id())
             with MFDatabase(resolve_database_path()) as db:

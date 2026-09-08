@@ -33,6 +33,7 @@ on slow storage, parses, and deletes the temp in one call.
 
 from __future__ import annotations
 
+import collections
 import contextlib
 import logging
 import shutil
@@ -402,6 +403,7 @@ def open_tttr(
     channel_shifts: dict | None = None,
     apply_lut: bool | None = None,
     lut_seed: int = LUT_DITHER_SEED,
+    cache: bool = True,
     progress_cb: ProgressCallback | None = None,
     cancel_cb: CancelCallback | None = None,
     **stage_kwargs,
@@ -442,6 +444,21 @@ def open_tttr(
     lut_seed : int
         RNG seed for the LUT dithering (see :data:`LUT_DITHER_SEED`). A positive
         value makes reads reproducible; ``-1``/``0`` request random dithering.
+    cache : bool
+        Return a **shared** handle for a file already open under the same
+        correction, instead of reading it again. Default. Every step of a burst
+        workflow reads the same measurement, so this is the difference between
+        one open and one per step.
+
+        The handle is shared, so **a caller that mutates the object must pass
+        ``cache=False``** — ``alex_to_microtime`` folds the alternation in place,
+        and doing that to a shared handle would silently change what every other
+        holder sees. Keyed on the file's mtime and size, so a rewritten
+        measurement is re-read.
+
+        A read that carries a LUT or a micro-time shift is **never** shared,
+        whatever this is set to: applying one rewrites the micro times in place,
+        so the object is already a mutated one.
     progress_cb, cancel_cb
         Forwarded to :func:`stage_path_if_slow`.
     **stage_kwargs
@@ -474,6 +491,21 @@ def open_tttr(
     # selector or it stages a file that does not exist.
     path, selector = split_container_spec(src)
 
+    # Only a *plain* read is shareable. ``apply_setup_lut`` below rewrites the
+    # micro times in place, so a corrected object is a mutated one: handing the
+    # same instance to a second caller — or worse, letting a later correction
+    # land on an instance somebody already holds — is how a LUT toggle ends up
+    # showing the corrected decay for the raw one. Corrected reads are rare
+    # (an inspection preview), and the workflow's repeated reads are all plain.
+    corrected = bool(apply_lut) or bool(channel_luts) or bool(channel_shifts)
+    key = None
+    if cache and not corrected:
+        key = _cache_key(path, selector, container, channel_luts, channel_shifts,
+                         apply_lut, lut_seed)
+        cached = _cache_get(key)
+        if cached is not None:
+            return cached
+
     with staged_source(
         path, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs
     ) as local:
@@ -486,7 +518,113 @@ def open_tttr(
     apply_setup_lut(
         tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
     )
+    if key is not None:
+        _cache_store(key, tttr)
     return tttr
+
+
+# ── one open per measurement ─────────────────────────────────────────────────
+#
+# A workflow pass opened the same file once per step: the diagnostics preview,
+# each move of the visible window, the burst search, the background estimate.
+# On a `.sm` that is 90 ms wasted; on a 20 M-photon `.pto` it is a third of a
+# second each, and the steps are not even aware of one another. Since this
+# function is already *the* seam every reader goes through, the handle can be
+# kept here and handed back instead.
+#
+# THE CONTRACT, and it is load-bearing: the returned object is **shared**.
+# A caller that mutates it -- ``alex_to_microtime`` is the one mutator in the
+# tree, and it deliberately does not come through here -- corrupts every other
+# holder's view with nothing to say so. Such a caller passes ``cache=False``
+# and gets an object of its own.
+
+#: LRU of opened measurements, newest last. Bounded by photons rather than by
+#: entries: "four files" means 40 MB of one measurement and 4 GB of another.
+_TTTR_CACHE: "collections.OrderedDict[tuple, object]" = collections.OrderedDict()
+
+#: Photons the cache may hold in total. Roughly a gigabyte of records at
+#: tttrlib's ~16 bytes per photon, which is a few large measurements.
+_TTTR_CACHE_PHOTONS = 64_000_000
+
+
+def _cache_key(path, selector, container, channel_luts, channel_shifts,
+               apply_lut, lut_seed):
+    """A key that changes whenever the bytes or the correction would.
+
+    The file's mtime and size are in it, so rewriting a measurement re-reads it
+    rather than serving the previous contents; so is the LUT/shift correction,
+    because two setups over one file are two different readings of it.
+    """
+    try:
+        info = Path(path).stat()
+    except OSError:
+        return None
+    import numpy as np
+
+    lut = None if not channel_luts else tuple(sorted(
+        (str(k), tuple(np.asarray(v).ravel().tolist()[:8]), int(np.size(v)))
+        for k, v in channel_luts.items()))
+    shifts = None if not channel_shifts else tuple(sorted(
+        (str(k), float(v)) for k, v in channel_shifts.items()))
+    return (str(Path(path).resolve()), selector or "", container,
+            info.st_mtime_ns, info.st_size,
+            bool(apply_lut), int(lut_seed), lut, shifts)
+
+
+def _cache_photons(tttr) -> int:
+    """How many photons an entry holds, for the size bound."""
+    try:
+        return int(len(tttr))
+    except Exception:
+        pass
+    try:
+        import numpy as np
+
+        return int(np.asarray(tttr.macro_times).size)
+    except Exception:
+        return 0
+
+
+def _cache_get(key):
+    """Return a cached measurement and mark it most-recently used."""
+    if key is None:
+        return None
+    tttr = _TTTR_CACHE.get(key)
+    if tttr is not None:
+        _TTTR_CACHE.move_to_end(key)
+    return tttr
+
+
+def _cache_store(key, tttr) -> None:
+    """Keep *tttr* under *key*, evicting least-recently-used entries."""
+    photons = _cache_photons(tttr)
+    if photons <= 0 or photons > _TTTR_CACHE_PHOTONS:
+        # A measurement larger than the whole budget is never cached: it would
+        # evict everything else and then itself.
+        return
+    _TTTR_CACHE[key] = tttr
+    _TTTR_CACHE.move_to_end(key)
+    total = sum(_cache_photons(t) for t in _TTTR_CACHE.values())
+    while total > _TTTR_CACHE_PHOTONS and len(_TTTR_CACHE) > 1:
+        _, evicted = _TTTR_CACHE.popitem(last=False)
+        total -= _cache_photons(evicted)
+
+
+def clear_tttr_cache() -> None:
+    """Forget every cached measurement.
+
+    For tests, and for a caller that wants the memory back. Anything still
+    referenced elsewhere stays alive in its holder.
+    """
+    _TTTR_CACHE.clear()
+
+
+def tttr_cache_stats() -> dict:
+    """``{"entries", "photons"}`` currently held. For diagnostics and tests."""
+    return {
+        "entries": len(_TTTR_CACHE),
+        "photons": sum(_cache_photons(t) for t in _TTTR_CACHE.values()),
+    }
 
 
 #: Names that were once used as container types but that ``tttrlib`` has never

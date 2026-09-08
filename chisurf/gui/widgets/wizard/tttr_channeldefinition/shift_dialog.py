@@ -82,7 +82,11 @@ class MicrotimeShiftDialog(QtWidgets.QDialog):
         try:
             from chisurf.core.fio.staging import open_tttr
 
-            tttr = open_tttr(str(path), routine or None,
+                        # cache=False: this page applies the setup's LUT to the object
+            # it holds (``_apply_setup_lut_to_tttr``), and a shared handle
+            # mutated in place would hand the corrected decay to every other
+            # reader of the same file -- including the one asking for raw.
+            tttr = open_tttr(str(path), routine or None, cache=False,
                              channel_luts=channel_luts, apply_lut=bool(apply_lut))
             self._n_mt = int(tttr.header.get_effective_number_of_micro_time_channels())
             for ch in sorted(int(c) for c in tttr.get_used_routing_channels()):

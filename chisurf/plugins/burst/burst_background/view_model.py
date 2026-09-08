@@ -170,15 +170,16 @@ class BackgroundViewModel:
         if reason is not None:
             raise ValueError(reason)
 
-        import tttrlib
-
         import chisurf.core.fluorescence.burst as _burst
+        from chisurf.core.fio.staging import open_tttr
 
         detectors = self._channels()
         self._interphoton.clear()
         for path in self.files:
             try:
-                tttr = tttrlib.TTTR(path)
+                # Through the shared seam, so the measurement the burst search
+                # and the diagnostics already opened is not read a fourth time.
+                tttr = open_tttr(path)
             except Exception as exc:
                 logger.warning("background: could not read %s: %s", path, exc)
                 continue

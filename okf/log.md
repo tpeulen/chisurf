@@ -39050,3 +39050,34 @@ side of the line.
   plots still draw when the preview raises, and the logger really does
   take exactly one positional argument, so the module is written against
   the signature it has.
+
+- **2026-09-08 — one open per measurement, instead of one per step.**
+  Counting `tttrlib.TTTR` constructions across a burst pass: the
+  diagnostics preview, each window move, the burst search and the
+  background estimate opened the *same file* — 4 opens. `open_tttr` in
+  `chisurf/core/fio/staging.py` is already documented as the seam every
+  reader goes through; it now keeps an LRU keyed on
+  `(path, mtime, size, container, correction)` and bounded by **photons**
+  rather than entries (four files means 40 MB of one measurement and 4 GB
+  of another). 4 opens → 1. The background estimator was calling
+  `tttrlib.TTTR` directly and now goes through the seam too.
+
+  **The contract is load-bearing: the handle is shared.** A caller that
+  mutates it must pass `cache=False`. The suite found the one existing
+  violator — the channel-definition wizard applies the setup's LUT to a
+  TTTR it holds, so a shared handle came back corrected when raw was
+  asked for (`test_microtime_preview_applies_lut`, confirmed mine by A/B
+  against `cache=False`). Two guards: a read carrying a LUT or a shift is
+  never shared whatever the flag says, and the two mutating call sites opt
+  out explicitly.
+
+- **2026-09-08 — the burst search now refuses unconverted µs-ALEX data
+  rather than writing a table of zeros.** The detector setup persists
+  between sessions, so `ALEX Suite (auto)` is still selected long after
+  the containers it describes were made; pointing it at raw `.sm` files
+  gates on a micro-time that does not exist yet, and every per-detector
+  count comes out 0. The previous round only *warned*, which is too late:
+  by the time anyone reads it the search has written a burst run and
+  created a container per file from the unconverted data. `_blocked_reason`
+  stops the run before anything is written and names the remedy (the
+  Alternation step's convert button). An ungated setup is unaffected.
