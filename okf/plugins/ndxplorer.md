@@ -162,6 +162,43 @@ Round trip verified on a real container: planted α 0.0731, β 1.234, γ 0.8642,
 δ 0.0519, R₀ 54.3 come back identically and land as ndX's own names —
 `gG/gR = (PhiA/PhiD)/γ`, its `beta` = δ, `r` = 1/β.
 
+## "Auto" ranges past the outliers, and a region keeps its meaning
+
+Three defects on the z-axis panel, all about a number on an axis being
+meaningless without the projection it was written in.
+
+**Auto ranged to the extremes.** On a real µs-ALEX burst table the photon count
+has a 99.9th percentile of 1 108 and one burst at 450 094, so the z axis came
+out 60 – 450 094 and the whole distribution drew inside the first pixel.
+`axis_helpers.robust_axis_range` now uses the 0.1/99.9 percentiles, with each
+end **snapped back out to the true extreme when that extreme is within 5 % of
+the robust span**. That second half is what keeps the change from being a
+regression of its own: an efficiency running 0 to 1 has no outliers and must
+still auto-range to exactly 0 and 1, or "Auto" stops meaning "all of it" on the
+data where it always worked.
+
+**A region lost its units when the scale toggled.** `PGRangeSelection` converts
+data ↔ view on every read and write, but the pyqtgraph item *stores* view
+coordinates and nothing told it the axis had changed. A range written on a log
+axis (view 1.78 – 5.65 for counts of 60 – 450 094) became, the moment the axis
+went linear, a selection of 1.78 – 5.65 **counts**: a sliver at the left edge
+gating away the whole measurement while the range boxes still read 60 and
+450 094. The other direction puts the region at 10**60, off the plot. The plot
+now keeps its selections and calls `reproject()` on a scale change — read back
+through the projection they were written in, written again in the current one.
+`_drawn_log` is the record of which that was.
+
+**The z min/max boxes were different sizes**, and the maximum clipped
+mid-number. They were in two cells of a `QGridLayout` whose column widths are
+set by the *other* rows: the minimum inherited the width of the parameter combo
+above it, the maximum that of a bin-count spin box. They now share one cell
+through a `QHBoxLayout`, so both stretch equally.
+
+**A trap for whoever tests this next.** A test that toggles log and back without
+writing the range in between passes whatever the code does — the item still
+holds the linear numbers it started with. The log→linear test has to *set* the
+range while the axis is log, which is what `fit_z_selection_to_axis` does.
+
 ## A background is a rate; the calibration works in counts
 
 The two meet at this bridge, and they were not converted. ndX computes

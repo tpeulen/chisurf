@@ -39450,3 +39450,14 @@ side of the line.
   regressor rather than an intercept) and both routes push rates. Recovered
   1.87/1.09/2.66 kHz against a truth of 2.0/1.2/2.8 on a duration-aware
   simulation. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).
+
+- 2026-09-08 — **ndX z-axis panel: Auto ranged to the outliers, a region lost
+  its units on a scale toggle, and the min/max boxes were different sizes.**
+  Auto now uses the 0.1/99.9 percentiles with each end snapped back to the true
+  extreme when it is within 5 % of the robust span (so a 0–1 axis is untouched,
+  while a photon count with one burst at 450 094 against a 99.9th percentile of
+  1 108 ranges to the data). `PGRangeSelection` records which projection it was
+  drawn in and the plot re-projects its selections when the scale changes — a
+  range written on a log axis was becoming a sliver of counts on a linear one.
+  The z min/max spin boxes now share one grid cell through a horizontal layout.
+  ndxplorer commit 38d2df8. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).
