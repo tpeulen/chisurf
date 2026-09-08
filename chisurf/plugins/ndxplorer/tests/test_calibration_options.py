@@ -100,3 +100,101 @@ def test_the_options_map_onto_the_bridge():
 
     accepted = set(inspect.signature(optimize_calibration_from_ndx).parameters)
     assert set(kwargs) <= accepted, set(kwargs) - accepted
+
+
+# ── backgrounds: an input, not a factor ──────────────────────────────────────
+
+def test_a_missing_stored_background_falls_back_to_the_constants():
+    """Asking for the measured background must not throw the typed one away.
+
+    A container that never had a background step has nothing to subtract. Zeroing
+    the window's own numbers *and* subtracting nothing in their place is strictly
+    worse than the setting it replaced.
+    """
+    ndx = _window(Bg=2.0, Br=3.0, By=4.0)
+    result = _run(ndx, background="measurement")
+    assert result["ok"]
+    assert result["background_per_burst"] == [], "this fixture has no container"
+    # The typed values survived into the calibration.
+    assert ndx.constants["Bg"] == pytest.approx(2.0)
+
+
+def test_none_really_means_zero():
+    ndx = _window(Bg=2.0, Br=3.0, By=4.0)
+    result = _run(ndx, background="none")
+    assert result["ok"]
+    assert result["background"] == "none"
+
+
+def test_a_rate_becomes_counts_through_the_burst_duration(tmp_path, monkeypatch):
+    """kHz x ms = counts, and the scaling is per burst.
+
+    A 4 ms burst carries four times the background of a 1 ms one; subtracting
+    one number from both is wrong in opposite directions.
+    """
+    from chisurf.plugins.ndxplorer import calibration_bridge as bridge
+
+    durations = np.array([1.0, 2.0, 4.0])
+    table = {"Duration (ms)": durations}
+
+    class _Column:
+        def __init__(self, name, values=None, strings=None):
+            self._name, self._values, self._strings = name, values, strings
+
+        def name(self):
+            return self._name
+
+        def numpy(self):
+            return np.asarray(self._values, dtype=float)
+
+        def string_at(self, row):
+            return self._strings[row]
+
+    class _Store:
+        def __init__(self):
+            self._cols = [
+                _Column("Detector", strings=["green", "red", "yellow"]),
+                _Column("Rate", values=[0.5, 1.0, 2.0]),
+            ]
+
+        def n_columns(self):
+            return len(self._cols)
+
+        def n_rows(self):
+            return 3
+
+        def column(self, i):
+            return self._cols[i]
+
+    class _Obj:
+        name = "background"
+        uid = 1
+
+    class _Measurement:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def artifacts(self):
+            return [_Obj()]
+
+        def get_store(self, _uid):
+            return _Store()
+
+    import chisurf.core.fio.pto as pto
+
+    monkeypatch.setattr(pto.Measurement, "open",
+                        staticmethod(lambda *_a, **_k: _Measurement()))
+
+    class _DS:
+        provenance = {"container_path": str(tmp_path / "m.pto")}
+
+    class _Ndx:
+        data_source = _DS()
+
+    out = bridge.measured_background(_Ndx(), table)
+    np.testing.assert_allclose(out["i_dd"], 0.5 * durations)   # green
+    np.testing.assert_allclose(out["i_da"], 1.0 * durations)   # red
+    np.testing.assert_allclose(out["i_aa"], 2.0 * durations)   # yellow

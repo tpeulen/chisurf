@@ -29,6 +29,7 @@ __all__ = [
     "push_calibration_to_ndx",
     "push_unmixed_columns_to_ndx",
     "optimize_calibration_from_ndx",
+    "measured_background",
     "refresh_column_selectors",
     "find_ndx_windows",
 ]
@@ -150,6 +151,90 @@ def find_ndx_windows() -> list:
     return windows
 
 
+#: Detector name in a measurement's background artifact → the channel it is the
+#: background of. The Seidel vocabulary, the same one the burst tables use.
+_BACKGROUND_ROLES = {"green": "i_dd", "red": "i_da", "yellow": "i_aa"}
+
+
+def measured_background(ndx, table) -> dict:
+    """Per-burst background **counts** from the measurement's own estimate.
+
+    Backgrounds are not fitted by the calibration — they are an input to it, and
+    every corrected quantity is a count *minus* one. Leaving them as three
+    numbers somebody typed puts the least-checked part of the correction in the
+    place where it changes E most: a background error moves the dim bursts and
+    leaves the bright ones, which looks exactly like a real sub-population.
+
+    The measurement already carries the answer. The background step writes a
+    ``background`` artifact into the container — one rate per detector, fitted
+    from that file's own inter-photon-time distribution — and a rate becomes the
+    counts *in a burst* when multiplied by how long the burst lasted. That is
+    the difference between a constant and a background: a 4 ms burst carries
+    four times the background of a 1 ms one, and subtracting the same number
+    from both is wrong in opposite directions.
+
+    Parameters
+    ----------
+    ndx : object
+        The ndX window; its data source's provenance names the container.
+    table : mapping of str to array
+        The burst columns, for the durations.
+
+    Returns
+    -------
+    dict
+        ``{role: array}`` for the roles that could be resolved, empty when the
+        measurement has no stored background (nothing is assumed).
+    """
+    from chisurf.core.fio.pto import Measurement
+
+    data_source = getattr(ndx, "data_source", None)
+    provenance = getattr(data_source, "provenance", None) or {}
+    container = provenance.get("container_path") or ""
+    if not container:
+        metadata = getattr(data_source, "metadata", None) or {}
+        container = (metadata.get("provenance") or {}).get("container_path", "")
+    if not container:
+        return {}
+
+    rates: dict[str, float] = {}
+    try:
+        with Measurement.open(container, writable=False) as measurement:
+            for obj in measurement.artifacts():
+                if getattr(obj, "name", "") != "background":
+                    continue
+                store = measurement.get_store(obj.uid)
+                names = [store.column(i).name() for i in range(store.n_columns())]
+                if "Detector" not in names or "Rate" not in names:
+                    continue
+                detectors = store.column(names.index("Detector"))
+                values = np.asarray(store.column(names.index("Rate")).numpy(), dtype=float)
+                for row in range(store.n_rows()):
+                    rates[str(detectors.string_at(row)).lower()] = float(values[row])
+                break
+    except Exception:
+        return {}
+    if not rates:
+        return {}
+
+    def duration_ms(detector: str):
+        """That detector's own burst durations, else the burst's."""
+        for name in (f"Duration ({detector}) (ms)", "Duration (ms)"):
+            if name in table:
+                return np.asarray(table[name], dtype=float)
+        return None
+
+    out: dict[str, np.ndarray] = {}
+    for detector, role in _BACKGROUND_ROLES.items():
+        rate = rates.get(detector)
+        durations = duration_ms(detector)
+        if rate is None or durations is None:
+            continue
+        # kHz x ms = counts, which is why no unit factor appears here.
+        out[role] = np.clip(rate * durations, 0.0, None)
+    return out
+
+
 #: The Hellenkamp correction factors this bridge can write, in the order the
 #: paper introduces them. ``r0`` is not a correction but is carried with them
 #: because the distance columns depend on it.
@@ -167,6 +252,7 @@ def optimize_calibration_from_ndx(
     lightpath: dict | None = None,
     use_priors: bool = True,
     factors: Sequence[str] | None = None,
+    background: str = "constants",
     inject_columns: bool = True,
     recompute: bool = True,
 ) -> dict:
@@ -212,6 +298,17 @@ def optimize_calibration_from_ndx(
         :func:`chisurf.plugins.burst.accurate_fret.core.lightpath_prior`).
     use_priors : bool, optional
         Combine the data estimates with the optics priors.
+    background : str, optional
+        Where the channel backgrounds come from. ``"constants"`` (the default)
+        uses the three numbers the window carries — the previous behaviour.
+        ``"measurement"`` uses the rates the background step stored in the
+        container, scaled by each burst's duration, which makes the background a
+        *per-burst* quantity rather than one number for a file. ``"none"`` sets
+        them to zero.
+
+        This is not a correction factor and is never fitted; it is an input, and
+        the one whose error is hardest to see — it moves the dim bursts and
+        leaves the bright ones, which looks like a sub-population.
     factors : sequence of str, optional
         Which correction factors the calibration is allowed to change —
         any of ``"alpha"``, ``"beta"``, ``"gamma"``, ``"delta"``, ``"r0"``.
@@ -260,8 +357,26 @@ def optimize_calibration_from_ndx(
         name = mapping.get(role)
         return table[name] if name in table else None
 
+    # Backgrounds first: everything below is computed from counts that already
+    # have them subtracted.
+    per_burst_background: dict = {}
+    if background == "measurement":
+        per_burst_background = measured_background(ndx, table)
+
     constants = dict(getattr(ndx, "constants", {}) or {})
     calib = calibration_from_ndx_constants(constants)
+    if background == "none" or per_burst_background:
+        # Subtracting per burst and zeroing the scalars is *identical* algebra --
+        # the background only ever enters as ``counts - background`` -- and it is
+        # the only way to carry a per-burst value through a calibration object
+        # whose backgrounds are single numbers.
+        #
+        # Only when there is something to subtract, though: asking for the
+        # measured background on a container that never had one would otherwise
+        # zero the window's own numbers as well, and subtract nothing in their
+        # place -- strictly worse than the setting it replaced.
+        calib.bg_dd = calib.bg_da = calib.bg_aa = 0.0
+
     # ``auto_calibrate`` refines ``calib`` in place, so anything the caller wants
     # kept has to be remembered before the call, not read back after it.
     kept = {name: float(getattr(calib, name)) for name in _FACTOR_NAMES}
@@ -274,8 +389,18 @@ def optimize_calibration_from_ndx(
     if tau_f is not None:
         line = static_fret_line(float(tau_d0), r0=float(calib.r0), sigma=float(linker_sigma))
 
+    def counts(role):
+        """That channel's counts, with any per-burst background removed."""
+        values = pick(role)
+        if values is None:
+            return None
+        offset = per_burst_background.get(role)
+        if offset is None:
+            return values
+        return np.clip(np.asarray(values, dtype=float) - offset, 0.0, None)
+
     result = auto_calibrate(
-        pick("i_dd"), pick("i_da"), pick("i_aa"), calibration=calib, lightpath=lightpath,
+        counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib, lightpath=lightpath,
         tau_f=tau_f, line=line, donor_lifetime=float(tau_d0), linker_sigma=float(linker_sigma),
         gamma_source=gamma_source, n_bootstrap=int(n_bootstrap), use_priors=use_priors,
     )
@@ -294,12 +419,12 @@ def optimize_calibration_from_ndx(
     injected: list[str] = []
     if inject_columns and data is not None:
         split = result.split
-        labels = np.zeros(np.asarray(pick("i_dd")).shape, dtype=int)
+        labels = np.zeros(np.asarray(counts("i_dd")).shape, dtype=int)
         if split is not None:
             labels = np.where(split.fret, split.fret_labels, -1)
             labels = np.where(split.acceptor_only, -2, labels)
         accurate = accurate_fret(
-            pick("i_dd"), pick("i_da"), pick("i_aa"), calibration=calib, tau_f=tau_f,
+            counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib, tau_f=tau_f,
             line=line, uncertainties=result.uncertainties, labels=labels,
         )
         data["FRET efficiency (accurate)"] = np.asarray(accurate["E"], dtype=float)
@@ -332,6 +457,8 @@ def optimize_calibration_from_ndx(
         # show "gamma would have been 0.91; kept 1.00".
         "determined": determined,
         "applied_factors": list(selected),
+        "background": background,
+        "background_per_burst": sorted(per_burst_background),
         "held": {n: kept[n] for n in _FACTOR_NAMES if n not in selected},
     }
 

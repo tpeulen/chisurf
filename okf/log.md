@@ -39187,3 +39187,26 @@ side of the line.
   so a factor to be kept is snapshotted before the call; reading it back
   afterwards would make "held fixed" silently mean "applied". Pinned by
   `chisurf/plugins/ndxplorer/tests/test_calibration_options.py`.
+
+- **2026-09-08 — the calibration can take the background from the
+  measurement, per burst** (owner: "what about background they also
+  contribute"). Backgrounds are not fitted by `auto_calibrate` — they are
+  an input to it, and were three numbers somebody typed. The background
+  step already writes the answer into the container (one rate per
+  detector, from that file's own inter-photon times), and a rate becomes
+  counts *in a burst* when multiplied by the burst's duration. That is the
+  difference between a constant and a background: a 4 ms burst carries
+  four times what a 1 ms one does, and subtracting the same number from
+  both is wrong in opposite directions.
+
+  `measured_background` does the lookup and the scaling; the counts are
+  subtracted before the calibration with the scalar backgrounds zeroed,
+  which is identical algebra and the only way to carry a per-burst value
+  through a calibration object whose backgrounds are single numbers. A
+  container with no stored estimate falls back to the window's constants
+  rather than zeroing them and subtracting nothing.
+
+  It is not cosmetic: on the cal1 container it moves γ 0.826 → 0.795 and
+  α 0.157 → 0.147. (That container's stored *green* rate is 0.00 kHz —
+  the unbounded-tail defect fixed earlier the same day; a fresh background
+  run would change the numbers again.)

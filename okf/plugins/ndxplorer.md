@@ -53,6 +53,27 @@ would silently mean "applied". Pinned by
 R₀ is off by default: it is not a correction factor but a property of the dye
 pair and its environment, and the distance columns depend on it.
 
+**Backgrounds are a separate choice, because they are not determined here at
+all.** They are an *input* — every corrected quantity is a count minus one — and
+the input whose error is hardest to see: it moves the dim bursts and leaves the
+bright ones, which looks exactly like a real sub-population. `measured_background`
+reads the rates the background step stored in the measurement's container and
+multiplies each by that burst's **duration**, so the background becomes per-burst:
+a 4 ms burst carries four times the background of a 1 ms one, which a single
+typed number cannot express (kHz × ms = counts, which is why no unit factor
+appears in the code).
+
+It reaches the calibration by being subtracted from the counts with the scalar
+backgrounds zeroed — identical algebra, since the background only ever enters as
+`counts − background`, and the only way to carry a per-burst value through a
+calibration object whose backgrounds are single numbers. **Only when there is
+something to subtract:** a container with no stored estimate falls back to the
+window's constants rather than zeroing them and subtracting nothing, which would
+be worse than the setting it replaced.
+
+Measured on the cal1 container: using the stored background instead of the typed
+zeros moves γ from 0.826 to 0.795 and α from 0.157 to 0.147.
+
 ## Where to pick this up
 
 1. **Playback on a real burst folder.** The gate, the panel and the axis

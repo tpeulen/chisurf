@@ -167,6 +167,16 @@ if __name__ == "plugin":
                        if name in determined else "")
                     for name, value in held.items()
                 ]
+            per_burst = result.get("background_per_burst") or []
+            if result.get("background") == "measurement":
+                lines += ["", (
+                    "Background: per burst, from this measurement's own "
+                    f"estimate ({', '.join(per_burst)})" if per_burst else
+                    "Background: the container has no stored estimate — the "
+                    "window's own constants were used"
+                )]
+            elif result.get("background") == "none":
+                lines += ["", "Background: none (set to zero)"]
             if result["injected"]:
                 lines += ["", "New columns: " + ", ".join(result["injected"])]
             dialogs.information(
