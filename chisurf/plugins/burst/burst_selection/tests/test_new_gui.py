@@ -717,7 +717,14 @@ def test_update_selected_files_stacks_cached_results() -> None:
 
 
 def test_filter_settings_change_updates_selected_file_plots() -> None:
-    """Changing filter settings should refresh the selected file results and plots."""
+    """A filter change re-searches the VISIBLE WINDOW, and nothing more.
+
+    It used to run the full analysis of every selected file as well — the whole
+    measurement re-searched on the GUI thread for one spin-box step, 3.0 s
+    against the 66 ms the windowed diagnostics cost, and again on the next step
+    of the same control. The diagnostics already answer the question the user is
+    asking, and the burst table beside the plots is built from them.
+    """
     path = Path("selected.spc")
     selected_item = type("FakeItem", (), {"text": lambda self: str(path)})()
 
@@ -742,10 +749,9 @@ def test_filter_settings_change_updates_selected_file_plots() -> None:
 
     BurstSelectionTool._on_filter_settings_changed(tool)
 
-    assert calls == [
-        ("analyze", [path], settings),
-        ("diagnostics", [path], settings),
-    ]
+    assert calls == [("diagnostics", [path], settings)], (
+        "a filter change must not run the full analysis"
+    )
 
 
 def test_burst_plot_update_refreshes_embedded_filter_settings_plot(tmp_path: Path) -> None:

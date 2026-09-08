@@ -497,7 +497,13 @@ def open_tttr(
     # land on an instance somebody already holds — is how a LUT toggle ends up
     # showing the corrected decay for the raw one. Corrected reads are rare
     # (an inspection preview), and the workflow's repeated reads are all plain.
-    corrected = bool(apply_lut) or bool(channel_luts) or bool(channel_shifts)
+    # Exactly the condition ``apply_setup_lut`` below acts on. Testing
+    # ``apply_lut`` alone looks equivalent and is not: selecting *any* detector
+    # setup turns that flag on, while most setups carry no LUT at all, so the
+    # correction is a no-op and every read was being treated as mutated and
+    # never shared. That is the whole cache off, in the one configuration the
+    # workflow always runs in.
+    corrected = bool(apply_lut and channel_luts) or bool(channel_shifts)
     key = None
     if cache and not corrected:
         key = _cache_key(path, selector, container, channel_luts, channel_shifts,

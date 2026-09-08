@@ -2140,7 +2140,21 @@ class BurstSelectionTool(ChisurfDockTool):
         self._refresh_file_list()
 
     def _on_filter_settings_changed(self) -> None:
-        """Handle filter parameter changes by reloading diagnostics and updating plots."""
+        """Re-search the **visible window** after a filter setting changed.
+
+        Only the window. Turning a threshold used to re-analyse every photon of
+        every selected file — the full search, on the GUI thread, for one
+        spin-box step — which is minutes of work to answer a question about ten
+        seconds of data, and it happened again on the next step of the same
+        control.
+
+        The diagnostics *are* the answer: they filter and search the visible
+        slice (about 70 ms on a 20 M-photon container) and
+        :meth:`_show_preview_frames` turns them into the burst table beside the
+        plots. So a filter edit is a diagnostics reload and nothing more. The
+        whole measurement is searched when the user asks for it — ▶ Run, or
+        Next — where it belongs, off the GUI thread and behind progress.
+        """
         try:
             if not self.file_list or self.file_list is None:
                 return
@@ -2151,7 +2165,6 @@ class BurstSelectionTool(ChisurfDockTool):
                 return
 
             settings = self._settings_from_controls()
-            self._analyze_selected_files(selected_paths, settings)
             self._load_tttr_for_plots(selected_paths, settings)
         except Exception as exc:
             self._status_bar.showMessage(f"Error updating plots after filter change: {exc}")

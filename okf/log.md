@@ -39106,3 +39106,31 @@ side of the line.
   they are load-bearing together — the step must stay optional (or Next
   runs it on PIE data) and must keep the auto-run (or the conversion is
   skipped again).
+
+- **2026-09-08 — the file *was* resident; the cache was switched off by
+  the one condition every session meets.** `open_tttr`'s cache refused to
+  share any read it considered "corrected", and that test was
+  `bool(apply_lut) or ...`. But selecting **any** detector setup turns
+  `apply_lut` on, while most setups carry no LUT at all — and
+  `apply_setup_lut` is a no-op without one. So in the configuration the
+  workflow always runs in, nothing was ever cached. The condition now
+  mirrors `apply_setup_lut` exactly
+  (`bool(apply_lut and channel_luts) or bool(channel_shifts)`).
+
+  Measured on the 82 MB / 11.7 M-photon ALEX container: setup active
+  without LUTs, 0.16 s first read then **4 ms** and the same object; with
+  a real LUT still 250 ms every time and never shared, which is right —
+  applying one rewrites the micro times in place.
+  `test/core/test_tttr_open_cache.py` pins the distinction, the mtime/size
+  keying, the opt-out, and the photon bound.
+
+- **2026-09-08 — a filter tweak re-searched the whole measurement.**
+  `_on_filter_settings_changed` ran `_analyze_selected_files` — the full
+  analysis of every selected file, on the GUI thread — for one spin-box
+  step, and again on the next step of the same control. Measured on the
+  11.7 M-photon container: **3.03 s per tweak against 66 ms** for the
+  windowed diagnostics that already answer the question. The diagnostics
+  filter and search the visible slice and `_show_preview_frames` turns
+  them into the burst table, so a filter edit is now a diagnostics reload
+  and nothing else. The whole measurement is searched when it is asked
+  for — ▶ Run or Next — off the GUI thread and behind progress.
