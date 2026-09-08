@@ -61,6 +61,22 @@ class BackgroundViewModel:
         #: estimate — too small and bursts are fitted as background, too large
         #: and there is nothing left to fit — and it was a hidden default.
         self.tail_fraction: float = 0.8
+        #: The fit window in **milliseconds**, which is what the fit actually
+        #: uses once a measurement has been read. :attr:`tail_fraction` only
+        #: seeds it (``fit_from = fraction × longest inter-photon time``); after
+        #: that the window is the state, because it is what the user drags on
+        #: the plot and what has a physical meaning independent of how long the
+        #: longest gap in this particular file happened to be.
+        #:
+        #: The *upper* edge is the half the fraction rule never had. The far
+        #: tail is bins holding one count each: it stretches the fit over a
+        #: decade that carries almost no information, and on a short
+        #: measurement it visibly pulls the line off the points.
+        self.fit_from_ms: float = 0.0
+        self.fit_to_ms: float = 0.0
+        #: Longest inter-photon time in the loaded files, in ms. The scale the
+        #: window is seeded and clamped against.
+        self.max_dt_ms: float = 0.0
         #: Inter-photon-time histogram bin width.
         self.binsize_ms: float = 0.1
         #: Bins below this count are ignored by the tail fit.
@@ -173,9 +189,43 @@ class BackgroundViewModel:
                     tttr, info, scale)
                 for name, info in detectors.items()
             }
+        self._seed_fit_window()
         self.refit()
         self._write_containers()
         self.notify("computed")
+
+    def _seed_fit_window(self) -> None:
+        """Seed the fit window from the data, the first time only.
+
+        Re-estimating with more files must not silently move a window the user
+        placed by hand — that would change the rates without anything having
+        been touched — so an existing window is kept and only re-clamped to the
+        new scale.
+        """
+        spans = [
+            float(np.max(dt)) for per_detector in self._interphoton.values()
+            for dt in per_detector.values()
+            if np.asarray(dt).size and np.isfinite(np.max(dt))
+        ]
+        if not spans:
+            return
+        self.max_dt_ms = max(spans)
+        if self.fit_from_ms <= 0.0 or self.fit_to_ms <= self.fit_from_ms:
+            self.fit_from_ms = float(self.tail_fraction) * self.max_dt_ms
+            self.fit_to_ms = self.max_dt_ms
+        else:
+            self.fit_to_ms = min(self.fit_to_ms, self.max_dt_ms)
+
+    def fit_range(self) -> tuple[float, float] | None:
+        """The fit window in ms, or ``None`` while the fraction rule still holds.
+
+        ``None`` before the first estimate, so a headless caller that never
+        touches the window gets exactly the behaviour it had before.
+        """
+        low, high = float(self.fit_from_ms), float(self.fit_to_ms)
+        if low <= 0.0 or high <= low:
+            return None
+        return low, high
 
     def refit(self) -> None:
         """Re-fit the cached inter-photon times with the current settings.
@@ -198,15 +248,21 @@ class BackgroundViewModel:
                     binsize_ms=float(self.binsize_ms),
                     tail_fraction=float(self.tail_fraction),
                     min_counts=int(self.min_counts),
+                    tail_range_ms=self.fit_range(),
                 )
                 for name, dt_ms in per_detector.items()
             }
             self.diagnostics[path] = diags
             self.backgrounds[path] = {n: float(d.rate_khz) for n, d in diags.items()}
+        window = self.fit_range()
+        where = (
+            f"tail from {self.tail_fraction:.0%}" if window is None else
+            f"fit window {window[0]:.3g}\u2013{window[1]:.3g} ms"
+        )
         self.status = (
             f"{len(self.diagnostics)} file(s), "
             f"{len({n for b in self.backgrounds.values() for n in b})} detector(s) "
-            f"estimated; tail from {self.tail_fraction:.0%}."
+            f"estimated; {where}."
         )
 
     def update(self) -> None:
@@ -331,7 +387,13 @@ class BackgroundViewModel:
                     }
                 )
                 model = np.asarray(diag.model, dtype=float)
-                m = model > 0
+                # Only where the model predicts something observable. It is an
+                # exponential drawn over the whole range, so a steep fit reaches
+                # 1e-15 counts at the far end -- and a log y axis then autoscales
+                # over twenty decades, squashing the data into the top eighth of
+                # the plot. Half a count is the floor: nothing below it can be
+                # seen in a histogram of counts.
+                m = model >= 0.5
                 if m.any():
                     series.append({"x": centers[m], "y": model[m], "color": color, "width": 2})
         return series

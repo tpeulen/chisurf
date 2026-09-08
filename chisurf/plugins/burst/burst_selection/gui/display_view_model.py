@@ -14,7 +14,10 @@ them) keeps working while the *placement* moves.
 
 from __future__ import annotations
 
+import logging
 import pathlib
+
+logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "burst_display.view.json"
 
@@ -33,6 +36,7 @@ class BurstDisplayViewModel:
     def __init__(self, tool) -> None:
         self._tool = tool
         self._view_json = _VIEW_JSON
+        self._display_observers: list = []
 
     def view_spec(self):
         """Resolve the AutoForm view spec from the authored view.json."""
@@ -91,3 +95,99 @@ class BurstDisplayViewModel:
         spin = getattr(self._tool, "plot_max_spin", None)
         if spin is not None:
             spin.setValue(int(value))
+
+    # ── the visible slice, as time rather than photon indices ──────────
+
+    def add_display_observer(self, callback) -> None:
+        """Register a callback fired when a new search changes the timeline.
+
+        The viewport widget has to re-read the span and the file list after a
+        search: a window placed on a six-file selection means nothing on the
+        one-file selection that replaced it.
+        """
+        if callback not in self._display_observers:
+            self._display_observers.append(callback)
+
+    def notify_display(self) -> None:
+        """Tell the viewport widget the timeline changed."""
+        for callback in list(self._display_observers):
+            try:
+                callback()
+            except Exception:
+                logger.warning("burst display: observer failed", exc_info=True)
+
+    def _segments(self):
+        """The concatenated timeline of the last search, as segments."""
+        from . import timeline as _timeline
+
+        diagnostics = getattr(self._tool, "_last_diagnostics", None) or []
+        if not diagnostics:
+            return []
+        try:
+            offsets = self._tool._macro_time_offsets_ms(diagnostics)
+        except Exception:
+            logger.warning("burst display: timeline offsets failed", exc_info=True)
+            return []
+        return _timeline.build_timeline(diagnostics, offsets)
+
+    def timeline_span(self) -> float:
+        """Length of the whole measurement in seconds (0 when nothing is loaded)."""
+        from . import timeline as _timeline
+
+        return _timeline.span(self._segments())
+
+    def timeline_file_count(self) -> int:
+        """How many files carry photons in the current selection."""
+        return len(self._segments())
+
+    def timeline_file_at(self, start_s: float):
+        """``(name, position, total)`` of the file visible at ``start_s``."""
+        from . import timeline as _timeline
+
+        segments = self._segments()
+        segment = _timeline.locate(segments, float(start_s))
+        if segment is None:
+            return "", 0, 0
+        position = segments.index(segment) + 1
+        return segment.name, position, len(segments)
+
+    def show_time_window(self, start_s: float, length_s: float) -> None:
+        """Draw only ``[start_s, start_s + length_s]``.
+
+        Written as a photon-index range, because that is what the plots already
+        take — so this adds a way of asking, not a second thing to keep in step.
+        """
+        from . import timeline as _timeline
+
+        segments = self._segments()
+        if not segments:
+            return
+        first, last = _timeline.photon_range(
+            segments, float(start_s), float(start_s) + float(length_s))
+        self._set_range(first, last)
+
+    def show_whole_timeline(self) -> None:
+        """Draw every photon of every file (what the plots did before)."""
+        segments = self._segments()
+        if not segments:
+            return
+        last = segments[-1].first_photon + segments[-1].n_photons - 1
+        self._set_range(0, last)
+
+    def _set_range(self, first: int, last: int) -> None:
+        """Write the photon range, replotting once rather than twice.
+
+        Setting the two spin boxes separately fires two replots, and the first
+        of them is over a range where the new minimum is above the old maximum
+        -- an empty plot, drawn and thrown away on every drag of the slider.
+        """
+        low = getattr(self._tool, "plot_min_spin", None)
+        high = getattr(self._tool, "plot_max_spin", None)
+        if low is None or high is None:
+            return
+        low.blockSignals(True)
+        try:
+            low.setValue(int(first))
+        finally:
+            low.blockSignals(False)
+        high.setValue(int(last))

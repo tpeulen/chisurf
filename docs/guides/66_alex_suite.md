@@ -84,6 +84,13 @@ gate, acceptor in the second. That swap is what the detection uses, and what you
 check.
 ```
 
+**The gates are yours to adjust.** Detection fills the period and the two laser
+gates into the boxes below the plot, and the shaded bands *are* those numbers:
+drag a band or type an edge, and the other follows. Changing a gate republishes
+the detector setup for the whole pipeline and converts nothing again — the fold
+into the micro-time depends on the period alone, so a gate is free to move
+afterwards. (Changing the period is not: press **Detect** again for that.)
+
 **That crossover is the check.** If the two curves track each other instead, the
 period is wrong or the channels are swapped. Contrast below about 50× means the
 same thing, and the step refuses to convert rather than folding a meaningless

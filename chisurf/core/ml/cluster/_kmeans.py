@@ -1,9 +1,23 @@
 """k-means++ clustering, and the KMeans estimator surface.
 
-The iteration kernels are moved verbatim out of ``chisurf/core/math/hmm.py``,
-which used them only to seed the HMM's emission initialisation. They are pure
-numba functionals over ``(samples, centers)`` and carry no state, so the HMM
-and :class:`KMeans` share one implementation.
+The iteration kernels came out of ``chisurf/core/math/hmm.py``, which used them
+only to seed the HMM's emission initialisation. They are pure functionals over
+``(samples, centers)`` and carry no state, so the HMM and :class:`KMeans` share
+one implementation.
+
+They are **vectorised**, which they were not: the kernels were written as
+element-at-a-time loops over samples, features and clusters, in the shape a JIT
+would compile away — and nothing here is jitted. On a 7 000-burst
+:func:`~chisurf.core.fluorescence.fret.accurate.auto_calibrate` (a 1-D mixture
+that uses k-means only to *seed* its EM) that was 2.2 of the 2.7 seconds, in
+seeding rather than in the fit anybody was waiting for.
+
+The rewrite is semantics-preserving, deliberately: ``argmin``/``argmax`` return
+the first extremum, matching the strict ``<``/``>`` of the loops they replace,
+and the k-means++ draw is the same cumulative search (``searchsorted(...,
+"left")`` is the first index whose partial sum reaches the target). The one
+difference is summation order — NumPy sums pairwise where the loops accumulated
+left to right, which is *more* accurate, not less.
 """
 
 from __future__ import annotations
@@ -17,21 +31,38 @@ from ..base import BaseEstimator
 __all__ = [
     "KMeans",
     "_squared_distances",
+    "_distances_to_centers",
     "_kmeanspp_seed",
     "_kmeans_lloyd",
     "_kmeans",
 ]
 
 
+#: Rows per block when the sample-to-centre distances are materialised. Bounds
+#: the temporary at ``_DISTANCE_BLOCK × n_clusters × n_features`` floats
+#: regardless of how many photons a burst search produced.
+_DISTANCE_BLOCK = 65_536
+
+
 def _squared_distances(X: np.ndarray, center: np.ndarray, out: np.ndarray) -> None:
     """Fill ``out`` with the squared distance from every row of ``X`` to ``center``."""
-    n_samples, n_features = X.shape
-    for t in range(n_samples):
-        acc = 0.0
-        for j in range(n_features):
-            diff = X[t, j] - center[j]
-            acc += diff * diff
-        out[t] = acc
+    diff = X - center
+    np.einsum("ij,ij->i", diff, diff, out=out)
+
+
+def _distances_to_centers(X: np.ndarray, centers: np.ndarray) -> np.ndarray:
+    """Squared distance from every sample to every centre, shape ``(n, k)``.
+
+    Blocked, so the temporary stays bounded on a long measurement instead of
+    scaling with the number of samples.
+    """
+    n_samples = X.shape[0]
+    distances = np.empty((n_samples, centers.shape[0]))
+    for start in range(0, n_samples, _DISTANCE_BLOCK):
+        stop = min(start + _DISTANCE_BLOCK, n_samples)
+        diff = X[start:stop, None, :] - centers[None, :, :]
+        np.einsum("ijk,ijk->ij", diff, diff, out=distances[start:stop])
+    return distances
 
 
 def _kmeanspp_seed(X: np.ndarray, n_clusters: int, uniforms: np.ndarray) -> np.ndarray:
@@ -54,36 +85,28 @@ def _kmeanspp_seed(X: np.ndarray, n_clusters: int, uniforms: np.ndarray) -> np.n
     _squared_distances(X, centers[0], closest)
     candidate = np.empty(n_samples)
     for c in range(1, n_clusters):
-        total = 0.0
-        for t in range(n_samples):
-            total += closest[t]
+        total = float(closest.sum())
+        trials = uniforms[c * n_trials:(c + 1) * n_trials]
+        if total <= 0.0:
+            indices = np.minimum(
+                (trials * n_samples).astype(np.int64), n_samples - 1)
+        else:
+            # The loop searched for the first partial sum reaching the target;
+            # that is exactly a left-side binary search on the cumulative sum.
+            indices = np.searchsorted(np.cumsum(closest), trials * total, side="left")
+            indices = np.minimum(indices, n_samples - 1)
         best_potential = np.inf
         best_index = -1
-        for trial in range(n_trials):
-            uniform = uniforms[c * n_trials + trial]
-            if total <= 0.0:
-                index = min(int(uniform * n_samples), n_samples - 1)
-            else:
-                target = uniform * total
-                acc = 0.0
-                index = n_samples - 1
-                for t in range(n_samples):
-                    acc += closest[t]
-                    if acc >= target:
-                        index = t
-                        break
+        # Few trials (2 + log k), so they stay a loop; each one is vectorised.
+        for index in indices:
             _squared_distances(X, X[index], candidate)
-            potential = 0.0
-            for t in range(n_samples):
-                potential += min(candidate[t], closest[t])
+            potential = float(np.minimum(candidate, closest).sum())
             if potential < best_potential:
                 best_potential = potential
-                best_index = index
+                best_index = int(index)
         centers[c] = X[best_index]
         _squared_distances(X, centers[c], candidate)
-        for t in range(n_samples):
-            if candidate[t] < closest[t]:
-                closest[t] = candidate[t]
+        np.minimum(closest, candidate, out=closest)
     return centers
 
 
@@ -92,14 +115,11 @@ def _kmeans_lloyd(
 ) -> tuple[float, int]:
     """Run Lloyd's algorithm in place on ``centers``/``labels``.
 
-    Assignment and centroid accumulation share one pass over the samples, so no
-    ``(n_samples, n_clusters)`` distance matrix is ever materialised.
-
     Returns
     -------
     inertia : float
         Within-cluster sum of squares **of the returned centres**. The
-        accumulation loop computes it against the centres it started the sweep
+        accumulation pass computes it against the centres the sweep started
         with, so a final assignment pass is made once the sweep has converged —
         otherwise the value reported is one update stale, and restarts get
         ranked on it.
@@ -109,84 +129,50 @@ def _kmeans_lloyd(
     n_samples, n_features = X.shape
     n_clusters = centers.shape[0]
     labels[:] = -1
-    sums = np.empty((n_clusters, n_features))
-    counts = np.empty(n_clusters)
     inertia = 0.0
     n_iter = 0
     for _ in range(max_iter):
         n_iter += 1
-        sums[:, :] = 0.0
-        counts[:] = 0.0
-        inertia = 0.0
-        n_changed = 0
-        worst_distance = -1.0
-        worst_index = 0
-        for t in range(n_samples):
-            best = np.inf
-            best_c = 0
-            for c in range(n_clusters):
-                acc = 0.0
-                for j in range(n_features):
-                    diff = X[t, j] - centers[c, j]
-                    acc += diff * diff
-                if acc < best:
-                    best = acc
-                    best_c = c
-            if labels[t] != best_c:
-                labels[t] = best_c
-                n_changed += 1
-            inertia += best
-            counts[best_c] += 1.0
-            for j in range(n_features):
-                sums[best_c, j] += X[t, j]
-            if best > worst_distance:
-                worst_distance = best
-                worst_index = t
+        distances = _distances_to_centers(X, centers)
+        assignment = np.argmin(distances, axis=1)
+        best = distances[np.arange(n_samples), assignment]
+        n_changed = int(np.count_nonzero(labels != assignment))
+        labels[:] = assignment
+        inertia = float(best.sum())
+
+        counts = np.bincount(assignment, minlength=n_clusters).astype(float)
+        sums = np.empty((n_clusters, n_features))
+        for j in range(n_features):
+            sums[:, j] = np.bincount(
+                assignment, weights=X[:, j], minlength=n_clusters)
+        worst_index = int(np.argmax(best))
+
         shift = 0.0
         for c in range(n_clusters):
             if counts[c] > 0.0:
-                for j in range(n_features):
-                    updated = sums[c, j] / counts[c]
-                    diff = updated - centers[c, j]
-                    shift += diff * diff
-                    centers[c, j] = updated
+                updated = sums[c] / counts[c]
+                diff = updated - centers[c]
+                shift += float(diff @ diff)
+                centers[c] = updated
             else:
                 # Re-seed an emptied cluster on the worst-explained sample, and
                 # take that sample out of the running so that a second empty
-                # cluster does not land on top of the first.
-                for j in range(n_features):
-                    centers[c, j] = X[worst_index, j]
-                worst_distance = -1.0
-                for t in range(n_samples):
-                    if labels[t] == c:
-                        continue
-                    acc = 0.0
-                    for j in range(n_features):
-                        diff = X[t, j] - centers[labels[t], j]
-                        acc += diff * diff
-                    if acc > worst_distance:
-                        worst_distance = acc
-                        worst_index = t
+                # cluster does not land on top of the first. The residuals are
+                # measured against the centres *as they now stand*, so an
+                # earlier cluster's update in this same sweep is accounted for.
+                centers[c] = X[worst_index]
+                residual = X - centers[labels]
+                own = np.einsum("ij,ij->i", residual, residual)
+                worst_index = int(np.argmax(own))
                 shift += tol + 1.0
         if n_changed == 0 or shift <= tol * tol:
             break
 
     # The inertia above was accumulated against the centres of the *previous*
     # sweep. One more assignment pass makes it the inertia of what is returned.
-    inertia = 0.0
-    for t in range(n_samples):
-        best = np.inf
-        best_c = 0
-        for c in range(n_clusters):
-            acc = 0.0
-            for j in range(n_features):
-                diff = X[t, j] - centers[c, j]
-                acc += diff * diff
-            if acc < best:
-                best = acc
-                best_c = c
-        labels[t] = best_c
-        inertia += best
+    distances = _distances_to_centers(X, centers)
+    labels[:] = np.argmin(distances, axis=1)
+    inertia = float(distances[np.arange(n_samples), labels].sum())
     return inertia, n_iter
 
 

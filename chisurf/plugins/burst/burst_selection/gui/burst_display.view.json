@@ -1,5 +1,5 @@
 {
-  "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
+  "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). The visible-window section is the humane form of the photon-index range: a length in seconds and a slider over the concatenated timeline, which writes those same two spin boxes. Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
   "sections": [
     {
       "type": "panel",
@@ -8,6 +8,12 @@
       "collapsed": false,
       "n_col": 2,
       "sections": [
+        {
+          "type": "custom",
+          "key": "burst_time_window",
+          "title": "Visible window",
+          "description": "Which slice of the measurement the diagnostic plots draw. Every file is concatenated into one timeline, so the slider walks through the whole selection and its label says which file it has reached."
+        },
         {
           "type": "toggle",
           "label": "All photons",
@@ -27,7 +33,7 @@
           "kind": "int",
           "minimum": 0,
           "maximum": 99999999,
-          "description": "First photon index to process. 0 is the start of the file."
+          "description": "First photon index to process. 0 is the start of the file. Set by the visible-window slider above; type here for an exact range."
         },
         {
           "type": "value",
@@ -36,7 +42,7 @@
           "kind": "int",
           "minimum": 0,
           "maximum": 99999999,
-          "description": "Last photon index to process. The default is the end of the file."
+          "description": "Last photon index to process. The default is the end of the file. Set by the visible-window slider above; type here for an exact range."
         }
       ]
     }

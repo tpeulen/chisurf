@@ -112,6 +112,7 @@ def detect_and_convert(
     *,
     donor_channels=None,
     acceptor_channels=None,
+    period: int | None = None,
     out_dir: str | pathlib.Path | None = None,
     progress=None,
     min_confidence: float = MIN_CONFIDENCE,
@@ -135,6 +136,12 @@ def detect_and_convert(
         rather than asking matters because a swapped assignment is the error
         nothing downstream reports: *E* comes out reflected about ½ and every
         fit statistic is happy.
+    period : int, optional
+        Alternation period in macro-time units. ``None`` (the default) measures
+        it. Give one only when the instrument's is known exactly: one unit out,
+        over 10⁵ cycles, walks the phase across a laser window. A given period
+        is used as-is and its contrast is still reported, so a wrong one is
+        visible rather than silently accepted.
     out_dir : path-like, optional
         Where the containers go.
     progress : callable, optional
@@ -190,8 +197,14 @@ def detect_and_convert(
         tttr.macro_times, tttr.routing_channels,
         donor_channels=donor_channels, acceptor_channels=acceptor_channels,
     )
-    period = int(detected["period"])
     confidence = float(detected["confidence"])
+    if period is None:
+        period = int(detected["period"])
+    else:
+        # A given period is not second-guessed, but the contrast is still the
+        # measured one -- it is what says whether this is alternating data at
+        # all, which does not become true because a number was typed.
+        period = int(period)
     if confidence < min_confidence:
         raise ValueError(
             f"no clear laser alternation in {first.name} "

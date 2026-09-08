@@ -63,16 +63,27 @@ class BackgroundDiagnostics:
 _POSITIVE = 1e-12
 
 
-def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts):
+def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts,
+                          tail_range_ms=None):
     """Poisson-MLE exponential fit of the inter-photon-time tail.
 
     Returns ``(amplitude, rate, tail_mask, success)``; ``rate`` falls back to the
     inverse mean tail interval if the optimiser fails.  Shared by
     :func:`estimate_background_from_interphoton_times` and
     :func:`interphoton_time_diagnostics` so both give identical rates.
+
+    ``tail_range_ms`` is an explicit ``(low, high)`` window in milliseconds and
+    replaces the ``tail_fraction`` rule when given. It exists because the
+    fraction rule has no *upper* edge: the far tail of a real measurement is a
+    handful of bins holding one count each, and an unbounded window lets that
+    sparse end pull the fitted rate while contributing almost no information.
     """
-    tail_threshold = tail_fraction * float(centers.max())
-    valid = (centers > tail_threshold) & (counts >= min_counts)
+    if tail_range_ms is not None:
+        low, high = float(tail_range_ms[0]), float(tail_range_ms[1])
+        valid = (centers >= low) & (centers <= high) & (counts >= min_counts)
+    else:
+        tail_threshold = tail_fraction * float(centers.max())
+        valid = (centers > tail_threshold) & (counts >= min_counts)
     if not np.any(valid):
         return 0.0, 0.0, valid, False
 
@@ -137,6 +148,7 @@ def interphoton_time_diagnostics(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.2,
     min_counts: int = 1,
+    tail_range_ms=None,
 ) -> BackgroundDiagnostics:
     """Inter-photon-time histogram + tail fit for plotting (same rate as the estimator).
 
@@ -147,7 +159,8 @@ def interphoton_time_diagnostics(
         return BackgroundDiagnostics()
     centers, counts, max_dt = hist
     A, lam, tail_mask, _ = _fit_exponential_tail(
-        centers, counts, max_dt, tail_fraction, min_counts)
+        centers, counts, max_dt, tail_fraction, min_counts,
+        tail_range_ms=tail_range_ms)
     model = A * np.exp(-lam * centers) if A > 0 and lam > 0 else np.zeros_like(centers)
     return BackgroundDiagnostics(
         centers=centers, counts=counts, tail_mask=tail_mask,
@@ -160,6 +173,7 @@ def estimate_background_from_interphoton_times(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.2,
     min_counts: int = 1,
+    tail_range_ms=None,
 ) -> float:
     """Estimate a background count rate (in kHz) from interphoton times.
 
@@ -179,6 +193,10 @@ def estimate_background_from_interphoton_times(
     min_counts : int, optional
         Minimum number of counts per histogram bin for inclusion in the
         fit. Default is 1.
+    tail_range_ms : tuple of float, optional
+        Explicit ``(low, high)`` fit window in milliseconds. Given, it replaces
+        ``tail_fraction`` — which has no upper edge, so the sparse far tail is
+        always in the fit whether or not it carries information.
 
     Returns
     -------
@@ -191,7 +209,9 @@ def estimate_background_from_interphoton_times(
         return 0.0
     centers, counts, max_dt = hist
     # lambda has units 1/ms, treated as kHz (1/ms == kHz).
-    _, lam, _, _ = _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts)
+    _, lam, _, _ = _fit_exponential_tail(
+        centers, counts, max_dt, tail_fraction, min_counts,
+        tail_range_ms=tail_range_ms)
     return float(lam)
 
 

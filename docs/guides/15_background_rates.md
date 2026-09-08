@@ -27,7 +27,8 @@ the background count rate.
 ```python
 from chisurf.core.fluorescence.burst import background
 
-rate_hz = background.estimate_background_from_interphoton_times(macro_times, macro_res)
+rate_hz = background.estimate_background_from_interphoton_times(
+    dt_ms, tail_range_ms=(1.0, 6.0))   # the window; omit it for the fraction rule
 ```
 
 The `burst_background` plugin estimates a per-detector background rate; the
@@ -36,6 +37,26 @@ non-burst photons (the photons the burst search rejects are the built-in
 scatter/background), feeding both the correction factors and the MLE lifetime
 fit — with no separate buffer acquisition. See
 [Lifetime from photon bursts](21_lifetime_from_bursts.md).
+
+## Choosing the fit window
+
+The one judgement call. The **Fit from** and **Fit to** sliders set the window in
+milliseconds, and the shaded band on the inter-photon-time plot is the same
+setting — drag the band or type the numbers, whichever the picture makes easier.
+
+Both edges matter, for opposite reasons:
+
+- **Too low a lower edge** and burst photons are fitted as background, so the
+  rate comes out too high.
+- **Too high an upper edge** and the fit is dominated by the far tail, which is
+  bins holding one count each. On a real ALEX calibration measurement an
+  unbounded window fitted 17–22 ms, where one detector has no counts at all, and
+  returned a background of exactly **0.00 kHz**; the same data over 1–6 ms gives
+  2.2 and 3.2 kHz. Nothing about a zero looks wrong on the plot, and every
+  corrected quantity downstream is a count minus a background.
+
+Put the window where the points are still dense, and check that the fitted line
+lies on them inside the band rather than only crossing it.
 
 ## Result
 

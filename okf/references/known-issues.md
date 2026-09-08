@@ -1,3 +1,31 @@
+## The background estimator's default tail window can fit an empty range
+
+**Measured 2026-09-08** on `001_60g_25r_cal1_cy3b_8_18_33bp_atto647n_alex.pto`.
+The tail fit took every bin above `tail_fraction × max(inter-photon time)` and had
+**no upper edge**. With the shipped `tail_fraction = 0.8` that is 17.4–21.8 ms on
+this measurement — the sparse far tail, where the red detector has no counts at
+all:
+
+| fit window | green | red |
+|---|---|---|
+| 17.4–21.8 ms (the old default) | 0.74 kHz | **0.00 kHz** |
+| 1–6 ms (where the points are dense) | 2.24 kHz | 3.17 kHz |
+
+A background of exactly zero is not obviously wrong on a plot, and every
+corrected quantity downstream is a count *minus a background*, so it propagates
+silently.
+
+**Fixed by making the window explicit rather than derived**
+(`fit_from_ms`/`fit_to_ms`, sliders coupled to a draggable band on the
+inter-photon-time plot; `tail_range_ms` in
+`chisurf.core.fluorescence.burst.background`). `tail_fraction` now only *seeds*
+the window on the first estimate, and headless callers that never set a window
+get exactly the old behaviour — **which means the defect is still reachable from
+`csc burst-background` and the RPC service.** Fixing that properly means
+choosing the window from the data (the last bin with more than `min_counts`
+would do), and that changes numbers for every existing caller, so it was not
+done here.
+
 ## `.pto` can compress its payloads; ChiSurf writes them raw
 
 **Measured 2026-09-08.** The question was whether the container supports

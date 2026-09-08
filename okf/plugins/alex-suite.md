@@ -14,7 +14,19 @@ related:
 
 ## Where to pick this up
 
-0. **The setup step's own combo does not show the detected setup's name.** The
+0. **The alternation gates are editable now — the remaining half is the
+   *period*.** Detection writes the period and both gates into spin boxes, the
+   shaded bands on the plot are the same values (drag or type, they stay in
+   step), and a gate change republishes the setup without reconverting, because
+   the fold uses only the period. `detect_and_convert(period=...)` accepts a
+   typed period, but changing it means pressing Detect again — the containers
+   were folded with the old one. **Trap if you go to make that automatic:** the
+   `.pto` is already written and its micro-time *is* the old phase, so honouring
+   a new period means re-running the conversion from the original vendor files,
+   which the panel no longer holds after step 2 replaced them with the
+   containers.
+
+0a. **The setup step's own combo does not show the detected setup's name.** The
    *tables* are filled in correctly (step 3 writes them through
    `load_data_into_tables`), and everything downstream uses the right
    definition — but the `Setup:` combo at the top of step 1 stays blank, because

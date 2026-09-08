@@ -39,10 +39,16 @@ SETUP_NAME = "ALEX Suite (auto)"
 class AlexAlternationPanel(QtWidgets.QWidget):
     """Detect the ALEX alternation, fold it into the micro-time, name the gates.
 
-    The panel is deliberately three controls and a button. The detected numbers
-    are shown — they have to be checkable — but nothing has to be typed for the
-    common case, and the plot is what says whether the answer is right: two
-    plateaus, the donor brighter in one of them.
+    Nothing has to be typed for the common case — one button measures all seven
+    of the old dialog's numbers — but everything it decides is *editable*, which
+    is the difference between a detector and a black box. The period and the two
+    laser gates come back in spin boxes, and the gates are also the shaded bands
+    on the plot: drag a band or type an edge, they are the same edit. A gate
+    change republishes the detector setup and reconverts nothing, because the
+    fold into the micro-time depends on the period alone.
+
+    The plot is what says whether the answer is right: two plateaus, the donor
+    brighter in one of them.
     """
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -51,6 +57,16 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self._workflow = parent
         self._result: dict | None = None
         self._files: list[pathlib.Path] = []
+        self._converted: list[pathlib.Path] = []
+        #: Guards the two-way binding between the spin boxes and the shaded
+        #: bands: each edit writes the other, and without this the write comes
+        #: straight back as a second edit.
+        self._updating = False
+        self._regions: dict[str, object] = {}
+        #: " = 100.0 µs" for the current period, or "" if the file carried
+        #: no macro-time resolution. Kept so a gate edit can rewrite the summary
+        #: line without re-opening the file.
+        self._micro_suffix = ""
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -108,6 +124,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self.detail_label.setTextFormat(QtCore.Qt.RichText)
         layout.addWidget(self.detail_label)
 
+        layout.addWidget(self._build_gates_box())
+
         self.plot = Plot(self)
         self.plot.set_labels(bottom="ALEX phase (macro-time units)", left="Photons")
         # Default (top-left) placement: a negative x offset anchors the legend's
@@ -118,6 +136,207 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
         self.status_label = QtWidgets.QLabel("No files yet — pick them in step 1.")
         layout.addWidget(self.status_label)
+
+    # ── the gates, as numbers ───────────────────────────────────────────
+
+    def _build_gates_box(self) -> QtWidgets.QGroupBox:
+        """Build the editable period and laser-gate boxes.
+
+        Detection fills these in, but they stay editable, because no detector
+        is right on every instrument and a number that can only be looked at is
+        a number whose owner has to leave the program to change it. Typing here
+        and dragging the shaded bands on the plot are the *same* edit — the two
+        are kept in step — and neither reconverts anything: the fold uses only
+        the period, so a gate change rewrites the published detector setup and
+        touches nothing else.
+        """
+        box = QtWidgets.QGroupBox("Period and laser gates", self)
+        box.setToolTip(
+            "The alternation period, and the micro-time window of each "
+            "excitation in the folded phase.\n\nDrag the shaded bands on the "
+            "plot or type here — it is the same edit. Changing a gate "
+            "re-publishes the detector setup for the whole pipeline; the files "
+            "are not converted again, because the fold depends on the period "
+            "alone."
+        )
+        form = QtWidgets.QFormLayout(box)
+        form.setContentsMargins(8, 4, 8, 4)
+
+        self.period_spin = QtWidgets.QSpinBox(self)
+        self.period_spin.setRange(0, 100_000_000)
+        self.period_spin.setSpecialValueText("auto")
+        self.period_spin.setSuffix(" units")
+        self.period_spin.setToolTip(
+            "Alternation period in macro-time units. 'auto' measures it from "
+            "the data, which is almost always right — one unit out, over 10\u2075 "
+            "cycles, walks the phase across a laser window, so type one only if "
+            "you know your instrument's exactly.\n\nDetect fills the gates in "
+            "afterwards; adjust them then."
+        )
+        self.period_spin.valueChanged.connect(self._on_period_changed)
+        form.addRow("Period", self.period_spin)
+
+        self.green_lo, self.green_hi = self._edge_pair()
+        self.red_lo, self.red_hi = self._edge_pair()
+        self._spins = {
+            "green": (self.green_lo, self.green_hi),
+            "red": (self.red_lo, self.red_hi),
+        }
+        for name, (lo, hi), hint in (
+            ("green", self._spins["green"],
+             "Donor-excitation window ('prompt'): I_DD and I_DA are counted "
+             "inside it."),
+            ("red", self._spins["red"],
+             "Acceptor-excitation window ('delayed'): I_AA is counted inside "
+             "it."),
+        ):
+            for spin in (lo, hi):
+                spin.setToolTip(
+                    hint + "\n\nTrim the laser rise and fall: a gate that "
+                    "reaches into the switching edge mixes the two excitations "
+                    "and biases every corrected quantity that follows."
+                )
+        form.addRow("Donor excitation", self._edge_row(*self._spins["green"]))
+        form.addRow("Acceptor excitation", self._edge_row(*self._spins["red"]))
+        self._set_edges_enabled(False)
+
+        # Applying on a timer rather than per keystroke: typing "3784" into a
+        # spin box is four value changes, and each one would republish the setup
+        # to every downstream panel.
+        self._apply_timer = QtCore.QTimer(self)
+        self._apply_timer.setSingleShot(True)
+        self._apply_timer.setInterval(400)
+        self._apply_timer.timeout.connect(self._apply_manual_windows)
+        return box
+
+    def _edge_pair(self) -> tuple[QtWidgets.QSpinBox, QtWidgets.QSpinBox]:
+        """Create one start/end spin-box pair, disabled until a period exists."""
+        pair = []
+        for _ in range(2):
+            spin = QtWidgets.QSpinBox(self)
+            spin.setRange(0, 0)
+            spin.setSingleStep(10)
+            spin.valueChanged.connect(self._on_edge_changed)
+            pair.append(spin)
+        return pair[0], pair[1]
+
+    @staticmethod
+    def _edge_row(low: QtWidgets.QSpinBox, high: QtWidgets.QSpinBox) -> QtWidgets.QWidget:
+        """Lay one start/end pair out as ``start – end``."""
+        row = QtWidgets.QWidget()
+        inner = QtWidgets.QHBoxLayout(row)
+        inner.setContentsMargins(0, 0, 0, 0)
+        inner.addWidget(low, 1)
+        inner.addWidget(QtWidgets.QLabel("\u2013"))
+        inner.addWidget(high, 1)
+        return row
+
+    def _set_edges_enabled(self, enabled: bool) -> None:
+        """Enable the four gate edges (they need a period to be a scale)."""
+        for low, high in self._spins.values():
+            low.setEnabled(enabled)
+            high.setEnabled(enabled)
+
+    def _on_period_changed(self, period: int) -> None:
+        """Give the gate edges their scale as soon as a period is known."""
+        if self._updating:
+            return
+        self._rescale_edges(int(period))
+
+    def _rescale_edges(self, period: int) -> None:
+        """Range the gate edges to ``[0, period]`` and enable them."""
+        self._updating = True
+        try:
+            for low, high in self._spins.values():
+                low.setRange(0, max(0, period))
+                high.setRange(0, max(0, period))
+        finally:
+            self._updating = False
+        self._set_edges_enabled(period > 0)
+
+    def _on_edge_changed(self, _value: int) -> None:
+        """A typed edge: move the band, then republish once typing settles."""
+        if self._updating:
+            return
+        self._sync_regions_from_spins()
+        self._apply_timer.start()
+
+    def _on_region_dragged(self, name: str, low: float, high: float) -> None:
+        """A dragged band: write the numbers, then republish."""
+        if self._updating:
+            return
+        low_spin, high_spin = self._spins[name]
+        self._updating = True
+        try:
+            low_spin.setValue(int(round(low)))
+            high_spin.setValue(int(round(high)))
+        finally:
+            self._updating = False
+        self._apply_timer.start()
+
+    def _windows_from_spins(self) -> dict | None:
+        """Read the two gates, or ``None`` if either is empty or inverted."""
+        windows = {}
+        for name, (low, high) in self._spins.items():
+            lo, hi = int(low.value()), int(high.value())
+            if lo >= hi:
+                return None
+            windows[name] = [lo, hi]
+        return windows
+
+    def _write_spins(self, windows: dict) -> None:
+        """Fill the four edges from a detection result, without re-entering."""
+        self._updating = True
+        try:
+            for name, (low, high) in self._spins.items():
+                lo, hi = windows[name]
+                low.setValue(int(round(lo)))
+                high.setValue(int(round(hi)))
+        finally:
+            self._updating = False
+
+    def _sync_regions_from_spins(self) -> None:
+        """Move the shaded bands to match the numbers."""
+        windows = self._windows_from_spins()
+        if windows is None:
+            return
+        self._updating = True
+        try:
+            for name, region in self._regions.items():
+                lo, hi = windows[name]
+                region.set_bounds(float(lo), float(hi))
+        finally:
+            self._updating = False
+
+    def _apply_manual_windows(self) -> None:
+        """Republish the detector setup from the gates as they now stand.
+
+        Only the setup: the containers written by :meth:`run` stay as they are,
+        because the fold that made them used the period and not the gates.
+        """
+        if self._result is None:
+            return
+        windows = self._windows_from_spins()
+        if windows is None:
+            self.status_label.setText(
+                "Each gate needs a start below its end — the setup was not "
+                "changed."
+            )
+            return
+        self._result["windows"] = windows
+        setup = build_setup(
+            windows, self._result["donor_channels"],
+            self._result["acceptor_channels"], self._result["period"])
+        adopt = getattr(self._workflow, "adopt_alex_conversion", None)
+        if callable(adopt):
+            adopt(setup, self._converted)
+        self._write_detail(
+            self._result["period"], self._result["confidence"], windows)
+        self.status_label.setText(
+            f"Gates {windows['green'][0]}\u2013{windows['green'][1]} and "
+            f"{windows['red'][0]}\u2013{windows['red'][1]} published as "
+            f"\u201c{SETUP_NAME}\u201d. Next \u25b6"
+        )
 
     # ── workflow hand-off ───────────────────────────────────────────────
 
@@ -169,10 +388,13 @@ class AlexAlternationPanel(QtWidgets.QWidget):
                     f"ALEX: wrote {what}"
                 )
 
+        # A typed period overrides the measurement; 0 is the box's "auto".
+        manual_period = int(self.period_spin.value()) or None
         try:
             outcome = detect_and_convert(
                 self._files,
                 donor_channels=donor, acceptor_channels=acceptor,
+                period=manual_period,
                 progress=report,
             )
         except Exception as exc:
@@ -192,6 +414,18 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self.donor_edit.setText(", ".join(str(c) for c in donor))
         self.acceptor_edit.setText(", ".join(str(c) for c in acceptor))
         period = outcome["period"]
+        self._converted = list(outcome["converted"])
+        # Detecting *is* the request to re-measure, so the boxes are overwritten
+        # even if they were edited by hand. Adjusting them afterwards is the
+        # normal order, and that edit survives, because nothing re-runs on its
+        # own.
+        self._updating = True
+        try:
+            self.period_spin.setValue(int(period))
+        finally:
+            self._updating = False
+        self._rescale_edges(int(period))
+        self._write_spins(outcome["windows"])
         # Re-fold the first file only for the picture; the conversion above
         # already used these numbers on every file.
         first = self._files[0]
@@ -228,6 +462,21 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         # this the window would still read "converting…" after it had finished.
         logger.info(message)
 
+    def _write_detail(self, period, confidence, windows) -> None:
+        """Write the one-line summary of period, gates and contrast.
+
+        Separate from :meth:`_report` because a gate edit has to rewrite this
+        line without re-opening the file the macro-time resolution came from.
+        """
+        g_lo, g_hi = windows["green"]
+        r_lo, r_hi = windows["red"]
+        self.detail_label.setText(
+            f"<b>Period</b> {period}{self._micro_suffix} &nbsp;·&nbsp; "
+            f"<b>green</b> {g_lo:.0f}–{g_hi:.0f} &nbsp;·&nbsp; "
+            f"<b>red</b> {r_lo:.0f}–{r_hi:.0f} &nbsp;·&nbsp; "
+            f"<b>contrast</b> {confidence:.0f}×"
+        )
+
     def _report(self, period, confidence, windows, folded, contrast=None) -> None:
         """Show the detected numbers, in seconds as well as macro-time units."""
         try:
@@ -235,6 +484,7 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         except Exception:
             resolution = 0.0
         micro = f" = {period * resolution * 1e6:.1f} µs" if resolution else ""
+        self._micro_suffix = micro
         verdict = (
             "a clear alternation" if confidence > 50 else
             "a weak alternation; check the channel assignment, or this may not "
@@ -242,12 +492,7 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         )
         g_lo, g_hi = windows["green"]
         r_lo, r_hi = windows["red"]
-        self.detail_label.setText(
-            f"<b>Period</b> {period}{micro} &nbsp;·&nbsp; "
-            f"<b>green</b> {g_lo:.0f}–{g_hi:.0f} &nbsp;·&nbsp; "
-            f"<b>red</b> {r_lo:.0f}–{r_hi:.0f} &nbsp;·&nbsp; "
-            f"<b>contrast</b> {confidence:.0f}×"
-        )
+        self._write_detail(period, confidence, windows)
         channels = (
             "" if contrast is None else
             f"\n\nThe donor and acceptor channels were assigned from the data: "
@@ -281,9 +526,21 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         ):
             counts, _ = np.histogram(phase[np.isin(rc, list(channels))], bins=edges)
             self.plot.line(centres, counts, pen=colour, name=name)
+        # Movable, and bound to the spin boxes both ways: the gates are the one
+        # thing on this panel a user has a reason to overrule, and reading a
+        # laser edge off a plot is what a mouse is for. `final=True` fires on
+        # release rather than per mouse-move, so a drag republishes the setup
+        # once.
+        self._regions = {}
         for name, colour in (("green", "#2ca02c55"), ("red", "#d6272855")):
             lo, hi = windows[name]
-            self.plot.region((lo, hi), brush=colour, movable=False)
+            region = self.plot.region((lo, hi), brush=colour, movable=True)
+            region.set_limits(0.0, float(period))
+            region.on_change(
+                lambda low, high, _n=name: self._on_region_dragged(_n, low, high),
+                final=True,
+            )
+            self._regions[name] = region
         self.plot.autoscale()
 
 

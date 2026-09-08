@@ -874,8 +874,10 @@ class BurstSelectionTool(ChisurfDockTool):
         """
         from chisurf.gui.autoform import AutoForm
 
+        from . import sections as _display_sections  # registers "burst_time_window"
         from .display_view_model import BurstDisplayViewModel
 
+        assert _display_sections is not None
         self._ensure_display_widgets()
         self._display_view_model = BurstDisplayViewModel(self)
         form = AutoForm(self._display_view_model, parent)
@@ -2914,6 +2916,13 @@ class BurstSelectionTool(ChisurfDockTool):
             )
             _LOG.debug("TTTR diagnostics assigned; updating plots", paths=[str(path) for path in path_list])
             self._status_bar.showMessage("Updating stacked plots...")
+            # The visible-window slider is placed on a timeline that has just
+            # been replaced; it re-reads the span and re-applies its window,
+            # which is also what keeps a new search from drawing every photon
+            # of every file into one trace.
+            display_model = getattr(self, "_display_view_model", None)
+            if display_model is not None:
+                display_model.notify_display()
             self.update_burst_plots()
             self._status_bar.showMessage("Ready")
         except Exception as exc:

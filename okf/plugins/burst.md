@@ -27,6 +27,39 @@ The `burst/` group covers the confocal single-molecule FRET (smFRET) burst workf
 | `burst_browser` | Burst Browser | Inspects burstwise analysis tables and plots. |
 | `bid_to_analysis` | BID→Analysis | Converts Seidel-style BID (Burst ID) files into a burstwise analysis folder (BUR/Info/MTI, optional HDF5/SL5) that ChiSurf and companion tools consume. |
 
+**Calibration speed is a seeding problem, not a fitting one.** `auto_calibrate`
+spent 2.2 of its 2.7 seconds (7 358 bursts) in the k-means that *seeds* its 1-D
+Gaussian mixture, because `chisurf/core/ml/cluster/_kmeans.py` was written as
+element-at-a-time loops for a JIT that was never applied. Vectorised in plain
+NumPy it is 0.435 s with identical factors; the old loops survive as the oracle
+in `test/ml/test_kmeans_vectorisation.py`. If a calibration feels slow again,
+profile before optimising the fit — the EM is 0.35 s of it.
+
+**Where the calibration does *not* belong: `IMP.bff`.** It is burst statistics
+over an E-S table (a mixture fit, the `1/S = Ω + Σ·E` regression, bootstrap
+resampling) with no structure, no dye model and no IMP object in it; `bff` is
+the FRET/labeling *structural* layer. Moving it there would put a routine every
+burst analysis needs behind an IMP build not every user has — the missing
+`IMP.bff.fret` that broke `fret_docking` at startup is the standing example.
+The light-path prior is the one piece with an optics model behind it, and it
+already lives in its own plugin and is passed in as `lightpath=`.
+
+**The background estimator's fit window is explicit.** The tail fit takes
+`tail_range_ms` — a window in milliseconds with both edges — rather than only a
+lower fraction of the range. The fraction rule seeds it and nothing more,
+because an unbounded window fits the sparse far tail: on the ALEX calibration
+measurement the shipped default returned a background of exactly 0.00 kHz for
+one detector ([known-issues](/references/known-issues.md)). In the GUI the window
+is two log-scaled sliders and a draggable band on the inter-photon-time plot,
+coupled both ways.
+
+**The burst-search diagnostics draw a time window.** `burst_selection` still
+takes a photon-index range internally, but `gui/timeline.py` maps the
+concatenated multi-file timeline onto it, and the `burst_time_window` section
+offers a window length (10 s), a slider that walks the measurement, and a
+caption naming the file under it. Without it a six-file selection drew eleven
+million photons into one trace.
+
 `accurate_fret` is the user-facing face of the [FRET-calibration reference](/references/fret-calibration.md). Its Qt-free layers are `chisurf/core/fluorescence/fret/accurate.py` (population finding, the self-consistent factor iteration, the optics-prior posterior, error propagation) and `chisurf/core/fluorescence/fret/lines.py` (analytic static/dynamic FRET lines, model-free so calibration does not need a fit object). The plugin adds the AutoForm view, a burst-table reader with column auto-mapping, a live bridge to an open ndX window in both directions, `csc accurate-fret`, and the `accurate_fret.calibrate{,_file}` RPC methods. **Which route determines γ is itself a diagnostic**: the E-S population fit and the FRET line are independent, so their disagreement means either sub-burst dynamics or a wrong τ_D(0) — the tool reports both numbers rather than one.
 
 `burst_mle_analysis` fits a single fluorescence lifetime + anisotropy per burst per detector by Poisson maximum likelihood. The estimator itself is tttrlib's C++ `Fit23` (the Maus-2001 `2I*` MLE); ChiSurf wraps it through one Qt-free seam, `chisurf/core/fluorescence/mle/` (`Fit2x`, `Fit2xSettings`, `Fit2xResult`, `assemble_vv_vh`), rather than reconstructing the raw `tttrlib.Fit23` in every consumer. The batch worker (`_mp_worker.py`), the wizard's batch pass, and the image-MLE plugins (`microscopy/img_pixel_mle`, `microscopy/sm_image_mle`) all fit through this harness. See the [fitting subsystem](/subsystems/fitting.md) for the harness and the complementary in-core `noise_model="poisson"` (`2I*`) objective now available to the ordinary TCSPC decay fits.

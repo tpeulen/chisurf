@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the tail-fit settings (a slider over where the background tail starts — the one judgement call in the estimate), the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table — each a draggable chisurf dock. The Channel Definition and Files docks are dropped when a workflow supplies them (BackgroundViewModel.view_spec).",
+  "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the tail-fit settings (sliders over the fit window, which is the one judgement call in the estimate, coupled to the draggable band on the inter-photon-time plot), the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table \u2014 each a draggable chisurf dock. The Channel Definition and Files docks are dropped when a workflow supplies them (BackgroundViewModel.view_spec).",
   "sections": [
     {
       "type": "dock_area",
@@ -45,15 +45,29 @@
           "sections": [
             {
               "type": "value",
-              "attr": "tail_fraction",
-              "label": "Tail starts at",
+              "attr": "fit_from_ms",
+              "label": "Fit from (ms)",
               "kind": "float",
               "style": "slider",
-              "minimum": 0.05,
-              "maximum": 0.99,
+              "scale": "log",
+              "minimum": 0.001,
+              "maximum": 1000.0,
               "step": 0.01,
-              "decimals": 2,
-              "description": "Where the background tail begins, as a fraction of the longest inter-photon time. This is the judgement call in a background estimate: too small and bursts are fitted as background (the rate comes out too high), too large and there is too little left to fit. Drag it and watch the fitted line follow the points in the Inter-photon time plot."
+              "decimals": 3,
+              "description": "Lower edge of the background tail fit, in milliseconds. This is the judgement call in a background estimate: too small and bursts are fitted as background, so the rate comes out too high. Drag the shaded band in the Inter-photon time plot instead if you prefer \u2014 it is the same setting."
+            },
+            {
+              "type": "value",
+              "attr": "fit_to_ms",
+              "label": "Fit to (ms)",
+              "kind": "float",
+              "style": "slider",
+              "scale": "log",
+              "minimum": 0.001,
+              "maximum": 1000.0,
+              "step": 0.01,
+              "decimals": 3,
+              "description": "Upper edge of the fit. The far tail is bins holding one count each: including it stretches the fit over a decade that carries almost no information and visibly pulls the line off the points. Set it where the points stop being dense."
             },
             {
               "type": "value",

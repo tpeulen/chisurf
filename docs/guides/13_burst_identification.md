@@ -55,6 +55,21 @@ the detected bursts.
 Burst identification.
 ```
 
+## Reading the diagnostic plots
+
+The plots draw a **window of the measurement**, not all of it. Ten seconds by
+default: a six-file selection is half an hour and millions of photons, and drawn
+whole it is an envelope with no individual burst visible in it.
+
+**Show a window of** sets the length and the slider walks it through the
+selection. The caption under the slider says where you are and, because the
+files are laid end to end on one timeline, which file you are looking at —
+`1074.0–1084.0 s of 1800.0 s · 004_….sm (4/6)`. Unchecking it draws everything,
+which is what the plots did before.
+
+The window is the same setting as **First photon** / **Last photon** underneath;
+type there when you want an exact photon range.
+
 ## See also
 
 - `chisurf/plugins/burst/burst_selection/`; `chisurf/core/fluorescence/burst/`.
