@@ -11,12 +11,13 @@ Press **Guide** for the walk-through.
 
 | ALEX-Suite | here |
 |---|---|
-| *Select Directory* + file list | **1. Files** — drop files or folders; also reads MMFDB |
-| *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **2. Alternation** — one button, all of it measured from the data |
-| *Burst Search → APBS / DCBS* | **3. Burst search** |
-| the `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **4. Background** — measured, not typed |
-| *Accurate FRET* (`E_donly`, `S_aonly`, γ, β) | **5. Accurate FRET** — α, δ, γ, β found from your own populations |
-| *E vs S Histogram* **and** *Dataset Viewer* | **6. E–S histogram** (ndX) |
+| the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
+| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB |
+| *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **3. Alternation** — one button, all of it measured from the data |
+| *Burst Search → APBS / DCBS* | **4. Burst search** |
+| the `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured, not typed |
+| *Accurate FRET* (`E_donly`, `S_aonly`, γ, β) | **6. Accurate FRET** — α, δ, γ, β found from your own populations |
+| *E vs S Histogram* **and** *Dataset Viewer* | **7. E–S histogram** (ndX) |
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
 | *BVA* | **BVA** |
@@ -31,17 +32,16 @@ change).
 
 ## Where the detector setup is chosen
 
-**Step 2, the first control.** The setup says which routing channels are the
-donor and the acceptor and which micro-time window is which excitation, and
-everything after step 2 reads it — the burst search, Accurate FRET and BVA each
-show the same setup in their own combo, already filled in.
+**Step 1.** The setup says which routing channels are the donor and the acceptor
+and which micro-time window is which excitation, and every later step reads it —
+the burst search, Accurate FRET and BVA each show the same setup, already
+filled in.
 
-* **µs-ALEX:** you do not choose it. *Detect alternation and convert* measures
-  the channel assignment and the gates and writes a setup called
-  **ALEX Suite (auto)**, then selects it. The two channel fields say `auto`
-  until it has run and then show what was decided, so you can check it.
-* **Already PIE / ns-ALEX:** pick your own setup in that combo and skip the
-  detection. That is the only thing step 2 is for in your case.
+* **Already PIE / ns-ALEX:** pick or edit your setup here and skip step 3
+  entirely. This is the only step that cannot be worked out from the data.
+* **µs-ALEX:** you can leave it empty. Step 3 measures the channel assignment
+  and the gates, writes a setup called **ALEX Suite (auto)**, and fills this step
+  in — come back and check it.
 
 The old *channel flip* checkbox is gone because the answer is in the data: under
 acceptor excitation the donor detector sees essentially nothing, whatever the
@@ -62,7 +62,7 @@ H2MM segmentation and burst fusion — and brought back, with no conversion.
 
 ## The three things worth doing carefully
 
-**The alternation must look right.** Step 2 plots the folded phase for each
+**The alternation must look right.** Step 3 plots the folded phase for each
 detector. You should see two plateaus with a gap between them, and the donor
 detector brighter in one of them, the acceptor detector in the other. If the two
 curves track each other, the period is wrong or the channels are swapped; the
@@ -72,7 +72,7 @@ curves track each other, the period is wrong or the channels are swapped; the
 If the burst count and the histogram both move a lot, you are looking at your
 threshold rather than at your sample.
 
-**Check where donor-only lands.** After step 5, the donor-only population should
+**Check where donor-only lands.** After step 6, the donor-only population should
 sit at S ≈ 1 and E ≈ 0. If it does not, the channel assignment is wrong, and
 nothing downstream will tell you — a swapped assignment produces a complete,
 plausible analysis with *E* reflected about ½.

@@ -28,12 +28,13 @@ convert.
 
 | ALEX-Suite | here |
 |---|---|
-| *Select Directory* + file list | **1. Files** — drop files or folders; `.sm` reads directly |
-| *Burst Search Settings → Microscope* | **2. Alternation** — one button, all seven numbers measured |
-| *Burst Search → APBS / DCBS* | **3. Burst search** |
-| `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **4. Background** — measured from the inter-photon times |
-| *Accurate FRET* (`E_donly`, `S_aonly`, γ, β) | **5. Accurate FRET** — α, δ, γ, β from your own populations |
-| *E vs S Histogram* **and** *Dataset Viewer* | **6. E–S histogram** (ndX) |
+| the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
+| *Select Directory* + file list | **2. Files** — drop files or folders; `.sm` reads directly |
+| *Burst Search Settings → Microscope* | **3. Alternation** — one button, all seven numbers measured |
+| *Burst Search → APBS / DCBS* | **4. Burst search** |
+| `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured from the inter-photon times |
+| *Accurate FRET* (`E_donly`, `S_aonly`, γ, β) | **6. Accurate FRET** — α, δ, γ, β from your own populations |
+| *E vs S Histogram* **and** *Dataset Viewer* | **7. E–S histogram** (ndX) |
 | *Burst Properties* | **Burst properties** |
 | *Titration* | **Titration** |
 | *BVA*, *Trace Viewer* | **BVA**, **Trace viewer** |
@@ -44,22 +45,34 @@ alternation step works out which detector is which from which laser window it is
 brighter in. And the **`sm2burst` cache**: bursts live in the measurement's own
 `.pto`, so nothing can go stale against a settings change.
 
-## 1 — Files
+## 1 — Setup
+
+**Where the detector setup is chosen.** Which routing channels are the donor and
+the acceptor, and which micro-time window is which excitation. Every later step
+reads it, and it is the one thing that cannot be worked out from the data alone.
+
+Already PIE / ns-ALEX? Pick or edit your setup here and skip step 3. µs-ALEX?
+Leave it — step 3 measures it and fills this step in, and you come back and
+check what it decided.
+
+## 2 — Files
 
 Drop the measurements, or a folder of them. Any container `tttrlib` reads works,
 including the `.sm` files the old program used — no conversion step, no cache
 files appearing beside them. Everything later reads what you select here.
 
-## 2 — Alternation, measured rather than typed
+Dropping a vendor file elsewhere in ChiSurf offers to embed it in a `.pto` there
+and then; **here it does not**, deliberately. A µs-ALEX measurement converted
+before step 3 still has its alternation in the macro time, so the container's
+micro-time is empty and step 3 would convert that container again into a second
+file. The conversion this workflow needs is step 3's.
+
+## 3 — Alternation, measured rather than typed
 
 This replaces the microscope dialog: alternation period, phase shift, four laser
-on/off edges, channel flip. Its first control is the **Detector setup** — the
-answer to "where do I choose the setup?", and what every later step reads.
-
-For µs-ALEX you do not choose it: press **Detect alternation and convert** and
-look at the plot. The channel fields say `auto` and fill themselves in. (For data
-that is already PIE, pick your own setup in that combo and skip the rest of the
-step.)
+on/off edges, channel flip. Press **Detect alternation and convert** and look at
+the plot; the channel fields say `auto` and fill themselves in, and the detected
+setup lands in step 1.
 
 ```{figure} figures/alex_suite_alternation.png
 :name: fig-alex-suite-alternation
@@ -88,7 +101,7 @@ band trimmed off the laser rise and fall.
 
 Afterwards each measurement is a `.pto` whose micro-time *is* the alternation
 phase — ordinary PIE data — and a detector setup named **ALEX Suite (auto)** is
-published for the rest of the pipeline. Its windows are `prompt` and `delayed`,
+written into step 1 and published for the rest of the pipeline. Its windows are `prompt` and `delayed`,
 its detectors `green`, `red` and `yellow`, so the four ALEX streams appear in the
 burst table under the names every ChiSurf reader already knows:
 
@@ -100,7 +113,7 @@ burst table under the names every ChiSurf reader already knows:
 
 Skip this step entirely if your data is already PIE / ns-ALEX.
 
-## 3 — Burst search
+## 4 — Burst search
 
 The old *APBS* is a search over all photons; *DCBS* additionally demands a
 coincident rate rise in **both** excitation streams, throwing out singly-labelled
@@ -111,7 +124,7 @@ afterwards**. A minimum-photon cut inside the search interacts with the threshol
 and biases which molecules you ever see — dim ones go first, and dim usually
 correlates with something you care about.
 
-## 4–5 — Background and the correction factors
+## 5–6 — Background and the correction factors
 
 Both used to be numbers you read off a plot and typed in. The background comes
 from the inter-photon-time distribution of the measurement itself; α, δ, γ and β
@@ -122,7 +135,7 @@ populations, iterated until the classification and the factors agree
 The check that catches most errors is the one you already use: **donor-only must
 land at $S \approx 1$, $E \approx 0$**.
 
-## 6 — E–S, and any parameter against any other
+## 7 — E–S, and any parameter against any other
 
 ndX is both of the old windows at once. Drawing a region selects those bursts
 everywhere, so a population you gate is a population the other tools see; fitting

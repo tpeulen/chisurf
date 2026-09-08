@@ -60,15 +60,47 @@ def _remember(value: str) -> None:
     set_data_loading_settings({"drop_guards": drop_guards})
 
 
-def _convert_batch(paths: list[str], *, keep_original: bool) -> list[str]:
-    """Embed every path in *paths* into one `.pto`, or fall back to *paths*."""
+def _convert_batch(parent, paths: list[str], *, keep_original: bool) -> list[str]:
+    """Embed every path in *paths* into one `.pto`, or fall back to *paths*.
+
+    Shown as a busy task while it runs. Embedding copies the instrument file in
+    verbatim and then verifies its checksum, so a 45 MB `.sm` takes a couple of
+    minutes — on the GUI thread, with no repaint, which is indistinguishable
+    from the application having hung. It is not cancellable (a half-written
+    container is worse than a slow one), but it says what it is doing.
+    """
+    from chisurf.gui.progress import ChiSurfProgress
     from chisurf.plugins.core.tttr_to_pto import api
 
+    names = ", ".join(sorted(Path(p).name for p in paths))
+    total = sum(_size(p) for p in paths)
+    size = f" ({total / 1e6:.0f} MB)" if total else ""
+    progress = None
+    try:
+        progress = ChiSurfProgress(
+            parent, text=f"Embedding {names}{size} into a .pto container…",
+            maximum=0)
+    except Exception:
+        progress = None
     try:
         return [str(api.convert(paths, keep_original=keep_original))]
     except Exception:
         logger.exception("tttr_to_pto: could not convert %r, using them as dropped", paths)
         return list(paths)
+    finally:
+        if progress is not None:
+            try:
+                progress.close()
+            except Exception:
+                pass
+
+
+def _size(path: str) -> int:
+    """Size of *path* in bytes, or 0 when it cannot be read."""
+    try:
+        return Path(path).stat().st_size
+    except OSError:
+        return 0
 
 
 @register_drop_guard("tttr_to_pto")
@@ -88,14 +120,16 @@ class TttrToPtoGuard(DropGuard):
         if remembered == "never":
             return list(paths)
         if remembered in ("always_keep", "always_delete"):
-            return _convert_batch(paths, keep_original=(remembered == "always_keep"))
+            return _convert_batch(parent, paths, keep_original=(remembered == "always_keep"))
 
         names = ", ".join(sorted(Path(p).name for p in paths))
         plural = "s" if len(paths) > 1 else ""
         informative = (
             "A .pto keeps the instrument data and every result computed "
             "from it in one file. Your original is never touched unless "
-            "you choose to delete it, and only after the copy verifies."
+            "you choose to delete it, and only after the copy verifies.\n\n"
+            "Converting copies the whole file and checksums it, so a large "
+            "measurement takes a minute or two."
         )
         if len(paths) > 1:
             informative = (
@@ -117,5 +151,5 @@ class TttrToPtoGuard(DropGuard):
         if answer.checked and answer.key in _REMEMBER_AS:
             _remember(_REMEMBER_AS[answer.key])
         if answer.key in ("keep", "delete"):
-            return _convert_batch(paths, keep_original=(answer.key == "keep"))
+            return _convert_batch(parent, paths, keep_original=(answer.key == "keep"))
         return list(paths)  # "asis" or dismissed

@@ -3,79 +3,89 @@
   "steps": [
     {
       "title": "Your old workflow, same order",
-      "text": "The list on the left is ALEX-Suite's workflow: files, microscope settings, burst search, then the analyses. Six numbered steps, then the tools that were under <i>Advanced Options</i>.<br/><br/>Underneath, each one is a ChiSurf tool, so what comes out is a normal ChiSurf burst analysis — <b>one <code>.pto</code> file per measurement</b> with the bursts inside it. Not an ALEX-only format, and not a folder of cache CSVs.<br/><br/>About three minutes. You press the rows; the tour only points at them.",
+      "text": "The list on the left is ALEX-Suite's workflow: files, microscope settings, burst search, then the analyses. Seven numbered steps, then the tools that were under <i>Advanced Options</i>.<br/><br/>Underneath, each one is a ChiSurf tool, so what comes out is a normal ChiSurf burst analysis — <b>one <code>.pto</code> file per measurement</b> with the bursts inside it. Not an ALEX-only format, and not a folder of cache CSVs.<br/><br/>About three minutes. You press the rows; the tour only points at them.",
       "target": {}
     },
     {
-      "title": "1 — the files (this was <i>Select Directory</i>)",
-      "text": "Drop files or a whole folder. <b><code>.sm</code> files work directly</b> — no conversion, no <code>sm2burst</code>, no cache files beside them.<br/><br/>Everything later reads what you select here and opens nothing else, so any number can be traced back to the file it came from.",
+      "title": "1 — the detector setup, first",
+      "text": "Which routing channels are the donor and the acceptor, and which micro-time window is which excitation. <b>Every later step reads this</b>, and it is the one thing that cannot be worked out from the data on its own.<br/><br/>Already PIE / ns-ALEX? Pick or edit your setup here and you can skip step 3 entirely.<br/><br/>µs-ALEX? Leave it — step 3 measures the assignment and the gates and fills this step in, and you come back and check it.",
       "target": {
-        "panel": "1. Files"
+        "panel": "1. Setup"
       },
       "await": {
-        "hint": "Select <b>1. Files</b> in the list on the left."
+        "hint": "Select <b>1. Setup</b> in the list on the left."
       }
     },
     {
-      "title": "2 — the microscope settings, measured for you",
-      "text": "This replaces the whole <i>Burst Search Settings → Microscope</i> dialog: the ALEX period, the phase shift, the four laser on/off edges and the channel-flip box. <b>All seven are in the data</b>, and this step measures them — the channel fields say <code>auto</code> and fill themselves in.<br/><br/>The first control is where the <b>detector setup</b> is chosen. Detecting writes one called <i>ALEX Suite (auto)</i> and selects it, and every later step reads that. If your data is already PIE / ns-ALEX, pick your own setup there instead and skip the rest of this step.",
+      "title": "2 — the files (this was <i>Select Directory</i>)",
+      "text": "Drop files or a whole folder. <b><code>.sm</code> files work directly</b> — no conversion, no <code>sm2burst</code>, no cache files beside them.<br/><br/>Everything later reads what you select here and opens nothing else, so any number can be traced back to the file it came from.",
       "target": {
-        "panel": "2. Alternation"
+        "panel": "2. Files"
       },
       "await": {
-        "hint": "Select <b>2. Alternation (µs-ALEX)</b>."
+        "hint": "Select <b>2. Files</b>."
+      }
+    },
+    {
+      "title": "3 — the microscope settings, measured for you",
+      "text": "This replaces the whole <i>Burst Search Settings → Microscope</i> dialog: the ALEX period, the phase shift, the four laser on/off edges and the channel-flip box. <b>All seven are in the data</b>, and this step measures them — the channel fields say <code>auto</code> and fill themselves in.<br/><br/>The first control is where the <b>detector setup</b> is chosen. Detecting writes one called <i>ALEX Suite (auto)</i> and selects it, and every later step reads that. If your data is already PIE / ns-ALEX, pick your own setup there instead and skip the rest of this step.",
+      "target": {
+        "panel": "3. Alternation"
+      },
+      "await": {
+        "hint": "Select <b>3. Alternation (µs-ALEX)</b>."
       }
     },
     {
       "title": "Look at the plot before you go on",
       "text": "Two plateaus with a gap between them, and the <b>donor detector brighter in one, the acceptor in the other</b>. That crossover is the whole check: it is what the old channel-flip checkbox was guessing at.<br/><br/>If the two curves track each other instead, the period is wrong or the channels are swapped. The contrast figure under the button says the same thing — below about 50, do not trust it.<br/><br/>Afterwards your measurement is ordinary PIE data, and every remaining step is ChiSurf's normal burst pipeline.",
       "target": {
-        "panel": "2. Alternation"
+        "panel": "3. Alternation"
       }
     },
     {
-      "title": "3 — the burst search (APBS and DCBS)",
+      "title": "4 — the burst search (APBS and DCBS)",
       "text": "The old <i>APBS</i> is a search over all photons; <i>DCBS</i> additionally demands a coincident rate rise in <b>both</b> excitation streams, which throws out singly-labelled molecules before they reach the histogram.<br/><br/>One habit worth changing: <b>search permissively and cut on burst size afterwards</b>. A minimum-photon cut applied inside the search interacts with the threshold and biases which molecules you ever see — dim ones go first, and dim usually correlates with something you care about.",
       "target": {
-        "panel": "3. Burst search"
+        "panel": "4. Burst search"
       },
       "await": {
-        "hint": "Select <b>3. Burst search</b>."
+        "hint": "Select <b>4. Burst search</b>."
       }
     },
     {
-      "title": "4 — the background, measured",
+      "title": "5 — the background, measured",
       "text": "These are the <code>bkg_DD</code> / <code>bkg_DA</code> / <code>bkg_AA</code> fields you used to fill in by hand. They come from the inter-photon-time distribution of your own measurement.<br/><br/>It is not a detail. Every corrected quantity is a count <i>minus a background</i>, and getting it wrong moves <i>E</i> for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population.",
       "target": {
-        "panel": "4. Background"
+        "panel": "5. Background"
       },
       "await": {
-        "hint": "Select <b>4. Background</b>."
+        "hint": "Select <b>5. Background</b>."
       }
     },
     {
-      "title": "5 — α, δ, γ and β, from your own bursts",
+      "title": "6 — α, δ, γ and β, from your own bursts",
       "text": "You used to type the <i>position of the donor-only peak</i> and the <i>position of the acceptor-only peak</i> and read γ and β off a plot. This step classifies the bursts itself, takes α from the donor-only ones and δ from the acceptor-only ones, and gets γ and β from the <code>1/S = Ω + Σ·E</code> fit across the FRET sub-populations — then repeats, because the classification depends on the factors it is finding.<br/><br/>The check that catches most errors is the one you already use: <b>donor-only must land at E ≈ 0</b>.",
       "target": {
-        "panel": "5. Accurate FRET"
+        "panel": "6. Accurate FRET"
       },
       "await": {
-        "hint": "Select <b>5. Accurate FRET</b>."
+        "hint": "Select <b>6. Accurate FRET</b>."
       }
     },
     {
-      "title": "6 — E vs S <i>and</i> the Dataset Viewer, in one",
+      "title": "7 — E vs S <i>and</i> the Dataset Viewer, in one",
       "text": "ndX is both of the old windows: the E–S map with its projections, and \"plot any burst property against any other\". Drawing a region here selects those bursts everywhere, so a population you gate is a population the other tools see.<br/><br/>Fitting the map with Gaussians, tagging populations and giving each one its own γ — the things the old <i>Populations</i> panel did — are here too.",
       "target": {
-        "panel": "6. E–S histogram"
+        "panel": "7. E–S histogram"
       },
       "await": {
-        "hint": "Select <b>6. E–S histogram</b>."
+        "hint": "Select <b>7. E–S histogram</b>."
       }
     },
     {
       "title": "Below the line: the Advanced Options",
-      "text": "<b>Burst properties</b> is the old burst-size / duration / per-channel histograms. <b>BVA</b> is BVA. <b>Trace viewer</b> is the trace viewer. <b>Titration</b> is the titration.<br/><br/>They are below the separator because they are not part of the pipeline: they read what the six steps produced, in any order, as often as you like.",
+      "text": "<b>Burst properties</b> is the old burst-size / duration / per-channel histograms. <b>BVA</b> is BVA. <b>Trace viewer</b> is the trace viewer. <b>Titration</b> is the titration.<br/><br/>They are below the separator because they are not part of the pipeline: they read what the seven steps produced, in any order, as often as you like.",
       "target": {
         "panel": "Burst properties"
       }
@@ -99,7 +109,7 @@
     },
     {
       "title": "Three checks, then believe it",
-      "text": "1. <b>Two plateaus in step 2</b>, donor and acceptor swapping between them.<br/>2. <b>Vary the burst threshold by a factor of two.</b> A real population survives; an artefact does not.<br/>3. <b>Donor-only at S ≈ 1, E ≈ 0</b> after step 5. A swapped channel assignment produces a complete, plausible analysis with <i>E</i> reflected about ½, and no fit statistic anywhere reports it.<br/><br/>The <b>?</b> button beside Guide has the full map of where each old window went.",
+      "text": "1. <b>Two plateaus in step 3</b>, donor and acceptor swapping between them.<br/>2. <b>Vary the burst threshold by a factor of two.</b> A real population survives; an artefact does not.<br/>3. <b>Donor-only at S ≈ 1, E ≈ 0</b> after step 6. A swapped channel assignment produces a complete, plausible analysis with <i>E</i> reflected about ½, and no fit statistic anywhere reports it.<br/><br/>The <b>?</b> button beside Guide has the full map of where each old window went.",
       "target": {}
     }
   ]

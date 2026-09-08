@@ -33,13 +33,13 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.navigation import embed_mainwindow
 from chisurf.plugins.burst.burst_analysis.gui.tool import (
     BurstAnalysisTool,
+    BurstDataSelectionWidget,
     _bind,
     _burst_accurate_fret,
     _burst_background,
     _burst_browser,
     _burst_bva,
     _burst_selection,
-    _data_selection,
 )
 
 logger = logging.getLogger("chisurf.plugins.burst")
@@ -53,6 +53,44 @@ logger = logging.getLogger("chisurf.plugins.burst")
 
 
 # ── the two panels this workflow adds ───────────────────────────────────
+
+
+def _data_selection(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the raw-data step, with the `.pto` drop guard turned off.
+
+    Dropping a vendor file normally offers to embed it in a `.pto` there and
+    then. Here that is wrong twice over. It is **wrong**, because a µs-ALEX
+    measurement converted before step 3 still has its alternation in the macro
+    time: the container's micro-time is empty, and step 3 then converts that
+    container again into a second file. And it is **slow** — a 45 MB `.sm` takes
+    a couple of minutes to embed, on the GUI thread, which reads as the
+    application having hung.
+
+    The conversion this workflow needs is step 3's, and it does more than embed.
+    """
+    widget = BurstDataSelectionWidget(parent=parent, guards=())
+    _bind(parent, "data", widget)
+    return widget
+
+
+def _setup(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the detector-setup step: pick one, or edit one.
+
+    The canonical setup editor, embedded rather than re-implemented. It is a
+    ``QWizardPage``, which is a plain widget once it is not in a wizard — the
+    Finish/Next chrome belongs to the wizard, not to the page.
+    """
+    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
+
+    widget = DetectorWizardPage(
+        show_edit_json=False,
+        show_save=True,
+        show_setup_selection=True,
+        show_help=False,
+        allow_finish=False,
+    )
+    _bind(parent, "channels", widget)
+    return widget
 
 
 def _alternation(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -112,8 +150,22 @@ def _trace(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 #: window's eight, because everything an ALEX experiment does not need
 #: (segmentation, per-segment fits, fusion) is reachable there and is noise here.
 ALEX_PANELS = [
+    # The setup first, because it is the one thing every later step reads and
+    # the one thing nothing else can work out for you on non-ALEX data. The old
+    # program hid the equivalent in a Settings dialog; the workflow makes it
+    # step one.
     {
-        "name": "1. Files",
+        "name": "1. Setup",
+        "icon": Glyphs.SETTINGS,
+        "description": (
+            "The detector setup: which routing channels are the donor and the "
+            "acceptor, and which micro-time window is which excitation."
+        ),
+        "factory": _setup,
+        "role": "channels",
+    },
+    {
+        "name": "2. Files",
         "icon": Glyphs.OPEN,
         "description": (
             "The measurements. Any format tttrlib reads, including the .sm "
@@ -126,19 +178,19 @@ ALEX_PANELS = [
     # step *rewrites the measurements*, and pressing Next should never do that
     # on data that is already PIE.
     {
-        "name": "2. Alternation (µs-ALEX)",
+        "name": "3. Alternation (µs-ALEX)",
         "icon": "🚦",
         "description": (
             "µs-ALEX only: find the laser alternation and fold it into the "
-            "micro-time, which turns the measurement into ordinary PIE data. "
-            "Skip for PIE / ns-ALEX."
+            "micro-time, which turns the measurement into ordinary PIE data "
+            "and writes the setup for step 1. Skip for PIE / ns-ALEX."
         ),
         "factory": _alternation,
         "role": "alternation",
         "optional": True,
     },
     {
-        "name": "3. Burst search",
+        "name": "4. Burst search",
         "icon": Glyphs.SEARCH,
         "description": (
             "Find the bursts. All-photon (APBS) or dual-channel (DCBS) — the "
@@ -148,7 +200,7 @@ ALEX_PANELS = [
         "role": "selection",
     },
     {
-        "name": "4. Background",
+        "name": "5. Background",
         "icon": "🌙",
         "description": (
             "Per-channel background rate from the inter-photon times — the "
@@ -158,7 +210,7 @@ ALEX_PANELS = [
         "role": "background",
     },
     {
-        "name": "5. Accurate FRET",
+        "name": "6. Accurate FRET",
         "icon": Glyphs.TARGET,
         "description": (
             "α, δ, γ and β from the donor-only, acceptor-only and FRET "
@@ -168,7 +220,7 @@ ALEX_PANELS = [
         "role": "accurate_fret",
     },
     {
-        "name": "6. E–S histogram",
+        "name": "7. E–S histogram",
         "icon": Glyphs.CHART,
         "description": (
             "The E vs S map, its projections, and any burst property against "
@@ -247,9 +299,36 @@ class AlexSuiteTool(BurstAnalysisTool):
         self._es_loaded: list[str] = []
         super().__init__(parent)
 
+    def _sync_channel_context(self) -> None:
+        """Read the channel definition from step 1, not from the burst search.
+
+        The base class derives it from the setup the Burst Selection step
+        happens to have selected, because there it is the only place a setup is
+        chosen. Here there is a step whose whole job is that choice, and it
+        comes first — so it is the source, and Burst Selection is one of the
+        steps that *receives* it.
+        """
+        page = self._workflow_panels.get("channels")
+        settings = None
+        if page is not None:
+            try:
+                settings = page.get_settings()
+            except Exception as exc:
+                logger.warning(f"ALEX Suite: could not read the setup step — {exc}")
+        if settings and (settings.get("detectors") or settings.get("windows")):
+            self._setup_client.set_current(settings)
+            self.workflow_context.channel_settings = settings
+            name = str(settings.get("setup_name") or "")
+            if name:
+                self.workflow_context.setup_name = name
+            return
+        super()._sync_channel_context()
+
     def _apply_context_to_panel(self, role: str, widget: QtWidgets.QWidget) -> None:
         """Apply the workflow context, including to this workflow's own steps."""
-        if role == "alternation":
+        if role == "channels":
+            self._apply_context_to_channels(widget)
+        elif role == "alternation":
             self._apply_context_to_alternation(widget)
         elif role == "titration":
             self._apply_context_to_titration(widget)
@@ -263,6 +342,28 @@ class AlexSuiteTool(BurstAnalysisTool):
             super()._apply_context_to_panel(role, widget)
 
     # ── the ALEX-only steps ─────────────────────────────────────────────
+
+    def _apply_context_to_channels(self, widget: QtWidgets.QWidget) -> None:
+        """Show the workflow's setup in the setup step.
+
+        Only when the step is still empty or holds a different definition: the
+        context is re-applied on every step change, and overwriting the tables
+        the user is editing would make the step unusable.
+        """
+        settings = self.workflow_context.channel_settings
+        if not settings:
+            return
+        try:
+            current = widget.get_settings() or {}
+        except Exception:
+            current = {}
+        if current.get("detectors") == settings.get("detectors") and \
+                current.get("windows") == settings.get("windows"):
+            return
+        try:
+            widget.load_data_into_tables(settings)
+        except Exception as exc:
+            logger.warning(f"ALEX Suite: could not show the setup — {exc}")
 
     def _apply_context_to_alternation(self, widget: QtWidgets.QWidget) -> None:
         """Give the alternation step the raw files chosen in step 1."""

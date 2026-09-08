@@ -65,7 +65,8 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         # behind the ? button (help.md). A panel whose top third is prose is a
         # panel nobody reads.
         intro = QtWidgets.QLabel(
-            "<b>µs-ALEX only</b> — already PIE / ns-ALEX? Skip this step.", self)
+            "<b>µs-ALEX only</b> — already PIE / ns-ALEX? Skip this step; "
+            "step 1 already has your setup.", self)
         intro.setToolTip(
             "In µs-ALEX the lasers alternate in time, so which laser was on is "
             "in the photon's macro-time. This step measures the alternation and "
@@ -76,30 +77,6 @@ class AlexAlternationPanel(QtWidgets.QWidget):
             "above and go on to the burst search."
         )
         layout.addWidget(intro)
-
-        # The setup selector belongs here, not only inside the burst-search
-        # step's Filter Settings where every other tool hides it. This is the
-        # step that *decides* the channel definition, so it is where someone
-        # asks "which setup am I using?" -- and someone whose data is already
-        # PIE, who skips the detection entirely, still needs to pick one.
-        from chisurf.gui.widgets.setup_selector import SetupSelector
-
-        setup_row = QtWidgets.QHBoxLayout()
-        setup_row.setContentsMargins(0, 0, 0, 0)
-        setup_row.addWidget(QtWidgets.QLabel("Detector setup", self))
-        self.setup_selector = SetupSelector(
-            self, placeholder="— none yet; press Detect to make one —",
-            loader=_merged_setups)
-        self.setup_selector.setToolTip(
-            "The detector setup every later step uses: which routing channels "
-            "are the donor and acceptor, and which micro-time window is which "
-            "excitation.\n\nDetecting writes one called “ALEX Suite (auto)” "
-            "and selects it. Already PIE data? Pick your own setup here and "
-            "skip the detection."
-        )
-        self.setup_selector.setupChanged.connect(self._on_setup_chosen)
-        setup_row.addWidget(self.setup_selector, 1)
-        layout.addLayout(setup_row)
 
         form = QtWidgets.QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)

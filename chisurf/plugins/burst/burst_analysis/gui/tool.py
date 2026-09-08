@@ -71,9 +71,25 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
         def update(self) -> None:
             self._owner._on_paths_committed(list(self.paths))
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        """Create the data-selection panel."""
+    #: Drop guards offered on a drag-and-drop. A workflow whose own steps do
+    #: the conversion overrides this with ``()`` — see
+    #: :class:`~chisurf.plugins.burst.alex_suite.gui.tool.AlexSuiteTool`.
+    DROP_GUARDS: tuple[str, ...] = ("tttr_to_pto",)
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        *,
+        guards: tuple[str, ...] | None = None,
+    ) -> None:
+        """Create the data-selection panel.
+
+        ``guards`` overrides :attr:`DROP_GUARDS` — pass ``()`` when the workflow
+        converts the measurements itself, so a drop does not quietly write a
+        second container beside the source with the wrong contents.
+        """
         super().__init__(parent)
+        self._guards = tuple(self.DROP_GUARDS if guards is None else guards)
         self._paths: list[Path] = []
         self._mmfdb_imports: dict[str, dict[str, Any]] = {}
         self._mmfdb_selections: dict[str, dict[str, Any]] = {}
@@ -97,7 +113,7 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
             mmfdb=True,
             mmfdb_kinds=["raw_data", "raw_measurement", "external_reference"],
             mmfdb_scope="all",
-            guards=["tttr_to_pto"],
+            guards=list(self._guards),
         )
         layout.addWidget(self.file_list, 1)
 

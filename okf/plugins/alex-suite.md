@@ -14,7 +14,14 @@ related:
 
 ## Where to pick this up
 
-0. **Detector setups have two stores and a picker sees one of them.** The RPC
+0. **The setup step's own combo does not show the detected setup's name.** The
+   *tables* are filled in correctly (step 3 writes them through
+   `load_data_into_tables`), and everything downstream uses the right
+   definition — but the `Setup:` combo at the top of step 1 stays blank, because
+   the name lives in a store the page's own selector does not read. Same root
+   cause as the next item; harmless but it looks unfinished.
+
+0b. **Detector setups have two stores and a picker sees one of them.** The RPC
    store (`detector_setups.*`, what this workflow publishes through) writes the
    settings JSON; every `SetupSelector` reads the wizard loader, which reads
    MMFDB and never falls back to that JSON. So a setup this step saves is
@@ -82,12 +89,26 @@ An analysis started here can be finished in Burst Analysis and brought back.
 
 | step | embeds | replaces |
 |---|---|---|
-| 1. Files | `BurstDataSelectionWidget` | *Select Directory* + file list |
-| 2. Alternation (µs-ALEX) | **new** | *Burst Search Settings → Microscope* |
-| 3. Burst search | `burst_selection` | *Burst Search → APBS / DCBS* |
-| 4. Background | `burst_background` | the `bkg_*` fields |
-| 5. Accurate FRET | `accurate_fret` | *Accurate FRET* |
-| 6. E–S histogram | ndX | *E vs S Histogram* **and** *Dataset Viewer* |
+| 1. Setup | `DetectorWizardPage` | the channel table in *Burst Search Settings* |
+| 2. Files | `BurstDataSelectionWidget` (no drop guard) | *Select Directory* + file list |
+| 3. Alternation (µs-ALEX) | **new** | *Burst Search Settings → Microscope* |
+| 4. Burst search | `burst_selection` | *Burst Search → APBS / DCBS* |
+| 5. Background | `burst_background` | the `bkg_*` fields |
+| 6. Accurate FRET | `accurate_fret` | *Accurate FRET* |
+| 7. E–S histogram | ndX | *E vs S Histogram* **and** *Dataset Viewer* |
+
+Setup first is the owner's ordering (2026-09-08: *"0. Must the Setup selection.
+1. File drop."*). It also makes `_sync_channel_context` simpler than the base
+class's: there the definition is inferred from whichever setup the burst search
+happens to have selected, because that is the only place one is chosen; here
+step 1 *is* the choice, and every other step receives it.
+
+Step 2 runs **no drop guard**. Dropping a vendor file normally offers to embed it
+in a `.pto` immediately, which here is wrong twice: a µs-ALEX measurement
+converted before step 3 still has its alternation in the macro time (the
+container's micro-time is empty and step 3 converts that container again), and
+the embed is a synchronous 45 MB copy on the GUI thread that reads as a hang.
+That is what "dropping a .sm crashes it" was.
 | Burst properties | `burst_browser` | *Burst Properties* |
 | Titration | **new** | *Titration* |
 | BVA, Trace viewer | `burst_bva`, `trace_browser` | the *Advanced Options* half |

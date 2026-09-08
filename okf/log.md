@@ -1,5 +1,36 @@
 # Update Log
 
+## 2026-09-08 (later still)
+
+* **Dropping a `.sm` into the ALEX Suite froze the application** (owner: "when i
+  drop a .sm file into 1. Files - it crashes"). Not a crash — the `tttr_to_pto`
+  **drop guard**, which offers to embed a dropped vendor file into a `.pto` and
+  then does it synchronously on the GUI thread: a 45 MB `.sm` takes about two
+  minutes with no repaint and no progress, and it wrote the container into the
+  source data directory. In this workflow the conversion is also *wrong*: a
+  µs-ALEX measurement embedded before the alternation step still has its
+  alternation in the macro time, so the container's micro-time is empty and the
+  alternation step converts that container again into a second file.
+  Two fixes. `BurstDataSelectionWidget` grew a `guards` parameter and the ALEX
+  Suite passes `()` — a drop is now 0.36 s and keeps the file as dropped. And the
+  guard itself shows a busy task naming the file and its size while it converts,
+  and its dialog says a large measurement takes a minute or two; that freeze was
+  there for every tool that opts into the guard.
+
+* **Setup first** (owner: "0. Must the Setup selection. 1. File drop."). The
+  pipeline is now 1. Setup, 2. Files, 3. Alternation, 4. Burst search,
+  5. Background, 6. Accurate FRET, 7. E-S histogram. Step 1 embeds the canonical
+  editor (`DetectorWizardPage`) and is the **source** of the channel definition:
+  `_sync_channel_context` reads it there instead of inferring it from whichever
+  setup the burst search happened to select, which is what the base class must do
+  because that is its only place a setup is chosen. Step 3 writes back into
+  step 1 — after detecting on the calibration file, step 1 shows green = channel
+  1 (616:3784), red = channel 0 (616:3784), yellow = channel 0 (4278:7762).
+  For PIE / ns-ALEX, step 1 is now the only step that must be touched.
+  `tests/test_workflow_shape.py` pins the order, the numbering, that the
+  conversion step stays `optional`, and that the data step runs no drop guard.
+
+
 ## 2026-09-08 (later)
 
 * **The ALEX window detection was wrong on real data; rewritten against a real
