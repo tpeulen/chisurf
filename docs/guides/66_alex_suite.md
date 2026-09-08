@@ -99,9 +99,18 @@ macro-time units = 100.0 µs) and gates (616–3784, 4278–7762) reproduce what
 program was configured with (100 µs; 240–3760 and 4160–7680) to within the guard
 band trimmed off the laser rise and fall.
 
-Afterwards each measurement is a `.pto` whose micro-time *is* the alternation
-phase — ordinary PIE data — and a detector setup named **ALEX Suite (auto)** is
-written into step 1 and published for the rest of the pipeline. Its windows are `prompt` and `delayed`,
+Afterwards the measurement is **one `.pto`** whose micro-time *is* the
+alternation phase — ordinary PIE data — and a detector setup named
+**ALEX Suite (auto)** is written into step 1 and published for the rest of the
+pipeline.
+
+One container for the whole set, not one per file. A run saved as `001.sm` …
+`006.sm` is one measurement the acquisition software chopped up, and the
+container is ChiSurf's unit of *measurement*: separate containers would make six
+analyses of one experiment, six burst searches to run and six sets of results to
+pool by hand. The period and the gates are measured once, from the first file,
+because they are properties of the instrument rather than of the sample — which
+is also what makes the pieces comparable. Its windows are `prompt` and `delayed`,
 its detectors `green`, `red` and `yellow`, so the four ALEX streams appear in the
 burst table under the names every ChiSurf reader already knows:
 

@@ -44,10 +44,14 @@ class Corrections:
         before subtraction, so the burst duration column has to be present for a
         non-zero background to be applied.
     alpha : float
-        Donor leakage into the acceptor channel (ALEX-Suite called it
-        ``E_donly``; the conversion is :meth:`from_donor_only`).
+        Donor leakage into the acceptor channel. ALEX-Suite asked for the
+        donor-only peak *position* (``E_donly``) instead; derive the factor
+        with :func:`chisurf.core.fluorescence.fret.calibration.leakage_from_donor_only`,
+        or let the Accurate FRET step find it — there is one implementation of
+        each correction factor and it is not here.
     delta : float
-        Direct acceptor excitation (ALEX-Suite's ``S_aonly``).
+        Direct acceptor excitation (ALEX-Suite's ``S_aonly``); see
+        :func:`~chisurf.core.fluorescence.fret.calibration.direct_excitation_from_acceptor_only`.
     gamma, beta : float
         Detection/quantum-yield ratio and excitation-flux ratio.
     """
@@ -59,36 +63,6 @@ class Corrections:
     delta: float = 0.0
     gamma: float = 1.0
     beta: float = 1.0
-
-    @staticmethod
-    def leakage_from_donor_only(e_donly: float) -> float:
-        """Donor leakage α from the donor-only population's apparent E.
-
-        ALEX-Suite asked for the *position of the donor-only peak* rather than
-        for α, because that is what you read off the histogram. The relation is
-        ``alpha = 1 / (1/E_donly - 1)`` — i.e. ``E/(1-E)`` — and it is the same
-        one the old ``_accurate_E`` used.
-        """
-        e = float(e_donly)
-        if e <= 0.0:
-            return 0.0
-        if e >= 1.0:
-            return float("inf")
-        return e / (1.0 - e)
-
-    @staticmethod
-    def direct_from_acceptor_only(s_aonly: float) -> float:
-        """Direct-excitation δ from the acceptor-only population's apparent S.
-
-        The mirror of :meth:`leakage_from_donor_only`: ``delta = S/(1-S)`` with
-        ``S`` the stoichiometry the acceptor-only bursts sit at.
-        """
-        s = float(s_aonly)
-        if s <= 0.0:
-            return 0.0
-        if s >= 1.0:
-            return float("inf")
-        return s / (1.0 - s)
 
 
 @dataclass(frozen=True)

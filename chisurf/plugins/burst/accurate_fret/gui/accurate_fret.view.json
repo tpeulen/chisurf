@@ -1,5 +1,5 @@
 {
-  "_comment": "Accurate FRET (Hellenkamp) calibration tool. AutoForm over AccurateFretViewModel. Left: a single Settings column in workflow order — where the bursts come from, which column is which channel, the photophysics anchoring the FRET lines, the optics prior, and the procedure knobs. Right: tabbed views (factor table, population table, E-S plot with the automatically found classes, E vs donor-lifetime plot with the static and dynamic FRET lines, accurate-E histogram). Calibrate / register / push / export live in the host toolbar; long help sits behind the ? button.",
+  "_comment": "Accurate FRET (Hellenkamp) calibration tool. AutoForm over AccurateFretViewModel. Left: a single Settings column in workflow order — where the bursts come from, which column is which channel, the photophysics anchoring the FRET lines, the optics prior, and the procedure knobs. Right: tabbed views (factor table, population table, E-S plot with the automatically found classes, E vs donor-lifetime plot with the static and dynamic FRET lines, accurate-E histogram). Calibrate / register / push / export live in the host toolbar; long help sits behind the ? button. The setting panels start folded except Channels — the column mapping is the one thing that has to be checked on every table; the rest have defaults that are usually right. The long pickers (dyes, columns, light paths) are editable, so typing filters them.",
   "sections": [
     {
       "type": "dock_area",
@@ -13,58 +13,159 @@
           "collapsed": false,
           "n_col": 1,
           "sections": [
-            {"type": "custom", "key": "setup_selector",
-             "options": {"attr": "setup_name", "call": "apply_setup_settings",
-                         "placeholder": "— no detector setup —"},
-             "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."},
-            {"type": "value", "attr": "filename", "label": "Burst table", "kind": "file", "call": "set_filename",
-             "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there."},
+            {
+              "type": "custom",
+              "key": "setup_selector",
+              "options": {
+                "attr": "setup_name",
+                "call": "apply_setup_settings",
+                "placeholder": "— no detector setup —"
+              },
+              "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."
+            },
+            {
+              "type": "value",
+              "attr": "filename",
+              "label": "Burst table",
+              "kind": "file",
+              "call": "set_filename",
+              "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there."
+            },
             {
               "type": "panel",
               "title": "Channels",
               "collapsed": false,
               "n_col": 1,
               "sections": [
-                {"type": "choice", "attr": "column_i_dd", "label": "I_DD (donor)", "options_source": "column_names",
-                 "description": "Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit."},
-                {"type": "choice", "attr": "column_i_da", "label": "I_DA (FRET)", "options_source": "column_names",
-                 "description": "Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do."},
-                {"type": "choice", "attr": "column_i_aa", "label": "I_AA (acceptor)", "options_source": "column_names",
-                 "description": "Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled."},
-                {"type": "choice", "attr": "column_tau_f", "label": "Donor lifetime", "options_source": "column_names",
-                 "description": "Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test."}
+                {
+                  "type": "choice",
+                  "attr": "column_i_dd",
+                  "label": "I_DD (donor)",
+                  "options_source": "column_names",
+                  "description": "Donor signal under donor excitation — the 'green' channel. Auto-detected from the column names; counts and count rates both work as long as every channel uses the same unit. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "choice",
+                  "attr": "column_i_da",
+                  "label": "I_DA (FRET)",
+                  "options_source": "column_names",
+                  "description": "Acceptor signal under donor excitation — the 'red' FRET channel. It still contains donor leakage and directly excited acceptor; removing those is what alpha and delta do. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "choice",
+                  "attr": "column_i_aa",
+                  "label": "I_AA (acceptor)",
+                  "options_source": "column_names",
+                  "description": "Acceptor signal under acceptor excitation (ALEX/PIE) — the 'yellow' channel. Optional, but without it there is no stoichiometry: donor-only and acceptor-only bursts can then not be found automatically and every burst is assumed to be doubly labelled. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "choice",
+                  "attr": "column_tau_f",
+                  "label": "Donor lifetime",
+                  "options_source": "column_names",
+                  "description": "Per-burst fluorescence-averaged donor lifetime in presence of the acceptor (ns). Optional, and powerful: it puts every burst on the E-tau plot, lets the static FRET line determine gamma from a single population, and turns the off-line offset into a dynamics test. Type to filter the list.",
+                  "editable": true
+                }
               ]
             },
             {
               "type": "panel",
               "title": "Dyes (database)",
-              "collapsed": false,
+              "collapsed": true,
               "n_col": 1,
               "sections": [
-                {"type": "choice", "attr": "donor_dye", "label": "Donor", "options_source": "dye_names", "call": "apply_dye_selection",
-                 "description": "Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which."},
-                {"type": "choice", "attr": "acceptor_dye", "label": "Acceptor", "options_source": "dye_names", "call": "apply_dye_selection",
-                 "description": "Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0."},
-                {"type": "value", "attr": "kappa2", "label": "kappa^2", "kind": "float", "minimum": 0.0, "maximum": 4.0, "step": 0.01, "decimals": 4, "call": "apply_dye_selection",
-                 "description": "Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %."},
-                {"type": "value", "attr": "refractive_index", "label": "Refractive index", "kind": "float", "minimum": 1.0, "maximum": 2.0, "step": 0.01, "decimals": 3, "call": "apply_dye_selection",
-                 "description": "Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3)."}
+                {
+                  "type": "choice",
+                  "attr": "donor_dye",
+                  "label": "Donor",
+                  "options_source": "dye_names",
+                  "call": "apply_dye_selection",
+                  "description": "Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "choice",
+                  "attr": "acceptor_dye",
+                  "label": "Acceptor",
+                  "options_source": "dye_names",
+                  "call": "apply_dye_selection",
+                  "description": "Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "value",
+                  "attr": "kappa2",
+                  "label": "kappa^2",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 4.0,
+                  "step": 0.01,
+                  "decimals": 4,
+                  "call": "apply_dye_selection",
+                  "description": "Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %."
+                },
+                {
+                  "type": "value",
+                  "attr": "refractive_index",
+                  "label": "Refractive index",
+                  "kind": "float",
+                  "minimum": 1.0,
+                  "maximum": 2.0,
+                  "step": 0.01,
+                  "decimals": 3,
+                  "call": "apply_dye_selection",
+                  "description": "Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3)."
+                }
               ]
             },
             {
               "type": "panel",
               "title": "Photophysics",
-              "collapsed": false,
+              "collapsed": true,
               "n_col": 2,
               "sections": [
-                {"type": "value", "attr": "donor_lifetime", "label": "tau_D(0) (ns)", "kind": "float", "minimum": 0.01, "maximum": 100.0, "step": 0.1, "decimals": 3,
-                 "description": "Donor-only lifetime, measured on a donor-only sample. It anchors the FRET lines: the line ends at (tau_D(0), E = 0), so an error here tilts the whole lifetime-based calibration."},
-                {"type": "value", "attr": "forster_radius", "label": "R_0 (Å)", "kind": "float", "minimum": 1.0, "maximum": 200.0, "step": 0.5, "decimals": 2,
-                 "description": "Förster radius of the dye pair. It does not affect the efficiency at all — only the distance derived from it, and the shape of the FRET lines."},
-                {"type": "value", "attr": "linker_sigma", "label": "Linker width (Å)", "kind": "float", "minimum": 0.0, "maximum": 30.0, "step": 0.5, "decimals": 2,
-                 "description": "Width of the donor-acceptor distance distribution caused by the dye linkers. It is what bends the static FRET line away from the straight E = 1 - tau/tau_D(0) diagonal; 6 Å is typical for common linkers."},
-                {"type": "toggle", "attr": "show_dynamic_line", "label": "Dynamic line",
-                 "description": "Also draw the dynamic FRET line between the two extreme populations found. Populations lying on it (rather than on the static line) exchange between two states faster than the burst duration."}
+                {
+                  "type": "value",
+                  "attr": "donor_lifetime",
+                  "label": "tau_D(0) (ns)",
+                  "kind": "float",
+                  "minimum": 0.01,
+                  "maximum": 100.0,
+                  "step": 0.1,
+                  "decimals": 3,
+                  "description": "Donor-only lifetime, measured on a donor-only sample. It anchors the FRET lines: the line ends at (tau_D(0), E = 0), so an error here tilts the whole lifetime-based calibration."
+                },
+                {
+                  "type": "value",
+                  "attr": "forster_radius",
+                  "label": "R_0 (Å)",
+                  "kind": "float",
+                  "minimum": 1.0,
+                  "maximum": 200.0,
+                  "step": 0.5,
+                  "decimals": 2,
+                  "description": "Förster radius of the dye pair. It does not affect the efficiency at all — only the distance derived from it, and the shape of the FRET lines."
+                },
+                {
+                  "type": "value",
+                  "attr": "linker_sigma",
+                  "label": "Linker width (Å)",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 30.0,
+                  "step": 0.5,
+                  "decimals": 2,
+                  "description": "Width of the donor-acceptor distance distribution caused by the dye linkers. It is what bends the static FRET line away from the straight E = 1 - tau/tau_D(0) diagonal; 6 Å is typical for common linkers."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "show_dynamic_line",
+                  "label": "Dynamic line",
+                  "description": "Also draw the dynamic FRET line between the two extreme populations found. Populations lying on it (rather than on the static line) exchange between two states faster than the burst duration."
+                }
               ]
             },
             {
@@ -73,32 +174,96 @@
               "collapsed": true,
               "n_col": 3,
               "sections": [
-                {"type": "value", "attr": "background_dd", "label": "Bg I_DD", "kind": "float", "decimals": 4,
-                 "description": "Background of the donor channel, in the units of the columns. Uncorrected background biases low-efficiency populations most."},
-                {"type": "value", "attr": "background_da", "label": "Bg I_DA", "kind": "float", "decimals": 4,
-                 "description": "Background of the FRET channel."},
-                {"type": "value", "attr": "background_aa", "label": "Bg I_AA", "kind": "float", "decimals": 4,
-                 "description": "Background of the acceptor-excitation channel."}
+                {
+                  "type": "value",
+                  "attr": "background_dd",
+                  "label": "Bg I_DD",
+                  "kind": "float",
+                  "decimals": 4,
+                  "description": "Background of the donor channel, in the units of the columns. Uncorrected background biases low-efficiency populations most."
+                },
+                {
+                  "type": "value",
+                  "attr": "background_da",
+                  "label": "Bg I_DA",
+                  "kind": "float",
+                  "decimals": 4,
+                  "description": "Background of the FRET channel."
+                },
+                {
+                  "type": "value",
+                  "attr": "background_aa",
+                  "label": "Bg I_AA",
+                  "kind": "float",
+                  "decimals": 4,
+                  "description": "Background of the acceptor-excitation channel."
+                }
               ]
             },
             {
               "type": "panel",
               "title": "Optics prior (light path)",
-              "collapsed": false,
+              "collapsed": true,
               "n_col": 1,
               "sections": [
-                {"type": "toggle", "attr": "use_priors", "label": "Use the optics prior",
-                 "description": "Combine each data estimate with what the light path predicts. gamma, alpha and delta follow from computed excitation and emission probabilities; that prediction is the prior, the data moves it, and a factor the data cannot identify keeps the optical value together with the optical uncertainty."},
-                {"type": "choice", "attr": "lightpath_name", "label": "Light path", "options_source": "lightpath_names",
-                 "description": "A light path saved by the light-path simulator. Its excitation matrix (which laser excites which dye) and emission matrix (which fraction of each dye's emission reaches each detector) are turned into Gaussian priors for gamma, alpha and delta. Leave empty to calibrate from the data alone."},
-                {"type": "value", "attr": "quantum_yield_donor", "label": "Phi_D", "kind": "float", "minimum": 0.0, "maximum": 1.0, "step": 0.01, "decimals": 3,
-                 "description": "Donor fluorescence quantum yield. Enters the predicted gamma = (g_R·Phi_A)/(g_G·Phi_D)."},
-                {"type": "value", "attr": "quantum_yield_acceptor", "label": "Phi_A", "kind": "float", "minimum": 0.0, "maximum": 1.0, "step": 0.01, "decimals": 3,
-                 "description": "Acceptor fluorescence quantum yield."},
-                {"type": "value", "attr": "detection_green", "label": "g_G", "kind": "float", "minimum": 0.0, "maximum": 10.0, "step": 0.01, "decimals": 3,
-                 "description": "Detection efficiency of the donor (green) channel, beyond what the light path already models."},
-                {"type": "value", "attr": "detection_red", "label": "g_R", "kind": "float", "minimum": 0.0, "maximum": 10.0, "step": 0.01, "decimals": 3,
-                 "description": "Detection efficiency of the acceptor (red) channel."}
+                {
+                  "type": "toggle",
+                  "attr": "use_priors",
+                  "label": "Use the optics prior",
+                  "description": "Combine each data estimate with what the light path predicts. gamma, alpha and delta follow from computed excitation and emission probabilities; that prediction is the prior, the data moves it, and a factor the data cannot identify keeps the optical value together with the optical uncertainty."
+                },
+                {
+                  "type": "choice",
+                  "attr": "lightpath_name",
+                  "label": "Light path",
+                  "options_source": "lightpath_names",
+                  "description": "A light path saved by the light-path simulator. Its excitation matrix (which laser excites which dye) and emission matrix (which fraction of each dye's emission reaches each detector) are turned into Gaussian priors for gamma, alpha and delta. Leave empty to calibrate from the data alone. Type to filter the list.",
+                  "editable": true
+                },
+                {
+                  "type": "value",
+                  "attr": "quantum_yield_donor",
+                  "label": "Phi_D",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "step": 0.01,
+                  "decimals": 3,
+                  "description": "Donor fluorescence quantum yield. Enters the predicted gamma = (g_R·Phi_A)/(g_G·Phi_D)."
+                },
+                {
+                  "type": "value",
+                  "attr": "quantum_yield_acceptor",
+                  "label": "Phi_A",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "step": 0.01,
+                  "decimals": 3,
+                  "description": "Acceptor fluorescence quantum yield."
+                },
+                {
+                  "type": "value",
+                  "attr": "detection_green",
+                  "label": "g_G",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 10.0,
+                  "step": 0.01,
+                  "decimals": 3,
+                  "description": "Detection efficiency of the donor (green) channel, beyond what the light path already models."
+                },
+                {
+                  "type": "value",
+                  "attr": "detection_red",
+                  "label": "g_R",
+                  "kind": "float",
+                  "minimum": 0.0,
+                  "maximum": 10.0,
+                  "step": 0.01,
+                  "decimals": 3,
+                  "description": "Detection efficiency of the acceptor (red) channel."
+                }
               ]
             },
             {
@@ -107,19 +272,62 @@
               "collapsed": true,
               "n_col": 1,
               "sections": [
-                {"type": "choice", "attr": "gamma_source", "label": "gamma from", "options": ["auto", "es", "lifetime", "combined"],
-                 "description": "Which route determines gamma. 'es' uses the 1/S versus E fit across FRET populations (needs at least two of different efficiency); 'lifetime' requires the population to lie on the static FRET line (works with a single population, and without ALEX); 'auto' takes the E-S fit and falls back to the lifetime; 'combined' averages both — their agreement is a good consistency check."},
-                {"type": "value", "attr": "max_fret_populations", "label": "Max FRET populations", "kind": "int", "minimum": 1, "maximum": 6,
-                 "description": "Largest number of FRET sub-populations the efficiency mixture may find. These sub-populations are what makes gamma identifiable from a single measurement."},
-                {"type": "value", "attr": "min_population", "label": "Min bursts per population", "kind": "int", "minimum": 5, "maximum": 10000,
-                 "description": "A population with fewer bursts is ignored rather than used for a factor. Raise it for noisy data so a handful of outliers cannot define a correction factor."},
-                {"type": "value", "attr": "n_bootstrap", "label": "Bootstrap resamples", "kind": "int", "minimum": 0, "maximum": 2000,
-                 "description": "Resamples used to estimate the uncertainty of each factor (0 skips it). The uncertainties matter twice: they weigh the data against the optics prior, and they propagate into the error bar of the accurate efficiency."},
-                {"type": "value", "attr": "max_points", "label": "Plotted bursts", "kind": "int", "minimum": 200, "maximum": 200000,
-                 "description": "Upper limit of bursts drawn in the scatter plots (the calibration always uses all of them)."}
+                {
+                  "type": "choice",
+                  "attr": "gamma_source",
+                  "label": "gamma from",
+                  "options": [
+                    "auto",
+                    "es",
+                    "lifetime",
+                    "combined"
+                  ],
+                  "description": "Which route determines gamma. 'es' uses the 1/S versus E fit across FRET populations (needs at least two of different efficiency); 'lifetime' requires the population to lie on the static FRET line (works with a single population, and without ALEX); 'auto' takes the E-S fit and falls back to the lifetime; 'combined' averages both — their agreement is a good consistency check."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_fret_populations",
+                  "label": "Max FRET populations",
+                  "kind": "int",
+                  "minimum": 1,
+                  "maximum": 6,
+                  "description": "Largest number of FRET sub-populations the efficiency mixture may find. These sub-populations are what makes gamma identifiable from a single measurement."
+                },
+                {
+                  "type": "value",
+                  "attr": "min_population",
+                  "label": "Min bursts per population",
+                  "kind": "int",
+                  "minimum": 5,
+                  "maximum": 10000,
+                  "description": "A population with fewer bursts is ignored rather than used for a factor. Raise it for noisy data so a handful of outliers cannot define a correction factor."
+                },
+                {
+                  "type": "value",
+                  "attr": "n_bootstrap",
+                  "label": "Bootstrap resamples",
+                  "kind": "int",
+                  "minimum": 0,
+                  "maximum": 2000,
+                  "description": "Resamples used to estimate the uncertainty of each factor (0 skips it). The uncertainties matter twice: they weigh the data against the optics prior, and they propagate into the error bar of the accurate efficiency."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_points",
+                  "label": "Plotted bursts",
+                  "kind": "int",
+                  "minimum": 200,
+                  "maximum": 200000,
+                  "description": "Upper limit of bursts drawn in the scatter plots (the calibration always uses all of them)."
+                }
               ]
             },
-            {"type": "info", "source": "results_html", "height": 120, "max_height": 320}
+            {
+              "type": "info",
+              "source": "results_html",
+              "height": 120,
+              "max_height": 320
+            }
           ]
         },
         {
@@ -127,41 +335,126 @@
           "title": "Views",
           "persist": "accurate_fret_views",
           "sections": [
-            {"type": "table", "source": "factor_rows", "title": "Correction factors", "expand": true,
-             "columns": [
-               {"key": "factor", "label": "Factor", "width": 90,
-                "description": "alpha leakage, beta excitation-flux ratio, gamma detection/quantum-yield ratio, delta direct excitation, R0 Förster radius."},
-               {"key": "value", "label": "Value", "width": 110,
-                "description": "Posterior value actually used to correct the data."},
-               {"key": "uncertainty", "label": "±", "width": 90,
-                "description": "Standard uncertainty: bootstrapped from the bursts, and narrowed by the optics prior when one is used."},
-               {"key": "origin", "label": "Determined by", "width": 220,
-                "description": "Which route produced this factor — the reference populations, the E-S fit, the FRET line, or the light path."}
-             ]},
-            {"type": "table", "source": "population_rows", "title": "Populations",
-             "columns": [
-               {"key": "population", "label": "#", "width": 40,
-                "description": "Index of the automatically found FRET sub-population."},
-               {"key": "n", "label": "Bursts", "width": 70, "description": "Number of bursts."},
-               {"key": "E", "label": "Accurate E", "width": 150,
-                "description": "Mean accurate efficiency with its total uncertainty (statistical and calibration systematics combined)."},
-               {"key": "S", "label": "S", "width": 70,
-                "description": "Mean corrected stoichiometry; a 1:1 labelled species sits at 0.5."},
-               {"key": "tau_f", "label": "tau_D(A) (ns)", "width": 110,
-                "description": "Mean fluorescence-averaged donor lifetime of the population."},
-               {"key": "distance", "label": "R_DA (Å)", "width": 130,
-                "description": "Donor-acceptor distance from the accurate efficiency, with the propagated error."},
-               {"key": "off_line", "label": "Off static line", "width": 110,
-                "description": "Vertical distance from the static FRET line. Near zero means a static, structurally homogeneous population; a clearly positive value means sub-burst dynamics."}
-             ]},
-            {"type": "plot", "source": "es_series", "title": "E–S", "x_label": "accurate FRET efficiency E", "y_label": "stoichiometry S", "legend": true,
-             "x_range": [-0.1, 1.1], "y_range": [-0.1, 1.1],
-             "description": "Corrected efficiency against corrected stoichiometry, coloured by the class each burst was automatically assigned to. Donor-only sits near S = 1, acceptor-only near S = 0, and the doubly labelled populations near S = 0.5 once beta is right."},
-            {"type": "plot", "source": "e_tau_series", "title": "E–lifetime", "x_label": "donor lifetime tau_D(A) (ns)", "y_label": "accurate FRET efficiency E", "legend": true,
-             "y_range": [-0.1, 1.1],
-             "description": "The multiparameter plot the calibration is judged on: each burst's efficiency against its donor lifetime, with the static FRET line (white) and, optionally, the dynamic line (red dashed). A correctly calibrated static sample lies on the static line; a population bowing towards the dynamic line exchanges within the burst."},
-            {"type": "plot", "source": "efficiency_histogram", "title": "E histogram", "x_label": "accurate FRET efficiency E", "y_label": "bursts", "legend": false,
-             "description": "Histogram of the accurate efficiency over the doubly labelled bursts."}
+            {
+              "type": "table",
+              "source": "factor_rows",
+              "title": "Correction factors",
+              "expand": true,
+              "columns": [
+                {
+                  "key": "factor",
+                  "label": "Factor",
+                  "width": 90,
+                  "description": "alpha leakage, beta excitation-flux ratio, gamma detection/quantum-yield ratio, delta direct excitation, R0 Förster radius."
+                },
+                {
+                  "key": "value",
+                  "label": "Value",
+                  "width": 110,
+                  "description": "Posterior value actually used to correct the data."
+                },
+                {
+                  "key": "uncertainty",
+                  "label": "±",
+                  "width": 90,
+                  "description": "Standard uncertainty: bootstrapped from the bursts, and narrowed by the optics prior when one is used."
+                },
+                {
+                  "key": "origin",
+                  "label": "Determined by",
+                  "width": 220,
+                  "description": "Which route produced this factor — the reference populations, the E-S fit, the FRET line, or the light path."
+                }
+              ]
+            },
+            {
+              "type": "table",
+              "source": "population_rows",
+              "title": "Populations",
+              "columns": [
+                {
+                  "key": "population",
+                  "label": "#",
+                  "width": 40,
+                  "description": "Index of the automatically found FRET sub-population."
+                },
+                {
+                  "key": "n",
+                  "label": "Bursts",
+                  "width": 70,
+                  "description": "Number of bursts."
+                },
+                {
+                  "key": "E",
+                  "label": "Accurate E",
+                  "width": 150,
+                  "description": "Mean accurate efficiency with its total uncertainty (statistical and calibration systematics combined)."
+                },
+                {
+                  "key": "S",
+                  "label": "S",
+                  "width": 70,
+                  "description": "Mean corrected stoichiometry; a 1:1 labelled species sits at 0.5."
+                },
+                {
+                  "key": "tau_f",
+                  "label": "tau_D(A) (ns)",
+                  "width": 110,
+                  "description": "Mean fluorescence-averaged donor lifetime of the population."
+                },
+                {
+                  "key": "distance",
+                  "label": "R_DA (Å)",
+                  "width": 130,
+                  "description": "Donor-acceptor distance from the accurate efficiency, with the propagated error."
+                },
+                {
+                  "key": "off_line",
+                  "label": "Off static line",
+                  "width": 110,
+                  "description": "Vertical distance from the static FRET line. Near zero means a static, structurally homogeneous population; a clearly positive value means sub-burst dynamics."
+                }
+              ]
+            },
+            {
+              "type": "plot",
+              "source": "es_series",
+              "title": "E–S",
+              "x_label": "accurate FRET efficiency E",
+              "y_label": "stoichiometry S",
+              "legend": true,
+              "x_range": [
+                -0.1,
+                1.1
+              ],
+              "y_range": [
+                -0.1,
+                1.1
+              ],
+              "description": "Corrected efficiency against corrected stoichiometry, coloured by the class each burst was automatically assigned to. Donor-only sits near S = 1, acceptor-only near S = 0, and the doubly labelled populations near S = 0.5 once beta is right."
+            },
+            {
+              "type": "plot",
+              "source": "e_tau_series",
+              "title": "E–lifetime",
+              "x_label": "donor lifetime tau_D(A) (ns)",
+              "y_label": "accurate FRET efficiency E",
+              "legend": true,
+              "y_range": [
+                -0.1,
+                1.1
+              ],
+              "description": "The multiparameter plot the calibration is judged on: each burst's efficiency against its donor lifetime, with the static FRET line (white) and, optionally, the dynamic line (red dashed). A correctly calibrated static sample lies on the static line; a population bowing towards the dynamic line exchanges within the burst."
+            },
+            {
+              "type": "plot",
+              "source": "efficiency_histogram",
+              "title": "E histogram",
+              "x_label": "accurate FRET efficiency E",
+              "y_label": "bursts",
+              "legend": false,
+              "description": "Histogram of the accurate efficiency over the doubly labelled bursts."
+            }
           ]
         }
       ]

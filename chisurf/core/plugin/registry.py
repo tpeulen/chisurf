@@ -174,6 +174,17 @@ class PluginRegistry:
                 register_fn = self._loader.load(entrypoint)
                 register_fn(dispatcher)
                 _log.info("Registered services for plugin %r", manifest.id)
+            except ModuleNotFoundError as exc:
+                # A plugin whose third-party dependency is not installed is
+                # *unavailable*, not broken, and a stack trace at every start-up
+                # says the opposite. The user cannot act on the traceback; they
+                # can act on the module name.
+                _log.warning(
+                    "Plugin %r has no services: it needs %r, which is not "
+                    "installed in this environment.",
+                    manifest.id,
+                    exc.name or str(exc),
+                )
             except Exception:
                 _log.exception(
                     "Failed to register services for plugin %r (%s)",

@@ -44,9 +44,31 @@ def det_color(name: str) -> tuple[int, int, int]:
 class BackgroundViewModel:
     """State + logic for the Burst Background Estimation tool (no Qt)."""
 
-    def __init__(self, show_channel_definition: bool = True) -> None:
+    def __init__(
+        self,
+        show_channel_definition: bool = True,
+        show_files: bool = True,
+    ) -> None:
         self.show_channel_definition = bool(show_channel_definition)
+        #: Whether the tool picks its own files. A workflow that has already
+        #: chosen the measurements hides the dock and pushes them in.
+        self.show_files = bool(show_files)
         self.files: list[str] = []
+
+        # ── the fit, and what it is fitted to ──────────────────────────
+        #: Where the background tail starts, as a fraction of the longest
+        #: inter-photon time. This is *the* judgement call in a background
+        #: estimate — too small and bursts are fitted as background, too large
+        #: and there is nothing left to fit — and it was a hidden default.
+        self.tail_fraction: float = 0.8
+        #: Inter-photon-time histogram bin width.
+        self.binsize_ms: float = 0.1
+        #: Bins below this count are ignored by the tail fit.
+        self.min_counts: int = 1
+        #: ``{path: {detector: dt_ms}}`` from the last read, so moving the
+        #: slider re-fits instead of re-reading the measurement — a 45 MB file
+        #: per tick would make the slider unusable.
+        self._interphoton: dict[str, dict[str, np.ndarray]] = {}
         #: Callable returning the DetectorWizardPage detectors map (set by the GUI).
         self.channels_provider: Callable[[], dict] | None = None
         #: The Qt DetectorWizardPage, exposed so the shell can push channels in.
@@ -64,13 +86,17 @@ class BackgroundViewModel:
         from chisurf.core.dataspec import load_view_spec
 
         spec = load_view_spec(_VIEW_JSON)
-        if self.show_channel_definition:
+        hidden = set()
+        if not self.show_channel_definition:
+            hidden.add("Channel Definition")  # the shell supplies the channels
+        if not self.show_files:
+            hidden.add("Files")               # the shell supplies the files
+        if not hidden:
             return spec
-        # Remove the "Channel Definition" dock (the shell supplies channels).
-        root = spec.sections[0]
-        kept = tuple(s for s in root.sections if s.title != "Channel Definition")
         import dataclasses
 
+        root = spec.sections[0]
+        kept = tuple(s for s in root.sections if s.title not in hidden)
         new_root = dataclasses.replace(root, sections=kept)
         return dataclasses.replace(spec, sections=(new_root,))
 
@@ -86,10 +112,6 @@ class BackgroundViewModel:
                 cb(event)
             except Exception:
                 logger.debug("background observer failed", exc_info=True)
-
-    def update(self) -> None:
-        """AutoForm hook: the ``path_list`` section wrote ``files`` — refresh."""
-        self.notify("files")
 
     # ── file list ──────────────────────────────────────────────────────
     def add_files(self, paths: list[str]) -> None:
@@ -137,23 +159,67 @@ class BackgroundViewModel:
         import chisurf.core.fluorescence.burst as _burst
 
         detectors = self._channels()
-        self.backgrounds.clear()
-        self.diagnostics.clear()
+        self._interphoton.clear()
         for path in self.files:
             try:
                 tttr = tttrlib.TTTR(path)
             except Exception as exc:
                 logger.warning("background: could not read %s: %s", path, exc)
                 continue
-            diags = _burst.background_diagnostics_from_bursts(tttr, detectors)
+            scale = float(
+                getattr(tttr.header, "macro_time_resolution", 1.0)) * 1000.0
+            self._interphoton[path] = {
+                name: _burst.background._detector_interphoton_times(
+                    tttr, info, scale)
+                for name, info in detectors.items()
+            }
+        self.refit()
+        self._write_containers()
+        self.notify("computed")
+
+    def refit(self) -> None:
+        """Re-fit the cached inter-photon times with the current settings.
+
+        Separate from :meth:`estimate` because reading the photons is what costs
+        — seconds per measurement — while the fit is a histogram and a line.
+        Moving the tail slider therefore re-fits at once instead of re-reading,
+        which is the only way a slider over this parameter is usable at all.
+        """
+        from chisurf.core.fluorescence.burst.background import (
+            interphoton_time_diagnostics,
+        )
+
+        self.backgrounds.clear()
+        self.diagnostics.clear()
+        for path, per_detector in self._interphoton.items():
+            diags = {
+                name: interphoton_time_diagnostics(
+                    dt_ms,
+                    binsize_ms=float(self.binsize_ms),
+                    tail_fraction=float(self.tail_fraction),
+                    min_counts=int(self.min_counts),
+                )
+                for name, dt_ms in per_detector.items()
+            }
             self.diagnostics[path] = diags
             self.backgrounds[path] = {n: float(d.rate_khz) for n, d in diags.items()}
         self.status = (
             f"{len(self.diagnostics)} file(s), "
-            f"{len({n for b in self.backgrounds.values() for n in b})} detector(s) estimated."
+            f"{len({n for b in self.backgrounds.values() for n in b})} detector(s) "
+            f"estimated; tail from {self.tail_fraction:.0%}."
         )
-        self._write_containers()
-        self.notify("computed")
+
+    def update(self) -> None:
+        """AutoForm hook: a bound field changed.
+
+        A fit setting re-fits immediately when there is something to re-fit; the
+        file list only notifies.
+        """
+        if self._interphoton:
+            self.refit()
+            self.notify("computed")
+        else:
+            self.notify("files")
 
     def _write_containers(self) -> None:
         """Record each file's background rates beside its photons.

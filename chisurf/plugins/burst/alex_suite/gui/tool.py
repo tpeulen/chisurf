@@ -491,18 +491,45 @@ class AlexSuiteTool(BurstAnalysisTool):
         step silently stayed on the splash screen.
         """
         ndx = getattr(widget, "_embedded_mainwindow", widget)
-        files = [str(path) for path in self.burst_sources()]
+        files, file_type = self._ndx_sources()
         if not files or files == self._es_loaded:
             return
         open_files = getattr(ndx, "open_files", None)
         if not callable(open_files):
             return
         try:
-            open_files(file_handles=files)
+            open_files(file_handles=files, file_type=file_type)
         except Exception as exc:
             logger.warning(f"ALEX Suite: could not open the bursts in ndX — {exc}")
             return
         self._es_loaded = files
+
+    def _ndx_sources(self) -> tuple[list[str], str | None]:
+        """Return the burst sources in the form ndX can actually open.
+
+        ndX reads a measurement container as a *file* — ``is_container`` tests
+        ``is_file()`` — so it must be handed ``m000.pto``, not the run path
+        ``m000.pto/sliding_window_All 0.1500#60`` that every ChiSurf burst
+        reader takes. Handing it the run path made it fall through to the CSV
+        reader and fail with "Not a directory", which is what "ndX does not
+        work" was: the bursts were there and the path was one component too long.
+        """
+        from chisurf.core.fio.fluorescence import burst_tree
+
+        sources = self.burst_sources()
+        if not sources:
+            return [], None
+        containers: list[str] = []
+        for path in sources:
+            # Walk up to the ``.pto`` itself; a run lives inside one.
+            node = path
+            while node.suffix.lower() != burst_tree.SUFFIX and node.parent != node:
+                node = node.parent
+            if node.suffix.lower() == burst_tree.SUFFIX:
+                containers.append(str(node))
+        if containers and len(containers) == len(sources):
+            return list(dict.fromkeys(containers)), "pto"
+        return [str(p) for p in sources], None
 
     def _apply_context_to_trace(self, widget: QtWidgets.QWidget) -> None:
         """Point the trace viewer at the folder the measurements are in."""

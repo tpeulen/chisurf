@@ -161,8 +161,12 @@ laser edge. End to end: 7358 bursts, and the stoichiometry histogram has the
 three species it should — donor-only at S ≈ 1, acceptor-only at S ≈ 0.1, the
 doubly labelled population at S ≈ 0.6.
 
-The step then writes `<stem>_alex.pto` per file and publishes a detector setup
-named **ALEX Suite (auto)**.
+The step writes **one** `<first stem>_alex.pto` for the whole selection —
+`Measurement.create` takes a list and embeds them all, which is what `.pto` means
+by a measurement split across vendor files — and publishes a detector setup named
+**ALEX Suite (auto)**. One container per *file* would make six analyses of one
+experiment (owner, 2026-09-08: "the pto file should include all files. no
+individual files for .sm files").
 
 ### The setup's names are not free
 

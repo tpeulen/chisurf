@@ -1,3 +1,33 @@
+## `.pto` can compress its payloads; ChiSurf writes them raw
+
+**Measured 2026-09-08.** The question was whether the container supports
+transparent compression. **It does, and no ptolib change is needed:** the format
+names a compressed payload by its encoding (`PtoEncoding "dstore+zstd"`,
+`"json+brotli"`; codecs `zstd`, `brotli`, `lz4`, `deflate`), a reader that lacks
+the codec must list the object and refuse to hand back its bytes as decoded, and
+`PtoFile.add(kind, encoding, name, data)` already takes the encoding. The
+installed build has a codec registered.
+
+(Not to be confused with `tttrlib`'s `auto_compress_on_read`, which is *macro-time
+keyframe* compression in memory — a different thing that is already on.)
+
+What ChiSurf does not do is use it for the **embedded instrument file**, which is
+where the bytes are. On a three-measurement ALEX container (11.7 M photons, three
+`.sm` files embedded as one `.pto`):
+
+| | size | time |
+|---|---|---|
+| as written | 82 MB | — |
+| deflate level 1 | 53 MB (1.54x) | 1.2 s |
+| zstd level 3 | 51 MB (1.60x) | 0.4 s |
+
+Worth having, and not a drive-by, because of one line in the spec: **a compressed
+payload is not mappable**. The photon stream is read by memory-mapping, so
+compressing it trades 1.6x on disk for a full decode on every open — a call for
+whoever owns the reader, not for a plugin. A large *table* is a different case:
+it compresses inside its own `dstore` encoding, column by column, so the
+directory still reads without decoding anything.
+
 ## Detector setups have two stores, and a picker sees only one of them
 
 **Found 2026-09-08.** A detector setup can be written two ways and read two ways,

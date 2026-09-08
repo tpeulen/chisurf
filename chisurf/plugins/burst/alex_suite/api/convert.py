@@ -34,55 +34,77 @@ logger = logging.getLogger("chisurf.plugins.burst")
 
 
 def alex_to_pto(
-    path: str | pathlib.Path,
+    paths,
     *,
     alex_period: int,
     period_shift: int = 0,
     out_dir: str | pathlib.Path | None = None,
     suffix: str = "_alex",
 ) -> pathlib.Path:
-    """Fold one file's alternation into the micro-time; return its `.pto`.
+    """Fold the alternation of every file into the micro-time; return one `.pto`.
+
+    **One container for the whole set**, not one per file. A run recorded as
+    ``001.sm`` … ``006.sm`` is one measurement the acquisition software chopped
+    up, and the container is ChiSurf's unit of *measurement*: embedding each
+    piece separately would make six analyses of one experiment, six burst
+    searches to run and six sets of results to pool by hand. `.pto` is built for
+    exactly this — :meth:`chisurf.core.fio.pto.Measurement.create` takes a list
+    and embeds them all, in lexical order by name.
 
     Parameters
     ----------
-    path : str or pathlib.Path
-        The µs-ALEX measurement — any container ``tttrlib`` reads, including the
-        ``.sm`` files the old ALEX-Suite worked on.
+    paths : path-like or sequence of path-like
+        The µs-ALEX measurement(s) — any container ``tttrlib`` reads, including
+        the ``.sm`` files the old ALEX-Suite worked on.
     alex_period : int
         Alternation period in macro-time units (see
         :func:`~chisurf.plugins.tttr.ptu_alex_creator.core.detect_alex_period`).
     period_shift : int
         Phase offset applied before folding.
     out_dir : str or pathlib.Path, optional
-        Where the container goes; defaults to beside the source.
+        Where the container goes; defaults to beside the first source.
     suffix : str
-        Appended to the stem, so the source and the converted measurement can
+        Appended to the stem, so the sources and the converted measurement can
         sit in one folder without either shadowing the other.
 
     Returns
     -------
     pathlib.Path
         The written ``.pto``.
+
+    Raises
+    ------
+    ValueError
+        If no path was given.
     """
     from chisurf.plugins.core.tttr_to_pto.api import convert as pack_container
     from chisurf.plugins.tttr.ptu_alex_creator import core
 
-    path = pathlib.Path(path)
-    target_dir = pathlib.Path(out_dir) if out_dir is not None else path.parent
+    if isinstance(paths, (str, pathlib.Path)):
+        paths = [paths]
+    sources = sorted((pathlib.Path(p) for p in paths), key=lambda p: p.name)
+    if not sources:
+        raise ValueError("no files to convert")
+
+    target_dir = pathlib.Path(out_dir) if out_dir is not None else sources[0].parent
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # The folding is written as PTU rather than straight into the container:
-    # `.pto` embeds an instrument file verbatim and never rewrites it, so the
+    # `.pto` embeds an instrument file verbatim and never rewrites it, so each
     # converted stream has to *be* a file before it can be embedded.
-    intermediate = target_dir / f"{path.stem}{suffix}.ptu"
-    core.convert_file(
-        str(path), str(intermediate),
-        alex_period=int(alex_period), period_shift=int(period_shift),
-        output_format="PTU", input_format="Auto",
-    )
-    # keep_original=False deletes the intermediate — but only after the
+    intermediates = []
+    for source in sources:
+        intermediate = target_dir / f"{source.stem}{suffix}.ptu"
+        core.convert_file(
+            str(source), str(intermediate),
+            alex_period=int(alex_period), period_shift=int(period_shift),
+            output_format="PTU", input_format="Auto",
+        )
+        intermediates.append(intermediate)
+
+    # keep_original=False deletes the intermediates — but only after the
     # container has verified its own checksum, so a failed write costs nothing.
-    return pack_container(intermediate, keep_original=False, out_dir=target_dir)
+    return pack_container(intermediates, keep_original=False, out_dir=target_dir)
 
 
 def detect_and_convert(
@@ -116,7 +138,8 @@ def detect_and_convert(
     out_dir : path-like, optional
         Where the containers go.
     progress : callable, optional
-        Called as ``progress(index, total, name)`` before each conversion.
+        Called as ``progress(done, total, what)`` — ``done`` counts files
+        finished, so the last call is ``(total, total, <container name>)``.
     min_confidence : float
         Refuse to convert below this alternation contrast (see
         :data:`MIN_CONFIDENCE`). Pass ``0`` to convert regardless.
@@ -199,14 +222,18 @@ def detect_and_convert(
 
     converted: list[pathlib.Path] = []
     failed: list[tuple[pathlib.Path, str]] = []
-    for i, path in enumerate([] if dry_run else paths):
+    if not dry_run:
         if progress is not None:
-            progress(i, len(paths), path.name)
+            progress(0, len(paths), f"{len(paths)} file(s)")
         try:
-            converted.append(alex_to_pto(path, alex_period=period, out_dir=out_dir))
+            converted.append(alex_to_pto(
+                paths, alex_period=period, out_dir=out_dir))
         except Exception as exc:
-            logger.warning(f"ALEX Suite: could not convert {path.name} — {exc}")
-            failed.append((path, str(exc)))
+            logger.warning(f"ALEX Suite: could not convert the measurement — {exc}")
+            failed.extend((path, str(exc)) for path in paths)
+        else:
+            if progress is not None:
+                progress(len(paths), len(paths), converted[0].name)
     return {
         "period": period,
         "confidence": confidence,

@@ -1,5 +1,5 @@
 {
-  "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table — each a draggable chisurf dock.",
+  "_comment": "Declarative AutoForm layout for Burst Background Estimation: a persistent dock area with the detector channel-definition page, the TTTR file list + Estimate action, the tail-fit settings (a slider over where the background tail starts — the one judgement call in the estimate), the inter-photon-time distribution (points + fitted tail), the per-detector background-rate bars and the results table — each a draggable chisurf dock. The Channel Definition and Files docks are dropped when a workflow supplies them (BackgroundViewModel.view_spec).",
   "sections": [
     {
       "type": "dock_area",
@@ -9,30 +9,107 @@
         {
           "type": "panel",
           "title": "Channel Definition",
-          "sections": [{"type": "custom", "key": "bg_channels"}]
+          "sections": [
+            {
+              "type": "custom",
+              "key": "bg_channels"
+            }
+          ]
         },
         {
           "type": "panel",
           "title": "Files",
           "sections": [
-            {"type": "custom", "key": "path_list", "target": "files",
-             "options": {"title": "TTTR files (drop files or folders)", "add_folders": true,
-                         "guards": ["tttr_to_pto"]}},
-            {"type": "custom", "key": "bg_run"}
+            {
+              "type": "custom",
+              "key": "path_list",
+              "target": "files",
+              "options": {
+                "title": "TTTR files (drop files or folders)",
+                "add_folders": true,
+                "guards": [
+                  "tttr_to_pto"
+                ]
+              }
+            },
+            {
+              "type": "custom",
+              "key": "bg_run"
+            }
           ]
         },
-        {"type": "custom", "key": "bg_iht_plot", "title": "Inter-photon time"},
-        {"type": "custom", "key": "bg_rate_plot", "title": "Background rate"},
+        {
+          "type": "panel",
+          "title": "Fit",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "tail_fraction",
+              "label": "Tail starts at",
+              "kind": "float",
+              "style": "slider",
+              "minimum": 0.05,
+              "maximum": 0.99,
+              "step": 0.01,
+              "decimals": 2,
+              "description": "Where the background tail begins, as a fraction of the longest inter-photon time. This is the judgement call in a background estimate: too small and bursts are fitted as background (the rate comes out too high), too large and there is too little left to fit. Drag it and watch the fitted line follow the points in the Inter-photon time plot."
+            },
+            {
+              "type": "value",
+              "attr": "binsize_ms",
+              "label": "Bin width (ms)",
+              "kind": "float",
+              "minimum": 0.001,
+              "maximum": 10.0,
+              "step": 0.01,
+              "decimals": 3,
+              "description": "Inter-photon-time histogram bin width. Wider bins are smoother and coarser; the fitted rate should not depend on it."
+            },
+            {
+              "type": "value",
+              "attr": "min_counts",
+              "label": "Min. counts per bin",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 1000,
+              "step": 1,
+              "description": "Bins with fewer counts than this are left out of the tail fit, so the sparse far tail does not dominate it."
+            }
+          ]
+        },
+        {
+          "type": "custom",
+          "key": "bg_iht_plot",
+          "title": "Inter-photon time"
+        },
+        {
+          "type": "custom",
+          "key": "bg_rate_plot",
+          "title": "Background rate"
+        },
         {
           "type": "panel",
           "title": "Results",
           "sections": [
-            {"type": "table", "source": "results_rows",
-             "columns": [
-               {"key": "file", "label": "File"},
-               {"key": "detector", "label": "Detector"},
-               {"key": "rate_khz", "label": "Rate (kHz)"}
-             ]}
+            {
+              "type": "table",
+              "source": "results_rows",
+              "columns": [
+                {
+                  "key": "file",
+                  "label": "File"
+                },
+                {
+                  "key": "detector",
+                  "label": "Detector"
+                },
+                {
+                  "key": "rate_khz",
+                  "label": "Rate (kHz)"
+                }
+              ]
+            }
           ]
         }
       ]

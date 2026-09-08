@@ -56,6 +56,10 @@ The same thing the PIE burst workflow produces, because it is the same code: one
 them, and the companion tables every later analysis writes beside them. Nothing
 here has an ALEX-only format.
 
+*Per measurement*, not per file: `001.sm` … `006.sm` of one acquisition go into
+**one** container. Otherwise you would have six analyses of one experiment to
+run and pool by hand.
+
 That matters in practice: an analysis started in this window can be continued in
 **Burst Analysis** — which additionally offers 2CDE, burst-wise lifetime fits,
 H2MM segmentation and burst fusion — and brought back, with no conversion.

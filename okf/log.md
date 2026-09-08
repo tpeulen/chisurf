@@ -1,5 +1,69 @@
 # Update Log
 
+## 2026-09-08 (evening)
+
+* **One container for the whole set** (owner: "the pto file should include all
+  files. no individual files for .sm files"). `alex_to_pto` now takes the whole
+  selection and `Measurement.create` embeds them all — a run saved as `001.sm` …
+  `006.sm` is one measurement the acquisition software chopped up, and the
+  container is ChiSurf's unit of *measurement*. One container per file made six
+  analyses of one experiment, six burst searches and six sets of results to pool
+  by hand. Verified on three real `.sm` files: 11 691 236 photons (3.77 + 3.63 +
+  4.29 M) in one 82 MB `.pto`, micro-time 0-7999, intermediates cleaned up.
+
+* **`.pto` compression: it already exists, and no ptolib change is needed.** The
+  format names a compressed payload by its encoding (`"dstore+zstd"`; codecs
+  zstd/brotli/lz4/deflate) and `PtoFile.add()` takes the encoding; the installed
+  build has a codec registered. What is missing is *using* it for the embedded
+  instrument file. Measured on that three-measurement container: 82 MB as
+  written, 51 MB with zstd-3 in 0.4 s (1.60x); deflate-1 gives 53 MB in 1.2 s.
+  Not done here because the spec says a compressed payload is **not mappable**
+  and the photon stream is read by memory-mapping — 1.6x on disk against a
+  decode on every open is the reader owner's call. Ticket T-20260908-02, entry in
+  [known-issues](references/known-issues.md). (Not to be confused with tttrlib's
+  `auto_compress_on_read`, which is macro-time keyframe compression in memory.)
+
+* **ndX could not open what the workflow handed it.** It was given the burst
+  *run* path (`m000.pto/sliding_window_All 0.1500#60`) while ndX reads a
+  container as a **file** — `is_container` tests `is_file()` — so it fell through
+  to the CSV reader and failed with "Not a directory". That was "ndX does not
+  work": the bursts were there and the path was one component too long. It now
+  gets the container with `file_type="pto"`; 3360 bursts x 42 columns load.
+
+* **A missing third-party dependency is one warning line, not a traceback.**
+  `fret_docking` needs `IMP.bff.fret`, which an older IMP build does not have, and
+  every start-up printed a full stack trace for it. A plugin whose dependency is
+  not installed is *unavailable*, not broken, and the user can act on the module
+  name rather than on the traceback.
+
+* **Accurate FRET: results are now fitting parameters** (owner: "make outputs
+  fitting parameters, so they can be referenced"). α, β, γ, δ, R_0 and each
+  population's E and distance are published as a registered
+  `FittingParameterGroup` (`accurate_fret/parameters.py`), so the Global View
+  lists them beside the fits and a fit parameter can be **linked** to one: one
+  number, one owner, and a re-run updates every follower. Adopted in place, so
+  links survive re-running the calibration. **No calibration logic was added** —
+  the group only publishes what `CalibrationResult` already holds, and the one
+  implementation of the correction algebra stays
+  `chisurf.core.fluorescence.burst.es` / `...fret.calibration`.
+  Also: the long pickers (dyes, columns, light paths) are editable, so typing
+  filters them; and every settings panel but Channels starts folded.
+
+* **Struck two would-be duplicates.** `Corrections.leakage_from_donor_only` /
+  `direct_from_acceptor_only` in the ALEX Suite converted a peak *position* to
+  α/δ — unused, and a second entry point (with a colliding name) to what
+  `chisurf.core.fluorescence.fret.calibration` already derives. Deleted; the
+  docstrings now point at the canonical functions.
+
+* **Burst background: a slider over the one judgement call.** `tail_fraction` —
+  where the background tail starts — was a hidden default; it is now a slider,
+  with the bin width and the minimum count beside it. The inter-photon times are
+  cached after the read, so moving the slider **re-fits** instead of re-reading
+  the measurement (seconds per file, which would make a slider unusable). The
+  Files dock is dropped when a workflow supplies the measurements, the same way
+  the Channel Definition dock already was.
+
+
 ## 2026-09-08 (later still)
 
 * **Dropping a `.sm` into the ALEX Suite froze the application** (owner: "when i

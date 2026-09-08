@@ -51,11 +51,6 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         self._workflow = parent
         self._result: dict | None = None
         self._files: list[pathlib.Path] = []
-        #: The setup this panel last handed the workflow, so reflecting the
-        #: workflow's choice back into the combo does not re-publish it.
-        self._published_setup = ""
-        #: True while this panel is driving the combo itself.
-        self._setting_combo = False
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -126,43 +121,6 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
     # ── workflow hand-off ───────────────────────────────────────────────
 
-    def _on_setup_chosen(self, name: str) -> None:
-        """Publish a hand-picked setup as the one the workflow uses.
-
-        The path for data that is already PIE: the user never presses Detect, so
-        nothing else would ever set the workflow's channel definition and every
-        later step would fall back to whatever setup it last saw.
-        """
-        # Repopulating the combo emits a change for whatever lands in it first,
-        # which would publish an unrelated setup as the workflow's the moment
-        # this panel refreshed itself.
-        if self._setting_combo or not name or name == self._published_setup:
-            return
-        setup = dict(self.setup_selector.current_setup_dict() or {})
-        if not setup:
-            return
-        setup.setdefault("setup_name", name)
-        adopt = getattr(self._workflow, "adopt_alex_conversion", None)
-        if callable(adopt):
-            self._published_setup = name
-            adopt(setup, [])
-        self.status_label.setText(
-            f"Using detector setup “{name}”. "
-            "Press Detect as well if this is µs-ALEX data."
-        )
-
-    def show_setup(self, name: str) -> None:
-        """Reflect the workflow's current setup in the selector."""
-        self._published_setup = name
-        self._setting_combo = True
-        try:
-            self.setup_selector.refresh()
-            self.setup_selector.set_current(name)
-        except Exception:
-            logger.warning(f"ALEX Suite: could not show the setup {name!r}")
-        finally:
-            self._setting_combo = False
-
     def set_files(self, files) -> None:
         """Adopt the raw files chosen upstream."""
         self._files = [pathlib.Path(p) for p in files]
@@ -202,10 +160,14 @@ class AlexAlternationPanel(QtWidgets.QWidget):
         task = reporter.begin_task(
             "ALEX: detecting the alternation…", len(self._files)) if reporter else None
 
-        def report(index, total, name):
+        def report(done, total, what):
             if task is not None:
-                task.setValue(index)
-                task.setLabelText(f"ALEX: converting {name} ({index + 1}/{total})…")
+                task.setValue(done)
+                task.setLabelText(
+                    f"ALEX: embedding {total} file(s) into one .pto — {what}…"
+                    if done < total else
+                    f"ALEX: wrote {what}"
+                )
 
         try:
             outcome = detect_and_convert(
@@ -244,11 +206,12 @@ class AlexAlternationPanel(QtWidgets.QWidget):
 
     def _publish(self, setup: dict, converted, failed) -> None:
         """Save the detector setup and hand the converted files downstream."""
+        # The setup goes to step 1 through the workflow, not into a combo here:
+        # step 1 *is* where a setup is chosen, and a second selector on this
+        # panel would be a second answer to the same question.
         adopt = getattr(self._workflow, "adopt_alex_conversion", None)
         if callable(adopt):
-            self._published_setup = SETUP_NAME
             adopt(setup, converted)
-        self.show_setup(SETUP_NAME)
         n = len(converted)
         if not n:
             self.status_label.setText(
@@ -372,53 +335,6 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
             "excitation_period": int(period),
         },
     }
-
-
-def _merged_setups(db_path=None) -> dict:
-    """Every saved detector setup, from *both* stores.
-
-    There are two, and they are not the same one: the RPC store
-    (``detector_setups.*``) writes the settings JSON, while the pickers read
-    through the wizard's loader, which reads MMFDB and — once MMFDB is in use —
-    never falls back to that JSON. A setup written to one is then invisible in
-    the other, so this step could publish a setup the combo beside it did not
-    list. Merging on read is the workaround; the split is recorded in
-    ``okf/references/known-issues.md``.
-
-    MMFDB wins on a name collision: it is the store the rest of the application
-    reads, so showing the JSON's copy of a name would misrepresent what the
-    other tools will use.
-    """
-    setups: dict = {}
-    last_used = ""
-    from chisurf.core.data_io.detector_setups import load_detector_setups as json_load
-
-    for load, kwargs in (
-        (json_load, {}),
-        (_wizard_loader(), {"db_path": db_path, "skip_migration": True}),
-    ):
-        if load is None:
-            continue
-        try:
-            data = load(**{k: v for k, v in kwargs.items() if v is not None}) or {}
-        except Exception:
-            continue
-        found = data.get("setups")
-        if isinstance(found, dict):
-            setups.update(found)
-        last_used = data.get("last_used") or last_used
-    return {"setups": setups, "last_used": last_used}
-
-
-def _wizard_loader():
-    """Return the wizard's MMFDB-aware loader, or ``None`` if unimportable."""
-    try:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
-            load_detector_setups,
-        )
-    except Exception:
-        return None
-    return load_detector_setups
 
 
 def _channels(text: str) -> list[int] | None:

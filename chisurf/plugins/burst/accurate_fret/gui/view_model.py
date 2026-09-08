@@ -443,8 +443,28 @@ class AccurateFretViewModel:
             progress(1.0, "Done")
         self.results_text = self._result.calibration.report()
         self._write_container()
+        self._publish_parameters()
         self.notify("result")
         return True
+
+    def _publish_parameters(self) -> None:
+        """Put the calibration's numbers in the Global View, as parameters.
+
+        α, β, γ, δ, R_0 and each population's E and distance become
+        ``FittingParameter``s that a fit can be *linked* to, so a downstream
+        model stops carrying a re-typed copy of a number this window owns. In
+        place on a re-run, so those links survive it.
+        """
+        try:
+            from chisurf.plugins.burst.accurate_fret.parameters import (
+                register_calibration_parameters,
+            )
+
+            register_calibration_parameters(self._result)
+        except Exception:
+            # Publishing is a convenience; a calibration is not lost over it.
+            logger.debug("could not publish the calibration parameters",
+                         exc_info=True)
 
     def _write_container(self) -> None:
         """Record the corrected values beside the photons they came from.

@@ -69,7 +69,8 @@ def alternation(files, donor, acceptor, out_dir, detect_only, as_json) -> None:
         outcome = detect_and_convert(
             files, donor_channels=donor_channels,
             acceptor_channels=acceptor_channels, out_dir=out_dir,
-            progress=lambda i, n, name: click.echo(f"  [{i + 1}/{n}] {name}", err=True),
+            progress=lambda done, n, what: click.echo(
+                f"  [{done}/{n}] {what}", err=True),
         )
         payload = {
             "period": outcome["period"],
