@@ -126,7 +126,7 @@ def write_docking_results_rmf(
 ) -> None:
     """Write docking results as a multi-frame PMI-compatible RMF file.
 
-    Requires IMP.rmf. Each frame is one docking trial.
+    Each frame is one docking trial. Needs an IMP.bff built with RMF.
     """
     from chisurf.core.models.structure.rmf import StructureRmfWriter
 

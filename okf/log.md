@@ -42,7 +42,23 @@
   structures -- passes 36/36, and the structure suites pass 142.
   Still open, and unchanged by this: the RMF writer and the FRET docking
   plugin. Tracked as `T-20260909-01`.
-
+* **The RMF writer goes through `IMP.bff` too, and chisurf drops `IMP.rmf`.**
+  `core/models/structure/rmf.py` built a PMI hierarchy in Python -- a decorator
+  call per atom, then one per atom per frame -- through `IMP`, `IMP.atom`,
+  `IMP.core`, `IMP.algebra` and `IMP.rmf`. It now fills an
+  `IMP.bff.StructureTable` and hands it to `IMP.bff.RmfStructureWriter`
+  (imp.bff `285eedb`), which builds the same tree through **RMF's own
+  decorators**. `RmfStatWriter` is gone: the per-frame scalars are a JSON
+  object the writer types itself, and nothing outside this module ever
+  instantiated the class. 432 lines become 300, and the module imports no IMP.
+  Verified: a 9315-atom three-frame trajectory written and read back by
+  `chimol.io.rmf.load_rmf_full` in a Python where `IMP.atom`, `IMP.core` and
+  `IMP.rmf` are all unimportable; 141 tests pass across the reader, structure
+  and ProteinMC suites.
+  Note for packaging: the pip wheel is built **without RMF** (PRD-139 -- it
+  pulls Boost.Iostreams and through it all of ICU, 40 MB for four I/O
+  functions), so a trajectory needs one of the conda packages. The writer says
+  so by name rather than failing on a missing attribute.
 
 
 ## 2026-09-08

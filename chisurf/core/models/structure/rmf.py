@@ -1,10 +1,21 @@
-"""PMI-compatible RMF output utilities for ChiSurf structures."""
+"""PMI-compatible RMF output for ChiSurf structures.
+
+The hierarchy and the per-frame ``stat`` values are written by
+``IMP.bff.RmfStructureWriter``, which builds the tree through **RMF's own
+decorators** rather than through ``IMP.rmf``. That matters twice over: the
+connection layer's IMP does not carry ``IMP.rmf`` at all, and this module
+therefore imports no IMP -- only ``IMP.bff``, whose structure record it fills
+from ChiSurf's atom array.
+
+What is left here is the part that is ChiSurf's: turning an atom array into
+that record, and the coordinate-only convenience constructor.
+"""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Tuple
-import gc
+from typing import Any, Mapping, Optional
 
 import numpy as np
 
@@ -13,148 +24,136 @@ class RmfWriterError(RuntimeError):
     """Raised when ChiSurf cannot write an RMF trajectory."""
 
 
-class RmfStatWriter:
-    """Write per-frame scalar metadata into an RMF ``stat`` category.
+def _bff():
+    """Return ``IMP.bff``, imported on first use.
 
-    This follows the PMI ``IMP.pmi.output.Output`` pattern: create a ``stat``
-    category, create typed RMF keys for output names, save a coordinate frame,
-    then set root-node values for that frame.
+    Returns
+    -------
+    module
+        The ``IMP.bff`` module.
+
+    Raises
+    ------
+    RmfWriterError
+        When ``IMP.bff`` is absent, or was built without RMF. The pip wheel is
+        the second case: RMF pulls Boost.Iostreams and through it all of ICU,
+        40 MB for four I/O functions, so the wheel leaves it out and both
+        conda packages keep it.
     """
+    try:
+        import IMP.bff as bff
+    except ImportError as exc:
+        raise RmfWriterError("RMF output requires IMP.bff.") from exc
 
-    def __init__(
-        self,
-        rmf_handle: Any,
-        initial_output: Optional[Mapping[str, Any]] = None,
-        *,
-        rmf_module: Any | None = None,
-    ) -> None:
-        """Create a PMI-style RMF stat writer.
+    if not hasattr(bff, "RmfStructureWriter"):
+        raise RmfWriterError(
+            "this IMP.bff was built without RMF, so it cannot write a "
+            f"trajectory (build {getattr(bff, 'get_build', lambda: '?')()}). "
+            "The pip wheel leaves RMF out; the conda packages carry it."
+        )
+    return bff
 
-        Parameters
-        ----------
-        rmf_handle :
-            RMF file handle returned by ``RMF.create_rmf_file``.
-        initial_output : mapping, optional
-            Initial output names used to pre-create RMF keys.
-        """
-        self.handle = rmf_handle
-        self.RMF = rmf_module
-        if self.RMF is None:
-            try:
-                import RMF as _RMF
-                self.RMF = _RMF
-            except Exception:
-                self.RMF = getattr(rmf_handle, "RMF", None)
-        self.category = None
-        self.keys: Dict[str, Any] = {}
-        self.enabled = False
 
-        try:
-            self.category = rmf_handle.get_category("stat")
-            self.enabled = True
-        except Exception:
-            return
+def _as_text(value: Any) -> str:
+    """Convert fixed-width NumPy string values to plain text.
 
-        self._add_keys(initial_output or {})
+    Parameters
+    ----------
+    value : object
+        A NumPy string scalar, bytes, or anything with a ``str``.
 
-    def _tag_for(self, value: Any) -> Any:
-        """Return the RMF tag type matching a Python scalar value."""
-        if isinstance(value, (bool, np.bool_)):
-            return self.RMF.int_tag
-        if isinstance(value, (int, np.integer)):
-            return self.RMF.int_tag
-        if isinstance(value, (float, np.floating)):
-            return self.RMF.float_tag
-        return self.RMF.string_tag
+    Returns
+    -------
+    str
+        The value as stripped text.
+    """
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore").strip()
+    return str(value).strip()
 
-    def _coerce_value(self, value: Any) -> Any:
-        """Convert NumPy scalars to Python scalars accepted by RMF."""
+
+def _jsonable(values: Mapping[str, Any]) -> str:
+    """Render per-frame metadata as the JSON object the writer takes.
+
+    Parameters
+    ----------
+    values : mapping
+        Per-frame scalars. NumPy scalars are unwrapped; anything that is not a
+        number, a bool or a string becomes its ``str``.
+
+    Returns
+    -------
+    str
+        A JSON object, or ``""`` for empty metadata.
+    """
+    if not values:
+        return ""
+    out = {}
+    for name, value in values.items():
         if isinstance(value, np.generic):
-            return value.item()
-        return value
+            value = value.item()
+        if not isinstance(value, (bool, int, float, str)):
+            value = str(value)
+        out[str(name)] = value
+    return json.dumps(out)
 
-    def _add_keys(self, values: Mapping[str, Any]) -> None:
-        """Create RMF keys for all output names not already present."""
-        if not self.enabled:
-            return
-        for name, value in values.items():
-            key_name = str(name)
-            if key_name in self.keys:
-                continue
-            try:
-                self.keys[key_name] = self.handle.get_key(
-                    self.category,
-                    key_name,
-                    self._tag_for(value),
-                )
-            except Exception:
-                self.enabled = False
-                return
 
-    def write(self, values: Mapping[str, Any]) -> None:
-        """Write frame metadata to the RMF root node.
+def _table_from_atoms(atoms: np.ndarray):
+    """Build an ``IMP.bff.StructureTable`` from a ChiSurf atom array.
 
-        Parameters
-        ----------
-        values : mapping
-            Per-frame metadata values. Floats, integers, booleans, and strings
-            are supported. Other values are converted to strings.
-        """
-        if not self.enabled:
-            return
+    Parameters
+    ----------
+    atoms : numpy.ndarray
+        A structured array with at least ``xyz``; ``chain``, ``res_id``,
+        ``res_name``, ``atom_name``, ``radius`` and ``mass`` are used when
+        present and given the defaults the writer this replaced used.
 
-        self._add_keys(values)
-        if not self.enabled:
-            return
+    Returns
+    -------
+    IMP.bff.StructureTable
+        The record the writer takes.
+    """
+    bff = _bff()
+    names = atoms.dtype.names or ()
+    n = len(atoms)
 
-        root = self.handle.get_root_node()
-        frame_index = max(0, self.handle.get_number_of_frames() - 1)
-        for name, value in values.items():
-            key_name = str(name)
-            if key_name not in self.keys:
-                continue
-            try:
-                root.set_value(self.keys[key_name], self._coerce_value(value))
-            except Exception:
-                continue
+    table = bff.StructureTable()
+    table.xyz = np.ascontiguousarray(atoms["xyz"], dtype=np.float64).reshape(-1)
 
-        try:
-            self.handle.get_root_node().set_value(
-                self.keys.setdefault("rmf_frame_index", self.handle.get_key(
-                    self.category,
-                    "rmf_frame_index",
-                    self.RMF.int_tag,
-                )),
-                frame_index,
-            )
-        except Exception:
-            pass
+    if "radius" in names:
+        table.radius = np.ascontiguousarray(atoms["radius"], dtype=np.float64)
+    else:
+        table.radius = np.full(n, 1.5)
+    if "mass" in names:
+        table.mass = np.ascontiguousarray(atoms["mass"], dtype=np.float64)
+    else:
+        table.mass = np.ones(n)
+    if "res_id" in names:
+        table.res_id = np.ascontiguousarray(atoms["res_id"], dtype=np.int32)
+    else:
+        table.res_id = np.arange(1, n + 1, dtype=np.int32)
 
-        try:
-            self.handle.flush()
-        except Exception:
-            pass
-
-    def close(self) -> None:
-        """Release this writer's reference to the RMF handle."""
-        try:
-            del self.handle
-        except Exception:
-            pass
-        try:
-            del self.category
-        except Exception:
-            pass
-        try:
-            self.keys.clear()
-            del self.keys
-        except Exception:
-            pass
-        gc.collect()
+    # A blank chain is "A": a PDB with no chain column is one chain, and an
+    # empty node name is not something a viewer can show.
+    if "chain" in names:
+        table.chain = [(_as_text(v) or "A") for v in atoms["chain"]]
+    else:
+        table.chain = ["A"] * n
+    if "res_name" in names:
+        table.res_name = [(_as_text(v) or "UNK") for v in atoms["res_name"]]
+    else:
+        table.res_name = ["UNK"] * n
+    if "atom_name" in names:
+        table.atom_name = [
+            (_as_text(v) or f"A{i}") for i, v in enumerate(atoms["atom_name"])
+        ]
+    else:
+        table.atom_name = [f"A{i}" for i in range(n)]
+    return table
 
 
 class StructureRmfWriter:
-    """Write ChiSurf structure frames as PMI-compatible RMF trajectories."""
+    """Write ChiSurf structure frames as a PMI-compatible RMF trajectory."""
 
     def __init__(
         self,
@@ -164,44 +163,42 @@ class StructureRmfWriter:
         stat_output: Optional[Mapping[str, Any]] = None,
         root_name: str = "ProteinMC",
     ) -> None:
-        """Create an RMF writer for a ChiSurf structure.
+        """Open an RMF file and build the hierarchy ``structure`` describes.
 
         Parameters
         ----------
         filename : str or pathlib.Path
             Output RMF/RMF3 filename.
         structure : object
-            ChiSurf structure with ``atoms`` and ``xyz`` attributes.
+            A ChiSurf structure, or anything with an ``atoms`` record array.
         stat_output : mapping, optional
-            Initial per-frame metadata keys.
+            Written as the file's description. Per-frame values go to
+            :meth:`append`.
         root_name : str, optional
             Name for the top-level RMF hierarchy node.
-        """
-        try:
-            import IMP
-            import IMP.algebra
-            import IMP.atom
-            import IMP.core
-            import IMP.rmf
-            import RMF
-        except ImportError as exc:  # pragma: no cover - environment dependent
-            raise RmfWriterError("RMF output requires IMP and RMF.") from exc
 
-        self.IMP = IMP
-        self.IMP_atom = IMP.atom
-        self.IMP_core = IMP.core
-        self.IMP_algebra = IMP.algebra
-        self.IMP_rmf = IMP.rmf
-        self.RMF = RMF
+        Raises
+        ------
+        RmfWriterError
+            When ``IMP.bff`` is absent or was built without RMF, or the file
+            cannot be written.
+        """
+        bff = _bff()
         self.filename = str(Path(filename))
         self.structure = structure
-        self.model = IMP.Model()
-        self.particles = []
-        self.atom_to_particle: Dict[int, object] = {}
-        self.root = self._build_hierarchy(structure, root_name=root_name)
-        self.handle = RMF.create_rmf_file(self.filename)
-        self._add_hierarchy()
-        self.stat_writer = RmfStatWriter(self.handle, stat_output, rmf_module=RMF)
+        try:
+            self._writer = bff.RmfStructureWriter(
+                self.filename,
+                _table_from_atoms(structure.atoms),
+                root_name=root_name,
+                metadata_json=_jsonable(stat_output or {}),
+            )
+        except RmfWriterError:
+            raise
+        except Exception as exc:
+            raise RmfWriterError(
+                f"could not open {self.filename} for RMF output: {exc}"
+            ) from exc
 
     def __enter__(self) -> "StructureRmfWriter":
         """Return this writer for ``with``-statement use."""
@@ -227,23 +224,32 @@ class StructureRmfWriter:
         filename : str or pathlib.Path
             Output RMF/RMF3 filename.
         coords : array_like, shape ``(N, 3)`` or ``(N, 4)``
-            Cartesian coordinates. Column 4 is ignored when present.
+            Cartesian coordinates. A fourth column is ignored.
         model_name : str, optional
-            Name used for the generated molecule/chain hierarchy.
+            Name used for the generated hierarchy root.
         transform : array_like, optional
-            Homogeneous transform, rotation matrix, or translation applied to
-            ``coords`` before writing.
+            A translation ``(3,)``, a rotation ``(3, 3)`` or a homogeneous
+            ``(4, 4)``, applied to ``coords`` before writing.
         metadata : mapping, optional
-            Initial per-frame metadata keys.
+            Written as the file's description.
 
         Returns
         -------
         StructureRmfWriter
-            A configured writer ready for ``append``.
+            A writer whose hierarchy is one chain of single-atom residues,
+            ready for :meth:`append`.
+
+        Raises
+        ------
+        ValueError
+            For coordinates that are not ``(N, 3)`` or ``(N, 4)``, or a
+            transform of an unexpected shape.
         """
         coords = np.asarray(coords, dtype=np.float64)
         if coords.ndim != 2 or coords.shape[1] < 3:
-            raise ValueError(f"Expected (N, 3) or (N, 4) coordinates, got {coords.shape}")
+            raise ValueError(
+                f"Expected (N, 3) or (N, 4) coordinates, got {coords.shape}"
+            )
 
         xyz = coords[:, :3].copy()
         if transform is not None:
@@ -257,10 +263,10 @@ class StructureRmfWriter:
             else:
                 raise ValueError(f"Unexpected transform shape {t.shape}")
 
-        from chisurf.core.fio.structure.coordinates import formats, keys
+        from chisurf.core.fio.structure.coordinates import atom_dtype
         from chisurf.core.structure.structure import Structure
 
-        atoms = np.zeros(len(xyz), dtype={"names": keys, "formats": formats})
+        atoms = np.zeros(len(xyz), dtype=atom_dtype)
         atoms["i"] = np.arange(1, len(xyz) + 1)
         atoms["atom_id"] = atoms["i"]
         atoms["atom_name"] = "CA"
@@ -270,83 +276,13 @@ class StructureRmfWriter:
         atoms["element"] = "C"
         atoms["xyz"] = xyz
         atoms["radius"] = 1.0
+        atoms["mass"] = 1.0
 
         structure = Structure()
         structure.atoms = atoms
-        return cls(filename, structure, stat_output=metadata, root_name=model_name)
-
-    def _add_hierarchy(self) -> None:
-        """Register the root hierarchy with IMP.rmf."""
-        if hasattr(self.IMP_rmf, "add_hierarchies"):
-            self.IMP_rmf.add_hierarchies(self.handle, [self.root])
-        else:
-            self.IMP_rmf.add_hierarchy(self.handle, self.root)
-
-    def _build_hierarchy(self, structure: Any, *, root_name: str) -> Any:
-        """Build an IMP/PMI-compatible hierarchy matching the atom table."""
-        atoms = structure.atoms
-        root_particle = self.IMP.Particle(self.model, root_name)
-        root = self.IMP_atom.Hierarchy.setup_particle(root_particle)
-        try:
-            self.IMP_atom.State.setup_particle(root, 0)
-        except Exception:
-            pass
-
-        chains: Dict[str, object] = {}
-        residues: Dict[Tuple[str, int], object] = {}
-
-        for atom_index, atom in enumerate(atoms):
-            chain_id = _chain_id(atom)
-            res_id = int(atom["res_id"]) if "res_id" in atoms.dtype.names else atom_index + 1
-            res_name = _as_text(atom["res_name"]) if "res_name" in atoms.dtype.names else "UNK"
-            if not res_name:
-                res_name = "UNK"
-            atom_name = _as_text(atom["atom_name"]) if "atom_name" in atoms.dtype.names else f"A{atom_index}"
-            if not atom_name:
-                atom_name = f"A{atom_index}"
-
-            if chain_id not in chains:
-                molecule_particle = self.IMP.Particle(self.model, f"{root_name}.{chain_id}")
-                molecule = self.IMP_atom.Hierarchy.setup_particle(molecule_particle)
-                try:
-                    self.IMP_atom.Copy.setup_particle(molecule, 0)
-                except Exception:
-                    pass
-                chain = self.IMP_atom.Chain.setup_particle(molecule, chain_id)
-                try:
-                    chain.set_sequence("")
-                except Exception:
-                    pass
-                root.add_child(molecule)
-                chains[chain_id] = chain
-
-            residue_key = (chain_id, res_id)
-            if residue_key not in residues:
-                residue_particle = self.IMP.Particle(self.model, f"{res_name} {res_id}")
-                residue = self.IMP_atom.Hierarchy.setup_particle(residue_particle)
-                self.IMP_atom.Residue.setup_particle(
-                    residue_particle,
-                    _residue_type(self.IMP_atom, res_name),
-                    res_id,
-                )
-                chains[chain_id].add_child(residue)
-                residues[residue_key] = residue
-
-            particle = self.IMP.Particle(self.model, atom_name)
-            hierarchy = self.IMP_atom.Hierarchy.setup_particle(particle)
-            self.IMP_atom.Atom.setup_particle(particle, self.IMP_atom.AtomType(atom_name))
-            radius = float(atom["radius"]) if "radius" in atoms.dtype.names else 1.5
-            xyz = np.asarray(atom["xyz"], dtype=float)
-            sphere = self.IMP_algebra.Sphere3D(
-                self.IMP_algebra.Vector3D(float(xyz[0]), float(xyz[1]), float(xyz[2])),
-                max(radius, 0.1),
-            )
-            self.IMP_core.XYZR.setup_particle(particle, sphere)
-            residues[residue_key].add_child(hierarchy)
-            self.particles.append(particle)
-            self.atom_to_particle[atom_index] = particle
-
-        return root
+        return cls(
+            filename, structure, stat_output=metadata, root_name=model_name
+        )
 
     def append(
         self,
@@ -354,83 +290,50 @@ class StructureRmfWriter:
         name: str | None = None,
         metadata: Optional[Mapping[str, Any]] = None,
     ) -> None:
-        """Append one coordinate frame to the RMF trajectory.
+        """Append one coordinate frame to the trajectory.
 
         Parameters
         ----------
-        xyz : array_like, shape ``(n_particles, 3)``
-            Cartesian coordinates for the frame.
+        xyz : array_like, shape ``(n_atoms, 3)``
+            Cartesian coordinates for the frame, in the hierarchy's atom order.
         name : str, optional
-            RMF frame name. If omitted, the current frame index is used.
+            RMF frame name. The frame index is used when omitted.
         metadata : mapping, optional
-            Per-frame metadata written to the RMF ``stat`` category.
+            Per-frame scalars written to the RMF ``stat`` category, which is
+            where PMI puts them.
+
+        Raises
+        ------
+        ValueError
+            When ``xyz`` does not have three coordinates per atom.
         """
-        coords = np.asarray(xyz, dtype=float)
-        if coords.shape != (len(self.particles), 3):
+        coords = np.asarray(xyz, dtype=np.float64)
+        n = self._writer.n_atoms
+        if coords.shape != (n, 3):
             raise ValueError(
-                f"xyz must have shape ({len(self.particles)}, 3), got {coords.shape!r}"
+                f"xyz must have shape ({n}, 3), got {coords.shape!r}"
             )
-        for particle, coord in zip(self.particles, coords):
-            self.IMP_core.XYZ(particle).set_coordinates(
-                self.IMP_algebra.Vector3D(float(coord[0]), float(coord[1]), float(coord[2]))
-            )
-        frame_name = str(name if name is not None else self.handle.get_number_of_frames())
-        self.IMP_rmf.save_frame(self.handle, frame_name)
-        if metadata:
-            self.stat_writer.write(metadata)
-        else:
-            try:
-                self.handle.flush()
-            except Exception:
-                pass
+        self._writer.append(
+            np.ascontiguousarray(coords).reshape(-1),
+            frame_name="" if name is None else str(name),
+            metadata_json=_jsonable(metadata or {}),
+        )
+
+    @property
+    def n_frames(self) -> int:
+        """Number of frames written so far."""
+        return int(self._writer.n_frames)
 
     def close(self) -> None:
         """Flush and release the RMF file handle."""
-        try:
-            self.handle.flush()
-        except Exception:
-            pass
-        try:
-            self.stat_writer.close()
-        except Exception:
-            pass
-        try:
-            del self.handle
-        except Exception:
-            pass
-        gc.collect()
+        self._writer.close()
 
 
-# Backwards-compatible alias for existing ProteinMC imports.
+#: Backwards-compatible alias for existing ProteinMC imports.
 ProteinMCRmfWriter = StructureRmfWriter
 
 
-def _chain_id(atom: np.void) -> str:
-    """Return a non-empty chain identifier for an atom."""
-    if "chain" in atom.dtype.names:
-        chain_id = _as_text(atom["chain"])
-        if chain_id:
-            return chain_id
-    return "A"
-
-
-def _residue_type(IMP_atom: Any, res_name: str) -> Any:
-    """Return an IMP residue type, falling back to UNK for unknown names."""
-    try:
-        return IMP_atom.ResidueType(res_name)
-    except Exception:
-        return IMP_atom.ResidueType("UNK")
-
-
-def _as_text(value: Any) -> str:
-    """Convert fixed-width NumPy string values to plain text."""
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="ignore").strip()
-    return str(value).strip()
-
-
 __all__ = [
-    "RmfStatWriter",
     "RmfWriterError",
     "StructureRmfWriter",
     "ProteinMCRmfWriter",
