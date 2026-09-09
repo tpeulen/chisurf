@@ -73,6 +73,22 @@
   produces a valid file whose map is silently transposed -- which for a
   symmetric cloud looks entirely correct. The cloud in that test is not
   symmetric. 44 pass, 3 skip.
+* **...and then the voxelisation followed it** (owner: "if mrc is already in
+  bff should not be in chisurf"). `fps_json_editor/core/mrc.py` is **deleted**.
+  It still held `_voxelize_points` and `_mrc_path` -- the rounding convention,
+  the origin, the extent and the suffix rule -- and those are format
+  questions, so they moved to `IMP.bff.write_points_mrc` (imp.bff `c2ea396`),
+  which takes the cloud and returns the path it wrote. The two callers, the
+  RPC service and the position panel, each make one call now; nothing in
+  chisurf knows how a cloud becomes a grid.
+  The plugin test follows the same split: the voxelisation cases moved to
+  `test/io/test_points_mrc.py` in imp.bff (17 of them, including the six
+  suffix rules), and what is left here tests this plugin's own two doors. 44
+  pass, 3 skip.
+  **Known, and not caused by this**: `gui/position_panel.py` cannot be
+  imported at all, because it pulls `av_worker`, which pulls the FRET plugin,
+  whose forwarders are dead. So the panel's half of this is unexercised until
+  item (4) lands. The RPC half is covered.
 
 
 ## 2026-09-08

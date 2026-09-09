@@ -20,7 +20,6 @@ from chisurf.gui.glyphs import Glyphs
 from chimol.core.viewer import Viewer
 
 from ..core.colors import DEFAULT_AV_COLOR, normalize_rgba, rgba_to_json
-from ..core.mrc import save_av_mrc
 from ..core.naming import default_label_name, unique_label_name
 from .av_worker import AVWorker
 
@@ -1520,9 +1519,33 @@ class PositionPanel(QtWidgets.QWidget):
         return names
 
     def _save_av_mrc(self, name: str, path: str | Path) -> Path:
-        """Save one cached AV as an MRC file."""
+        """Save one cached AV as an MRC density map.
+
+        Parameters
+        ----------
+        name : str
+            Key of the cached accessible volume.
+        path : str or pathlib.Path
+            Where to write. ``.mrc`` is appended unless the path already ends
+            in an MRC-compatible suffix.
+
+        Returns
+        -------
+        pathlib.Path
+            The file actually written.
+        """
+        import IMP.bff as bff
+
         coords, _mean_xyz, grid_step, _color = self._av_cache[name]
-        return save_av_mrc(path, coords, grid_step)
+        # Voxelising a cloud is a format question -- the rounding, the origin,
+        # the extent and the suffix rule all live with the writer.
+        return Path(
+            bff.write_points_mrc(
+                str(path),
+                np.ascontiguousarray(coords, dtype=np.float64),
+                float(grid_step),
+            )
+        )
 
     def onSaveSelectedAVsAsMRC(self) -> None:
         """Save selected computed AVs as MRC density maps."""

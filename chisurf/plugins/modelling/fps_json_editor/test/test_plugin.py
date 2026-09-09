@@ -85,63 +85,45 @@ class TestPackageBoundaries:
 
 
 class TestMrcExport:
-    """AV MRC export writes a map every viewer reads."""
+    """AV MRC export, which is now one call into IMP.bff.
 
-    #: The point cloud both tests below use: three weighted points on one
-    #: plane, so the grid is 2 x 2 x 1 and every value can be named.
-    POINTS = np.asarray(
-        [
-            [0.0, 0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0, 2.0],
-            [1.0, 1.0, 0.0, 3.0],
-        ],
-        dtype=np.float64,
-    )
+    The voxelisation used to live here -- the rounding, the origin, the extent
+    and the suffix rule -- and it is a format question, so it moved to the
+    writer (`IMP.bff.write_points_mrc`, covered by `test/io/test_points_mrc.py`
+    there). What is left to test on this side is that the plugin's own two
+    doors, the RPC service and the panel, reach it and hand back the path.
+    """
 
-    def test_save_av_mrc_writes_a_readable_map(self, tmp_path):
-        """Read back with ``mrcfile``, which is the format's own reference.
+    POINTS = [
+        [0.0, 0.0, 0.0, 1.0],
+        [1.0, 0.0, 0.0, 2.0],
+        [1.0, 1.0, 0.0, 3.0],
+    ]
 
-        The reader used to be ``IMP.em``, which made a *writer* test depend on
-        IMP being importable. It is not any more: the map is written by
-        ``IMP.bff.write_mrc_grid`` and read here by a library that knows only
-        MRC.
-        """
+    def test_the_service_writes_a_readable_map(self, tmp_path):
         mrcfile = pytest.importorskip("mrcfile")
+        from chisurf.plugins.modelling.fps_json_editor.rpc.services import (
+            save_av_mrc_handler,
+        )
 
-        from chisurf.plugins.modelling.fps_json_editor.core.mrc import save_av_mrc
-
-        out_path = save_av_mrc(tmp_path / "av_export", self.POINTS, 1.0)
-
+        result = save_av_mrc_handler(
+            str(tmp_path / "av_export"), self.POINTS, 1.0
+        )
+        assert result["ok"], result
+        out_path = Path(result["result"]["path"])
         assert out_path.suffix == ".mrc"
-        assert out_path.exists()
+        assert out_path.is_file()
 
         with mrcfile.open(str(out_path)) as m:
-            assert m.data.size >= 3
             assert float(m.data.max()) == pytest.approx(3.0)
-            assert float(m.header.cella.x) == pytest.approx(
-                m.header.nx * 1.0
-            )
 
-    def test_the_weights_land_on_the_voxels_they_belong_to(self, tmp_path):
-        """MRC runs x fastest and a C-order array runs z fastest.
+    def test_the_service_reports_a_bad_request_rather_than_raising(self, tmp_path):
+        from chisurf.plugins.modelling.fps_json_editor.rpc.services import (
+            save_av_mrc_handler,
+        )
 
-        A writer that skips the transposition still produces a valid file, and
-        the map is silently transposed -- which for a symmetric cloud looks
-        entirely correct. This cloud is not symmetric.
-        """
-        mrcfile = pytest.importorskip("mrcfile")
-
-        from chisurf.plugins.modelling.fps_json_editor.core.mrc import save_av_mrc
-
-        out_path = save_av_mrc(tmp_path / "av_order", self.POINTS, 1.0)
-        with mrcfile.open(str(out_path)) as m:
-            # mrcfile presents the map as (nz, ny, nx); the cloud is one plane
-            # at z = 0, so index [0, y, x].
-            data = np.asarray(m.data)
-            assert data[0, 0, 0] == pytest.approx(1.0)
-            assert data[0, 0, 1] == pytest.approx(2.0)
-            assert data[0, 1, 1] == pytest.approx(3.0)
-            assert data[0, 1, 0] == pytest.approx(0.0)
+        result = save_av_mrc_handler(str(tmp_path / "bad"), self.POINTS, 0.0)
+        assert not result.get("ok", False), result
 
 
 class TestLabelNaming:

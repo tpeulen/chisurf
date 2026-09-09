@@ -17,7 +17,6 @@ from ..api.contract import (
     normalize_pdb_id,
     service_success,
 )
-from ..core.mrc import save_av_mrc
 from ..core.payload import normalize_payload, summarize_payload, validate_payload
 from ..core.pdb import download_pdb_file, pdb_source_url
 
@@ -130,9 +129,34 @@ def save_av_mrc_handler(
     points: list[list[float]],
     grid_step: float,
 ) -> dict[str, Any]:
-    """Save AV points as an MRC map and return the written path."""
+    """Save AV points as an MRC map and return the written path.
+
+    Parameters
+    ----------
+    path : str
+        Where to write. ``.mrc`` is appended unless the path already ends in
+        an MRC-compatible suffix.
+    points : list of list of float
+        ``(N, 3)`` xyz or ``(N, 4)`` xyz plus weight.
+    grid_step : float
+        Voxel spacing in Angstrom.
+
+    Returns
+    -------
+    dict
+        A service envelope carrying the path actually written.
+    """
     try:
-        out_path = save_av_mrc(path, np.asarray(points, dtype=np.float64), grid_step)
+        import IMP.bff as bff
+
+        # Voxelising a cloud is a format question, and it lives with the
+        # writer: the rounding convention, the origin, the extent it spans and
+        # the suffix rule are all decided there.
+        out_path = bff.write_points_mrc(
+            str(path),
+            np.ascontiguousarray(points, dtype=np.float64),
+            float(grid_step),
+        )
         return service_success({"path": str(out_path)})
     except Exception as exc:
         from chisurf.server.services import OPERATION_FAILED, service_error
