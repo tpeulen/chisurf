@@ -148,7 +148,31 @@ class ExperimentalData(chisurf.core.base.Data):
         return d
 
 
-class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset):
+#: Whether the installed ``IMP.bff`` carries the ``Dataset`` calculus.
+#:
+#: ``DataCurve`` inherits its probability calculus from ``IMP.bff.Dataset``
+#: where that exists, and works without it where it does not. The check is not
+#: defensive habit: chisurf declares ``imp>=2.25`` and ``Dataset`` is newer
+#: than any release of it, so an environment holding a perfectly good IMP has
+#: no ``Dataset`` -- and naming it in a base-class list evaluates at *import*
+#: time, which turned a missing feature into `chisurf.core.data` failing to
+#: import at all. A curve is not the place to make that trade.
+_HAS_BFF_DATASET = hasattr(_bff, "Dataset") and hasattr(_bff, "sync_dataset")
+
+_DATACURVE_BASES = (
+    (chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset)
+    if _HAS_BFF_DATASET
+    else (chisurf.core.curve.Curve, ExperimentalData)
+)
+
+_NO_BFF_DATASET = (
+    "this DataCurve was built against an IMP.bff without Dataset, so it "
+    "carries no probability calculus. Everything else about the curve works; "
+    "objective(), variance() and residuals() need a newer IMP.bff."
+)
+
+
+class DataCurve(*_DATACURVE_BASES):
     """One-dimensional experimental curve with error estimates.
 
     Combines :class:`chisurf.core.curve.Curve` with :class:`ExperimentalData`
@@ -233,7 +257,8 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset):
     ):
         # Before the chisurf half, because `super().__init__` writes the
         # arrays and `set_data` syncs into a Dataset that must already exist.
-        _bff.Dataset.__init__(self)
+        if _HAS_BFF_DATASET:
+            _bff.Dataset.__init__(self)
         super().__init__(
             x=x,
             y=y,
@@ -656,19 +681,27 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset):
         the same array and produce the same arithmetic. Nothing depends on
         telling them apart today.
         """
+        if not _HAS_BFF_DATASET:
+            return
         _bff.sync_dataset(self, self.y, self.ey, self.x, self.mask)
 
     # -- the calculus, synced first so a direct `y = ...` cannot go stale ----
     def objective(self, model):
         self._sync_dataset()
+        if not _HAS_BFF_DATASET:
+            raise NotImplementedError(_NO_BFF_DATASET)
         return _bff.Dataset.objective(self, model)
 
     def variance(self, model):
         self._sync_dataset()
+        if not _HAS_BFF_DATASET:
+            raise NotImplementedError(_NO_BFF_DATASET)
         return _bff.Dataset.variance(self, model)
 
     def residuals(self, model, kind):
         self._sync_dataset()
+        if not _HAS_BFF_DATASET:
+            raise NotImplementedError(_NO_BFF_DATASET)
         return _bff.Dataset.residuals(self, model, kind)
 
     def set_weights(self, w: np.array):
