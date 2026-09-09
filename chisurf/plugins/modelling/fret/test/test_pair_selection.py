@@ -338,29 +338,36 @@ def test_the_weight_does_not_modify_the_chi_squared_it_is_given():
     np.testing.assert_array_equal(chi2, before)
 
 
-def test_the_batched_candidate_scoring_matches_one_candidate_at_a_time():
-    """Candidates are scored in chunks purely to bound memory, not to change anything."""
+def test_the_selector_is_bffs_and_is_tested_there():
+    """The chunked candidate scoring this used to pin is not here any more.
+
+    `select_informative_pairs` is `IMP.bff`'s and is C++; the chunking was an
+    internal of the Python implementation it replaced, so a test that reached
+    into `_best_pair_all_candidates` was testing a library through an
+    application. It is covered upstream by `test/restraints/test_pair_selection.py`
+    and `test/restraints/test_greedy_olga_ab.py`, the second of which is an
+    A/B against the original.
+
+    What is worth asserting on this side is that the plugin reaches it and
+    gets an answer of the right shape.
+    """
     from chisurf.plugins.modelling.fret.core.olga_greedy import (
-        _best_pair_all_candidates,
-        _rmsd_mean_mean_add,
+        select_informative_pairs,
     )
 
     rng = np.random.default_rng(11)
     n, m = 17, 40
     effs = rng.uniform(0.05, 0.95, (n, m))
+    # (n, n): the selector scores how well a pair separates every pair of
+    # structures, so it wants the RMSD matrix, not a vector to a reference.
     rmsds = rng.uniform(0.5, 20.0, (n, n))
     rmsds = (rmsds + rmsds.T) / 2
     np.fill_diagonal(rmsds, 0.0)
-    chi2 = rng.uniform(0.0, 5.0, (n, n))
-    chi2 = chi2 + chi2.T
-    np.fill_diagonal(chi2, 0.0)
 
-    batched = _best_pair_all_candidates(
-        effs, rmsds, chi2, 1 / 0.06**2, 5, 0.99,
-        np.zeros(m, dtype=np.uint8), False, chunk=7,
-    )
-    one_at_a_time = np.array([
-        float(_rmsd_mean_mean_add(rmsds, chi2, effs[:, i], 1 / 0.06**2, 5, 0.99)[0])
-        for i in range(m)
-    ], dtype=np.float32)
-    np.testing.assert_allclose(batched, one_at_a_time, rtol=1e-6)
+    order, precision = select_informative_pairs(effs, rmsds, 0.06, 5)
+    assert len(order) == 5
+    assert len(precision) == len(order)
+    # No pair twice, which is what `unique_only` defaults to.
+    assert len(set(int(i) for i in order)) == len(order)
+    # Every index names a column of `effs`.
+    assert all(0 <= int(i) < m for i in order)

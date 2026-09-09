@@ -18,6 +18,26 @@ _EX = os.path.normpath(os.path.join(_HERE, "..", "examples", "fps_hiv_rt"))
 _PROJECT = os.path.join(_EX, "docking_project.json")
 
 
+def _have_engine() -> bool:
+    """Whether the installed ``IMP.bff`` carries the docking engine.
+
+    Docking is the connection layer's -- its assembly, its restraints and its
+    optimiser all name IMP types -- so it is wrapped only where IMP's own
+    Python is present.
+    """
+    try:
+        import IMP.bff as bff
+    except ImportError:
+        return False
+    return hasattr(bff, "dock")
+
+
+pytestmark = pytest.mark.skipif(
+    not _have_engine(),
+    reason="this IMP.bff has no docking engine (needs the IMP module build)",
+)
+
+
 def test_example_project_loads_with_absolute_paths():
     proj = _project.load_docking_project(_PROJECT)
     assert proj.operation == "dock"

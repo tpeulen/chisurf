@@ -59,6 +59,33 @@
   pulls Boost.Iostreams and through it all of ICU, 40 MB for four I/O
   functions), so a trajectory needs one of the conda packages. The writer says
   so by name rather than failing on a missing attribute.
+* **The FRET plugin is alive again, and it is a *split*.** Its eight
+  forwarders onto the deleted `IMP.bff.fret.*` are gone; each module is now
+  placed by what it actually is. `engine.py` (179 lines of dataclasses for the
+  OLGA evaluators, no IMP, no algorithm) came back from history -- it went to
+  bff and bff correctly dropped it. `stat` and `olga_greedy` call bff's C++.
+  `distance` re-exports bff's kernels **by name**, not by star, so a name
+  disappearing upstream is an error here rather than a mystery at the call
+  site. `av` keeps the fps.json walking, the resolve-by-identity and the
+  multi-PDB dispatch, and the hand-built `IMP::Model` is one `get_av` call.
+  `imp_engine` is **1391 lines down to 463**: it names the operations, turns a
+  Python `stop_check` into the object the C++ expects, and returns dicts.
+  116 pass, 16 skip; **306 pass** across the modelling plugins and the
+  structure suites together.
+  Where the two sides had drifted apart while nothing ran, the adapter is on
+  this side and says why: `read_fps_json` returns an `FPSDocument` and the
+  callers unpack four sections; `read_evaluators_json` returns *text* now,
+  because which classes an entry becomes is the application's question and a
+  C++ reader has no business knowing this plugin's class names;
+  `histogram_rda` takes edges where an evaluator thinks in a range, and
+  returns counts alone where a caller that passed a range has never seen the
+  axis.
+  The 16 skips are the docking tests. Docking names IMP types, so it is
+  wrapped only in the IMP module build, and a red suite meaning "this build
+  has no docking" teaches nobody anything.
+  **Unblocked with it**: `fps_json_editor`'s `position_panel` imports for the
+  first time too -- it pulls `av_worker`, which pulled the dead plugin -- so
+  the AV MRC export's panel half is exercised at last.
 * **The AV MRC export drops `IMP.em`, and its test drops IMP entirely.**
   `fps_json_editor/core/mrc.py` built an `IMP.em` density map and set one
   voxel per call from Python; it now hands the dense grid to

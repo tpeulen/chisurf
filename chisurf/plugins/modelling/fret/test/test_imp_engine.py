@@ -26,6 +26,31 @@ def _have_example() -> bool:
 needs_example = pytest.mark.skipif(not _have_example(), reason="hiv_rt example data missing")
 
 
+def _have_engine() -> bool:
+    """Whether the installed ``IMP.bff`` carries the docking engine.
+
+    Docking is the connection layer's: its assembly, its restraints and its
+    optimiser all name IMP types, so it is wrapped only where IMP's own
+    Python is present. A build without it -- the pip wheel, and the
+    IMP-linked build whose Python surface stays IMP-free -- can do everything
+    else in this plugin and not this.
+    """
+    try:
+        import IMP.bff as bff
+    except ImportError:
+        return False
+    return hasattr(bff, "dock")
+
+
+#: Applied to every test below: without the engine there is nothing to
+#: exercise, and a red suite that means "this build does not have docking"
+#: teaches nobody anything.
+pytestmark = pytest.mark.skipif(
+    not _have_engine(),
+    reason="this IMP.bff has no docking engine (needs the IMP module build)",
+)
+
+
 @needs_example
 def test_score_builds_avs_and_distances():
     res = imp_engine.score([_PROTEIN, _DNA], _FPS, mean_position_restraint=True)
