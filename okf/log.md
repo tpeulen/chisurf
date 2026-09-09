@@ -1,5 +1,50 @@
 # Update Log
 
+## 2026-09-09
+
+* **Can chisurf drop `imp` for the `bff` wheel? Measured: four call sites, none
+  of them a bff gap.** Built the IMP-free core out of tree (`standalone/`,
+  `IMPBFF_WITH_RMF=OFF`) and imported it with the real IMP stripped from
+  `sys.path`, so `IMP.bff.get_build()` answers `core` and `IMP.atom` is not
+  importable. **All 70 `IMP.bff` names chisurf imports are in that core** —
+  the surface diff is 1275 public names against 913, and the 362 extra are
+  IMP's config constants plus the connection layer (docking, FPS project I/O,
+  probe attachment and Langevin, restraints, the hierarchy/em/algebra bridges),
+  which chisurf never calls. `get_av` over `(N, 4)` arrays reproduced an AV
+  for hGBP1 18/CB with no IMP loaded. What still needs IMP is chisurf's own
+  four direct uses: `core/fio/structure/coordinates.py` (the blocker — a
+  module-level `import IMP.atom`, the default CHARMM radii, and all mmCIF
+  reading, which the core refuses with a *content* error rather than a format
+  one), the `IMP.rmf` writer, `fps_json_editor`'s `IMP.em` MRC writer (the
+  core has `DensityGrid.write_mrc`, so a direct port), and the FRET docking
+  plugin, which is genuinely IMP-only. Found on the way: that plugin is
+  **already dead** on both builds — imp.bff deleted every Python subpackage on
+  2026-08-23 (`6584e80`) and nine `fret/core/*.py` still forward to
+  `IMP.bff.fret.*`. Recorded in [PRD-137](prds/prd-137.md), "Where to pick
+  this up".
+* **chisurf reads a structure through `IMP.bff`, and imports IMP nowhere.**
+  `core/fio/structure/coordinates.py` no longer does `import IMP` /
+  `IMP.core` / `IMP.atom` at module level -- it calls
+  `IMP.bff.read_structure_table`, the array door landed in imp.bff `e36ecff`,
+  which is IMP's own PDB **and mmCIF** readers behind flat columns and names
+  no IMP type. That matters because the bff wheel links IMP as a *private C++
+  library*: the capability was always there, only the Python surface had to
+  stay IMP-free. `convert_atoms`, the per-atom SWIG walk, is gone -- its
+  replacement `_table_to_atoms` assigns whole columns -- and with it the two
+  helpers that existed only to paper over IMP's spellings (`HET:` prefixes,
+  the standard-residue filter, which is now a *setting* read once per request
+  rather than a test inside the conversion loop). Net 67 lines out of chisurf.
+  Verified with the real IMP off `sys.path` and `import IMP.atom` failing:
+  `read_coordinates` returns 9315 atoms at both radius settings (CHARMM
+  1.6482, van der Waals 1.5500), `Structure(pdb)` builds, and `BasicAV`
+  computes a 43^3 volume with 23304 occupied voxels. `test/fio/test_pdb_native.py`
+  -- the field-for-field gate against the in-tree parser on three real
+  structures -- passes 36/36, and the structure suites pass 142.
+  Still open, and unchanged by this: the RMF writer and the FRET docking
+  plugin. Tracked as `T-20260909-01`.
+
+
+
 ## 2026-09-08
 
 * **The startup autologin probe was locking the desktop user out of MMFDB.**

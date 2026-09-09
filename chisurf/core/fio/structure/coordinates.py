@@ -43,10 +43,48 @@ import chisurf.core.support.common
 
 logger = logging.getLogger(__name__)
 
-# IMP is a mandatory dependency of ChiSurf.
-import IMP
-import IMP.core
-import IMP.atom
+# No `import IMP` here, and none anywhere in chisurf. Reading a structure well
+# means IMP's readers -- its selectors, its element table, the CHARMM topology
+# that decides how big an atom is -- but chisurf reaches them through
+# ``IMP.bff.read_structure_table``, which is a **flat table of columns** and
+# names no IMP type. imp.bff links IMP as a private C++ library, so the door
+# works in a Python where ``import IMP.atom`` fails; and the walk out of the
+# hierarchy happens in C++ rather than costing ~100 us per atom of SWIG
+# traffic on this side. See ``okf/references/imp-ecosystem.md``.
+
+
+def _bff():
+    """Return ``IMP.bff``, imported on first use.
+
+    Returns
+    -------
+    module
+        The ``IMP.bff`` module.
+
+    Raises
+    ------
+    ImportError
+        With the reason, when the installed build has no structure door --
+        the IMP-free wheel is one, and it says so rather than failing later
+        on a missing attribute.
+
+    Notes
+    -----
+    Lazy because ``import chisurf.core.fio.structure`` must stay cheap:
+    ``IMP.bff`` pulls a large native stack in, and most of what imports this
+    module never reads a structure.
+    """
+    import IMP.bff as bff
+
+    if not hasattr(bff, "read_structure_table"):
+        raise ImportError(
+            "this IMP.bff has no read_structure_table: it is the IMP-free "
+            f"core (build {getattr(bff, 'get_build', lambda: '?')()}), and "
+            "reading a structure with CHARMM radii or reading mmCIF needs a "
+            "build that links IMP. Pass radii='vdw' for a PDB, or install a "
+            "build whose get_build() reports 'core+imp' or 'imp'."
+        )
+    return bff
 
 
 
@@ -161,72 +199,6 @@ _STANDARD_RESIDUES = {
     "M2G", "OMG", "OMC", "H2U",  # Common RNA modifications
     "PSU", "5MC", "7MG", "I",  # More modifications
 }
-
-
-def _imp_keep_residue(res_name: str) -> bool:
-    """Return True if a residue should be kept by the IMP reader.
-
-    Controlled via ``structure.json`` (``structure_data['IMP']``):
-
-    - ``filter_non_standard_residues`` (bool): if true, only standard
-      amino-acid and nucleic acid residue names are kept; everything else
-      (e.g. ligands, sugars, modified residues) is dropped from the returned
-      atoms array. Defaults to ``True`` when the key is missing.
-
-    Parameters
-    ----------
-    res_name : str
-        Three-letter residue name.
-
-    Returns
-    -------
-    bool
-        True if the residue should be kept.
-    """
-
-    try:
-        cfg = getattr(cs.core.settings, "structure_data", {})
-        imp_cfg = cfg.get("IMP", {})
-        filter_nonstd = bool(imp_cfg.get("filter_non_standard_residues", True))
-    except Exception:
-        filter_nonstd = True
-
-    if not filter_nonstd:
-        return True
-
-    name = str(res_name).strip().upper()
-    return name in _STANDARD_RESIDUES
-
-
-def _imp_atom_name(atom) -> str:
-    """Return the PDB atom name of an ``IMP.atom.Atom``.
-
-    IMP prints the type of any atom it does not recognise as a standard
-    amino-acid or nucleotide position with a ``HET:`` prefix, so ``N`` of a ligand
-    residue stringifies as ``"HET: N  "``. Stored verbatim in the five-character
-    ``atom_name`` field that truncates to ``"HET: "``, which loses the name
-    entirely: every ligand atom then shares one name, and selections like
-    ``name C1`` or PyMOL's backbone/sidechain classification cannot see ligands
-    at all.
-
-    Parameters
-    ----------
-    atom : IMP.atom.Atom
-        The atom whose name is wanted.
-
-    Returns
-    -------
-    str
-        The atom name without IMP's prefix or its quoting, e.g. ``"N"``.
-    """
-    name = str(atom.get_atom_type()).strip()
-    # IMP wraps the type in quotes; strip them before anything else so the
-    # prefix test below sees the bare string.
-    if len(name) >= 2 and name[0] == name[-1] == '"':
-        name = name[1:-1]
-    if name.upper().startswith("HET:"):
-        name = name[4:]
-    return name.strip()
 
 
 def find_atom_index(
@@ -459,101 +431,44 @@ def parse_string_pqr(
 
 
 
-def convert_atoms(
-        ps: typing.List['IMP.atom.Hierarchy'],
-        radius_no_interaction: bool = True,
-        only_standard_residues: bool = True
-) -> np.ndarray:
-    """Converts a list of IMP.atom.Hierarchy to a numpy record array
+def _table_to_atoms(table) -> np.ndarray:
+    """Build the atom record array from an ``IMP.bff.StructureTable``.
 
     Parameters
     ----------
-    ps: list of IMP.atom.Hierarchy
-
-    radius_no_interaction: bool
-        If set to True the returned radii are the radii where the potential
-        energy is zero. Otherwise, the radii correspond to the minimal
-        distance Rmin in a 6-12 LJ potential
-        :math:`E = eij ((Rmin/rij)**12 - 2*(Rmin/rij)**6))`
+    table : IMP.bff.StructureTable
+        The columns ``read_structure_table`` filled.
 
     Returns
     -------
-    atoms: numpy array containing the atom information
+    numpy.ndarray
+        The structured array :func:`read_coordinates` returns.
 
+    Notes
+    -----
+    Column by column, never atom by atom. The record array is the only place
+    the two representations meet, and every field is assigned as a whole
+    slice, so nothing here scales with a per-atom Python call.
     """
-    atoms = np.zeros(
-        len(ps),
-        dtype={
-            'names': keys,
-            'formats': formats
-        }
-    )
-    radius_scaleling = 1.0
-    if radius_no_interaction:
-        radius_scaleling = 2**(-1./6.)
-    t = IMP.atom.get_element_table()
-
-    # Every name below is a local, and every decorator is built once. This loop
-    # is where reading a PDB spends its time -- **not** in IMP's parser, which
-    # is a measured 0.079 s of a 1.39 s read. What costs the other 1.3 s is the
-    # per-atom SWIG traffic: twelve `ParticleAdaptor` constructions per atom,
-    # and a `Vector3D` handed to numpy.
-    imp_atom = IMP.atom.Atom
-    imp_residue = IMP.atom.Residue
-    imp_chain = IMP.atom.Chain
-    imp_mass = IMP.atom.Mass
-    imp_xyzr = IMP.core.XYZR
-    element_name = t.get_name
-
-    # A chain decorator per *atom* rebuilt the same object for every atom of a
-    # chain; there are a handful of chains and tens of thousands of atoms. The
-    # element name is likewise one of a dozen strings looked up 9315 times.
-    chain_ids: dict = {}
-    element_names: dict = {}
-
-    j = 0
-    for atom in ps:
-        a = imp_atom(atom)
-        parent = a.get_parent()
-        r = imp_residue(parent)
-
-        res_name = r.get_name()
-        if not _imp_keep_residue(res_name) and only_standard_residues:
-            continue
-
-        chain_particle = r.get_parent()
-        key = chain_particle.get_particle_index()
-        chain_id = chain_ids.get(key)
-        if chain_id is None:
-            chain_id = chain_ids[key] = imp_chain(chain_particle).get_id()
-
-        element = a.get_element()
-        name = element_names.get(element)
-        if name is None:
-            name = element_names[element] = element_name(element)
-
-        xyzr = imp_xyzr(atom)
-        # Subscripted three times rather than assigned whole: numpy converting a
-        # SWIG `Vector3D` falls back to the iteration protocol, which cost
-        # 0.548 s of the 1.39 s -- 37,260 calls into `Vector3D___getitem__` for
-        # 9,315 atoms. The identical trap was fixed in the RMF reader the same
-        # week; it is a property of every SWIG sequence, not of one binding.
-        v = xyzr.get_coordinates()
-
-        row = atoms[j]
-        row['i'] = j
-        row['chain'] = chain_id
-        row['res_id'] = r.get_index()
-        row['res_name'] = res_name
-        row['atom_id'] = a.get_input_index()
-        row['atom_name'] = _imp_atom_name(a)
-        row['element'] = name
-        row['xyz'] = (v[0], v[1], v[2])
-        row['radius'] = xyzr.get_radius() * radius_scaleling
-        row['bfactor'] = a.get_temperature_factor()
-        row['mass'] = imp_mass(atom).get_mass()
-        j += 1
-    return atoms[:j]
+    n = int(table.n_atoms)
+    atoms = np.zeros(n, dtype=atom_dtype)
+    if n == 0:
+        return atoms
+    atoms["i"] = np.arange(n, dtype=np.int32)
+    atoms["xyz"] = table.xyz
+    atoms["radius"] = table.radius
+    atoms["mass"] = table.mass
+    atoms["bfactor"] = table.bfactor
+    atoms["atom_id"] = table.atom_id
+    atoms["res_id"] = table.res_id
+    atoms["chain"] = table.chain
+    atoms["res_name"] = table.res_name
+    atoms["atom_name"] = table.atom_name
+    atoms["element"] = table.element
+    # IMP's readers assign no charge, and neither did the reader this
+    # replaced; the field stays zero rather than carrying a guess.
+    atoms["charge"] = 0.0
+    return atoms
 
 
 
@@ -736,7 +651,7 @@ def read_coordinates(
     only_standard_residues: bool = True,
     radii: str = "charmm",
 ) -> np.ndarray:
-    """Read atomic coordinates from a PDB or mmCIF file via IMP.
+    """Read atomic coordinates from a PDB or mmCIF file.
 
     Parameters
     ----------
@@ -747,21 +662,32 @@ def read_coordinates(
         modelling code wants; a viewer showing the deposited model wants them.
     only_standard_residues : bool
         Drop residues that are not standard amino acids or nucleotides
-        (ligands, sugars, modified residues). See :func:`_imp_keep_residue`.
+        (ligands, sugars, modified residues).
     radii : {"charmm", "vdw"}
         Which radius the ``radius`` field carries -- and with it **which reader
         runs**. ``"charmm"`` is IMP's per-atom-type ``Rmin``, which is what the
         modelling code wants (the accessible-volume simulation sizes its probes
-        with it), so it stays the default and nothing existing changes.
-        ``"vdw"`` is the element's van der Waals radius, which is what a
-        *viewer* wants -- it is what PyMOL draws a sphere with and measures a
-        surface with -- and takes the native parser: ~20x faster, because it
-        never builds an IMP hierarchy in order to walk back out of it.
+        with it, and the clash term of a docking score measures overlap against
+        the same numbers), so it stays the default and nothing existing
+        changes; it comes from ``IMP.bff.read_structure_table``. ``"vdw"`` is
+        the element's van der Waals radius, which is what a *viewer* wants --
+        it is what PyMOL draws a sphere with and measures a surface with --
+        and takes the in-tree parser: ~20x faster, because it never builds a
+        hierarchy in order to walk back out of it.
 
     Returns
     -------
     np.ndarray
         Structured array with atom information.
+
+    Raises
+    ------
+    FileNotFoundError
+        When ``filename`` does not exist.
+    ValueError
+        For a format this reader does not handle. It does **not** answer with
+        zero atoms: a trajectory handed to a coordinate reader used to produce
+        an empty structure, and whatever was built from it was simply blank.
 
     Examples
     --------
@@ -770,10 +696,11 @@ def read_coordinates(
     >>> atoms = cs.fio.structure.read_coordinates('./test/data/1fat.cif')  # doctest: +SKIP
     """
     # The fast path, and the reason it is a *policy* rather than a default: the
-    # native parser gives the element's van der Waals radius, IMP gives a CHARMM
-    # Rmin per atom type. A viewer wants the first; the accessible-volume
-    # simulation wants the second. Everything else the two produce is identical,
-    # asserted field by field in `test/fio/test_pdb_native.py`.
+    # in-tree parser gives the element's van der Waals radius, IMP gives a
+    # CHARMM Rmin per atom type. A viewer wants the first; the
+    # accessible-volume simulation wants the second. Everything else the two
+    # produce is identical, asserted field by field in
+    # `test/fio/test_pdb_native.py`.
     if str(radii).lower() == "vdw" and str(filename).lower().endswith(
         (".pdb", ".ent", ".pdb.gz", ".ent.gz")
     ):
@@ -783,40 +710,46 @@ def read_coordinates(
             only_standard_residues=only_standard_residues,
         )
 
-
-    model = IMP.Model()
     if not os.path.isfile(filename):
         raise FileNotFoundError("The file %s could not be found." % filename)
 
-    # NonAlternative keeps everything but alternate locations; NonWater is the
-    # same minus solvent. Alternate locations are dropped either way, so a
-    # multi-conformer file does not yield overlapping copies of a residue.
-    selector = (
-        IMP.atom.NonAlternativePDBSelector()
-        if keep_water
-        else IMP.atom.NonWaterPDBSelector()
-    )
-
-    upper = filename.upper()
-    if upper.endswith(('.PDB', '.ENT')):
-        mp = IMP.atom.read_pdb(filename, model, selector)
-    elif upper.endswith('.CIF'):
-        mp = IMP.atom.read_mmcif(filename, model, selector)
-    else:
-        # An unsupported format used to return **zero atoms**, which every
-        # caller then had to tell apart from a file that genuinely holds none.
-        # None of them did: a trajectory handed to this reader produced an empty
-        # structure, and whatever was built from it was simply blank.
+    lower = str(filename).lower()
+    if not lower.endswith((".pdb", ".ent", ".cif", ".mmcif")):
         raise ValueError(
             f"cannot read coordinates from '{filename}': this reader handles "
             "PDB, ENT, mmCIF and PQR. Trajectories (.dcd) are read by "
             "their own loader."
         )
+    if lower.endswith((".gz", ".bz2", ".xz", ".zip")):
+        # IMP's readers do not decompress, and a compressed stream read as
+        # text comes back as an *empty* structure rather than an error. The
+        # in-tree parser handles gzip, so say which road takes it.
+        raise ValueError(
+            f"cannot read coordinates from '{filename}': the CHARMM-radius "
+            "reader does not decompress. Pass radii='vdw' for a compressed "
+            "PDB, or decompress the file."
+        )
 
-    return convert_atoms(
-        IMP.atom.get_by_type(mp, IMP.atom.ATOM_TYPE),
-        only_standard_residues=only_standard_residues,
+    # Whether non-standard residues are dropped is a *setting*, and the
+    # argument is its default: `structure.json` -> `IMP.filter_non_standard_residues`.
+    # It used to be consulted per residue inside the conversion loop, which is
+    # why it read as a property of the reader rather than of the request.
+    try:
+        cfg = getattr(cs.core.settings, "structure_data", {})
+        if not bool(cfg.get("IMP", {}).get("filter_non_standard_residues", True)):
+            only_standard_residues = False
+    except Exception:
+        pass
+
+    return _table_to_atoms(
+        _bff().read_structure_table(
+            filename,
+            keep_water=keep_water,
+            only_standard_residues=only_standard_residues,
+            radius_no_interaction=True,
+        )
     )
+
 
 
 def read(
