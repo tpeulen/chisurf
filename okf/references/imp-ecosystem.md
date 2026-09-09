@@ -61,7 +61,51 @@ So the work is *doors*, not ports. Landed:
    sibling of `write_opendx`. chisurf `6890cc758`.
 4. 🚫 **FRET docking** -- blocked on where the *workflow* layer lives.
 
-### What blocks (4), measured 2026-09-09
+### Where this stands, 2026-09-09 (end of session)
+
+**The plugin is alive: 129 of 132 pass, 320 across the modelling plugins and
+the structure suites.** Everything below is what is left, each with the
+measurement that ends it.
+
+**First, the environment trap that broke the fps.json editor.** The reported
+symptom was *"Failed to fetch/load PDB 1f5n: this IMP.bff has no
+read_structure_table: it is the IMP-free core (build imp)"* -- a message that
+contradicted itself. The cause was neither the core nor the wheel: **the
+installed IMP module build simply predated the function**. Any chisurf change
+that adds a bff door needs
+`cmake . && cmake --build . --target IMP.bff-python` in
+`~/dev/imp/cmake-build-arm64`, whose `modules/bff` symlinks to the imp.bff
+checkout. It has been rebuilt; 1F5N now reads, 4585 atoms with CHARMM radii.
+
+**Two failures remain, and both are gaps rather than mysteries.**
+
+1. **`ensure_fps_json` cannot convert a legacy C# labelling file.**
+   `test_ensure_fps_json_accepts_csharp_txt`. The assumption that
+   `read_fps_json` writes a `.json` beside a `.txt` it converts is **wrong** --
+   it reads one and writes nothing. bff has the two readers
+   (`read_old_lps_txt`, `read_old_distances_txt`) and the writer
+   (`write_fps_json`) but nothing that joins them, so the conversion has no
+   owner. It belongs in bff: a labelling file is a format.
+
+2. **Resuming from a pose does not resume exactly.**
+   `test_continue_from_poses_does_not_restart` -- continuing a minimisation
+   from a docked pose reaches **35.025** where the run it continues from
+   ended at **34.103**, and continuing must never worsen a score. So
+   `apply_poses` followed by `dock_minimize` is not putting the model back in
+   the state `capture_poses` recorded. The suspect is ordering:
+   `dock_minimize` applies the poses *before* it builds the mean-position
+   proxies (deliberately -- see its comment), and the proxies are then placed
+   in the resumed body frames; if a volume is resampled after that, the proxy
+   and the body disagree by however much the resample moved the mean. Measure
+   it by capturing, re-applying and scoring **without any optimisation
+   steps**: the score should be identical, and the size of the difference
+   says how far the proxies drifted.
+
+**Do not read these two as "the plugin is broken".** They are the last two of
+thirty-two, and the other thirty were interface drift that accumulated while
+the plugin could not be imported at all.
+
+### What blocked (4), measured 2026-09-09
 
 `chisurf/plugins/modelling/fret/core/` is eight forwarders onto
 `IMP.bff.fret.*`, a subpackage deleted on 2026-08-19 (`6cd2206`, the layout
