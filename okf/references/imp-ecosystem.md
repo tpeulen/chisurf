@@ -92,7 +92,47 @@ commands. That file **cannot be imported**: it is a click program with no
 extension, which is why imp.bff's own `test/conftest.py` carries a bespoke
 loader for it.
 
-### The ruling needed
+### The ruling, and what it has produced so far
+
+**Owner, 2026-09-09**: *"the workflow should be implemented in bff,
+preferentially in cpp, chisurf just consumes and interfaces. there can be
+imp_bff dock. the fret plugin was dead on purpose as there was too much work
+on bff to be done, if it can be fixed, this could be a good time to fix it."*
+
+So: option (c) below, C++ in bff, with chisurf a consumer. Landed in imp.bff
+`c91cdfb`:
+
+- **`IMP::bff::dock`** -- the FRET-restrained sampler, C++, the piece that was
+  missing. It writes no walk of its own: the mobile bodies' poses are one
+  vector (six numbers each, a translation and a rotation vector) and
+  `IMP::bff::Sampler` samples it against the network score.
+- **`IMP::bff::estimate_docking_errors`** -- independent random starts and
+  their spread, which is what `bin/imp_bff`'s Python `estimate_errors` did.
+- **`Sampler` gained a `"slice"` backend** (`zeus`), so the vocabulary is
+  `metropolis` / `stretch` / `slice` / `de` -- one interface, four backends,
+  which is the second half of the owner's instruction ("i do not want too
+  diverse sampling interfaces").
+
+That closes the C++ side. `bin/imp_bff`'s `run_replica_exchange_docking` (the
+`IMP.pmi` one) is now a duplicate of `dock` and should be deleted in favour
+of it; `imp_bff dock` keeps its name and its flags.
+
+**What is left is the chisurf side**, and it is a *split*, not a move. The
+eight forwarders divide cleanly by the layering rule (what is the input?):
+
+| module | where it belongs | why |
+|---|---|---|
+| `stat`, `olga_greedy` | **bff, done** | `count_frames`, `read_score_series`, `select_informative_pairs` are all on the flat surface already; the forwarders just need repointing |
+| `distance` | **split** | the kernels (`chi2_score`, `model_distance`, `average_distance`, `histogram_rda`) are bff's and present; `DistanceEvaluator` / `DistanceDistributionEvaluator` are fps.json evaluator *objects*, which are the application's |
+| `av` | **split** | `get_av` and `AccessibleVolume` are bff's; `BasicAV`, `select_backend`, `VDW_RADII` are backend-selection glue, chisurf's |
+| `engine` | **chisurf** | 179 lines of plain dataclasses (`RigidBody`, `DistanceRestraint`, `SpringParameters`) for the OLGA evaluators. No IMP, no algorithm. It went to bff and bff correctly dropped it |
+| `imp_engine` | **bff, done** | `dock`, `dock_minimize`, `refine_docking`, `screen_structures`, `score_structures`, `capture_poses`, `apply_poses`, `create_docking_assembly`, `estimate_docking_errors` are all C++ now |
+| `distributions`, `uncertainty` | small; `distributions` is P(R_DA) for a structure (bff), `uncertainty` is precision from repeated docking (a workflow reading `estimate_docking_errors`) |
+
+The pure application code is recoverable: `git show 046cb9989^:<path>` in
+chisurf is each module as it was before it became a forwarder.
+
+### The options as they stood before the ruling
 
 Where do the Python-level docking workflows live? They use `IMP.pmi` and
 `IMP.core` from Python, so they cannot be C++ without a real port.
