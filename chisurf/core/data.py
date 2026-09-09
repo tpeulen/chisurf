@@ -683,6 +683,14 @@ class DataCurve(*_DATACURVE_BASES):
         """
         if not _HAS_BFF_DATASET:
             return
+        # An empty curve is a real thing -- a placeholder before a file is
+        # loaded, and the global-fit dataset, which never carries samples of
+        # its own -- but it is not a describable `Dataset`: a shape has to
+        # have positive extent, and `set_values` refuses one that does not.
+        # So an empty curve simply has nothing to sync, and the calculus is
+        # asked for only once there is data to ask about.
+        if np.asarray(self.y).size == 0:
+            return
         _bff.sync_dataset(self, self.y, self.ey, self.x, self.mask)
 
     # -- the calculus, synced first so a direct `y = ...` cannot go stale ----

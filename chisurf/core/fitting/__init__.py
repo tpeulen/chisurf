@@ -63,7 +63,7 @@ def deviance_residuals(
 
     .. math::
 
-        r_i = \\operatorname{sign}(\\mu_i - y_i)\\,
+        r_i = \\operatorname{sign}(y_i - \\mu_i)\\,
               \\sqrt{2\\left[\\mu_i - y_i + y_i \\ln(y_i/\\mu_i)\\right]},
 
     with the convention :math:`y_i \\ln(y_i/\\mu_i) \\to 0` for :math:`y_i = 0`.
@@ -72,6 +72,18 @@ def deviance_residuals(
     likelihood objective without any change to the optimiser (Laurence & Chromy,
     *Nat. Methods* 2010).  This is the correct estimator for low photon counts,
     where the Neyman ``1/sqrt(counts)`` weighting is biased.
+
+    The sign is ``sign(y - mu)``: positive where the observation exceeds the
+    fit. That is the standard convention for a deviance residual and what
+    makes one comparable with a Pearson residual, which is defined that way.
+    It was ``sign(mu - y)`` until 2026-09-09, which put it at odds with this
+    package's own Gaussian residuals -- ``(data - model)/sqrt(data)`` in
+    ``chisurf.core.fluorescence.mle.display.weighted_residuals`` -- so a
+    residual *plot* flipped when the noise model changed, while chi-square
+    and every fitted parameter stayed the same. Baker & Cousins define the
+    deviance statistic and not a residual sign, so nothing rested on the old
+    choice. Changed together with ``IMP.bff``'s ``deviance_residual`` in one
+    step, so the two never disagree at any commit (bff PRD-140).
 
     Parameters
     ----------
@@ -102,7 +114,7 @@ def deviance_residuals(
     dev = 2.0 * (mu - y + ylog)
     # Guard tiny negatives from floating-point cancellation before the sqrt.
     dev = np.clip(dev, 0.0, None)
-    return np.sign(mu - y) * np.sqrt(dev)
+    return np.sign(y - mu) * np.sqrt(dev)
 
 
 #: bff's one-pass residual kernel, or ``None`` if bff is unavailable.

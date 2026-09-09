@@ -47,8 +47,12 @@ def test_deviance_residuals_sum_equals_two_i_star():
     assert np.all(np.isfinite(r))
     # sum of squared deviance residuals == 2I*  (Laurence & Chromy identity)
     assert np.isclose(np.sum(r ** 2), _two_i_star(y, mu))
-    # residual sign follows (model - data)
-    assert np.all(np.sign(r[mu != y]) == np.sign((mu - y)[mu != y]))
+    # Residual sign follows (data - model): positive where the observation
+    # sits above the fit. That is the standard deviance-residual convention
+    # and what makes one comparable with a Pearson residual. It followed
+    # (model - data) until 2026-09-09, when chisurf and IMP.bff were flipped
+    # together -- the magnitude, and so 2I* above, is unchanged.
+    assert np.all(np.sign(r[mu != y]) == np.sign((y - mu)[mu != y]))
 
 
 def test_deviance_residuals_zero_and_perfect_bins():
@@ -59,9 +63,14 @@ def test_deviance_residuals_zero_and_perfect_bins():
     # An empty data bin contributes 2*mu to 2I* and is finite.
     r0 = chisurf.core.fitting.deviance_residuals(np.array([0.0]), np.array([4.0]))
     assert np.isclose(r0[0] ** 2, 2.0 * 4.0)
-    # A positive count against a vanishing model stays finite (large penalty).
+    # A positive count against a vanishing model stays finite (large penalty),
+    # and is POSITIVE: the sign is sign(y - mu), so a residual reads positive
+    # where the data sits above the fit. It was negative until 2026-09-09,
+    # when the sign was corrected to the standard convention in chisurf and
+    # IMP.bff together -- see `deviance_residuals` and bff's PRD-140. The
+    # magnitude, and so chi-square and every fitted parameter, is unchanged.
     rbig = chisurf.core.fitting.deviance_residuals(np.array([5.0]), np.array([0.0]))
-    assert np.isfinite(rbig[0]) and rbig[0] < 0.0
+    assert np.isfinite(rbig[0]) and rbig[0] > 0.0
 
 
 def _make_fit(noise_model, y_data):
