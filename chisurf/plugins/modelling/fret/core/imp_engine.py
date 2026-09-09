@@ -22,6 +22,7 @@ slice) and ``"de"`` (differential evolution).
 from __future__ import annotations
 
 import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 
@@ -219,8 +220,15 @@ def _as_dict(result) -> "Result":
         score_csv=str(result.score_csv),
         rmf_file=str(result.rmf_file),
         best_pdbs=[str(p) for p in result.best_pdbs],
-        poses=str(result.poses),
     )
+    # Parsed, not the raw text, and for the same reason capture_poses is: a
+    # caller reads one body's transform out of it, and the project file
+    # stores it as a list. Text that failed to parse is kept as text rather
+    # than dropped -- the run happened either way.
+    try:
+        out["poses"] = json.loads(result.poses) if result.poses else []
+    except ValueError:
+        out["poses"] = str(result.poses)
     out["pairs"] = [
         {
             "name": str(p.name),
@@ -249,13 +257,53 @@ def _as_dict(result) -> "Result":
     return out
 
 
+def _write_distributions(result, fps_json_path: str, output_dir: str) -> None:
+    """Write P(R_DA) per distance for a finished run, and record the path.
+
+    Parameters
+    ----------
+    result : Result
+        A finished run; its ``best_pdbs`` name the pose to measure.
+    fps_json_path : str
+        The labelling and distance file.
+    output_dir : str
+        Where ``distributions.csv`` goes.
+
+    Notes
+    -----
+    A distribution is read off the *docked* pose, so it is something to do
+    after a run rather than during one, and it walks an fps.json -- which is
+    why it is a workflow here rather than an output of the C++ engine.
+    Failure is recorded and not raised: a run that produced a pose has
+    succeeded, whatever happens to a diagnostic written from it.
+    """
+    from . import distributions as _distr
+    from . import io as _io
+
+    docked = result.get("best_pdbs") or []
+    if not docked:
+        return
+    out_csv = os.path.join(str(output_dir), "distributions.csv")
+    try:
+        positions, distances, _score_sets, _extra = _io.read_fps_json(
+            str(fps_json_path)
+        )
+        _distr.compute_distance_distributions(
+            docked[0], positions, distances, out_csv=out_csv
+        )
+    except Exception as exc:  # noqa: BLE001 - a diagnostic, not the run
+        result["extra"]["distributions_error"] = str(exc)
+        return
+    result["extra"]["distributions_csv"] = out_csv
+
+
 def dock(
     pdb_paths: Sequence[str],
     fps_json_path: str,
     output_dir: str,
     params=None,
     stop_check: Optional[Callable[[], bool]] = None,
-    initial_poses: str = "",
+    initial_poses=None,
 ) -> Dict[str, Any]:
     """Dock by sampling, with the backend ``params.sampler`` names.
 
@@ -279,16 +327,20 @@ def dock(
         The best score, its table, its pose and what was written.
     """
     bff = _bff()
-    return _as_dict(
+    params = params if params is not None else bff.DockingParameters()
+    result = _as_dict(
         bff.dock(
             [str(p) for p in pdb_paths],
             str(fps_json_path),
             str(output_dir),
-            params if params is not None else bff.DockingParameters(),
+            params,
             _stop(stop_check),
-            str(initial_poses),
+            _poses_json(initial_poses),
         )
     )
+    if getattr(params, "save_distributions", False):
+        _write_distributions(result, fps_json_path, output_dir)
+    return result
 
 
 def dock_minimize(
@@ -297,7 +349,7 @@ def dock_minimize(
     output_dir: str,
     params=None,
     stop_check: Optional[Callable[[], bool]] = None,
-    initial_poses: str = "",
+    initial_poses=None,
 ) -> Dict[str, Any]:
     """Dock by FRET-restrained energy minimisation.
 
@@ -310,16 +362,20 @@ def dock_minimize(
         As :func:`dock`.
     """
     bff = _bff()
-    return _as_dict(
+    params = params if params is not None else bff.DockingParameters()
+    result = _as_dict(
         bff.dock_minimize(
             [str(p) for p in pdb_paths],
             str(fps_json_path),
             str(output_dir),
-            params if params is not None else bff.DockingParameters(),
+            params,
             _stop(stop_check),
-            str(initial_poses),
+            _poses_json(initial_poses),
         )
     )
+    if getattr(params, "save_distributions", False):
+        _write_distributions(result, fps_json_path, output_dir)
+    return result
 
 
 def refine(
@@ -463,6 +519,38 @@ def screen(
     return out
 
 
+def _fixed_body_chains(pdb_paths: Sequence[str], params) -> List[str]:
+    """The chain ids of the body held fixed during docking.
+
+    Parameters
+    ----------
+    pdb_paths : sequence of str
+        One structure per rigid body, in body order.
+    params : IMP.bff.DockingParameters or None
+        Its ``fixed_body`` names which one.
+
+    Returns
+    -------
+    list of str
+        The chains of that structure, or an empty list when it cannot be
+        read -- which makes the caller align on everything rather than guess.
+    """
+    fixed = 0 if params is None else int(getattr(params, "fixed_body", 0))
+    if not (0 <= fixed < len(pdb_paths)):
+        return []
+    try:
+        import IMP.bff as bff
+
+        seen = []
+        for record in bff.read_pdb_records(str(pdb_paths[fixed])):
+            chain = str(record.chain).strip() or "A"
+            if chain not in seen:
+                seen.append(chain)
+        return seen
+    except Exception:
+        return []
+
+
 def estimate_errors(
     pdb_paths: Sequence[str],
     fps_json_path: str,
@@ -489,9 +577,8 @@ def estimate_errors(
     # where each one already uses whatever threading the solver has. A
     # process pool around them was how the Python engine got parallelism, and
     # taking the argument rather than raising keeps every caller working.
-    del n_workers
     bff = _bff()
-    return _as_dict(
+    result = _as_dict(
         bff.estimate_docking_errors(
             [str(p) for p in pdb_paths],
             str(fps_json_path),
@@ -502,6 +589,39 @@ def estimate_errors(
             _stop(stop_check),
         )
     )
+    # Echoed, not honoured: the trials run in sequence in C++, where the
+    # solver already threads. A process pool around them was how the Python
+    # engine got parallelism, and a caller that asked for workers should see
+    # what it actually got rather than nothing.
+    result["n_workers"] = 1
+    result["n_workers_requested"] = 1 if n_workers is None else int(n_workers)
+
+    # The spread of the *score* is what the trials disagree about; the spread
+    # of the *structure* is what an experimenter is asking for. It is a
+    # workflow over the trials' outputs, so it is computed here rather than
+    # in the engine.
+    from . import uncertainty as _unc
+
+    docked = []
+    for trial_dir in result.get("extra", {}).get("trial_dirs", []):
+        candidate = os.path.join(str(trial_dir), "docked.pdb")
+        if os.path.exists(candidate):
+            docked.append(candidate)
+    if len(docked) >= 2:
+        # The chains of the fixed body: the models are superposed on it, so
+        # what is left is how much the *mobile* bodies moved. Empty lets the
+        # routine align on everything, which measures the spread of the whole
+        # assembly rather than of the docking.
+        fixed_chains = _fixed_body_chains(pdb_paths, params)
+        result["uncertainty"] = _unc.estimate_position_uncertainty(
+            docked,
+            fixed_chains,
+            out_pdb=os.path.join(str(output_dir), "uncertainty.pdb"),
+            out_csv=os.path.join(str(output_dir), "uncertainty.csv"),
+        )
+    else:
+        result["uncertainty"] = None
+    return result
 
 
 def build_assembly(
@@ -531,42 +651,110 @@ def build_assembly(
     )
 
 
-def capture_poses(assembly) -> str:
-    """The assembly's current pose, as JSON."""
-    return str(_bff().capture_poses(assembly))
+def capture_poses(assembly) -> List[Dict[str, Any]]:
+    """The assembly's current pose, one entry per rigid body.
+
+    Parameters
+    ----------
+    assembly : IMP.bff.DockingAssembly
+        The assembly to read.
+
+    Returns
+    -------
+    list of dict
+        ``{"body_id", "t", "q"}`` per body -- a translation and a rotation
+        quaternion. Upstream hands this back as JSON *text*, which is the
+        right thing to store in a result and the wrong thing for a caller
+        that wants to look at one body's transform. Parsed here, once.
+    """
+    return json.loads(_bff().capture_poses(assembly))
 
 
-def apply_poses(assembly, poses: str) -> None:
-    """Put a captured pose back onto an assembly."""
-    _bff().apply_poses(assembly, str(poses))
+def _poses_json(poses) -> str:
+    """Render a pose as the JSON text the engine takes.
+
+    Parameters
+    ----------
+    poses : str or sequence of dict or None
+        Text is passed through, a list is dumped, and ``None`` or empty
+        becomes ``""`` -- which the engine reads as "start from the input
+        pose" rather than as a malformed one.
+
+    Returns
+    -------
+    str
+        The JSON text.
+    """
+    if poses is None:
+        return ""
+    if isinstance(poses, str):
+        return poses
+    if not poses:
+        return ""
+    return json.dumps(list(poses))
 
 
-def ensure_fps_json(fps_path: str, pdb_paths: Sequence[str]) -> str:
+def apply_poses(assembly, poses) -> None:
+    """Put a captured pose back onto an assembly.
+
+    Parameters
+    ----------
+    assembly : IMP.bff.DockingAssembly
+        The assembly to move.
+    poses : str or sequence of dict
+        What :func:`capture_poses` returned, or its JSON text.
+    """
+    _bff().apply_poses(assembly, _poses_json(poses))
+
+
+def ensure_fps_json(fps_path: str, pdb_paths: Sequence[str] = ()) -> str:
     """Return an fps.json path the engine can read.
 
-    A legacy C# labelling file is converted beside itself; anything already
-    JSON is returned unchanged.
+    A legacy C# labelling file (``.txt``) is converted beside itself; a file
+    that is already JSON is returned unchanged.
 
     Parameters
     ----------
     fps_path : str
         The labelling file as the caller named it.
     pdb_paths : sequence of str
-        The structures it describes. Unused by the conversion and kept in the
-        signature because callers pass them.
+        The structures it describes. The converter needs them to resolve
+        which molecule a position belongs to.
 
     Returns
     -------
     str
         The path the engine will actually read.
+
+    Raises
+    ------
+    RuntimeError
+        When the file cannot be read or converted, naming it. A conversion
+        that quietly returned the input would send an unreadable file into
+        the engine and fail there instead, with a worse message.
     """
-    del pdb_paths  # the converter reads the labelling file alone
     bff = _bff()
-    if hasattr(bff, "ensure_fps_json"):
-        return str(bff.ensure_fps_json(str(fps_path)))
-    # The assembly does this itself and reports which file it used, which is
-    # the same answer without a second conversion path to keep in step.
-    return str(fps_path)
+    path = str(fps_path)
+    if path.lower().endswith(".json"):
+        return path
+    # read_fps_json converts a legacy file beside itself and reads the result;
+    # the conversion is the point here and the document is discarded.
+    converted = os.path.splitext(path)[0] + ".fps.json"
+    try:
+        bff.read_fps_json(path, [str(p) for p in pdb_paths], False)
+    except Exception as exc:
+        raise RuntimeError(
+            f"could not read the labelling file {path}: {exc}"
+        ) from exc
+    if os.path.exists(converted):
+        return converted
+    plain = os.path.splitext(path)[0] + ".json"
+    if os.path.exists(plain):
+        return plain
+    raise RuntimeError(
+        f"{path} was read but no .json was written beside it; the engine "
+        "needs one"
+    )
 
 
 __all__ = [

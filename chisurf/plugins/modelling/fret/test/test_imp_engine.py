@@ -96,20 +96,31 @@ def test_dock_minimize_converges(tmp_path):
 
 
 @needs_example
-def test_estimate_errors_parallel(tmp_path):
-    """Parallel trials produce the same number of valid results as serial."""
+def test_estimate_errors_runs_the_trials_it_was_asked_for(tmp_path):
+    """Asking for workers changes nothing but the report.
+
+    The trials ran in a fork pool when the engine was Python. They run in
+    sequence in C++, where the solver already threads, so `n_workers` is
+    echoed rather than honoured -- and a caller that asked for two should be
+    able to see that it got one, rather than being told nothing.
+    """
     params = imp_engine.DockingParameters(n_frames=150, coarse_clash=True)
     serial = imp_engine.estimate_errors(
         [_PROTEIN, _DNA], _FPS, str(tmp_path / "s"), n_trials=2, params=params, n_workers=1)
-    parallel = imp_engine.estimate_errors(
+    asked_for_two = imp_engine.estimate_errors(
         [_PROTEIN, _DNA], _FPS, str(tmp_path / "p"), n_trials=2, params=params, n_workers=2)
+
     assert serial["n_workers"] == 1
-    assert parallel["n_workers"] == 2  # fork pool actually ran
-    assert len(parallel["trial_details"]) == 2
-    # both schedules dock to a finite score and identify a best trial
-    for res in (serial, parallel):
-        assert all(s == s for s in res["scores"])  # no NaNs
-        assert res["best_trial"] in (0, 1)
+    assert asked_for_two["n_workers"] == 1
+    assert asked_for_two["n_workers_requested"] == 2
+
+    # What actually matters: both ran the trials they were asked for, both
+    # reached a finite score, and both named a best trial.
+    for res in (serial, asked_for_two):
+        scores = res["extra"]["trial_scores"]
+        assert len(scores) == 2
+        assert all(s == s for s in scores)  # no NaNs
+        assert res["extra"]["best_trial"] in (0, 1)
 
 
 @needs_example
