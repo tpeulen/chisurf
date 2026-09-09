@@ -85,30 +85,63 @@ class TestPackageBoundaries:
 
 
 class TestMrcExport:
-    """AV MRC export should use IMP-readable density maps."""
+    """AV MRC export writes a map every viewer reads."""
 
-    def test_save_av_mrc_writes_imp_mrc(self, tmp_path):
-        """A small weighted point cloud is saved as a readable MRC map."""
-        import IMP.em
+    #: The point cloud both tests below use: three weighted points on one
+    #: plane, so the grid is 2 x 2 x 1 and every value can be named.
+    POINTS = np.asarray(
+        [
+            [0.0, 0.0, 0.0, 1.0],
+            [1.0, 0.0, 0.0, 2.0],
+            [1.0, 1.0, 0.0, 3.0],
+        ],
+        dtype=np.float64,
+    )
+
+    def test_save_av_mrc_writes_a_readable_map(self, tmp_path):
+        """Read back with ``mrcfile``, which is the format's own reference.
+
+        The reader used to be ``IMP.em``, which made a *writer* test depend on
+        IMP being importable. It is not any more: the map is written by
+        ``IMP.bff.write_mrc_grid`` and read here by a library that knows only
+        MRC.
+        """
+        mrcfile = pytest.importorskip("mrcfile")
 
         from chisurf.plugins.modelling.fps_json_editor.core.mrc import save_av_mrc
 
-        points = np.asarray(
-            [
-                [0.0, 0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0, 2.0],
-                [1.0, 1.0, 0.0, 3.0],
-            ],
-            dtype=np.float64,
-        )
-        out_path = save_av_mrc(tmp_path / "av_export", points, 1.0)
+        out_path = save_av_mrc(tmp_path / "av_export", self.POINTS, 1.0)
 
         assert out_path.suffix == ".mrc"
         assert out_path.exists()
 
-        density_map = IMP.em.read_map(str(out_path), IMP.em.MRCReaderWriter())
-        assert density_map.get_number_of_voxels() >= 3
-        assert density_map.get_max_value() >= 3.0
+        with mrcfile.open(str(out_path)) as m:
+            assert m.data.size >= 3
+            assert float(m.data.max()) == pytest.approx(3.0)
+            assert float(m.header.cella.x) == pytest.approx(
+                m.header.nx * 1.0
+            )
+
+    def test_the_weights_land_on_the_voxels_they_belong_to(self, tmp_path):
+        """MRC runs x fastest and a C-order array runs z fastest.
+
+        A writer that skips the transposition still produces a valid file, and
+        the map is silently transposed -- which for a symmetric cloud looks
+        entirely correct. This cloud is not symmetric.
+        """
+        mrcfile = pytest.importorskip("mrcfile")
+
+        from chisurf.plugins.modelling.fps_json_editor.core.mrc import save_av_mrc
+
+        out_path = save_av_mrc(tmp_path / "av_order", self.POINTS, 1.0)
+        with mrcfile.open(str(out_path)) as m:
+            # mrcfile presents the map as (nz, ny, nx); the cloud is one plane
+            # at z = 0, so index [0, y, x].
+            data = np.asarray(m.data)
+            assert data[0, 0, 0] == pytest.approx(1.0)
+            assert data[0, 0, 1] == pytest.approx(2.0)
+            assert data[0, 1, 1] == pytest.approx(3.0)
+            assert data[0, 1, 0] == pytest.approx(0.0)
 
 
 class TestLabelNaming:

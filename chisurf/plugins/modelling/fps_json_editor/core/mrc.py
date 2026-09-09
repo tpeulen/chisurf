@@ -58,7 +58,7 @@ def save_av_mrc(
     points: np.ndarray,
     grid_step: float,
 ) -> Path:
-    """Save AV points as an MRC density map using IMP.em.
+    """Save AV points as an MRC density map.
 
     Parameters
     ----------
@@ -74,30 +74,29 @@ def save_av_mrc(
     -------
     pathlib.Path
         Path of the written MRC file.
+
+    Notes
+    -----
+    The map is written by ``IMP.bff.write_mrc_grid``, which produces MRC2014
+    with real statistics. The writer this replaced went through ``IMP.em``
+    and set one voxel per call from Python; it also inherited IMP's own
+    header defects, which the C++ writer deliberately does not reproduce.
     """
-    import IMP.algebra
-    import IMP.em
+    import IMP.bff as bff
 
     density, origin = _voxelize_points(points, grid_step)
-    spacing = float(grid_step)
-    lower = IMP.algebra.Vector3D(*(origin - spacing / 2.0))
-    upper = IMP.algebra.Vector3D(*(origin + np.asarray(density.shape) * spacing - spacing / 2.0))
-    density_map = IMP.em.create_density_map(
-        IMP.algebra.BoundingBox3D(lower, upper),
-        spacing,
-    )
-
-    for index_tuple in np.argwhere(density > 0.0):
-        map_index = density_map.xyz_ind2voxel(
-            int(index_tuple[0]),
-            int(index_tuple[1]),
-            int(index_tuple[2]),
-        )
-        density_map.set_value(int(map_index), float(density[tuple(index_tuple)]))
-
     out_path = _mrc_path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    IMP.em.write_map(density_map, str(out_path), IMP.em.MRCReaderWriter())
+    nx, ny, nz = (int(v) for v in density.shape)
+    bff.write_mrc_grid(
+        str(out_path),
+        np.ascontiguousarray(density, dtype=np.float64).reshape(-1),
+        nx,
+        ny,
+        nz,
+        np.ascontiguousarray(origin, dtype=np.float64),
+        float(grid_step),
+    )
     return out_path
 
 

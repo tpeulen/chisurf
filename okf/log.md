@@ -59,6 +59,20 @@
   pulls Boost.Iostreams and through it all of ICU, 40 MB for four I/O
   functions), so a trajectory needs one of the conda packages. The writer says
   so by name rather than failing on a missing attribute.
+* **The AV MRC export drops `IMP.em`, and its test drops IMP entirely.**
+  `fps_json_editor/core/mrc.py` built an `IMP.em` density map and set one
+  voxel per call from Python; it now hands the dense grid to
+  `IMP.bff.write_mrc_grid` (imp.bff `4c780d3`) in one call. It also stops
+  inheriting IMP's own header defects, which the C++ writer deliberately does
+  not reproduce -- NaN statistics, an `ispg` holding the bit pattern of
+  `1.0f`, cell lengths that ignored the spacing.
+  The test read the map back with `IMP.em`, which made a *writer* test depend
+  on IMP being importable; it now uses `mrcfile`, the format's own reference,
+  and gained a second case that pins **voxel order**: MRC runs x fastest and a
+  C-order array runs z fastest, so a writer that skips the transposition still
+  produces a valid file whose map is silently transposed -- which for a
+  symmetric cloud looks entirely correct. The cloud in that test is not
+  symmetric. 44 pass, 3 skip.
 
 
 ## 2026-09-08
