@@ -38,7 +38,7 @@ def _dense_av(n: int = 60000) -> np.ndarray:
 
 def test_show_av_renders_a_transparent_surface_mesh(_qt_app):
     viewer = AVViewer3D()
-    viewer.mol_view._update_view = lambda *a, **k: None
+    viewer.mol_view.update_view = lambda *a, **k: None
     viewer.mol_view.set_coordinates(np.random.default_rng(0).standard_normal((200, 3)) * 10)
 
     av = _dense_av(60000)
@@ -60,7 +60,7 @@ def test_show_av_renders_a_transparent_surface_mesh(_qt_app):
 def test_point_overlay_caps_dense_clouds(_qt_app):
     """The point-overlay path (dye densities etc.) subsamples huge clouds."""
     viewer = AVViewer3D()
-    viewer.mol_view._update_view = lambda *a, **k: None
+    viewer.mol_view.update_view = lambda *a, **k: None
     viewer.mol_view.set_coordinates(np.random.default_rng(0).standard_normal((200, 3)) * 10)
 
     cloud = np.random.default_rng(2).standard_normal((150000, 3)) * 15

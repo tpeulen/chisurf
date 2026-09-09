@@ -104,7 +104,7 @@ class AVViewer3D(QtWidgets.QWidget):
                 "color": color,
                 "label": ""
             }
-        self.mol_view._update_view()
+        self.mol_view.update_view()
 
     def clear_av(self) -> None:
         """Clear all point overlays and spheres."""
@@ -113,4 +113,4 @@ class AVViewer3D(QtWidgets.QWidget):
             for k in list(self.mol_view._measurements.keys()):
                 if k.startswith("restraint_"):
                     del self.mol_view._measurements[k]
-        self.mol_view._update_view()
+        self.mol_view.update_view()

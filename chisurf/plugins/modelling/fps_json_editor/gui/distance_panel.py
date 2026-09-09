@@ -827,4 +827,7 @@ class DistancePanel(QtWidgets.QWidget):
                 }
 
         self._mol_view_3d._measurements = new_measurements
-        self._mol_view_3d._update_view(fit_camera=False)
+        # `update_view`, not `_update_view`: the viewer made it public and the
+        # private name went with the rename. Same signature, and fit_camera
+        # stays False because the user put the camera where it is.
+        self._mol_view_3d.update_view(fit_camera=False)
