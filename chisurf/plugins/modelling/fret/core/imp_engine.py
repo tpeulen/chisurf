@@ -76,12 +76,22 @@ def DockingParameters(**kwargs):  # noqa: N802 - it is a type name upstream
     """
     params = _bff().DockingParameters()
     for key, value in kwargs.items():
+        if key in _PLUGIN_ONLY:
+            continue
         if not hasattr(params, key):
             raise AttributeError(
                 f"DockingParameters has no field {key!r}"
             )
         setattr(params, key, value)
     return params
+
+
+#: Request knobs that are the plugin's and have no upstream field. They are
+#: accepted and dropped rather than rejected: `av_backend` chose between
+#: LabelLib and IMP.bff, and there is one backend now because
+#: `IMP.bff.labellib` *is* LabelLib's interface. A request that still carries
+#: it is not wrong, it is just describing a choice that no longer exists.
+_PLUGIN_ONLY = frozenset({"av_backend"})
 
 
 def DockingResult(**kwargs):  # noqa: N802 - it is a type name upstream
@@ -143,7 +153,47 @@ def _stop(stop_check: Optional[Callable[[], bool]]):
     return _Stop()
 
 
-def _as_dict(result) -> Dict[str, Any]:
+class Result(dict):
+    """A docking result: a mapping, and an object with attributes.
+
+    Both, because both are wanted and neither alone is. The GUI and the RPC
+    layer serialise it (``to_dict``, ``json.dumps``), and the tests and the
+    scripts read ``res.score`` and ``res.extra["method"]``. A dict subclass
+    whose attributes are its keys is the smallest thing that is honestly
+    both.
+    """
+
+    def __getattr__(self, name: str) -> Any:
+        """Read a field as an attribute.
+
+        Parameters
+        ----------
+        name : str
+            The field.
+
+        Returns
+        -------
+        object
+            The value.
+
+        Raises
+        ------
+        AttributeError
+            When the result has no such field.
+        """
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(
+                f"docking result has no field {name!r}"
+            ) from None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Return this result as a plain dict."""
+        return dict(self)
+
+
+def _as_dict(result) -> "Result":
     """Render a ``DockingResult`` as plain data.
 
     Parameters
@@ -153,31 +203,40 @@ def _as_dict(result) -> Dict[str, Any]:
 
     Returns
     -------
-    dict
+    Result
         The scalar fields, the written paths, the per-pair table and the
-        run's ``extra`` JSON flattened into the same mapping.
+        run's ``extra`` parsed from JSON.
     """
-    out: Dict[str, Any] = {
-        "score": float(result.score),
-        "e_clash": float(result.e_clash),
-        "e_bond": float(result.e_bond),
-        "n_avs": int(result.n_avs),
-        "n_bonds": int(result.n_bonds),
-        "n_distances": int(result.n_distances),
-        "converged": bool(result.converged),
-        "output_dir": str(result.output_dir),
-        "score_csv": str(result.score_csv),
-        "rmf_file": str(result.rmf_file),
-        "best_pdbs": [str(p) for p in result.best_pdbs],
-        "poses": str(result.poses),
-    }
+    out = Result(
+        score=float(result.score),
+        e_clash=float(result.e_clash),
+        e_bond=float(result.e_bond),
+        n_avs=int(result.n_avs),
+        n_bonds=int(result.n_bonds),
+        n_distances=int(result.n_distances),
+        converged=bool(result.converged),
+        output_dir=str(result.output_dir),
+        score_csv=str(result.score_csv),
+        rmf_file=str(result.rmf_file),
+        best_pdbs=[str(p) for p in result.best_pdbs],
+        poses=str(result.poses),
+    )
     out["pairs"] = [
         {
             "name": str(p.name),
-            "model": float(p.model),
-            "experiment": float(p.experiment),
+            "distance_type": str(p.distance_type),
+            "model": float(p.distance_model),
+            "experiment": float(p.distance_exp),
+            "efficiency_model": float(p.efficiency_model),
+            "efficiency_exp": float(p.efficiency_exp),
+            "error_neg": float(p.error_neg),
+            "error_pos": float(p.error_pos),
+            "forster_radius": float(p.forster_radius),
             "chi2": float(p.chi2),
+            "residual": float(p.residual),
             "is_bond": bool(p.is_bond),
+            "position1": str(p.position1),
+            "position2": str(p.position2),
         }
         for p in result.pairs
     ]
@@ -306,23 +365,47 @@ def score(
     score_set: str = "",
     output_csv: str = "",
     mean_position_restraint: bool = False,
-) -> List[Dict[str, Any]]:
-    """Score structures without moving them, ranked best first.
+    ev_weight: float = 1.0,
+    sigma_da: float = 6.0,
+) -> "Result":
+    """Score the structures as they stand, without moving them.
+
+    The assembly is built, the volumes computed and the network evaluated
+    once. Use :func:`screen` to rank a *library*; this answers about one pose.
+
+    Parameters
+    ----------
+    pdb_paths : sequence of str
+        One structure per rigid body.
+    fps_json_path : str
+        The labelling and distance file.
+    score_set : str
+        A named score set; empty uses every distance.
+    output_csv : str
+        Where to write the per-pair table; empty writes none.
+    mean_position_restraint : bool
+        Score the separation of the volumes' mean positions rather than
+        rebuilding both volumes on every evaluation.
+    ev_weight : float
+        Weight of the excluded-volume term.
+    sigma_da : float
+        The mean-position transfer width, Angstrom.
 
     Returns
     -------
-    list of dict
-        One entry per structure, ascending by score, unscorable ones (NaN)
-        last. **Read the NaNs**: a table that is all NaN is not a library of
-        bad models, it is a broken run.
+    Result
+        The score, the per-pair table and the counts.
     """
-    return screen(
-        pdb_paths,
-        fps_json_path,
-        score_set=score_set,
-        output_csv=output_csv,
-        mean_position_restraint=mean_position_restraint,
+    bff = _bff()
+    assembly = bff.create_docking_assembly(
+        [str(p) for p in pdb_paths],
+        str(fps_json_path),
+        str(score_set),
+        bool(mean_position_restraint),
+        float(ev_weight),
+        float(sigma_da),
     )
+    return _as_dict(bff.score_assembly(assembly, str(output_csv)))
 
 
 def screen(
@@ -366,11 +449,15 @@ def screen(
             {
                 "path": str(s.path),
                 "score": float(s.score),
-                "chi2_red": float(s.chi2_red),
-                "n_1sigma": int(s.n_1sigma),
-                "n_2sigma": int(s.n_2sigma),
-                "n_3sigma": int(s.n_3sigma),
-                "n_missing": int(s.n_missing),
+                # FPS's screening diagnostics, under its own names: the
+                # reduced chi-squared, the 1/2/3-sigma violation counts, how
+                # many distances had no model value, and the reference fit.
+                "chi2_r": float(s.chi2_r),
+                "sigma1": int(s.sigma1),
+                "sigma2": int(s.sigma2),
+                "sigma3": int(s.sigma3),
+                "invalid_r": int(s.invalid_r),
+                "ref_rmsd": float(s.ref_rmsd),
             }
         )
     return out
@@ -384,6 +471,7 @@ def estimate_errors(
     params=None,
     minimize: bool = True,
     stop_check: Optional[Callable[[], bool]] = None,
+    n_workers: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Repeat docking from independent random starts and report the spread.
 
@@ -397,6 +485,11 @@ def estimate_errors(
         The best trial's result, with ``n_trials``, ``score_mean``,
         ``score_std``, ``best_trial`` and ``trial_scores`` in its ``extra``.
     """
+    # n_workers is accepted and ignored: the trials run in sequence in C++,
+    # where each one already uses whatever threading the solver has. A
+    # process pool around them was how the Python engine got parallelism, and
+    # taking the argument rather than raising keeps every caller working.
+    del n_workers
     bff = _bff()
     return _as_dict(
         bff.estimate_docking_errors(
@@ -478,6 +571,7 @@ def ensure_fps_json(fps_path: str, pdb_paths: Sequence[str]) -> str:
 
 __all__ = [
     "DockingParameters",
+    "Result",
     "DockingResult",
     "apply_poses",
     "build_assembly",

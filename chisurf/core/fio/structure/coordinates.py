@@ -77,12 +77,13 @@ def _bff():
     import IMP.bff as bff
 
     if not hasattr(bff, "read_structure_table"):
+        build = getattr(bff, "get_build", lambda: "?")()
         raise ImportError(
-            "this IMP.bff has no read_structure_table: it is the IMP-free "
-            f"core (build {getattr(bff, 'get_build', lambda: '?')()}), and "
-            "reading a structure with CHARMM radii or reading mmCIF needs a "
-            "build that links IMP. Pass radii='vdw' for a PDB, or install a "
-            "build whose get_build() reports 'core+imp' or 'imp'."
+            f"this IMP.bff (build {build!r}) has no read_structure_table. "
+            "Either it predates the function and needs rebuilding, or it is "
+            "a build with no IMP linked, where CHARMM radii and mmCIF are "
+            "not available at all. For a PDB, radii='vdw' reads it here and "
+            "needs nothing from IMP.bff."
         )
     return bff
 

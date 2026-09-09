@@ -46,10 +46,13 @@ def _bff():
         raise RmfWriterError("RMF output requires IMP.bff.") from exc
 
     if not hasattr(bff, "RmfStructureWriter"):
+        build = getattr(bff, "get_build", lambda: "?")()
         raise RmfWriterError(
-            "this IMP.bff was built without RMF, so it cannot write a "
-            f"trajectory (build {getattr(bff, 'get_build', lambda: '?')()}). "
-            "The pip wheel leaves RMF out; the conda packages carry it."
+            f"this IMP.bff (build {build!r}) has no RmfStructureWriter. "
+            "Either it predates the class and needs rebuilding, or it was "
+            "built without RMF -- the pip wheel is, because RMF pulls "
+            "Boost.Iostreams and through it all of ICU; the conda packages "
+            "carry it."
         )
     return bff
 
