@@ -36,6 +36,93 @@ guard — re-apply it afterwards.
 
 # Where to pick this up
 
+## chisurf drops its direct IMP dependency (2026-09-09, owner's plan)
+
+**Three of the four done; the fourth is FRET docking and it needs a ruling.**
+
+The premise, corrected by the owner on 2026-09-09: **the bff wheel links IMP
+at C++ level** (`IMPBFF_WITH_IMP`, PRD-139), so the connection layer's
+capability is available from a plain `pip install`. The only rule is that
+**nothing wrapped may name an IMP type**, or SWIG needs IMP's own `.i` files
+and the extension imports `_IMP_kernel` at load. Verified here: a `core+imp`
+build reports `get_build() == "core+imp"`, carries `DyeSimulation`, and its
+Python surface is the core's 913 names rather than the IMP module build's
+1275 -- with `import IMP.atom` failing.
+
+So the work is *doors*, not ports. Landed:
+
+1. ✅ **Structure reading** -- `IMP.bff.read_structure_table` (imp.bff
+   `e36ecff`), IMP's PDB **and mmCIF** readers behind flat columns, with the
+   radius a docking score measures clashes against. chisurf `f150ccc0e`.
+2. ✅ **RMF trajectories** -- `IMP.bff.RmfStructureWriter` (imp.bff
+   `285eedb`), the PMI tree through **RMF's own decorators**, so it needs no
+   IMP at all. It is *core*, not layer. chisurf `61ec4b650`.
+3. ✅ **MRC maps** -- `IMP.bff.write_mrc_grid` (imp.bff `4c780d3`), the
+   sibling of `write_opendx`. chisurf `6890cc758`.
+4. 🚫 **FRET docking** -- blocked on where the *workflow* layer lives.
+
+### What blocks (4), measured 2026-09-09
+
+`chisurf/plugins/modelling/fret/core/` is eight forwarders onto
+`IMP.bff.fret.*`, a subpackage deleted on 2026-08-19 (`6cd2206`, the layout
+migration) and finished off on 2026-08-23 (`6584e80`, "zero .py files in
+pyext, flat IMP.bff namespace only"). **Every one raises
+`ModuleNotFoundError` on both builds today** -- this is not a pip-versus-conda
+difference, the plugin has simply been dead since August. The same cut took
+`IMP.bff.quenching`, `.av` and `.io` with it, which is why
+`test/structure/test_av_dynamic_quenching.py` cannot be collected either.
+
+Checking every name the plugin needs against the flat surface splits it
+cleanly in two:
+
+| module | on flat `IMP.bff` | missing |
+|---|---|---|
+| `stat` | `count_frames`, `read_score_series` | -- |
+| `olga_greedy` | `select_informative_pairs` | -- |
+| `distance` | `average_distance`, `chi2_score`, `histogram_rda`, `model_distance` | `DistanceEvaluator`, `DistanceDistributionEvaluator` |
+| `av` | `AccessibleVolume`, `load_structure_with_vdw` | `BasicAV`, `compute_av`, `compute_avs_for_structure`, `select_backend`, `VDW_RADII` |
+| `engine` | -- | `RigidBody`, `DistanceRestraint`, `SpringParameters` |
+| `imp_engine` | `DockingParameters`, `DockingResult`, `dock_minimize`, `capture_poses`, `apply_poses` | `dock`, `refine`, `screen`, `score`, `build_assembly`, `estimate_errors`, `ensure_fps_json` |
+
+The pattern: **the primitives became C++ and are all there; the workflow
+wrappers around them were dropped.** And the workflows are not gone -- they
+were rewritten inside `imp.bff/bin/imp_bff` as `run_replica_exchange_docking`
+and `estimate_errors`, driving the `imp_bff dock` and `imp_bff dock-errors`
+commands. That file **cannot be imported**: it is a click program with no
+extension, which is why imp.bff's own `test/conftest.py` carries a bespoke
+loader for it.
+
+### The ruling needed
+
+Where do the Python-level docking workflows live? They use `IMP.pmi` and
+`IMP.core` from Python, so they cannot be C++ without a real port.
+
+- **(a) A CLI chisurf shells out to.** `imp_bff dock` and `dock-errors`
+  already exist; `refine`, `screen` and `score` would be added. Honours
+  imp.bff's "zero .py files in pyext" rule, and puts a process boundary
+  between chisurf and IMP, which is the strongest form of the goal. Cost: the
+  plugin's in-process semantics have to be re-expressed -- `dock_minimize`
+  takes a `stop_check` callback and `initial_poses`, and returns a result
+  object the GUI reads.
+- **(b) An importable Python module in imp.bff**, reversing `6584e80` for
+  this one area. Cheapest by far, and keeps the callback semantics. Costs the
+  rule that made the package flat.
+- **(c) Port the workflows to C++.** PRD-137 measured the blocker for the
+  neighbouring case: bff has **no analytic gradients** anywhere, and IMP's
+  restraints are what supply the derivatives its optimiser steps on.
+
+"as a cli or similar" (owner, 2026-09-09) points at (a). Not started, because
+which one is chosen changes the whole shape of `fret/core/`.
+
+### Before touching it
+
+`test/structure/test_av_dynamic_quenching.py` and the eight forwarders fail at
+*collection*, so any suite run that includes them stops there. Exclude them
+until (4) lands, and do not read those failures as caused by whatever you are
+changing.
+
+## The four-repository boundaries
+
 The boundaries below were settled on 2026-08-10 and are the target. Three of
 them are enforced by tests; the rest is debt with a known direction. Open work,
 in the order it should be done:
