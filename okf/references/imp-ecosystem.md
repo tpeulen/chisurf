@@ -36,25 +36,25 @@ guard — re-apply it afterwards.
 
 # Where to pick this up
 
-## Rotamers belong to bff; imp-tricks retains consumers only (2026-09-12)
+## Rotamers belong to bff; the full taxonomy is complete (2026-09-12)
 
 There is no rotamer/cgdye implementation left in `imp-tricks/src`. Its
-remaining registrations imported removed `IMP.bff.cgdye` modules and are
-removed with their empty CLI group. Do not restore those modules: bff owns
-`load_rotamer_library`, `RotamerLibrary`, `RotamerEnsemble.from_frame`,
-placement, selectors and scoring in C++. The two legacy imp-tricks AV/rotamer
-examples now consume that flat API and typed values; their Python plotting
-and voxel-map presentation remain examples. The dipole example retains raw
-library populations; adopting protein-screened weights would change its
-scientific meaning and is not part of this migration.
+obsolete command registrations are removed; its examples consume
+`load_probe_rotamer_library`, `ProbeRotamerLibrary` and
+`ProbeRotamerEnsemble.from_frame` in bff. The dipole example retains raw
+library populations rather than introducing protein screening.
 
-The bff file/API taxonomy has reached probe simulations and accessible
-volumes (`ProbeSimulationTrajectory`, `MolecularProbeSimulation`,
-`ProbeAccessibleVolume*`), with aliases removed. The remaining probe/side-chain
-library split and PTO migration are gated by the separately owned reader
-work; see [bff PRD-141](../../../imp.bff/okf/prds/prd-141.md) and its verification
-note for the build results and existing failure groups. ChiSurf's selector
-forwarder already uses `select_probe_pairs`.
+The complete bff taxonomy is in `54b36b4`: probe and protein-sidechain
+libraries, ProbeRotamer/FRETRotamer/FPSRotamer, photophysics producers,
+bridge/command/compute/OpenMP/compatibility names, and direct ptolib usage.
+The owner explicitly superseded the old reader hold. Downstream consumers
+are committed in ChiSurf `fafb002e4` and imp-tricks `9cce724`.
+
+Full IMP and standalone suites, 108 independent public headers and the
+non-unity standalone core pass. The active modular-ptolib source-package
+task remains separately owned and is not swept into the taxonomy commits;
+its isolated container integration also passes. See
+[bff completion evidence](../../../imp.bff/okf/validation/taxonomy-completion.md).
 
 ## chisurf drops its direct IMP dependency (2026-09-09, owner's plan)
 

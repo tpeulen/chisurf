@@ -2,6 +2,13 @@
 
 ## 2026-09-12
 
+* **Complete bff taxonomy and downstream migration.** Bff `54b36b4`,
+  ChiSurf `fafb002e4`, imp-tricks `9cce724`: the full owner-approved map is
+  finished, including rotamer/sidechain and photophysics splits, private
+  implementations and direct ptolib use. Full bff suites are green;
+  downstream checks pass 170 ChiSurf and 3 imp-tricks tests. The later reader
+  hold is superseded; concurrent modular-ptolib work remains separate.
+
 * **Rotamer ownership confirmed in bff; obsolete imp-tricks consumers updated.**
   No rotamer/cgdye implementation remains in `imp-tricks/src`. Dead CLI
   registrations are removed; two examples use bff's flat C++ API and typed
@@ -9,7 +16,7 @@
   Bff taxonomy stages 2 and 3a are committed (`dd4ac24`, `ea2d9f8`); the
   ChiSurf selector forwards to the new API (`0de8d0db8`) and its AV reference
   follows the new type. The [ecosystem resume point](references/imp-ecosystem.md)
-  records the ownership boundary and remaining rotamer-reader gate.
+  records that earlier checkpoint; the full completion above supersedes its reader gate.
 
 ## 2026-09-09
 
