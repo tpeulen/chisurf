@@ -37,8 +37,8 @@ from chisurf.core.models.tcspc.fret import (
 )
 
 pytestmark = pytest.mark.skipif(
-    not M.have_minimizer() or not hasattr(M._bff, "FretSpectrum"),
-    reason="IMP.bff carries no FretSpectrum")
+    not M.have_minimizer() or not hasattr(M._bff, "FRETSpectrumNode"),
+    reason="IMP.bff carries no FRETSpectrumNode")
 
 N = 512
 DT = 0.032

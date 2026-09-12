@@ -2,7 +2,7 @@
 
 A parse model has run entirely in C++ since 2026-09-01, but a parse model is
 not what anyone fits. This is the first *instrument* model on the graph: the
-curve is `IMP.bff.TcspcDecay`, which reconvolves the lifetime spectrum with
+curve is `IMP.bff.TCSPCDecay`, which reconvolves the lifetime spectrum with
 the measured response using **tttrlib's own** kernels, and the misfit is the
 same `ChiSquared` a parse model uses. bff builds the network, tttrlib
 computes the curve, and ChiSurf is not between them.
@@ -22,8 +22,8 @@ import chisurf.core.fitting.minimizer as M
 from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
 pytestmark = pytest.mark.skipif(
-    not M.have_minimizer() or not hasattr(M._bff, "TcspcDecay"),
-    reason="IMP.bff carries no TcspcDecay")
+    not M.have_minimizer() or not hasattr(M._bff, "TCSPCDecay"),
+    reason="IMP.bff carries no TCSPCDecay")
 
 N = 512
 DT = 0.032

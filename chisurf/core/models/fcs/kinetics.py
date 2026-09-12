@@ -678,7 +678,7 @@ class FCSKineticsModel(ModelCurve):
     #
     # The numerical volume integration (`saturated_curve_shape`) is the one
     # part of this model that cannot be an equation string.  It becomes a
-    # producer node (`IMP.bff.FcsSaturationCurve`) exactly as the MDF shape
+    # producer node (`IMP.bff.FCSSaturationCurve`) exactly as the MDF shape
     # becomes `FcsMdfCurve`: the node publishes the *shape* ``g_sat``, and
     # the compiled equation multiplies only the terms that genuinely are
     # formulas onto it (amplitude ``1/N``, background factor, baseline ``b``).
@@ -723,7 +723,7 @@ class FCSKineticsModel(ModelCurve):
         """
         if (self.saturation_mode == "full"
                 and self.saturation.active
-                and hasattr(_bff, "FcsSaturationCurve")):
+                and hasattr(_bff, 'FCSSaturationCurve')):
             return self.func
         return None
 

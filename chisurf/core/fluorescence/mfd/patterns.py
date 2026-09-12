@@ -39,8 +39,8 @@ the two differ by ``γ``.
 
 **The spectrum algebra is not written here.** A FRET-quenched donor spectrum and a
 polarised spectrum are the *same* transforms the TCSPC decay graph applies, and they
-live in its producer nodes — :class:`IMP.bff.FretSpectrum` and
-:class:`IMP.bff.AnisotropySpectrum`, the two this module drives directly. Keeping a
+live in its producer nodes — :class:`IMP.bff.FRETSpectrumNode` and
+:class:`IMP.bff.PhotophysicsAnisotropySpectrumNode`, the two this module drives directly. Keeping a
 numpy twin here is the failure shape the decay stack has already paid for: two
 owners of one piece of photophysics drift, and the histogram absorbs the drift into
 a distance rather than reporting it. See
@@ -111,9 +111,9 @@ def _bff():
         raise ImportError(
             "chisurf.core.fluorescence.mfd.patterns needs IMP.bff: the lifetime "
             "spectrum algebra it used to duplicate now lives in that package's "
-            "FretSpectrum/AnisotropySpectrum producer nodes"
+            "FRETSpectrumNode/PhotophysicsAnisotropySpectrumNode producer nodes"
         ) from error
-    for required in ("LifetimeSpectrumNode", "FretSpectrum", "AnisotropySpectrum"):
+    for required in ("PhotophysicsLifetimeSpectrumNode", "FRETSpectrumNode", "PhotophysicsAnisotropySpectrumNode"):
         if not hasattr(bff, required):                # pragma: no cover
             raise ImportError(
                 "IMP.bff is present but has no %s; rebuild the extensions "
@@ -181,13 +181,13 @@ def _donor_node(amplitudes, lifetimes):
 
     Returns
     -------
-    IMP.bff.LifetimeSpectrumNode
+    IMP.bff.PhotophysicsLifetimeSpectrumNode
         Already evaluated; ``get_spectrum()`` is valid.
     """
     bff = _bff()
     a = np.atleast_1d(np.asarray(amplitudes, dtype=float)).ravel()
     t = np.atleast_1d(np.asarray(lifetimes, dtype=float)).ravel()
-    node = bff.LifetimeSpectrumNode("donor")
+    node = bff.PhotophysicsLifetimeSpectrumNode("donor")
     node.set_number_of_lifetimes(int(a.size))
     node.add_output_port("donor", bff.Port([0.0], False, True))
     node.set_absolute_amplitudes(False)
@@ -201,7 +201,7 @@ def _donor_node(amplitudes, lifetimes):
 
 def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
                    optics: Optics) -> tuple[np.ndarray, np.ndarray]:
-    """Drive ``IMP.bff.FretSpectrum`` — the donor quenched over a distribution.
+    """Drive ``IMP.bff.FRETSpectrumNode`` — the donor quenched over a distribution.
 
     A distance is a transfer rate, rates add, so the quenched spectrum is the
     Cartesian product of the donor's rates and the transfer rates. That is why
@@ -232,7 +232,7 @@ def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
     """
     bff = _bff()
     donor = _donor_node(donor_amplitudes, donor_lifetimes)
-    node = bff.FretSpectrum("fret")
+    node = bff.FRETSpectrumNode("fret")
     node.build_ports()
     node.add_output_port("fret", bff.Port([0.0], False, True))
     node.get_input_port("donor_lifetime_spectrum").link = \
@@ -250,7 +250,7 @@ def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
 
 def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
                         polarization: str) -> tuple[np.ndarray, np.ndarray]:
-    """Drive ``IMP.bff.AnisotropySpectrum`` for one detection channel.
+    """Drive ``IMP.bff.PhotophysicsAnisotropySpectrumNode`` for one detection channel.
 
     The measured decay is the *product* of the fluorescence decay and
     ``r(t) = r₀ e^{−t/ρ}``, and a product of two sums of exponentials is again a
@@ -302,7 +302,7 @@ def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
     amplitudes, lifetimes : numpy.ndarray
     """
     bff = _bff()
-    node = bff.AnisotropySpectrum("anisotropy")
+    node = bff.PhotophysicsAnisotropySpectrumNode("anisotropy")
     node.set_number_of_rotations(1)
     node.add_output_port("anisotropy", bff.Port([0.0], False, True))
     # Refuses an unknown name rather than defaulting to magic angle, which would
@@ -497,7 +497,7 @@ def donor_lifetime_spectrum_of_state(
     genuine distribution of lifetimes rather than one averaged lifetime — which is
     what lets the decay shape carry the linker width.
 
-    The algebra is :class:`IMP.bff.FretSpectrum`'s — the same producer the TCSPC
+    The algebra is :class:`IMP.bff.FRETSpectrumNode`'s — the same producer the TCSPC
     decay graph quenches its donor with. For a single-exponential donor, which is
     what ``optics.tau_d0`` describes, that reproduces the older closed form
     ``τ(R) = τ_D₀ / (1 + (R₀/R)⁶)`` exactly. For a *multi*-exponential donor it
@@ -569,8 +569,8 @@ def acceptor_lifetime_spectrum(
        **This is the one transform on this module's surface with no producer
        node behind it, and it is therefore the one that can drift.** The decay
        graph's producers cover the donor
-       (:class:`IMP.bff.FretSpectrum`) and the polarisation
-       (:class:`IMP.bff.AnisotropySpectrum`); nothing in ``IMP.bff`` emits the
+       (:class:`IMP.bff.FRETSpectrumNode`) and the polarisation
+       (:class:`IMP.bff.PhotophysicsAnisotropySpectrumNode`); nothing in ``IMP.bff`` emits the
        *sensitized acceptor's* spectrum, because no fitted TCSPC model in the
        graph has needed the acceptor rise yet. The transform is a genuine
        addition to the engine — an ``AcceptorSpectrum`` node taking the quenched
@@ -905,7 +905,7 @@ def polarized_patterns(
     A polarisation is a **spectrum** transform, not a curve one: the measured decay
     is the product of the fluorescence decay and ``r(t)``, and a product of two sums
     of exponentials is a sum of exponentials. So the split is
-    :class:`IMP.bff.AnisotropySpectrum`'s — the producer the TCSPC decay graph
+    :class:`IMP.bff.PhotophysicsAnisotropySpectrumNode`'s — the producer the TCSPC decay graph
     polarises with — and this function only folds the two spectra onto the laser
     period and convolves them with the response::
 

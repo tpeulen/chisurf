@@ -25,7 +25,7 @@ own bounds transform, in C++, driving :class:`IMP.bff.Port` parameters and a
   with nothing crossing per iteration. A group is refused **whole**: one
   member left in Python would put the crossing back.
 * **A TCSPC lifetime decay** becomes ``TcspcDecay -> ChiSquared ->
-  Minimizer``. `IMP.bff.TcspcDecay` reconvolves the lifetime spectrum with
+  Minimizer``. `IMP.bff.TCSPCDecay` reconvolves the lifetime spectrum with
   the measured response using **tttrlib's own** kernels -- the periodic
   ``fconv_per_cs`` and the ``shift_lamp`` timeshift, both taken header-only
   -- so bff builds the network, tttrlib computes the curve, and this package
@@ -662,7 +662,7 @@ def _is_fcs_mdf_model(model) -> bool:
 
 
 def _fcs_mdf_producer(fit, model):
-    """The `IMP.bff.FcsMdfCurve` node in front of an mdf FCS equation.
+    """The `IMP.bff.FCSMdfCurve` node in front of an mdf FCS equation.
 
     The MDF shape is a *numerical kernel* -- a double axial integral, one
     trapezoid times a Gauss--Hermite quadrature -- so it is the one part of
@@ -689,7 +689,7 @@ def _fcs_mdf_producer(fit, model):
 
     Returns ``(node, output_port, carried)`` or ``None``.
     """
-    if not hasattr(_bff, "FcsMdfCurve"):
+    if not hasattr(_bff, 'FCSMdfCurve'):
         return None            # an older build; the director path still fits
     try:
         from chisurf.core.models.fcs.mdf import MdfFCSModel
@@ -706,7 +706,7 @@ def _fcs_mdf_producer(fit, model):
         return None
     optics = optics_group.as_optics()
     try:
-        node = _bff.FcsMdfCurve("mdf_shape")
+        node = _bff.FCSMdfCurve("mdf_shape")
         node.build_ports()
         # Seconds, as the kernel takes them; the equation's own ``x`` stays
         # the data's milliseconds, which is what the relaxation terms use.
@@ -772,7 +772,7 @@ def _is_fcs_kinetics_full_model(model) -> bool:
 
 
 def _fcs_kinetics_full_producer(fit, model):
-    """The `IMP.bff.FcsSaturationCurve` node in front of a kinetics equation.
+    """The `IMP.bff.FCSSaturationCurve` node in front of a kinetics equation.
 
     The saturated shape is a *numerical kernel* -- a steady-state solve on a
     2D (r, z) grid plus a spatial autocorrelation -- so it is the one part of
@@ -796,7 +796,7 @@ def _fcs_kinetics_full_producer(fit, model):
 
     Returns ``(node, output_port, carried)`` or ``None``.
     """
-    if not hasattr(_bff, "FcsSaturationCurve"):
+    if not hasattr(_bff, 'FCSSaturationCurve'):
         return None            # an older build; the director path still fits
     sat = model.saturation
     tau_ms = np.ascontiguousarray(
@@ -804,7 +804,7 @@ def _fcs_kinetics_full_producer(fit, model):
     if tau_ms.size == 0:
         return None
     try:
-        node = _bff.FcsSaturationCurve("fcs_saturation")
+        node = _bff.FCSSaturationCurve("fcs_saturation")
         node.build_ports()
         # Seconds, as the kernel takes them; the equation's own ``x`` stays
         # the data's milliseconds.
@@ -1202,7 +1202,7 @@ def _fret_source(model, lifetimes, carried):
 
     Returns ``(donor_node, output_port, keepalive)`` or ``None``.
     """
-    if not hasattr(_bff, "FretSpectrum"):
+    if not hasattr(_bff, 'FRETSpectrumNode'):
         return None            # an older build; the numpy path still fits
     import chisurf.core.settings
     settings = chisurf.core.settings.cs_settings["fret"]
@@ -1220,13 +1220,13 @@ def _fret_source(model, lifetimes, carried):
         return None
 
     try:
-        donor = _bff.LifetimeSpectrumNode("donor")
+        donor = _bff.PhotophysicsLifetimeSpectrumNode("donor")
         donor.set_number_of_lifetimes(len(lifetimes._amplitudes))
         donor.add_output_port("donor", _bff.Port([0.0], False, True))
         donor.set_absolute_amplitudes(bool(lifetimes.absolute_amplitudes))
         donor.set_normalize_amplitudes(bool(lifetimes.normalize_amplitudes))
 
-        fret = _bff.FretSpectrum("fret")
+        fret = _bff.FRETSpectrumNode("fret")
         fret.build_ports()
         fret.add_output_port("fret", _bff.Port([0.0], False, True))
         fret.get_input_port("donor_lifetime_spectrum").link = \
@@ -1273,7 +1273,7 @@ def _unpolarised_source(lifetimes):
     a polarisation, a FRET quenching -- the spectrum has to exist *before*
     the instrument, and this is the node it exists in.
     """
-    node = _bff.LifetimeSpectrumNode("lifetimes")
+    node = _bff.PhotophysicsLifetimeSpectrumNode("lifetimes")
     node.set_number_of_lifetimes(len(lifetimes._amplitudes))
     node.add_output_port("lifetimes", _bff.Port([0.0], False, True))
     node.set_absolute_amplitudes(bool(lifetimes.absolute_amplitudes))
@@ -1288,11 +1288,11 @@ def _rotation_link(anisotropy, upstream, carried):
     what differs is the spectrum that reaches it. A polarised model is
     therefore *one node further upstream*, not a second builder and not a
     term added to `TcspcDecay` -- which is the arrangement
-    :meth:`IMP.bff.TcspcDecay.set_spectrum_from_port` exists for. It sits
+    :meth:`IMP.bff.TCSPCDecay.set_spectrum_from_port` exists for. It sits
     last in the chain because `update_model` applies it last: to the FRET
     spectrum when there is one, to the plain one otherwise.
 
-    The transform itself is `IMP.bff.AnisotropySpectrum`, which reproduces
+    The transform itself is `IMP.bff.PhotophysicsAnisotropySpectrumNode`, which reproduces
     :func:`chisurf.core.fluorescence.anisotropy.decay.calculcate_spectrum`
     entry for entry. It has to: a mixed channel is the *union* of two scaled
     spectra rather than their sum, so both its length and its ordering are
@@ -1301,10 +1301,10 @@ def _rotation_link(anisotropy, upstream, carried):
 
     Returns ``(node, output_port)`` or ``None``.
     """
-    if not hasattr(_bff, "AnisotropySpectrum"):
+    if not hasattr(_bff, 'PhotophysicsAnisotropySpectrumNode'):
         return None            # an older build; the numpy path still fits
     try:
-        rotation = _bff.AnisotropySpectrum("anisotropy")
+        rotation = _bff.PhotophysicsAnisotropySpectrumNode("anisotropy")
         rotation.set_number_of_rotations(len(anisotropy._bs))
         rotation.add_output_port("anisotropy", _bff.Port([0.0], False, True))
         # Refuses an unknown name rather than defaulting to magic angle,
@@ -1393,7 +1393,7 @@ def _lifetime_objective(fit, model, free):
     """A TCSPC decay: ``TcspcDecay -> ChiSquared -> Minimizer``.
 
     The second model family on the graph, and the first that is not one
-    compiled equation. The curve is `IMP.bff.TcspcDecay`, which reconvolves
+    compiled equation. The curve is `IMP.bff.TCSPCDecay`, which reconvolves
     the lifetime spectrum with the response using **tttrlib's own** kernels;
     the misfit is the same `ChiSquared` a parse model uses. So a lifetime fit
     crosses the SWIG boundary once per ``run()`` rather than once per
@@ -1447,7 +1447,7 @@ def _lifetime_objective(fit, model, free):
         return None
 
     try:
-        node = _bff.TcspcDecay("decay")
+        node = _bff.TCSPCDecay("decay")
         node.set_number_of_lifetimes(len(lifetimes._amplitudes))
         node.add_output_port("decay", _bff.Port([0.0], False, True))
         node.set_response_array(irf_y)

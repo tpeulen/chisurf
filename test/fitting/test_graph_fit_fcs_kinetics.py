@@ -1,6 +1,6 @@
 """FCS kinetics "full" saturation mode fits through the graph (PRD-119).
 
-The numerical volume integration (`IMP.bff.FcsSaturationCurve`) is a producer
+The numerical volume integration (`IMP.bff.FCSSaturationCurve`) is a producer
 node in front of the same ``Expression -> ChiSquared -> Minimizer`` the
 closed-form FCS modes use.  Pinned here:
 

@@ -274,7 +274,7 @@ class MdfFCSModel(ModelCurve):
     #
     # The Enderlein shape is a numerical kernel, so unlike a parse model this
     # equation does not contain it: `g_mdf` is a *variable* an
-    # `IMP.bff.FcsMdfCurve` producer node writes, and the equation only
+    # `IMP.bff.FCSMdfCurve` producer node writes, and the equation only
     # multiplies the terms that genuinely are formulas onto it (the bunching
     # factors, the amplitude, the baseline). `w0`, `wem`, `D` and `diam` are
     # that node's ports and are therefore absent from
