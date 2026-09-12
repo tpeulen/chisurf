@@ -1,5 +1,16 @@
 # Update Log
 
+## 2026-09-12
+
+* **Rotamer ownership confirmed in bff; obsolete imp-tricks consumers updated.**
+  No rotamer/cgdye implementation remains in `imp-tricks/src`. Dead CLI
+  registrations are removed; two examples use bff's flat C++ API and typed
+  library/ensemble values, with the dipole example's raw populations preserved.
+  Bff taxonomy stages 2 and 3a are committed (`dd4ac24`, `ea2d9f8`); the
+  ChiSurf selector forwards to the new API (`0de8d0db8`) and its AV reference
+  follows the new type. The [ecosystem resume point](references/imp-ecosystem.md)
+  records the ownership boundary and remaining rotamer-reader gate.
+
 ## 2026-09-09
 
 * **Can chisurf drop `imp` for the `bff` wheel? Measured: four call sites, none

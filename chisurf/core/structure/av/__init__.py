@@ -196,7 +196,7 @@ class BasicAV:
         ng = int(result.get_ng())
         density = np.ascontiguousarray(
             result.get_density(), dtype=np.float64).reshape(ng, ng, ng)
-        #: The upstream ``IMP.bff.AccessibleVolume`` this was built from, kept
+        #: The upstream ``IMP.bff.ProbeAccessibleVolume`` this was built from, kept
         #: for the dynamic (quenching/FRET field) model built on first use.
         self._upstream_av = result
 

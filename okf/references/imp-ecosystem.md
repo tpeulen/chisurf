@@ -36,6 +36,26 @@ guard — re-apply it afterwards.
 
 # Where to pick this up
 
+## Rotamers belong to bff; imp-tricks retains consumers only (2026-09-12)
+
+There is no rotamer/cgdye implementation left in `imp-tricks/src`. Its
+remaining registrations imported removed `IMP.bff.cgdye` modules and are
+removed with their empty CLI group. Do not restore those modules: bff owns
+`load_rotamer_library`, `RotamerLibrary`, `RotamerEnsemble.from_frame`,
+placement, selectors and scoring in C++. The two legacy imp-tricks AV/rotamer
+examples now consume that flat API and typed values; their Python plotting
+and voxel-map presentation remain examples. The dipole example retains raw
+library populations; adopting protein-screened weights would change its
+scientific meaning and is not part of this migration.
+
+The bff file/API taxonomy has reached probe simulations and accessible
+volumes (`ProbeSimulationTrajectory`, `MolecularProbeSimulation`,
+`ProbeAccessibleVolume*`), with aliases removed. The remaining probe/side-chain
+library split and PTO migration are gated by the separately owned reader
+work; see [bff PRD-141](../../../imp.bff/okf/prds/prd-141.md) and its verification
+note for the build results and existing failure groups. ChiSurf's selector
+forwarder already uses `select_probe_pairs`.
+
 ## chisurf drops its direct IMP dependency (2026-09-09, owner's plan)
 
 **Three of the four done; the fourth is FRET docking and it needs a ruling.**
