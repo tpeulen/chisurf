@@ -1,6 +1,6 @@
 """Olga-style greedy informative FRET pair selection.
 
-The selector itself is ``IMP.bff.select_informative_pairs``, in C++: it takes
+The selector itself is ``IMP.bff.select_probe_pairs``, in C++: it takes
 efficiencies and RMSDs and answers which pairs to measure, which is a
 question about numbers and not about this application.
 
@@ -134,7 +134,7 @@ def select_informative_pairs(
     """
     import IMP.bff as bff
 
-    return bff.select_informative_pairs(
+    return bff.select_probe_pairs(
         np.ascontiguousarray(effs, dtype=np.float64),
         np.ascontiguousarray(rmsds, dtype=np.float64),
         float(err),
