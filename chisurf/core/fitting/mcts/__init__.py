@@ -3,8 +3,11 @@
 The package is in the middle of a migration and holds two implementations.
 
 **The native bridge** (:mod:`.native`, :mod:`.dispatcher`, :mod:`.execution`,
-:mod:`.tcspc_lifetime`, :mod:`.fixed_structure`, :mod:`.global_fit`) is the one
-that ships.  A capability declares parameters, structures, actions and a score;
+:mod:`.descriptions`, :mod:`.fixed_structure`, :mod:`.global_fit`) is the one
+that ships.  A lifetime fit is handed to BFF's ``tcspc_lifetime`` model-search
+description, which builds the whole family in C++; ChiSurf only supplies the
+measurement and the user's parameter settings, and refuses what the description
+cannot represent.  A capability declares parameters, structures, actions and a score;
 the bridge validates that declaration, maps it onto the complete native graph
 the ordinary fitting backend already builds, and hands the whole problem to
 ``IMP.bff.ModelSearch``.  Nothing crosses back into Python per candidate, and a
@@ -43,8 +46,8 @@ from chisurf.core.fitting.mcts.native import (
     NativeStructure,
     prepare_native_model_search,
 )
-from chisurf.core.fitting.mcts.tcspc_lifetime import (
-    prepare_tcspc_lifetime_search,
+from chisurf.core.fitting.mcts.descriptions import (
+    prepare_lifetime_description_search,
 )
 
 #: Legacy engine name -> the submodule that defines it.  Reaching one through
@@ -78,7 +81,7 @@ _NATIVE = [
     "NativeAction", "NativeParameterGroup", "NativeScore",
     "NativeSearchDeclaration", "NativeSearchPreparation", "NativeSearchReason",
     "NativeStructure", "prepare_native_model_search",
-    "prepare_tcspc_lifetime_search",
+    "prepare_lifetime_description_search",
 ]
 
 __all__ = [*_NATIVE, *sorted(_LEGACY)]

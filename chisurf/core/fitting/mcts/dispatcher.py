@@ -45,7 +45,10 @@ def _with_reasons(
     when the fallback refuses too does the caller need both halves of the
     story.
     """
-    if not deferred or not isinstance(result, NativeSearchPreparation):
+    # `supported` means a problem and no reasons, so prefixing a successful
+    # fallback would turn a working refinement into a refusal.
+    if (not deferred or not isinstance(result, NativeSearchPreparation)
+            or result.problem is not None):
         return result
     return NativeSearchPreparation(
         capability_id=result.capability_id,
@@ -103,32 +106,6 @@ def declare_model_search(
                 return declaration
             deferred.extend(declaration.reasons)
 
-    try:
-        from chisurf.core.models.tcspc.lifetime import LifetimeModel
-    except ImportError:
-        LifetimeModel = ()
-    if isinstance(model, LifetimeModel):
-        try:
-            from chisurf.core.fitting.mcts.tcspc_lifetime import (
-                declare_tcspc_lifetime_search,
-            )
-        except ImportError as error:
-            deferred.append(
-                NativeSearchReason(
-                    "lifetime_capability_unavailable",
-                    f"the BFF TCSPC/lifetime capability is unavailable: {error}",
-                    "lifetime",
-                )
-            )
-        else:
-            declaration = declare_tcspc_lifetime_search(fit)
-            if (
-                not isinstance(declaration, NativeSearchPreparation)
-                or not _allows_fixed_structure(declaration)
-            ):
-                return declaration
-            deferred.extend(declaration.reasons)
-
     from chisurf.core.fitting.mcts.fixed_structure import (
         build_fixed_structure_declaration,
     )
@@ -165,10 +142,31 @@ def prepare_model_search(fit: Any) -> NativeSearchPreparation:
                 f"the BFF global-search capability is unavailable: {error}",
             )
         return prepare_global_model_search(fit, declare_model_search)
+    # A single lifetime fit is searched by the family BFF ships as a
+    # description; nothing here declares its structures. If BFF cannot
+    # represent the fit completely -- a polarised decay, a measured
+    # background curve -- that is a refusal of *structure* search only, and
+    # the fit still gets parameter refinement below, with the reason kept.
+    deferred: tuple[NativeSearchReason, ...] = ()
+    single = _single_fit(fit)
+    try:
+        from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    except ImportError:
+        LifetimeModel = ()
+    if isinstance(getattr(single, "model", None), LifetimeModel):
+        from chisurf.core.fitting.mcts.descriptions import (
+            prepare_lifetime_description_search,
+        )
+
+        described = prepare_lifetime_description_search(single)
+        if described.supported:
+            return described
+        deferred = tuple(described.reasons)
+
     declaration = declare_model_search(fit)
     if isinstance(declaration, NativeSearchPreparation):
-        return declaration
-    return prepare_native_model_search(declaration)
+        return _with_reasons(declaration, deferred)
+    return _with_reasons(prepare_native_model_search(declaration), deferred)
 
 
 __all__ = ["CAPABILITY_ID", "declare_model_search", "prepare_model_search"]
