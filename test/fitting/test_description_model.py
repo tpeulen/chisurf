@@ -495,3 +495,32 @@ def test_the_view_presents_the_classic_outputs():
     assert outputs["<tau>F"] == pytest.approx(classic.lifetimes.fluorescence_averaged_lifetime, rel=1e-12)
     assert {m.key for m in view.get_plot_reference_modes()} == {"tcspc_total_photons", "tcspc_peak_photons"}
     assert "distribution" in [plot.key for plot in view.view_spec().plots]
+
+
+def test_a_lifetime_linked_across_two_views_is_fitted_globally():
+    """A ChiSurf link between two described models: one lifetime, two decays."""
+    y = _simulated()
+    curves = [chisurf.core.data.DataCurve(x=_axis(), y=y.copy(), ey=np.sqrt(np.maximum(y, 1.0)))
+              for _ in range(2)]
+    group = fitting.FitGroup(data=chisurf.core.data.DataGroup(curves),
+                             model_class=for_family("tcspc_lifetime"))
+    for member in group:
+        member.xmin, member.xmax = 0, N
+        member.model.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=_irf()))
+        member.model.set_scalar("period", PERIOD)
+        assert member.model.problem is not None, member.model.missing
+        member.model.structure = "lifetime.components.2"
+    first, second = ({p.canonical_id: p for p in m.model.parameters_all
+                      if not getattr(p, "is_output", False)} for m in group)
+    second["lifetime.tau.0"].link = first["lifetime.tau.0"]
+    for member in group:
+        member.model.find_parameters()
+    group._model.find_parameters()
+    group.run(local_first=False)
+    assert second["lifetime.tau.0"].value == first["lifetime.tau.0"].value
+    taus = sorted([first["lifetime.tau.0"].value, first["lifetime.tau.1"].value])
+    assert taus == pytest.approx([TRUTH["lifetime.tau.1"], TRUTH["lifetime.tau.0"]], rel=1e-3)
+    # Rebuilding the follower keeps the link.
+    group[1].model.set_scalar("period", PERIOD + 0.5)
+    assert group[1].model.problem is not None
+    assert second["lifetime.tau.0"].is_linked

@@ -50,7 +50,10 @@ class DescriptionParameter(FittingParameter):
 
     @property
     def value(self) -> float:
-        return float(self._port.value)
+        # A port that follows another (a link across fits) reads as a
+        # one-element vector.
+        pv = self._port.value
+        return pv if type(pv) is float else float(np.atleast_1d(pv)[0])
 
     @value.setter
     def value(self, value: float):
