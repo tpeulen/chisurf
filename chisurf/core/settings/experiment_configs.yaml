@@ -71,7 +71,8 @@ tcspc:
     - chisurf.core.models.description.tcspc_fret_worm_like_chain
     - chisurf.core.models.description.tcspc_fret_saw_nu
     - chisurf.core.models.description.tcspc_fret_ising_chain
-    - chisurf.core.models.tcspc.pddem.PDDEMModel
+    # Energy migration between two chromophores, through BFF's transfer kinetics.
+    - chisurf.core.models.description.tcspc_pddem
     - chisurf.core.models.tcspc.distributed_acceptor.DistributedAcceptorModel
     - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
     # Pure compute model; its editor is generated from mix_model.view.json.

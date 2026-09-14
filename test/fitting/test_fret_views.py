@@ -75,7 +75,8 @@ def _view(family, structure, values, scalars=None):
         model.structure = structure
     shared = {"donor.amplitude.0": 1.0, "donor.tau.0": 3.8, "fret.x_donly": 0.15,
               "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
-    for canonical, value in {**shared, **values}.items():
+    ids = set(problem.get_parameter_ids())
+    for canonical, value in {**{k: v for k, v in shared.items() if k in ids}, **values}.items():
         _set(problem, canonical, value)
     model.update()
     return model
@@ -212,3 +213,27 @@ def test_static_isotropic_orientation_factors():
         "distance.mean.0": 47.0, "distance.sigma.0": 6.0, "distance.shape.0": 0.0, "distance.amplitude.0": 1.0},
         scalars={"static_orientation": 1.0, "kappa2_bins": 512.0})
     np.testing.assert_allclose(np.asarray(binned.y), np.asarray(reference.y), rtol=2e-3)
+
+
+@pytest.mark.parametrize("mode, rtol", [(1.0, 1e-9), (0.0, 1e-6)])
+def test_pddem(mode, rtol):
+    """Energy migration A <-> B through the one transfer-kinetics implementation."""
+    from chisurf.core.models.tcspc.pddem import PDDEMModel
+
+    def classic(model):
+        model.fa._lifetimes[0].value = 1.2
+        model.gaussians._gaussianMeans[0].value = 45.0
+        model.gaussians._gaussianSigma[0].value = 6.0
+        p = model.pddem
+        for name, value in (("_fAB", 1.0), ("_fBA", 0.3), ("_pA", 0.1), ("_pB", 0.05),
+                            ("_pxA", 0.9), ("_pxB", 0.1), ("_pmA", 0.2), ("_pmB", 0.8)):
+            getattr(p, name).value = value
+
+    reference = _classic(PDDEMModel, classic)
+    view = _view("tcspc_pddem", None, {
+        "chromophore_a.amplitude.0": 1.0, "chromophore_a.tau.0": 1.2,
+        "distance.mean.0": 45.0, "distance.sigma.0": 6.0, "distance.shape.0": 0.0, "distance.amplitude.0": 1.0,
+        "pddem.f_ab": 1.0, "pddem.f_ba": 0.3, "pddem.pure_a": 0.1, "pddem.pure_b": 0.05,
+        "pddem.excitation_a": 0.9, "pddem.excitation_b": 0.1, "pddem.emission_a": 0.2, "pddem.emission_b": 0.8},
+        scalars={"transfer_mode": mode})
+    np.testing.assert_allclose(np.asarray(view.y), np.asarray(reference.y), rtol=rtol, atol=1e-9)
