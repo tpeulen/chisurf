@@ -165,3 +165,27 @@ def test_a_fret_model_can_be_mixed():
     mixture = fitting.Fit(model_class=for_family("tcspc_mixture"), data=_data()).model
     mixture.append_model(view)
     assert mixture.model_names
+
+
+@pytest.mark.parametrize("polarization, code", [("vv", 1), ("vh", 2)])
+def test_a_polarized_fret_decay(polarization, code):
+    from chisurf.core.models.tcspc.fret import GaussianModel
+
+    def classic(model):
+        g = model.gaussians
+        g._gaussianMeans[0].value = 44.0
+        g._gaussianSigma[0].value = 6.0
+        model.anisotropy.polarization_type = polarization
+        model.anisotropy.add_rotation(b=0.2, rho=2.0)
+        model.anisotropy._r0.value = 0.38
+        model.anisotropy._g.value = 1.3
+
+    reference = _classic(GaussianModel, classic)
+    rotation = {"rotation.amplitude.0": reference.anisotropy._bs[0].value,
+                "rotation.time.0": reference.anisotropy._rhos[0].value}
+    view = _view("tcspc_fret_gaussian", None, {
+        "distance.mean.0": 44.0, "distance.sigma.0": 6.0, "distance.shape.0": 0.0, "distance.amplitude.0": 1.0,
+        "anisotropy.r0": 0.38, "anisotropy.g": 1.3,
+        "anisotropy.l1": reference.anisotropy._l1.value, "anisotropy.l2": reference.anisotropy._l2.value,
+        **rotation}, scalars={"polarization": code})
+    _assert_same(reference, view)
