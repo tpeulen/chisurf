@@ -12,6 +12,7 @@ from typing import Any
 from chisurf.core.fitting.mcts.native import (
     NativeSearchDeclaration,
     NativeSearchPreparation,
+    NativeSearchReason,
     prepare_native_model_search,
     unsupported,
 )
@@ -33,6 +34,27 @@ def _single_fit(fit: Any) -> Any:
     return members[0] if len(members) == 1 else fit
 
 
+def _with_reasons(
+    result: NativeSearchDeclaration | NativeSearchPreparation,
+    deferred: tuple[NativeSearchReason, ...],
+) -> NativeSearchDeclaration | NativeSearchPreparation:
+    """Prefix a refusal with why the model family's own capability declined.
+
+    A successful fixed-structure declaration keeps no trace: the family
+    limitation cost the fit nothing, so it is not a refusal to report.  Only
+    when the fallback refuses too does the caller need both halves of the
+    story.
+    """
+    if not deferred or not isinstance(result, NativeSearchPreparation):
+        return result
+    return NativeSearchPreparation(
+        capability_id=result.capability_id,
+        problem=result.problem,
+        binding=result.binding,
+        reasons=deferred + tuple(result.reasons),
+    )
+
+
 def declare_model_search(
     fit: Any,
 ) -> NativeSearchDeclaration | NativeSearchPreparation:
@@ -46,6 +68,13 @@ def declare_model_search(
             "the selected object does not expose a fitting model",
         )
 
+    # A family capability that is *absent* must cost the fit no more than one
+    # that declines structure only: both fall through to fixed-structure
+    # refinement below.  Refusing outright would leave a model whose family
+    # module has not been written yet unable to refine parameters it shares
+    # with every other family.
+    deferred: list[NativeSearchReason] = []
+
     # Family imports stay local.  Model search is optional at import time and
     # loading the fitting GUI must not import every scientific model family.
     try:
@@ -58,17 +87,21 @@ def declare_model_search(
                 declare_tcspc_fret_search,
             )
         except ImportError as error:
-            return unsupported(
-                CAPABILITY_ID,
-                "fret_capability_unavailable",
-                f"the BFF TCSPC/FRET capability is unavailable: {error}",
+            deferred.append(
+                NativeSearchReason(
+                    "fret_capability_unavailable",
+                    f"the BFF TCSPC/FRET capability is unavailable: {error}",
+                    "fret",
+                )
             )
-        declaration = declare_tcspc_fret_search(fit)
-        if (
-            not isinstance(declaration, NativeSearchPreparation)
-            or not _allows_fixed_structure(declaration)
-        ):
-            return declaration
+        else:
+            declaration = declare_tcspc_fret_search(fit)
+            if (
+                not isinstance(declaration, NativeSearchPreparation)
+                or not _allows_fixed_structure(declaration)
+            ):
+                return declaration
+            deferred.extend(declaration.reasons)
 
     try:
         from chisurf.core.models.tcspc.lifetime import LifetimeModel
@@ -80,23 +113,27 @@ def declare_model_search(
                 declare_tcspc_lifetime_search,
             )
         except ImportError as error:
-            return unsupported(
-                CAPABILITY_ID,
-                "lifetime_capability_unavailable",
-                f"the BFF TCSPC/lifetime capability is unavailable: {error}",
+            deferred.append(
+                NativeSearchReason(
+                    "lifetime_capability_unavailable",
+                    f"the BFF TCSPC/lifetime capability is unavailable: {error}",
+                    "lifetime",
+                )
             )
-        declaration = declare_tcspc_lifetime_search(fit)
-        if (
-            not isinstance(declaration, NativeSearchPreparation)
-            or not _allows_fixed_structure(declaration)
-        ):
-            return declaration
+        else:
+            declaration = declare_tcspc_lifetime_search(fit)
+            if (
+                not isinstance(declaration, NativeSearchPreparation)
+                or not _allows_fixed_structure(declaration)
+            ):
+                return declaration
+            deferred.extend(declaration.reasons)
 
     from chisurf.core.fitting.mcts.fixed_structure import (
         build_fixed_structure_declaration,
     )
 
-    return build_fixed_structure_declaration(fit)
+    return _with_reasons(build_fixed_structure_declaration(fit), tuple(deferred))
 
 
 def prepare_model_search(fit: Any) -> NativeSearchPreparation:

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import threading
 
-import IMP.bff as bff
+import pytest
+
+# The execution boundary is BFF-only by design, so there is nothing here to
+# test without it.  Skip rather than error at collection.
+bff = pytest.importorskip("IMP.bff")
 
 from chisurf.core.fitting.mcts.execution import (
     NativeSearchSettings,

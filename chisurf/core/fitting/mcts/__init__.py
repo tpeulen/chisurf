@@ -1,52 +1,38 @@
-"""Reinforcement-learning model selection for TCSPC decays (MCTS + TCSPCNet).
+"""Model-structure search for ChiSurf fits, run by BFF.
 
-The package turns structural model selection — how many lifetime components,
-whether the IRF shift, prompt scatter and dark background are fitted — into a
-search problem: a Gymnasium-style environment (:mod:`.environment`) whose
-every transition runs an embedded continuous optimizer, a Monte Carlo tree
-search over its discrete actions (:mod:`.mcts`) guided by a 1D convolutional
-policy/value network (:mod:`.network`), a self-play trainer that simulates
-decays and lets the network learn the selection (:mod:`.training`), a bridge
-that applies the selected model to a live ChiSurf fit (:mod:`.apply`), and a
-demonstration driver (:mod:`.main`).
+The package is in the middle of a migration and holds two implementations.
 
-The FRET environment (:class:`~chisurf.core.fitting.mcts.environment.FretEnv`)
-extends the same mask to Gaussian distance-distribution fits, including the
-linked donor-only reference analysis — and asks the user, through an
-:class:`~chisurf.core.fitting.mcts.environment.AgentQuestion` (a message box
-in the GUI), which loaded dataset is that reference when it is not clear.
+**The native bridge** (:mod:`.native`, :mod:`.dispatcher`, :mod:`.execution`,
+:mod:`.tcspc_lifetime`, :mod:`.fixed_structure`, :mod:`.global_fit`) is the one
+that ships.  A capability declares parameters, structures, actions and a score;
+the bridge validates that declaration, maps it onto the complete native graph
+the ordinary fitting backend already builds, and hands the whole problem to
+``IMP.bff.ModelSearch``.  Nothing crosses back into Python per candidate, and a
+model BFF cannot represent is refused rather than approximated.  These names are
+exported here.
+
+**The legacy engine** (:mod:`.environment`, :mod:`.mcts`, :mod:`.network`,
+:mod:`.training`, :mod:`.torch_backend`, :mod:`.main`, :mod:`.apply`) is the
+original pure-Python design: a Gymnasium-style environment whose every
+transition ran an embedded optimizer, a Python tree search over its discrete
+actions, and a convolutional policy/value network trained by self-play.  It is
+superseded by the bridge and scheduled for deletion once BFF owns the remaining
+model families.
+
+Legacy names stay reachable from this package but are resolved **lazily**, on
+first attribute access, and warn.  Importing them eagerly cost every caller the
+whole engine -- roughly four thousand lines plus the fluorescence simulation and
+machine-learning stack -- merely to reach the bridge, which is why the GUI
+imports bridge submodules by full path instead of going through here.  Import
+the submodule directly if you genuinely want the legacy engine.
 """
 
-from chisurf.core.fitting.mcts.environment import (
-    AgentQuestion,
-    DiscreteAction,
-    EnvConfig,
-    FitEnv,
-    FitState,
-    FitStats,
-    FretEnv,
-    FretEnvConfig,
-    ModelStructure,
-    N_ACTIONS,
-    N_TOGGLE_SLOTS,
-    TOGGLE_PARAMETER_BASE,
-)
-from chisurf.core.fitting.mcts.mcts import (
-    MCTSConfig,
-    MCTSFittingEngine,
-    Node,
-    SearchResult,
-)
-from chisurf.core.fitting.mcts.network import (
-    NetConfig,
-    TCSPCNet,
-    masked_softmax,
-)
-from chisurf.core.fitting.mcts.apply import (
-    environment_from_fit,
-    fit_is_tcspc,
-    transfer_state_to_fit,
-)
+from __future__ import annotations
+
+import importlib
+import warnings
+from typing import Any
+
 from chisurf.core.fitting.mcts.native import (
     NativeAction,
     NativeParameterGroup,
@@ -60,31 +46,58 @@ from chisurf.core.fitting.mcts.native import (
 from chisurf.core.fitting.mcts.tcspc_lifetime import (
     prepare_tcspc_lifetime_search,
 )
-from chisurf.core.fitting.mcts.training import (
-    FretSimulateConfig,
-    SelfPlayConfig,
-    SelfPlayReport,
-    SimulateConfig,
-    SimulatedDecay,
-    SimulatedFretDecay,
-    evaluate_network,
-    self_play_train,
-    simulate_decay,
-    simulate_fret_decay,
-)
 
-__all__ = [
-    "AgentQuestion", "DiscreteAction", "EnvConfig", "FitEnv", "FitState",
-    "FitStats", "FretEnv", "FretEnvConfig", "ModelStructure", "N_ACTIONS", "N_TOGGLE_SLOTS",
-    "TOGGLE_PARAMETER_BASE",
-    "MCTSConfig", "MCTSFittingEngine", "Node", "SearchResult",
-    "NetConfig", "TCSPCNet", "masked_softmax",
-    "transfer_state_to_fit", "environment_from_fit", "fit_is_tcspc",
+#: Legacy engine name -> the submodule that defines it.  Reaching one through
+#: this package imports that submodule and nothing else.
+_LEGACY: dict[str, str] = {
+    name: "environment"
+    for name in (
+        "AgentQuestion", "DiscreteAction", "EnvConfig", "FitEnv", "FitState",
+        "FitStats", "FretEnv", "FretEnvConfig", "ModelStructure", "N_ACTIONS",
+        "N_TOGGLE_SLOTS", "TOGGLE_PARAMETER_BASE",
+    )
+} | {
+    name: "mcts"
+    for name in ("MCTSConfig", "MCTSFittingEngine", "Node", "SearchResult")
+} | {
+    name: "network" for name in ("NetConfig", "TCSPCNet", "masked_softmax")
+} | {
+    name: "apply"
+    for name in ("environment_from_fit", "fit_is_tcspc", "transfer_state_to_fit")
+} | {
+    name: "training"
+    for name in (
+        "FretSimulateConfig", "SelfPlayConfig", "SelfPlayReport",
+        "SimulateConfig", "SimulatedDecay", "SimulatedFretDecay",
+        "evaluate_network", "self_play_train", "simulate_decay",
+        "simulate_fret_decay",
+    )
+}
+
+_NATIVE = [
     "NativeAction", "NativeParameterGroup", "NativeScore",
     "NativeSearchDeclaration", "NativeSearchPreparation", "NativeSearchReason",
     "NativeStructure", "prepare_native_model_search",
     "prepare_tcspc_lifetime_search",
-    "FretSimulateConfig", "SelfPlayConfig", "SelfPlayReport", "SimulateConfig",
-    "SimulatedDecay", "SimulatedFretDecay", "evaluate_network", "self_play_train",
-    "simulate_decay", "simulate_fret_decay",
 ]
+
+__all__ = [*_NATIVE, *sorted(_LEGACY)]
+
+
+def __getattr__(name: str) -> Any:
+    """Resolve a legacy engine name on first use (PEP 562)."""
+    module = _LEGACY.get(name)
+    if module is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    warnings.warn(
+        f"{__name__}.{name} belongs to the superseded Python search engine and "
+        f"is scheduled for deletion; import it from "
+        f"{__name__}.{module} if you still need it.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return getattr(importlib.import_module(f"{__name__}.{module}"), name)
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)
