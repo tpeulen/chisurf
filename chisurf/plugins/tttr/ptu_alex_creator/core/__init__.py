@@ -212,7 +212,17 @@ def auto_alex_windows(
         share = acceptor_counts / np.maximum(donor_counts + acceptor_counts, 1)
     lit_share = share[lit]
     low, high = np.percentile(lit_share, 10), np.percentile(lit_share, 90)
-    if high - low < 0.05:
+    # An alternation has to stand out of the counting noise, not out of a
+    # fixed number. A bin's share is binomial, so with n photons per bin its
+    # 10-90 spread is about 2.6 standard deviations of sqrt(p(1-p)/n) with no
+    # alternation at all -- 0.13 at 100 photons, which a fixed 0.05 read as
+    # alternating, so continuous-wave data passed as ALEX. Six standard
+    # deviations keeps the genuine square wave (spread 0.3 and up) and refuses
+    # noise; the 0.05 floor still refuses a flat share measured very precisely.
+    mean_share = float(np.clip(np.mean(lit_share), 0.0, 1.0))
+    photons_per_bin = float(np.median((donor_counts + acceptor_counts)[lit]))
+    noise = np.sqrt(mean_share * (1.0 - mean_share) / max(photons_per_bin, 1.0))
+    if high - low < max(0.05, 6.0 * noise):
         raise ValueError(
             "the acceptor's share of the phase bins does not alternate "
             f"(spread {high - low:.3f}); the data may be continuous-wave, the "

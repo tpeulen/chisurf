@@ -72,7 +72,9 @@ def test_parse_fit_refines_entirely_on_the_native_graph_and_applies_the_winner()
         root, next(action for action in actions if action.get_key() == "refine")
     )
     assert refined.get_structure_key() == "refined"
-    assert refined.get_reward() > root.get_reward()
+    # The initial state is scored after its own fit, so refining the same free
+    # set reaches the same optimum: never worse, and not measurably better.
+    assert refined.get_reward() == pytest.approx(root.get_reward(), rel=1e-9, abs=1e-9)
     prepared.binding.apply_state(prepared.problem, refined)
     assert fit.model.parameters_all_dict["a"].value == pytest.approx(2.5, rel=1e-5)
     assert fit.model.parameters_all_dict["t"].value == pytest.approx(3.1, rel=1e-5)
@@ -132,7 +134,8 @@ def test_general_fcs_mode_uses_the_same_fixed_structure_capability():
         if action.get_key() == "refine"
     )
     refined = prepared.problem.evaluate(root, refine)
-    assert refined.get_reward() > root.get_reward()
+    # Scored after its own fit, the root already sits at the optimum.
+    assert refined.get_reward() == pytest.approx(root.get_reward(), rel=1e-9, abs=1e-9)
     prepared.binding.apply_state(prepared.problem, refined)
     assert model.gauss.N == pytest.approx(2.5, rel=2e-4)
     assert model.gauss.D == pytest.approx(150.0, rel=2e-4)

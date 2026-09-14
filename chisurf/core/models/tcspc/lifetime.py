@@ -75,16 +75,12 @@ class Lifetime(FittingParameterGroup):
     @property
     def lifetimes(self) -> np.array:
         """Array of lifetime values (always positive)."""
-        # Read each parameter once (a property read is not free), take abs()
-        # rather than sqrt(x**2), and write back only where the sign actually
-        # flipped -- this is a *getter*, and lifetimes are positive in the
-        # overwhelmingly common case, so the write-back is normally a no-op.
-        raw = [x.value for x in self._lifetimes]
-        vs = np.array([abs(v) for v in raw])
-        for i, (v, original) in enumerate(zip(vs, raw)):
-            if original != v:
-                self._lifetimes[i].value = v
-        return vs
+        # A getter reads. It wrote the magnitude back where the sign had
+        # flipped, which made evaluating the model change the parameters it
+        # was evaluated at -- so two evaluations of one vector could differ,
+        # depending on whether a read had happened in between. The sign is
+        # folded into the stored values by `finalize`, once a fit is done.
+        return np.array([abs(x.value) for x in self._lifetimes])
 
     @lifetimes.setter
     def lifetimes(self, vs: typing.List[float]):
@@ -203,22 +199,28 @@ class Lifetime(FittingParameterGroup):
             # No amplitude pins the scale, so the first free one is redundant.
             free[0].redundant = True
 
-    # TODO: needs docstring
     def update(self):
-        """Update the state and emit signals.
+        """Refresh which amplitude is held out; change no parameter value.
 
-        When amplitudes are normalized, the raw values written by the
-        optimiser are rescaled to ``|a| / sum|a|`` here.  The error estimates
-        live in the same raw space the optimiser works in, so they must be
-        rescaled by the **same** factor — otherwise the displayed value is
-        normalized but the error bar is not, and the relative error is off by
-        ``sum|a_raw|``.
-
-        The scaling is idempotent: once the values are normalized
-        (``sum|a| = 1``) the factor is 1 and subsequent calls are no-ops,
-        so repeated ``update()`` calls do not compound the correction.
+        This runs on every model evaluation, so it must not write parameters:
+        it used to rescale the stored amplitudes to ``|a| / sum|a|`` here,
+        which made an evaluation depend on whether another had happened
+        first (a frozen run, which skips this, and a plain one gave the same
+        curve only to rounding). The model never needed it -- ``amplitudes``
+        normalises on read -- so the stored values are normalised once, by
+        :meth:`finalize`, when a fit is done.
         """
         self._update_redundant_amplitude()
+
+    def normalize_stored_values(self):
+        """Store the normalised amplitudes and positive lifetimes the model uses.
+
+        The error estimates live in the same raw space the optimiser works in,
+        so they are rescaled by the **same** factor -- otherwise the displayed
+        value is normalized but the error bar is not, and the relative error
+        is off by ``sum|a_raw|``. Idempotent: once ``sum|a| = 1`` the factor
+        is 1 and a repeated call changes nothing.
+        """
         raw = np.array([x.value for x in self._amplitudes])
         if self.absolute_amplitudes:
             raw = np.sqrt(raw**2)
@@ -239,11 +241,14 @@ class Lifetime(FittingParameterGroup):
             if (isinstance(ee, float) and np.isfinite(ee)
                     and abs(scale - 1.0) > 1e-12):
                 a.error_estimate = ee * scale
+        for lifetime in self._lifetimes:
+            if lifetime.value < 0.0:
+                lifetime.value = abs(lifetime.value)
 
-    # TODO: needs docstring
     def finalize(self):
-        """Finalize the component state."""
+        """Finalize the component state: hold-out, then the stored values."""
         self.update()
+        self.normalize_stored_values()
 
     #: Starting lifetime of the first component, in nanoseconds -- a typical
     #: organic-fluorophore lifetime, and the historical default.

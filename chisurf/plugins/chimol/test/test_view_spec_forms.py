@@ -50,7 +50,7 @@ APPEARANCE = (
 #: than against an example composed to suit it.
 FOREIGN = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "chisurf" / "core" / "models" / "tcspc" / "parse" / "parse_decay.view.json"
+    / "chisurf" / "core" / "models" / "parameter_transform" / "parameter_transform.view.json"
 )
 
 
@@ -60,6 +60,7 @@ class _Model:
     def __init__(self):
         self.model_name = "diffusion"
         self.func = "a*exp(-x/t)"
+        self.function = "def f(a):\n    return a"
         self.description = "an equation"
         self.count = 3
         self.enabled = True
@@ -150,7 +151,7 @@ def test_a_foreign_chisurf_spec_is_read():
     # `options_source` names a *method* on the model, which is the whole reason
     # the indirection exists -- the catalogue is not known until the model is.
     assert list(rows["model_name"].options) == ["diffusion", "triplet", "flow"]
-    assert rows["func"].kind == TEXT
+    assert rows["function"].kind == TEXT
 
 
 def test_what_cannot_be_drawn_is_reported():

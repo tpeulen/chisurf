@@ -31,6 +31,10 @@ def equation_field(qapp):
     data = DataCurve(name="synthetic", load_filename_on_init=False,
                      x=x, y=np.exp(-x / 4.0) + 1.0)
     model = fit_mod.Fit(model_class=ParseDecayModel, data=data).model
+    # The equations are convolved with a response, which the model needs.
+    from chisurf.core.curve import Curve
+    model.set_dataset("response", Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)))
+    model.set_scalar("period", 12.5)
     editor = build_model_editor(model)
     fields = editor.findChildren(ExpressionInput)
     assert len(fields) == 1, f"expected one equation field, found {len(fields)}"

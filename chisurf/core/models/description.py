@@ -180,6 +180,38 @@ class DescriptionModel(ModelCurve):
     def catalogue(self) -> dict:
         return dict(self._catalogue)
 
+    @property
+    def catalogue_names(self) -> typing.List[str]:
+        return list(self._catalogue)
+
+    @property
+    def model_name(self) -> str:
+        """The selected equation; before the model is built, the first one."""
+        problem = self.__dict__.get("_spec") and self._spec.get_model_is_current() and self.problem
+        if problem:
+            return str(problem.get_active_structure())
+        return self.__dict__.get("_selected_equation") or next(iter(self._catalogue), "")
+
+    @model_name.setter
+    def model_name(self, key: str) -> None:
+        key = str(key)
+        if key not in self._catalogue:
+            raise KeyError(f"no equation named {key!r}")
+        self.__dict__["_selected_equation"] = key
+        if self.problem is not None:
+            self.structure = key
+
+    @property
+    def func(self) -> str:
+        """The selected equation's text."""
+        return str((self._catalogue.get(self.model_name) or {}).get("equation", ""))
+
+    @func.setter
+    def func(self, text: str) -> None:
+        """Typing an equation makes it the ``custom`` entry and selects it."""
+        self.set_equation(text)
+        self.model_name = "custom"
+
     def set_equation(self, text: str, key: str = "custom") -> None:
         """Add or replace one equation; parameters it shares by name keep their ports."""
         if not self._catalogue and not self._document.get("equations"):
@@ -301,6 +333,14 @@ class DescriptionModel(ModelCurve):
             return
         self._spec.set_dataset(self.primary_dataset, _measurement(x, y, ey, window))
         self.__dict__["_bound_primary"] = key
+        # A description that scales or normalises over the fit window names
+        # it ``fit_start``/``fit_stop``; the window is the fit's, not the user's
+        # to type twice.
+        optional = self._document.get("optional_scalars", {})
+        if "fit_start" in optional:
+            self._spec.set_scalar("fit_start", float(max(0, xmin)))
+        if "fit_stop" in optional:
+            self._spec.set_scalar("fit_stop", float(max(0, min(len(y), xmax))))
         # Instrument numbers the data names (a pixel size) are held at its value.
         defaults = (getattr(data, "meta_data", None) or {}).get("parameter_defaults") or {}
         self.__dict__["_pending_defaults"] = {str(k): float(v) for k, v in defaults.items()}
@@ -394,6 +434,8 @@ class DescriptionModel(ModelCurve):
             vs.ChoiceSection(label="Equation" if self._catalogue else "Model", attr="structure",
                              options_source="structure_options",
                              rebuild_on_change=True),
+            *((vs.ValueSection(label="Equation", kind="expression", attr="func"),)
+              if self._catalogue else ()),
             vs.PanelSection(title="Measurements", sections=tuple(
                 vs.CurveInputSection(
                     label=slot_info.get(slot, {}).get("label", slot),
@@ -404,7 +446,12 @@ class DescriptionModel(ModelCurve):
                 for slot in self.dataset_slots())),
         ]
         settings = []
+        # A description that presents its scalars lists the ones a user sets;
+        # the rest (a fit window the view fills itself) stay out of the editor.
+        presented = set(scalar_info) if scalar_info else None
         for name in self.scalar_names():
+            if presented is not None and name not in presented:
+                continue
             info = scalar_info.get(name, {})
             if info.get("kind") == "flag":
                 settings.append(vs.ToggleSection(label=info.get("label", name), attr=f"scalars.{name}"))
@@ -562,23 +609,26 @@ def for_family(family: str) -> type:
     return cls
 
 
-def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Optional[str] = None) -> type:
+def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Optional[str] = None,
+                  frame: str = "equations") -> type:
     """The model class ChiSurf lists for one equation catalogue.
 
     The catalogue is ChiSurf's (YAML beside the experiment's models); BFF
     builds every entry as a competing structure and knows nothing about what
-    the equations describe.
+    the equations describe. *frame* names the BFF frame the equations sit in:
+    ``equations`` compares them to the data directly, ``equations_convolved``
+    convolves them with a measured response and a counting instrument first.
     """
     import pathlib
 
     path = pathlib.Path(path).resolve()
-    cls = _FAMILIES.get(str(path))
+    cls = _FAMILIES.get(f"{frame}:{path}")
     if cls is None:
-        attributes = {"catalogue_path": path, "__module__": module or __name__}
+        attributes = {"catalogue_path": path, "family": frame, "__module__": module or __name__}
         if name:
             attributes["name"] = name
         cls = type(f"EquationModel_{path.parent.name}", (DescriptionModel,), attributes)
-        _FAMILIES[str(path)] = cls
+        _FAMILIES[f"{frame}:{path}"] = cls
     return cls
 
 

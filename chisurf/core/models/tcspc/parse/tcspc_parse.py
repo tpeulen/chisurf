@@ -1,56 +1,18 @@
+"""Decay equations convolved with a measured response, as a view on BFF.
+
+``tcspc_model.yaml`` beside this module holds the equations of time. BFF
+builds each as a competing structure, convolves it with the IRF (the generic
+``Convolution`` node) and runs it through the same counting instrument a
+lifetime fit meets -- scatter, pile-up, scale, background, linearisation.
+"""
 from __future__ import annotations
 
-import chisurf.core.models.tcspc.nusiance
-from chisurf.core.models.parse import parse
+import pathlib
 
+from chisurf.core.models.description import for_catalogue
 
-class ParseDecayModel(parse.ParseModel):
+ParseDecayModel = for_catalogue(
+    pathlib.Path(__file__).parent / "tcspc_model.yaml", name="Parse-Model",
+    module=__name__, frame="equations_convolved")
 
-    catalogue_file = "tcspc_model.yaml"
-    view_spec_file = "parse_decay.view.json"
-
-    # TODO: needs docstring
-    def __init__(self, fit, **kwargs):
-        """Initialize the instance."""
-        parse.ParseModel.__init__(self, fit, **kwargs)
-        self.convolve = kwargs.get('convolve', chisurf.core.models.tcspc.nusiance.Convolve(name='convolve', fit=fit, **kwargs))
-        self.corrections = kwargs.get(
-            'corrections',
-            chisurf.core.models.tcspc.nusiance.Corrections(name='corrections', fit=fit, model=self, **kwargs)
-        )
-        self.generic = kwargs.get(
-            'generic',
-            chisurf.core.models.tcspc.nusiance.Generic(name='generic', fit=fit, **kwargs)
-        )
-
-    # TODO: needs docstring
-    def _update_model(self, **kwargs):
-        """Recompute the model decay."""
-        scatter = kwargs.get('scatter', self.generic.scatter)
-        background = kwargs.get('background', self.generic.background)
-        lintable = kwargs.get('lintable', self.corrections.lintable)
-        # The *compute* half of the parent (evaluate the parsed equation
-        # into self.y) -- not update(), whose default implementation
-        # dispatches back to _update_model and would recurse forever.
-        super(ParseDecayModel, self)._update_model(**kwargs)
-        decay = self.y
-        if self.convolve.irf is not None:
-            decay = self.convolve.convolve(
-                self.y,
-                mode='full',
-                scatter=scatter
-            )[:self.y.shape[0]]
-
-        self.corrections.pileup(decay)
-        self.convolve.scale(
-            decay,
-            start=self.fit.xmin,
-            stop=self.fit.xmax,
-            data=self.fit.data,
-            bg=background,
-        )
-        decay += self.generic.background
-        decay[decay < 0.0] = 0.0
-        if lintable is not None:
-            decay *= lintable
-        self.y = decay
+__all__ = ["ParseDecayModel"]
