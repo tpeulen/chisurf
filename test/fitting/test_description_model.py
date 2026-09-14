@@ -302,3 +302,96 @@ def test_the_view_reproduces_the_classic_background_pattern():
         port.fixed = held
     model.update()
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
+
+
+def _classic_and_view(configure_classic, configure_view, n_lifetimes=2):
+    """Build the classic LifetimeModel and the view over the same decay and IRF."""
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    x = _axis()
+    irf = _irf()
+    y = np.random.default_rng(11).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
+    ey = np.sqrt(np.maximum(y, 1.0))
+    classic_fit = fitting.Fit(model_class=LifetimeModel,
+                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
+    classic_fit.xmin, classic_fit.xmax = 0, N
+    classic = classic_fit.model
+    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
+    classic.convolve.dt = DT
+    classic.convolve.rep_rate = 1000.0 / PERIOD
+    classic.convolve._n0.fixed = False
+    classic.convolve._n0.value = 5000.0
+    classic.generic._sc.value = 0.01
+    classic.generic._bg.value = 2.0
+    classic.lifetimes._lifetimes[0].value = 3.2
+    if n_lifetimes == 2:
+        classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
+    configure_classic(classic)
+    classic.find_parameters()
+    classic.update()
+
+    fit, model = _view(y)
+    fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
+    configure_view(model)
+    problem = model.problem
+    model.structure = f"lifetime.components.{n_lifetimes}"
+    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
+    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
+              "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
+    if n_lifetimes == 2:
+        values.update({"lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6})
+    for name, value in values.items():
+        port = problem.get_parameter(name)
+        held = port.fixed
+        port.fixed = False
+        port.value = value
+        port.fixed = held
+    model.update()
+    return np.array(classic.y), np.array(model.y)
+
+
+@pytest.mark.parametrize("mode, convolve", [("exp", True), ("per", False), ("exp", False)])
+def test_the_view_reproduces_the_classic_convolution_modes(mode, convolve):
+    def classic(model):
+        model.convolve.mode = mode
+        model.convolve.do_convolution = convolve
+
+    def view(model):
+        model.set_scalar("periodic_excitation", 1.0 if mode == "per" else 0.0)
+        model.set_scalar("convolve", 1.0 if convolve else 0.0)
+
+    reference, got = _classic_and_view(classic, view)
+    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+
+
+def test_the_view_reproduces_the_classic_generated_irf():
+    """No IRF loaded: both model it as a generalized-normal peak at the decay's rise."""
+    def classic(model):
+        model.convolve.unload_irf()           # nothing measured
+        model.convolve._iw.value = 0.09
+        model.convolve._ik.value = -0.25
+
+    def view(model):
+        model.unset_dataset("response")
+        model.set_scalar("generated_response", 1.0)
+        problem = model.problem
+        for name, value in {"instrument.irf_width": 0.09, "instrument.irf_shape": -0.25}.items():
+            port = problem.get_parameter(name)
+            held = port.fixed
+            port.fixed = False
+            port.value = value
+            port.fixed = held
+
+    reference, got = _classic_and_view(classic, view)
+    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+
+
+def test_an_irf_is_missing_until_one_is_loaded_or_modelled():
+    x = _axis()
+    data = chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N))
+    fit = fitting.Fit(model_class=for_family("tcspc_lifetime"), data=data)
+    model = fit.model
+    model.set_scalar("period", PERIOD)
+    assert model.problem is None and "response" in model.missing
+    model.set_scalar("generated_response", 1.0)
+    assert model.problem is not None, model.missing

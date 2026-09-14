@@ -351,6 +351,13 @@ class DescriptionModel(ModelCurve):
         self._bind_primary()
         missing = []
         required = list(self._spec.get_dataset_names())
+        # An optional measurement can still be needed: a description says
+        # which switch makes it unnecessary (a modelled IRF instead of a
+        # measured one), and while that switch is off it is missing.
+        for slot, info in self.presentation.get("datasets", {}).items():
+            unless = info.get("required_unless")
+            if unless and slot not in required and not (self.get_scalar(unless) or 0.0):
+                required.append(slot)
         for slot in required:
             if slot != self.primary_dataset and slot not in self._sources:
                 missing.append(slot)
