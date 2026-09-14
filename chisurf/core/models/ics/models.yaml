@@ -1,0 +1,159 @@
+# Image-correlation (RICS/STICS/TICS/iMSD) equations over the carpet coordinates
+# xi (pixel lag), psi (line lag) and tau (lag time, s), which the ICS reader
+# supplies with the data. Transcribed from the former ImageCorrelationModel and
+# IcsGaussian2DModel; every entry competes in model search on BIC.
+---
+Image correlation (3D):
+  equation: offset + 0.35355339059327373/max(max(abs(N), 1e-12) + abs(N_imm), 1e-12)**2*(max(abs(N), 1e-12)*((1.0 + (aT/max(1.0 - aT, 1e-12))*exp(-tau/(max(abs(tauT), 1e-9)*0.001)))*(1.0/(1.0 + (4.0*abs(D)*tau**alpha)/max(abs(w_r), 0.001)**2))/sqrt(1.0 + (4.0*abs(D)*tau**alpha)/max(abs(w_z), 0.001)**2)*exp(-((pxl_size*xi*0.001 - v_x*tau - sx*0.001)**2 + (pxl_size*psi*0.001 - v_y*tau - sy*0.001)**2)/(max(abs(w_r), 0.001)**2 + (4.0*abs(D)*tau**alpha)))) + abs(N_imm)*exp(-((pxl_size*xi*0.001 - sx*0.001)**2 + (pxl_size*psi*0.001 - sy*0.001)**2)/max(abs(w_imm), 0.001)**2))
+  initial:
+    N: 1.0
+    D: 2.0
+    alpha: 1.0
+    offset: 0.0
+    pxl_size: 40.0
+    w_r: 0.2
+    w_z: 1.0
+    tauT: 0.002
+    aT: 0.0
+    N_imm: 0.0
+    w_imm: 0.2
+    sx: 0.0
+    sy: 0.0
+    v_x: 0.0
+    v_y: 0.0
+  bounds: &id001
+    N:
+    - 1.0e-06
+    - 1000000000.0
+    D:
+    - 1.0e-06
+    - 1000.0
+    alpha:
+    - 0.05
+    - 2.0
+    offset:
+    - -1000.0
+    - 1000.0
+    tauT:
+    - 1.0e-06
+    - 1.0
+    aT:
+    - 0.0
+    - 0.99
+    N_imm:
+    - 0.0
+    - 1000000000.0
+    w_imm:
+    - 0.001
+    - 100.0
+    sx:
+    - -10000.0
+    - 10000.0
+    sy:
+    - -10000.0
+    - 10000.0
+    v_x:
+    - -10000.0
+    - 10000.0
+    v_y:
+    - -10000.0
+    - 10000.0
+  fixed: &id002
+  - alpha
+  - pxl_size
+  - w_r
+  - w_z
+  - tauT
+  - aT
+  - N_imm
+  - w_imm
+  - sx
+  - sy
+  - v_x
+  - v_y
+  groups: &id003
+    N: transport
+    D: transport
+    alpha: transport
+    offset: transport
+    pxl_size: imaging
+    w_r: imaging
+    w_z: imaging
+    tauT: blinking
+    aT: blinking
+    N_imm: immobile
+    w_imm: immobile
+    sx: immobile
+    sy: immobile
+    v_x: flow
+    v_y: flow
+  description: 'Image correlation over the carpet''s pixel and line lags and lag time, 3D confocal volume. Neutral terms (alpha=1, aT=0, N_imm=0, no flow) start fixed: release them for anomalous transport (iMSD), blinking, an immobile fraction or flow.'
+Image correlation (2D membrane):
+  equation: offset + 0.5/max(max(abs(N), 1e-12) + abs(N_imm), 1e-12)**2*(max(abs(N), 1e-12)*((1.0 + (aT/max(1.0 - aT, 1e-12))*exp(-tau/(max(abs(tauT), 1e-9)*0.001)))*(1.0/(1.0 + (4.0*abs(D)*tau**alpha)/max(abs(w_r), 0.001)**2))*exp(-((pxl_size*xi*0.001 - v_x*tau - sx*0.001)**2 + (pxl_size*psi*0.001 - v_y*tau - sy*0.001)**2)/(max(abs(w_r), 0.001)**2 + (4.0*abs(D)*tau**alpha)))) + abs(N_imm)*exp(-((pxl_size*xi*0.001 - sx*0.001)**2 + (pxl_size*psi*0.001 - sy*0.001)**2)/max(abs(w_imm), 0.001)**2))
+  initial:
+    N: 1.0
+    D: 2.0
+    alpha: 1.0
+    offset: 0.0
+    pxl_size: 40.0
+    w_r: 0.2
+    w_z: 1.0
+    tauT: 0.002
+    aT: 0.0
+    N_imm: 0.0
+    w_imm: 0.2
+    sx: 0.0
+    sy: 0.0
+    v_x: 0.0
+    v_y: 0.0
+  bounds: *id001
+  fixed: *id002
+  groups: *id003
+  description: 'Image correlation over the carpet''s pixel and line lags and lag time, membrane (2D) geometry. Neutral terms (alpha=1, aT=0, N_imm=0, no flow) start fixed: release them for anomalous transport (iMSD), blinking, an immobile fraction or flow.'
+2D Gaussian (2 sigma + angle):
+  equation: offset + abs(A0)*exp(-(((xi*pxl_size - x_off)*cos(angle) + (psi*pxl_size - y_off)*sin(angle))/max(abs(sigma1), 1.0))**2 - ((-(xi*pxl_size - x_off)*sin(angle) + (psi*pxl_size - y_off)*cos(angle))/max(abs(sigma2), 1.0))**2)
+  initial:
+    A0: 1.0
+    sigma1: 200.0
+    sigma2: 200.0
+    angle: 0.0
+    x_off: 0.0
+    y_off: 0.0
+    offset: 0.0
+    pxl_size: 40.0
+  bounds:
+    A0:
+    - 0.0
+    - 1000000000.0
+    sigma1:
+    - 1.0
+    - 100000.0
+    sigma2:
+    - 1.0
+    - 100000.0
+    angle:
+    - 0.0
+    - 6.3
+    x_off:
+    - -100000.0
+    - 100000.0
+    y_off:
+    - -100000.0
+    - 100000.0
+    offset:
+    - -1000.0
+    - 1000.0
+  fixed:
+  - x_off
+  - y_off
+  - pxl_size
+  groups:
+    A0: structure
+    sigma1: structure
+    sigma2: structure
+    angle: structure
+    x_off: structure
+    y_off: structure
+    offset: structure
+    pxl_size: imaging
+  description: Anisotropic 2D Gaussian spatial correlation (structure sizing); ignores the lag time.

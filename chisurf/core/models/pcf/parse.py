@@ -1,31 +1,15 @@
+"""Equation models for pair-correlation-function distributions, as a view on BFF.
+
+The catalogue beside this module is ChiSurf's; BFF builds each entry as a
+competing structure over the measurement's coordinates and owns the fit.
+"""
 from __future__ import annotations
 
-import chisurf.core.models.parse as parse_module
+import pathlib
 
+from chisurf.core.models.description import for_catalogue
 
-class ParsePCFModel(parse_module.ParseModel):
+ParsePCFModel = for_catalogue(
+    pathlib.Path(__file__).parent / "models.yaml", name="Parse-Model", module=__name__)
 
-    catalogue_file = "models.yaml"
-    view_spec_file = "parse.view.json"
-    """Parse model for pair-correlation-function (PCF) distribution fits.
-
-    Extends the generic :class:`~chisurf.core.models.parse.ParseModel` for the
-    PCF experiment type; the catalogue of distribution equations lives in the
-    sibling ``models.yaml``.
-    """
-
-    def __init__(self, fit, **kwargs):
-        """Initialize the PCF parse model.
-
-        Parameters
-        ----------
-        fit : chisurf.core.fitting.fit.Fit
-            Fit object this model belongs to.
-        **kwargs
-            Additional keyword arguments forwarded to the base class.
-        """
-        super().__init__(fit, **kwargs)
-
-    def _update_model(self, **kwargs):
-        """Update the PCF distribution model."""
-        super()._update_model(**kwargs)
+__all__ = ["ParsePCFModel"]

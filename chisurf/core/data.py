@@ -217,6 +217,22 @@ class DataCurve(*_DATACURVE_BASES):
     )
 
     @property
+    def coordinates(self) -> typing.Dict[str, np.ndarray]:
+        """Where each value sits: ``{name: flat array}``, one entry per value.
+
+        A curve has one coordinate, its ``x``. A flattened multi-dimensional
+        measurement -- a correlation carpet, an image -- has as many as its
+        reader records under ``meta_data['coordinates']``, and a model fitted
+        to it is a function of those names. Nothing here knows which
+        experiment produced them.
+        """
+        meta = getattr(self, "meta_data", None) or {}
+        recorded = meta.get("coordinates")
+        if isinstance(recorded, dict) and recorded:
+            return {str(k): np.asarray(v, dtype=float).ravel() for k, v in recorded.items()}
+        return {"x": np.asarray(self.x, dtype=float)}
+
+    @property
     def data(self) -> np.ndarray:
         """Return a stacked 5-row array ``(x, y, ex, ey, mask)``."""
         return np.vstack(

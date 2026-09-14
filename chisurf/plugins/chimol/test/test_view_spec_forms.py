@@ -50,7 +50,7 @@ APPEARANCE = (
 #: than against an example composed to suit it.
 FOREIGN = (
     pathlib.Path(__file__).resolve().parents[4]
-    / "chisurf" / "core" / "models" / "fcs" / "parse.view.json"
+    / "chisurf" / "core" / "models" / "tcspc" / "parse" / "parse_decay.view.json"
 )
 
 

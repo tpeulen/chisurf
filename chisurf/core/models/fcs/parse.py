@@ -1,29 +1,15 @@
+"""Equation models for FCS correlation curves, as a view on BFF.
+
+The catalogue beside this module is ChiSurf's; BFF builds each entry as a
+competing structure over the measurement's coordinates and owns the fit.
+"""
 from __future__ import annotations
 
-import chisurf.core.models.parse as parse_module
+import pathlib
 
+from chisurf.core.models.description import for_catalogue
 
-class ParseFCSModel(parse_module.ParseModel):
+ParseFCSModel = for_catalogue(
+    pathlib.Path(__file__).parent / "models.yaml", name="Parse-Model", module=__name__)
 
-    catalogue_file = "models.yaml"
-    view_spec_file = "parse.view.json"
-    """Parse model for FCS correlation functions.
-
-    Extends the generic ParseModel with FCS-specific parameter handling.
-    """
-
-    def __init__(self, fit, **kwargs):
-        """Initialize the FCS parse model.
-
-        Parameters
-        ----------
-        fit : chisurf.core.fitting.fit.Fit
-            Fit object this model belongs to.
-        """
-        super().__init__(fit, **kwargs)
-        # FCS-specific initial parameter values can be set here if needed
-
-    def _update_model(self, **kwargs):
-        """Update the FCS correlation model."""
-        super()._update_model(**kwargs)
-        # FCS-specific post-processing can be added here if needed
+__all__ = ["ParseFCSModel"]

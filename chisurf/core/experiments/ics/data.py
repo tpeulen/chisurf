@@ -813,3 +813,43 @@ class IcsCarpet:
         meta.update(self.timing.to_dict())
         meta.update(self.meta)
         return meta
+
+
+def carpet_coordinates(meta: Dict[str, Any]) -> Optional[Dict[str, np.ndarray]]:
+    """Return the coordinates of every carpet point, flattened in C order.
+
+    A correlation carpet ``(n_lags, ny, nx)`` is fitted as one flat vector,
+    and a model of it is a function of where each value sits: the pixel lag
+    ``xi``, the line lag ``psi`` and the physical lag time ``tau`` (seconds).
+    The scan timing lives here, in the data, because it decides what "time"
+    each part of the carpet means -- it is not something a fit adjusts.
+
+    Parameters
+    ----------
+    meta : dict
+        Metadata as produced by :meth:`IcsCarpet.to_meta`.
+
+    Returns
+    -------
+    dict or None
+        ``{"xi", "psi", "tau"}`` as flat float arrays, or ``None`` when the
+        metadata does not describe a carpet.
+    """
+    try:
+        xi = np.asarray(meta.get("pixel_shift"), dtype=float)
+        psi = np.asarray(meta.get("line_shift"), dtype=float)
+    except Exception:
+        return None
+    if xi.ndim != 2 or psi.ndim != 2 or xi.shape != psi.shape:
+        return None
+    lags = meta.get("frame_lags")
+    frame_lags = np.zeros(1) if lags is None else np.atleast_1d(np.asarray(lags, dtype=float))
+    xi3 = np.broadcast_to(xi[None, ...], (frame_lags.size,) + xi.shape)
+    psi3 = np.broadcast_to(psi[None, ...], (frame_lags.size,) + psi.shape)
+    tau = IcsTiming.from_meta(meta).lag_time(xi3, psi3, frame_lags[:, None, None])
+    tau = np.broadcast_to(np.asarray(tau, dtype=float), xi3.shape)
+    return {
+        "xi": np.ascontiguousarray(xi3, dtype=float).ravel(),
+        "psi": np.ascontiguousarray(psi3, dtype=float).ravel(),
+        "tau": np.ascontiguousarray(tau, dtype=float).ravel(),
+    }

@@ -120,11 +120,16 @@ class _Scalars:
         view.update()
 
 
-def _measurement(x, y, ey=None, mask=None):
+def _measurement(coordinates, y, ey=None, mask=None):
+    """A ChiSurf measurement as a bff one, every coordinate under its own name."""
     dataset = _bff.FitDataset()
     dataset.set_values_array(np.ascontiguousarray(np.asarray(y, dtype=float)))
-    if x is not None and len(x) == len(y):
-        dataset.set_coordinate_array(0, "x", np.ascontiguousarray(np.asarray(x, dtype=float)))
+    if coordinates is not None and not isinstance(coordinates, dict):
+        coordinates = {"x": coordinates}
+    for k, (name, values) in enumerate((coordinates or {}).items()):
+        values = np.asarray(values, dtype=float).ravel()
+        if values.size == len(y):
+            dataset.set_coordinate_array(k, str(name), np.ascontiguousarray(values))
     if ey is not None:
         dataset.set_noise_family(_bff.FIT_NOISE_FAMILY_STORED)
         dataset.set_stored_variance_array(
@@ -132,6 +137,24 @@ def _measurement(x, y, ey=None, mask=None):
     if mask is not None:
         dataset.set_mask_array(np.ascontiguousarray(np.asarray(mask, dtype=float)))
     return dataset
+
+
+def _coordinates_of(curve) -> typing.Optional[dict]:
+    coordinates = getattr(curve, "coordinates", None)
+    if isinstance(coordinates, dict) and coordinates:
+        return coordinates
+    x = getattr(curve, "x", None)
+    return None if x is None else {"x": x}
+
+
+def _read_catalogue(path) -> dict:
+    """A ChiSurf equation catalogue (YAML or JSON) as plain data."""
+    import pathlib
+    import yaml
+
+    text = pathlib.Path(path).read_text()
+    data = yaml.safe_load(text) or {}
+    return {str(k): v for k, v in data.items() if isinstance(v, dict) and v.get("equation")}
 
 
 class DescriptionModel(ModelCurve):
@@ -142,20 +165,47 @@ class DescriptionModel(ModelCurve):
     """
 
     family: str = ""
+    #: A ChiSurf equation catalogue this model is built from, if any.
+    catalogue_path = None
     name = "BFF model"
+
+    @property
+    def _document(self) -> dict:
+        """The description as BFF reads it now -- a catalogue's structures appear
+        once the measurement that decides which variables are axes is bound."""
+        return json.loads(self._spec.get_description_json())
+
+    # --- equations ---------------------------------------------------------------
+    @property
+    def catalogue(self) -> dict:
+        return dict(self._catalogue)
+
+    def set_equation(self, text: str, key: str = "custom") -> None:
+        """Add or replace one equation; parameters it shares by name keep their ports."""
+        if not self._catalogue and not self._document.get("equations"):
+            raise TypeError(f"{self.family!r} is not built from equations")
+        entry = dict(self._catalogue.get(key, {}))
+        entry["equation"] = str(text)
+        self._catalogue[key] = entry
+        self._spec.set_equations(json.dumps(self._catalogue))
+        self._forget_discovery()
 
     def __init__(self, fit, family: typing.Optional[str] = None, **kwargs):
         if _bff is None:
             raise ImportError("a BFF-described model needs IMP.bff")
-        family = family or type(self).family
+        catalogue_path = type(self).catalogue_path
+        family = family or type(self).family or ("equations" if catalogue_path else "")
         if not family:
-            raise ValueError("a DescriptionModel needs a family description")
+            raise ValueError("a DescriptionModel needs a family description or a catalogue")
         self.__dict__["_spec"] = _bff.ModelSearchSpec.from_name(family)
-        self.__dict__["_document"] = json.loads(self._spec.get_description_json())
+        self.__dict__["_catalogue"] = {}
+        if catalogue_path:
+            self.__dict__["_catalogue"] = _read_catalogue(catalogue_path)
+            self._spec.set_equations(json.dumps(self._catalogue))
         self.__dict__["_bound_primary"] = None
         super().__init__(fit, **kwargs)
         self.family = family
-        self.name = self._document.get("title", family)
+        self.name = type(self).__dict__.get("name") or self._document.get("title", family)
         self.missing: typing.List[str] = []
         self._sources: typing.Dict[str, typing.Any] = {}
         self._scalars: typing.Dict[str, float] = {}
@@ -190,7 +240,7 @@ class DescriptionModel(ModelCurve):
         if slot not in self.dataset_slots():
             raise KeyError(f"{self.family!r} has no measurement {slot!r}")
         self._sources[slot] = curve
-        self._spec.set_dataset(slot, _measurement(getattr(curve, "x", None), curve.y))
+        self._spec.set_dataset(slot, _measurement(_coordinates_of(curve), curve.y))
         self._forget_discovery()
 
     def unset_dataset(self, slot: str) -> None:
@@ -230,7 +280,7 @@ class DescriptionModel(ModelCurve):
         if y is None or len(y) == 0:
             return
         ey = getattr(data, "ey", None)
-        x = getattr(data, "x", None)
+        x = _coordinates_of(data)
         window = np.zeros(len(y))
         xmin = int(getattr(fit, "xmin", 0) or 0)
         xmax = getattr(fit, "xmax", None)
@@ -243,7 +293,7 @@ class DescriptionModel(ModelCurve):
         # from one read to the next, and rebinding rebuilds the model's graphs.
         import hashlib
         digest = hashlib.blake2b(digest_size=16)
-        for part in (y, ey, x, window):
+        for part in (y, ey, window, *((x or {}).values())):
             if part is not None:
                 digest.update(np.ascontiguousarray(np.asarray(part, dtype=float)).tobytes())
         key = digest.hexdigest()
@@ -251,6 +301,9 @@ class DescriptionModel(ModelCurve):
             return
         self._spec.set_dataset(self.primary_dataset, _measurement(x, y, ey, window))
         self.__dict__["_bound_primary"] = key
+        # Instrument numbers the data names (a pixel size) are held at its value.
+        defaults = (getattr(data, "meta_data", None) or {}).get("parameter_defaults") or {}
+        self.__dict__["_pending_defaults"] = {str(k): float(v) for k, v in defaults.items()}
 
     @property
     def problem(self):
@@ -276,6 +329,15 @@ class DescriptionModel(ModelCurve):
         model = self._spec.get_model()
         if rebuilt:
             self._adopt(model)
+        pending = self.__dict__.pop("_pending_defaults", None)
+        if pending:
+            ids = set(model.get_parameter_ids())
+            for canonical, value in pending.items():
+                if canonical in ids:
+                    port = model.get_parameter(canonical)
+                    port.fixed = False
+                    port.value = value
+                    model.set_parameter_locked(canonical, True)
         return model
 
     def _adopt(self, problem) -> None:
@@ -291,11 +353,16 @@ class DescriptionModel(ModelCurve):
             if parameter is None or parameter._port.uid != port.uid:
                 parameter = DescriptionParameter(
                     self, canonical, port, name=entry.get("name", canonical))
-            by_group.setdefault(entry.get("group", "parameters"), []).append(parameter)
+            by_group.setdefault(entry.get("group", "equation"), []).append(parameter)
         for key, parameters in by_group.items():
-            group = DescriptionGroup(self, key, parameters, name=labels.get(key, key))
-            self._groups[key] = group
-            self.__dict__[key] = group
+            # A group named like something the model already has (its
+            # ``parameters`` list, say) would shadow it; such a group is
+            # reached under ``<name>_group`` instead.
+            attribute = key if not hasattr(type(self), key) else f"{key}_group"
+            group = DescriptionGroup(self, key, parameters,
+                                     name=labels.get(key, key.replace("_", " ").capitalize()))
+            self._groups[attribute] = group
+            self.__dict__[attribute] = group
         self.__dict__["_adopting"] = True
         try:
             self.find_parameters()
@@ -324,7 +391,7 @@ class DescriptionModel(ModelCurve):
         slot_info = presentation.get("datasets", {})
         scalar_info = presentation.get("scalars", {})
         sections = [
-            vs.ChoiceSection(label="Model", attr="structure",
+            vs.ChoiceSection(label="Equation" if self._catalogue else "Model", attr="structure",
                              options_source="structure_options",
                              rebuild_on_change=True),
             vs.PanelSection(title="Measurements", sections=tuple(
@@ -344,16 +411,39 @@ class DescriptionModel(ModelCurve):
             else:
                 settings.append(vs.ValueSection(label=info.get("label", name), kind="float", attr=f"scalars.{name}"))
         sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
-        for key, label in presentation.get("groups", {}).items():
+        for attribute, group in self._groups.items():
             sections.append(vs.ParameterGroupTableSection(
-                target=key, title=label, parameters_source="visible_parameters",
-                collapsible=False))
-        plots = (
-            vs.PlotSpec("line", {"x_label": "x", "y_label": "y"}),
-            vs.PlotSpec("fit_info"),
-            vs.PlotSpec("parameter_scan"),
-            vs.PlotSpec("residual"),
-        )
+                target=attribute, title=group.name,
+                parameters_source="visible_parameters", collapsible=False))
+        grid = (getattr(getattr(self.fit, "data", None), "meta_data", None) or {}).get("grid") or {}
+        if len(tuple(grid.get("shape", ()) or ())) >= 2:
+            # A measurement on a grid is shown as images; the accessors are
+            # generic, reading the grid its reader recorded.
+            module = "chisurf.core.models.grid_images"
+            plots = (
+                vs.PlotSpec("residual2d", {
+                    "sources": {
+                        "Residual": {"accessor": f"{module}:get_grid_residual_image",
+                                     "accessor_kwargs": {"weighted": True, "frame_index": 0}},
+                        "Data": {"accessor": f"{module}:get_grid_data_image",
+                                 "accessor_kwargs": {"frame_index": 0}},
+                        "Model": {"accessor": f"{module}:get_grid_model_image",
+                                  "accessor_kwargs": {"frame_index": 0}},
+                    },
+                    "frame_kw": "frame_index",
+                    "max_frames_accessor": f"{module}:get_grid_n_frames",
+                    "frame_label": "Frame",
+                }),
+                vs.PlotSpec("fit_info"),
+                vs.PlotSpec("parameter_scan"),
+            )
+        else:
+            plots = (
+                vs.PlotSpec("line", {"x_label": "x", "y_label": "y"}),
+                vs.PlotSpec("fit_info"),
+                vs.PlotSpec("parameter_scan"),
+                vs.PlotSpec("residual"),
+            )
         return vs.ModelView(sections=tuple(sections), plots=plots)
 
     def find_parameters(self, parameter_type=FittingParameter) -> None:
@@ -472,6 +562,26 @@ def for_family(family: str) -> type:
     return cls
 
 
+def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Optional[str] = None) -> type:
+    """The model class ChiSurf lists for one equation catalogue.
+
+    The catalogue is ChiSurf's (YAML beside the experiment's models); BFF
+    builds every entry as a competing structure and knows nothing about what
+    the equations describe.
+    """
+    import pathlib
+
+    path = pathlib.Path(path).resolve()
+    cls = _FAMILIES.get(str(path))
+    if cls is None:
+        attributes = {"catalogue_path": path, "__module__": module or __name__}
+        if name:
+            attributes["name"] = name
+        cls = type(f"EquationModel_{path.parent.name}", (DescriptionModel,), attributes)
+        _FAMILIES[str(path)] = cls
+    return cls
+
+
 def __getattr__(name: str):
     """``chisurf.core.models.description.<family>`` is that family's model class.
 
@@ -486,4 +596,4 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["DescriptionGroup", "DescriptionModel", "DescriptionParameter", "for_family"]
+__all__ = ["DescriptionGroup", "DescriptionModel", "DescriptionParameter", "for_catalogue", "for_family"]

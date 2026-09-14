@@ -365,7 +365,11 @@ def test_json_described_model_editor_builds_every_section(qapp, path, caplog):
     )
 
     model_class = _resolve(path)
-    assert model_class.view_spec_file, f"{path} declares no view_spec_file"
+    from chisurf.core.models.description import DescriptionModel
+
+    # A BFF-described model derives its editor from the description instead.
+    assert model_class.view_spec_file or issubclass(model_class, DescriptionModel), (
+        f"{path} declares no view_spec_file")
 
     fit = _make_fit(model_class)
     model = fit.model

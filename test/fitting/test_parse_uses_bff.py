@@ -115,6 +115,10 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
                 ex.set_expression(equation)
             except Exception:
                 continue
+            if "x" not in ex.get_variable_names():
+                # An equation over other coordinates (an image-correlation
+                # carpet's xi/psi/tau) has no single x to compare along.
+                continue
             names = [v for v in ex.get_variable_names() if v != "x"]
             values = np.array([1.3 + 0.1 * i for i in range(len(names))],
                               dtype=float)

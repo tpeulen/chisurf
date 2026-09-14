@@ -249,8 +249,8 @@ ics:
   models:
     # One model over the spatiotemporal carpet G(xi, psi, Delta); RICS, STICS,
     # TICS and iMSD are readings of it rather than separate models.
+    # One catalogue (ics/models.yaml): 3D, membrane and 2D-Gaussian carpets compete on BIC.
     - chisurf.core.models.ics.ics.ImageCorrelationModel
-    - chisurf.core.models.ics.ics.IcsGaussian2DModel
 
 mfd:
   readers:

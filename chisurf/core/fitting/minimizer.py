@@ -338,14 +338,14 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     name : str
         Node name, unique within the graph the caller is assembling.
     producer_ports : dict, optional
-        Equation variable name -> an upstream node's output port. Unlike
-        ``graph_axes()`` (a flat array copied in once), a producer variable
-        is *linked* -- the caller has already built a node in front of this
-        one (the mdf FCS shape, ``_fcs_mdf_producer``), and the compiled
-        expression reads its output live instead of holding a copy. Used the
-        same way ``extra_axes`` is: presence in ``variables`` satisfies the
-        "at least one axis" requirement, and a variable naming neither an
-        equation parameter, an axis nor a producer still refuses.
+        Equation variable name -> an upstream node's output port. A
+        producer variable is *linked* -- the caller has already built a node
+        in front of this one (the mdf FCS shape, ``_fcs_mdf_producer``), and
+        the compiled expression reads its output live instead of holding a
+        copy. Presence in ``variables`` satisfies the "at least one axis"
+        requirement, and a variable naming neither an equation parameter, the
+        axis nor a producer still refuses. (Equations over several named
+        coordinates are BFF-described models and never reach this builder.)
     extra_carried : list, optional
         ``(parameter, port)`` pairs the caller has already wired to a node
         of its own (the mdf shape node's ``w0``/``wem``/``D``/``diam``
@@ -369,24 +369,6 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     if len(set(names)) != len(names):
         return None            # two equation variables share a name
 
-    # A model may evaluate over axes of its own instead of (or beside) the
-    # data's ``x`` -- an image-correlation carpet is a function of three lag
-    # grids, and none of them is the flattened index its DataCurve carries.
-    # The protocol is a ``graph_axes()`` method returning name -> flat float
-    # array, each exactly as long as the data; ``None`` says the axes cannot
-    # be produced right now (no carpet metadata), which refuses the graph.
-    extra_axes = {}
-    axes_method = getattr(model, "graph_axes", None)
-    if callable(axes_method):
-        try:
-            extra_axes = axes_method()
-        except Exception:
-            return None
-        if extra_axes is None:
-            return None
-        if set(extra_axes) & set(names):
-            return None        # an axis shadowing a parameter is ambiguous
-
     producer_ports = producer_ports or {}
 
     data = fit.data
@@ -402,11 +384,10 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
         variables = list(curve.get_variable_names())
     except Exception:
         return None            # the engine cannot compile it; eval() can
-    used_axes = [v for v in variables if v in extra_axes]
     used_producers = [v for v in variables if v in producer_ports]
-    if "x" not in variables and not used_axes and not used_producers:
+    if "x" not in variables and not used_producers:
         return None            # no axis or producer at all: not a curve model
-    if any(v != "x" and v not in names and v not in extra_axes
+    if any(v != "x" and v not in names
            and v not in producer_ports for v in variables):
         return None
 
@@ -435,14 +416,6 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
         axis.set_values_array(x)
         curve.add_input_port("x", axis)
         axes_alive.append(axis)
-    for axis_name in used_axes:
-        arr = np.ascontiguousarray(extra_axes[axis_name], dtype=np.float64)
-        if arr.ndim != 1 or arr.size != y.size:
-            return None        # the curve would not line up with the data
-        port = _bff.Port([0.0])
-        port.set_values_array(arr)
-        curve.add_input_port(axis_name, port)
-        axes_alive.append(port)
     for var_name in used_producers:
         port = _bff.Port([0.0])
         port.link = producer_ports[var_name]

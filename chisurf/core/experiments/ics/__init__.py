@@ -486,8 +486,15 @@ class ICSReader(ExperimentReader):
         })
 
         n_lags, ny, nx = carpet.shape
+        from chisurf.core.experiments.ics.data import carpet_coordinates
         meta_all = {
             "ics": meta_ics,
+            # Where each flattened value sits, by name -- what a model fitted
+            # to the carpet is a function of. Generic: a model reads the names,
+            # never this reader.
+            "coordinates": carpet_coordinates(meta_ics),
+            # Instrument numbers a model may name but not fit.
+            "parameter_defaults": {"pxl_size": float(timing.pixel_size_nm)},
             # Experiment-agnostic grid description so GUI components can reason
             # about the layout of the flattened carpet without knowing about ICS.
             "grid": {
