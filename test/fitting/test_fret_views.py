@@ -189,3 +189,26 @@ def test_a_polarized_fret_decay(polarization, code):
         "anisotropy.l1": reference.anisotropy._l1.value, "anisotropy.l2": reference.anisotropy._l2.value,
         **rotation}, scalars={"polarization": code})
     _assert_same(reference, view)
+
+
+def test_static_isotropic_orientation_factors():
+    """ChiSurf's 'slow' orientation mode, on its exact path: every (distance, kappa^2) pair."""
+    from types import SimpleNamespace
+    from chisurf.core.models.tcspc.fret import GaussianModel
+
+    def classic(model):
+        model.gaussians._gaussianMeans[0].value = 47.0
+        model.gaussians._gaussianSigma[0].value = 6.0
+        model.orientation_parameter.mode = "slow"
+        model._kappa2_fft_checkbox = SimpleNamespace(isChecked=lambda: False)
+
+    reference = _classic(GaussianModel, classic)
+    view = _view("tcspc_fret_gaussian", None, {
+        "distance.mean.0": 47.0, "distance.sigma.0": 6.0, "distance.shape.0": 0.0, "distance.amplitude.0": 1.0},
+        scalars={"static_orientation": 1.0, "kappa2_bins": 0.0})
+    _assert_same(reference, view)
+    # Binned by apparent distance, the curve moves by less than the noise of any decay.
+    binned = _view("tcspc_fret_gaussian", None, {
+        "distance.mean.0": 47.0, "distance.sigma.0": 6.0, "distance.shape.0": 0.0, "distance.amplitude.0": 1.0},
+        scalars={"static_orientation": 1.0, "kappa2_bins": 512.0})
+    np.testing.assert_allclose(np.asarray(binned.y), np.asarray(reference.y), rtol=2e-3)
