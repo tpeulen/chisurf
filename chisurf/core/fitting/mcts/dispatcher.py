@@ -7,6 +7,7 @@ and every refusal is returned to the caller as ``NativeSearchReason`` data.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from chisurf.core.fitting.mcts.native import (
@@ -56,6 +57,60 @@ def _with_reasons(
         binding=result.binding,
         reasons=deferred + tuple(result.reasons),
     )
+
+
+@dataclass
+class DescribedModelBinding:
+    """A search over a live BFF model, and the way back if it is not accepted.
+
+    The search writes the model's own ports while it runs. Accepting its
+    winner is leaving the model standing at it; refusing it is putting back
+    the values and the topology the user had.
+    """
+
+    fit: Any
+    model: Any
+    values: tuple[float, ...]
+    structure: str
+
+    def apply_state(self, problem: Any, state: Any) -> None:
+        from chisurf.core.fitting import factorgraph
+
+        problem.activate_state(state)
+        factorgraph.bump_structure_version()
+        self.model.update()
+        update = getattr(self.fit, "update", None)
+        if callable(update):
+            update()
+
+    def restore(self, problem: Any) -> None:
+        from chisurf.core.fitting import factorgraph
+
+        for canonical, value in zip(problem.get_parameter_ids(), self.values):
+            port = problem.get_parameter(canonical)
+            was = port.fixed
+            port.fixed = False
+            port.value = float(value)
+            port.fixed = was
+        if self.structure:
+            problem.select_structure(self.structure)
+        factorgraph.bump_structure_version()
+        self.model.update()
+
+
+def prepare_described_model_search(fit: Any) -> NativeSearchPreparation:
+    """Search a described model on its own live problem, or say why not."""
+    model = fit.model
+    problem = model.problem
+    if problem is None:
+        return unsupported(
+            CAPABILITY_ID,
+            "incomplete_model",
+            "the model is missing " + ", ".join(model.missing),
+        )
+    values = tuple(float(problem.get_parameter(i).value) for i in problem.get_parameter_ids())
+    binding = DescribedModelBinding(fit, model, values, str(problem.get_active_structure()))
+    return NativeSearchPreparation(CAPABILITY_ID, problem=problem, binding=binding)
 
 
 def declare_model_search(
@@ -142,26 +197,16 @@ def prepare_model_search(fit: Any) -> NativeSearchPreparation:
                 f"the BFF global-search capability is unavailable: {error}",
             )
         return prepare_global_model_search(fit, declare_model_search)
-    # A single lifetime fit is searched by the family BFF ships as a
-    # description; nothing here declares its structures. If BFF cannot
-    # represent the fit completely -- a polarised decay, a measured
-    # background curve -- that is a refusal of *structure* search only, and
-    # the fit still gets parameter refinement below, with the reason kept.
+    # A model BFF owns is searched where it stands: the problem *is* the
+    # model the user sees, so there is nothing to declare and nothing to copy.
     deferred: tuple[NativeSearchReason, ...] = ()
     single = _single_fit(fit)
     try:
-        from chisurf.core.models.tcspc.lifetime import LifetimeModel
+        from chisurf.core.models.description import DescriptionModel
     except ImportError:
-        LifetimeModel = ()
-    if isinstance(getattr(single, "model", None), LifetimeModel):
-        from chisurf.core.fitting.mcts.descriptions import (
-            prepare_lifetime_description_search,
-        )
-
-        described = prepare_lifetime_description_search(single)
-        if described.supported:
-            return described
-        deferred = tuple(described.reasons)
+        DescriptionModel = ()
+    if isinstance(getattr(single, "model", None), DescriptionModel):
+        return prepare_described_model_search(single)
 
     declaration = declare_model_search(fit)
     if isinstance(declaration, NativeSearchPreparation):
@@ -169,4 +214,10 @@ def prepare_model_search(fit: Any) -> NativeSearchPreparation:
     return _with_reasons(prepare_native_model_search(declaration), deferred)
 
 
-__all__ = ["CAPABILITY_ID", "declare_model_search", "prepare_model_search"]
+__all__ = [
+    "CAPABILITY_ID",
+    "DescribedModelBinding",
+    "declare_model_search",
+    "prepare_described_model_search",
+    "prepare_model_search",
+]

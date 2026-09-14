@@ -207,7 +207,8 @@ class CurveInputWidget(QtWidgets.QWidget):
             logging.warning(f"CurveInputWidget: could not read selection: {exc}")
             return
         fit_index = self._own_fit_index()
-        payload = {section.index_key: idx, section.name_key: name, "fit_index": int(fit_index)}
+        payload = dict(getattr(section, "action_fixed", {}) or {})
+        payload.update({section.index_key: idx, section.name_key: name, "fit_index": int(fit_index)})
         try:
             if section.select_action and fit_index >= 0:
                 cs.core.actions.dispatch(name=section.select_action, payload=payload)
@@ -224,9 +225,9 @@ class CurveInputWidget(QtWidgets.QWidget):
         fit_index = self._own_fit_index()
         try:
             if fit_index >= 0:
-                cs.core.actions.dispatch(
-                    name=section.unload_action, payload={"fit_index": int(fit_index)}
-                )
+                payload = dict(getattr(section, "action_fixed", {}) or {})
+                payload["fit_index"] = int(fit_index)
+                cs.core.actions.dispatch(name=section.unload_action, payload=payload)
             _dispatch_fit_update(fit_index)
         except Exception as exc:
             logging.warning(f"CurveInputWidget: unload dispatch failed: {exc}")

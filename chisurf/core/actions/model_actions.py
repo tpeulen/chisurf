@@ -142,6 +142,34 @@ def absolute_model_amplitudes(fit_index: typing.Optional[int] = None):
         return {}
     return model_macros.absolute_amplitudes(fit=fit)
 
+@action("model.set_dataset", schema={"slot": str, "idx": int, "name": str})
+def set_model_dataset(slot: str, idx: int, name: str, fit_index: typing.Optional[int] = None):
+    """Bind a loaded curve to one measurement slot of a described model."""
+    from chisurf.macros.model import _resolve_selected_curve
+    fit = _resolve_fit(fit_index)
+    if fit is None:
+        return {}
+    curve = _resolve_selected_curve(int(idx), str(name))
+    if curve is None:
+        return {}
+    for f in fit[fit.selected_fit_index:]:
+        f.model.set_dataset(str(slot), curve)
+    fit.update()
+    return {}
+
+
+@action("model.unset_dataset", schema={"slot": str})
+def unset_model_dataset(slot: str, fit_index: typing.Optional[int] = None):
+    """Forget the curve bound to one measurement slot of a described model."""
+    fit = _resolve_fit(fit_index)
+    if fit is None:
+        return {}
+    for f in fit[fit.selected_fit_index:]:
+        f.model.unset_dataset(str(slot))
+    fit.update()
+    return {}
+
+
 @action("model.change_irf", schema={"irf_idx": int, "irf_name": str})
 def change_model_irf(irf_idx: int, irf_name: str, fit_index: typing.Optional[int] = None):
     """Change the IRF used by the model."""

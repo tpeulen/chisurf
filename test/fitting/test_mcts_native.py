@@ -1,4 +1,9 @@
-"""Focused contracts for the callback-free ChiSurf/BFF model-search bridge."""
+"""The classic ChiSurf lifetime model and BFF model search.
+
+A described model (``DescriptionModel``) is searched on its own live problem;
+see ``test_description_model.py``. The classic ``LifetimeModel`` is not a view on
+a BFF model, so it gets parameter refinement and nothing structural.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +14,7 @@ import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.fitting.fit as fitting
 from chisurf.core.fitting.mcts.native import prepare_native_model_search
-from chisurf.core.fitting.mcts.descriptions import prepare_lifetime_description_search
+from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
@@ -61,98 +66,12 @@ def _state(fit):
     )
 
 
-def test_lifetime_search_uses_bffs_description_without_mutating_the_fit():
-    """The lattice is BFF's; ChiSurf only binds data and the user's choices."""
+def test_a_classic_lifetime_model_is_refined_not_searched_structurally():
     fit = _two_lifetime_fit()
-    external_background = FittingParameter(name="external-bg", value=2.0, fixed=True)
-    fit.model.generic._bg.link = external_background
     before = _state(fit)
 
-    prepared = prepare_lifetime_description_search(fit)
+    prepared = prepare_model_search(fit)
 
     assert prepared.supported, prepared.reasons
     assert _state(fit) == before
-    assert fit.model.generic._bg.link is external_background
-    root = prepared.problem.get_initial_state()
-    assert root.get_structure_key() == "lifetime.components.1"
-    # The ceiling is the rows the user allocated: two.
-    assert set(prepared.problem.get_structure_keys()) == {
-        "lifetime.components.1", "lifetime.components.2"}
-    assert {a.get_key() for a in prepared.problem.get_actions(root)} == {
-        "add-component", "stop"}
-
-
-def test_the_winner_is_applied_to_the_users_model():
-    fit = _two_lifetime_fit()
-    prepared = prepare_lifetime_description_search(fit)
-    assert prepared.supported, prepared.reasons
-    problem = prepared.problem
-    root = problem.get_initial_state()
-    add = next(a for a in problem.get_actions(root) if a.get_key() == "add-component")
-
-    two = problem.evaluate(root, add)
-
-    assert two.get_structure_key() == "lifetime.components.2"
-    assert problem.get_last_fit_status() in (1, 2, 3, 4)
-    original_second_tau = fit.model.lifetimes._lifetimes[1].value
-    prepared.binding.apply_state(problem, two)
-    assert not fit.model.lifetimes._lifetimes[1].fixed
-    assert fit.model.lifetimes._lifetimes[1].value != pytest.approx(original_second_tau)
-    assert fit.model.convolve._ts.fixed  # the user's lock is theirs
-    assert np.all(np.isfinite(fit.model.y))
-
-
-def test_an_unused_row_is_zeroed_not_left_holding_a_seed():
-    """Writing BFF's seed amplitude would add a component nobody fitted."""
-    fit = _two_lifetime_fit()
-    prepared = prepare_lifetime_description_search(fit)
-    problem = prepared.problem
-    root = problem.get_initial_state()
-    prepared.binding.apply_state(problem, root)
-    assert fit.model.lifetimes._amplitudes[1].value == 0.0
-    assert fit.model.lifetimes._amplitudes[1].fixed
-
-
-def test_user_fixed_structure_is_refused_and_unchanged():
-    fit = _two_lifetime_fit()
-    fit.model.lifetimes._lifetimes[1].fixed = True
-    before = _state(fit)
-
-    prepared = prepare_lifetime_description_search(fit)
-
-    assert not prepared.supported
-    assert prepared.reasons[0].code == "fixed_structural_parameter"
-    assert _state(fit) == before
-
-
-def test_what_the_description_does_not_carry_is_refused():
-    fit = _two_lifetime_fit()
-    fit.model.convolve.mode = "exp"
-    prepared = prepare_lifetime_description_search(fit)
-    assert not prepared.supported
-    assert prepared.reasons[0].code == "non_periodic_convolution"
-
-
-def test_the_description_reproduces_chisurfs_configured_decay():
-    """Equivalence with the model the user configured, not with itself.
-
-    Nothing is assigned after building: the route's own binding of the fit
-    has to produce ChiSurf's curve. An earlier version wrote the parameters in
-    afterwards, and a write to a fixed port is silently ignored -- which hid
-    that the route never passed the user's lifetime rows at all, so the fixed
-    first amplitude sat at a neutral seed and every fitted fraction was
-    relative to the wrong reference.
-    """
-    from chisurf.core.fitting import minimizer
-
-    fit = _two_lifetime_fit()
-    built = minimizer.graph_objective(fit, fit.model)
-    node = (built[0] if isinstance(built, tuple) else built)._decay
-    node.update()
-    reference = np.asarray(node.get_output_port("decay").value)
-
-    prepared = prepare_lifetime_description_search(fit)
-    key = "lifetime.components.2"
-    prepared.problem.activate_structure(key)
-    curve = np.asarray(prepared.problem.get_structure_output(key, f"{key}.decay"))
-    assert curve == pytest.approx(reference, rel=1e-9, abs=1e-9)
+    assert not isinstance(prepared.problem, __import__("IMP.bff", fromlist=["x"]).MultiStructureModelSearchProblem)

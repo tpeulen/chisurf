@@ -266,6 +266,9 @@ class CurveInputSection(Section):
     #: Optional attribute (on the target group) holding the current curve, read
     #: to display its name; e.g. ``"irf"``.
     name_attr: typing.Optional[str] = None
+    #: Fixed payload merged into both dispatches (e.g. ``{"slot": "response"}``),
+    #: so one action can serve every curve input a model declares.
+    action_fixed: typing.Mapping[str, typing.Any] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass(frozen=True)

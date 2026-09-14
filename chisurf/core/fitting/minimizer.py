@@ -566,6 +566,10 @@ def graph_objective(fit, model, allow_priors: bool = False):
     if not free:
         return None
 
+    if _is_description_model(model):
+        # BFF already holds this model's whole graph; there is nothing to
+        # build and nothing to copy back.
+        return _description_objective(model, free)
     if getattr(model, "fits", None) is not None and hasattr(
             model, "global_parameters"):
         return _group_objective(fit, model, free)
@@ -591,6 +595,40 @@ def graph_objective(fit, model, allow_priors: bool = False):
         # is where the two part company.
         return _fcs_kinetics_full_objective(fit, model, free)
     return _single_objective(fit, model, free)
+
+
+def _is_description_model(model) -> bool:
+    """Whether *model* is a view on a model BFF owns."""
+    try:
+        from chisurf.core.models.description import DescriptionModel
+    except ImportError:
+        return False
+    return isinstance(model, DescriptionModel)
+
+
+def _description_objective(model, free):
+    """The minimiser over a described model's own graph.
+
+    No builder: the objective, the measurement and the parameter ports are
+    the live model's. The optimiser writes those ports, and the view reads
+    them, so the answer is where the user looks the moment the run returns.
+    """
+    problem = model.problem
+    if problem is None:
+        return None
+    objective = problem.get_active_objective()
+    if objective is None:
+        return None
+    ports = [p._port for p in free]
+    m = _bff.FitMinimizer()
+    m.set_parameter_ports(ports)
+    m.set_objective(objective, "residuals")
+    maxfev = int(problem.get_minimizer_maxfev())
+    if maxfev > 0:
+        m.maxfev = maxfev
+    m._graph = (problem,)
+    m._sampler_surface = (objective, ports, objective.get_name())
+    return m, free
 
 
 def _single_objective(fit, model, free, producer_ports=None,
