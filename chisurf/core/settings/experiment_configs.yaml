@@ -65,6 +65,7 @@ tcspc:
     # description does not cover yet (non-periodic convolution, background
     # curves, generated IRFs, linked spectra).
     - chisurf.core.models.description.tcspc_lifetime
+    - chisurf.core.models.description.tcspc_polarized
     - chisurf.core.models.tcspc.fret.FRETrateModel
     - chisurf.core.models.tcspc.fret.GaussianModel
     - chisurf.core.models.tcspc.pddem.PDDEMModel

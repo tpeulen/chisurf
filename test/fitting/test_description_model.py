@@ -395,3 +395,63 @@ def test_an_irf_is_missing_until_one_is_loaded_or_modelled():
     assert model.problem is None and "response" in model.missing
     model.set_scalar("generated_response", 1.0)
     assert model.problem is not None, model.missing
+
+
+@pytest.mark.parametrize("polarization, code", [("vv", 1.0), ("vh", 2.0), ("vv/vh", 3.0)])
+def test_the_polarized_view_reproduces_the_classic_anisotropy(polarization, code):
+    """VV, VH and VV/VH decays with two rotations, g and the l1/l2 mixing."""
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    x = _axis()
+    irf = _irf()
+    y = np.random.default_rng(12).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
+    ey = np.sqrt(np.maximum(y, 1.0))
+    classic_fit = fitting.Fit(model_class=LifetimeModel,
+                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
+    classic_fit.xmin, classic_fit.xmax = 0, N
+    classic = classic_fit.model
+    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
+    classic.convolve.dt = DT
+    classic.convolve.rep_rate = 1000.0 / PERIOD
+    classic.convolve._n0.fixed = False
+    classic.convolve._n0.value = 5000.0
+    classic.lifetimes._lifetimes[0].value = 3.2
+    classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
+    anisotropy = classic.anisotropy
+    anisotropy.polarization_type = polarization
+    while len(anisotropy) < 2:
+        anisotropy.add_rotation(b=0.2, rho=1.0)
+    anisotropy._bs[0].value, anisotropy._rhos[0].value = 0.3, 0.8
+    anisotropy._bs[1].value, anisotropy._rhos[1].value = 0.1, 4.0
+    anisotropy._r0.value, anisotropy._g.value = 0.36, 1.2
+    anisotropy._l1.value, anisotropy._l2.value = 0.03, 0.04
+    classic.find_parameters()
+    classic.update()
+    reference = np.array(classic.y)
+    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
+    rotations = [b.value for b in anisotropy._bs]
+
+    data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
+    fit = fitting.Fit(model_class=for_family("tcspc_polarized"), data=data)
+    fit.xmin, fit.xmax = 0, N
+    model = fit.model
+    model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=irf.copy()))
+    model.set_scalar("period", PERIOD)
+    model.set_scalar("polarization", code)
+    problem = model.problem
+    assert problem is not None, model.missing
+    model.structure = "lifetime.components.2.rotations.2"
+    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
+              "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
+              "rotation.amplitude.0": rotations[0], "rotation.time.0": 0.8,
+              "rotation.amplitude.1": rotations[1], "rotation.time.1": 4.0,
+              "anisotropy.r0": 0.36, "anisotropy.g": 1.2, "anisotropy.l1": 0.03, "anisotropy.l2": 0.04,
+              "instrument.n0": 5000.0, "instrument.scatter": 0.0, "instrument.background": 0.0}
+    for name, value in values.items():
+        port = problem.get_parameter(name)
+        held = port.fixed
+        port.fixed = False
+        port.value = value
+        port.fixed = held
+    model.update()
+    np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
