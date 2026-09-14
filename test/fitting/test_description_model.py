@@ -256,3 +256,49 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
         port.fixed = held
     model.update()
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
+
+
+def test_the_view_reproduces_the_classic_background_pattern():
+    """A measured background decay, split from the fluorescence by measurement time."""
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    x = _axis()
+    irf = _irf()
+    pattern = 30.0 + 20.0 * np.exp(-0.5 * ((x - 2.5) / 0.6) ** 2)
+    y = np.random.default_rng(8).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 40).astype(float)
+    ey = np.sqrt(np.maximum(y, 1.0))
+
+    classic_fit = fitting.Fit(model_class=LifetimeModel,
+                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
+    classic_fit.xmin, classic_fit.xmax = 0, N
+    classic = classic_fit.model
+    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
+    classic.convolve.dt = DT
+    classic.convolve.rep_rate = 1000.0 / PERIOD
+    classic.convolve._ts.value = 0.8
+    classic.convolve._n0.fixed = False
+    classic.convolve._n0.value = 1.0
+    classic.generic.background_curve = chisurf.core.curve.Curve(x=x, y=pattern.copy())
+    classic.generic._tmeas_bg.value = 5.0
+    classic.generic._tmeas_exp.value = 3.0
+    classic.lifetimes._lifetimes[0].value = 2.1
+    classic.find_parameters()
+    classic.update()
+    reference = np.array(classic.y)
+
+    fit, model = _view(y)
+    fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
+    model.set_dataset("background_pattern", chisurf.core.curve.Curve(x=x, y=pattern.copy()))
+    model.set_scalar("t_background", 5.0)
+    model.set_scalar("t_decay", 3.0)
+    problem = model.problem
+    model.structure = "lifetime.components.1"
+    for name, value in {"lifetime.tau.0": 2.1, "instrument.timeshift": 0.8, "instrument.n0": 1.0,
+                        "instrument.background": 0.0}.items():
+        port = problem.get_parameter(name)
+        held = port.fixed
+        port.fixed = False
+        port.value = value
+        port.fixed = held
+    model.update()
+    np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
