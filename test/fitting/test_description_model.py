@@ -197,3 +197,62 @@ def test_the_editor_is_derived_from_the_description():
     assert "lifetimes" in targets and "instrument" in targets
     labels = [getattr(s, "label", None) for s in spec.flat_sections()]
     assert "IRF" in labels and "Period [ns]" in labels
+
+
+def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation():
+    """Lamp background, IRF window, shift, scatter, background: one curve, two owners.
+
+    The classic LifetimeModel prepares the IRF in Python -- subtract the lamp
+    background, clip, zero outside [irf_start, irf_stop), shift, normalise --
+    and BFF now does the same in the graph, so the view needs no Python curve.
+    """
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    x = _axis()
+    irf = _irf() + 6.0                      # a lamp background under the IRF
+    y = np.random.default_rng(4).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 10).astype(float)
+    ey = np.sqrt(np.maximum(y, 1.0))
+
+    classic_fit = fitting.Fit(model_class=LifetimeModel,
+                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
+    classic_fit.xmin, classic_fit.xmax = 0, N
+    classic = classic_fit.model
+    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
+    classic.convolve.dt = DT
+    classic.convolve.rep_rate = 1000.0 / PERIOD
+    classic.convolve._lb.value = 6.5
+    classic.convolve._irf_start.value = 0.4
+    classic.convolve._irf_stop.value = 3.6
+    classic.convolve._ts.value = 0.7
+    classic.convolve._n0.fixed = False
+    classic.convolve._n0.value = 9000.0
+    classic.generic._sc.value = 0.02
+    classic.generic._bg.value = 3.0
+    classic.lifetimes._lifetimes[0].value = 3.2
+    classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
+    classic.find_parameters()
+    classic.update()
+    reference = np.array(classic.y)
+
+    fit, model = _view(y)
+    fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
+    model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=irf.copy()))
+    model.set_scalar("response_start", 0.4)
+    model.set_scalar("response_stop", 3.6)
+    problem = model.problem
+    model.structure = "lifetime.components.2"
+    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
+    values = {
+        "lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
+        "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
+        "instrument.response_background": 6.5, "instrument.timeshift": 0.7,
+        "instrument.n0": 9000.0, "instrument.scatter": 0.02, "instrument.background": 3.0,
+    }
+    for name, value in values.items():
+        port = problem.get_parameter(name)
+        held = port.fixed
+        port.fixed = False
+        port.value = value
+        port.fixed = held
+    model.update()
+    np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)

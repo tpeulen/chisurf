@@ -992,17 +992,24 @@ class Convolve(FittingParameterGroup):
         super().__init__(fit=fit, name=name, **kwargs)
 
         self._data = None
+        # Each number is read on its own. They were read in one `try`, so data
+        # without a reader -- a scripted or simulated decay -- lost its channel
+        # width and its length along with the repetition rate it lacked: dt fell
+        # back to 1 and the convolution stop to 1 ns, which, once dt was set,
+        # silently convolved only the first 1/dt channels of the decay.
+        data = kwargs.get('data', getattr(fit, 'data', None))
         try:
-            data = kwargs.get('data', fit.data)
-            dt = data.dx[0]
-            rep_rate = data.data_reader.rep_rate
-            stop = len(data) * dt
-            self.data = data
-        except (AttributeError, TypeError):
+            dt = float(data.dx[0])
+        except (AttributeError, TypeError, IndexError):
             dt = kwargs.get('dt', 1.0)
-            rep_rate = kwargs.get('rep_rate', 1.0)
+        try:
+            stop = len(data) * dt
+        except TypeError:
             stop = 1
-            data = kwargs.get('data', None)
+        try:
+            rep_rate = data.data_reader.rep_rate
+        except AttributeError:
+            rep_rate = kwargs.get('rep_rate', 1.0)
         self.data = data
 
         self._n0 = FittingParameter(
