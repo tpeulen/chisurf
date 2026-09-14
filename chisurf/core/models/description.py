@@ -492,12 +492,21 @@ class DescriptionModel(ModelCurve):
                 vs.PlotSpec("parameter_scan"),
             )
         else:
-            plots = (
-                vs.PlotSpec("line", {"x_label": "x", "y_label": "y"}),
-                vs.PlotSpec("fit_info"),
-                vs.PlotSpec("parameter_scan"),
-                vs.PlotSpec("residual"),
-            )
+            axis = presentation.get("axis", {})
+            plots = [vs.PlotSpec("line", {"x_label": axis.get("x", "x"), "y_label": axis.get("y", "y"),
+                                          **({"d_scaley": axis["scale_y"]} if "scale_y" in axis else {})}),
+                     vs.PlotSpec("fit_table"), vs.PlotSpec("fit_info"), vs.PlotSpec("parameter_scan")]
+            distributions = presentation.get("distributions", {})
+            if distributions:
+                plots.append(vs.PlotSpec("distribution", {"distribution_options": {
+                    info.get("label", name): {
+                        "attribute": name, "accessor": "interleaved_to_two_columns",
+                        "accessor_kwargs": {"sort": True},
+                        "curve_options": {"stepMode": False, "connect": False,
+                                          "bar_mode": "sticks", "symbol": "o"}}
+                    for name, info in distributions.items()}}))
+            plots.append(vs.PlotSpec("residual"))
+            plots = tuple(plots)
         return vs.ModelView(sections=tuple(sections), plots=plots)
 
     def find_parameters(self, parameter_type=FittingParameter) -> None:
@@ -539,6 +548,65 @@ class DescriptionModel(ModelCurve):
             return []
         return list(problem.get_structure_parameter_ids(problem.get_active_structure()))
 
+    # --- presented outputs -------------------------------------------------------
+    def presented_distribution(self, name: str) -> np.ndarray:
+        """A distribution the description presents, read from the live model now."""
+        info = self.presentation.get("distributions", {}).get(name)
+        problem = self.problem
+        if info is None or problem is None:
+            return np.zeros(0)
+        active = problem.get_active_structure()
+        node = f"{active}.{info['node']}"
+        port = info.get("port", "@name")
+        if port == "@name":
+            return np.array(problem.get_structure_output(active, node), dtype=float)
+        return np.array(problem.get_structure_port(active, node, port), dtype=float)
+
+    def __getattr__(self, name: str):
+        # Only the distributions a description names become attributes, so a
+        # plot configured by attribute (``lifetime_spectrum``) reads the model.
+        if name.startswith("_"):
+            raise AttributeError(name)
+        try:
+            document = object.__getattribute__(self, "_document")
+        except Exception:
+            raise AttributeError(name)
+        if name in document.get("presentation", {}).get("distributions", {}):
+            return self.presented_distribution(name)
+        raise AttributeError(name)
+
+    def _update_statistics(self) -> None:
+        statistics = self.presentation.get("statistics", {})
+        if not statistics:
+            return
+        import chisurf.core.fluorescence.general as general
+        outputs = self.__dict__.get("_statistic_parameters")
+        if outputs is None:
+            outputs = {}
+            for key, info in statistics.items():
+                outputs[key] = FittingParameter(
+                    value=0.0, name=info.get("label", key), fixed=True, is_output=True)
+                # Not a parameter of the BFF model: derived from it, shown beside it.
+                outputs[key].canonical_id = f"output.{key}"
+            self.__dict__["_statistic_parameters"] = outputs
+            self.__dict__["outputs"] = FittingParameterGroup(
+                parameters=list(outputs.values()), name="Outputs")
+            self._forget_discovery()
+        for key, info in statistics.items():
+            spectrum = self.presented_distribution(info["of"])
+            function = getattr(general, info["statistic"], None)
+            if function is None or spectrum.size < 2:
+                continue
+            try:
+                outputs[key].value = float(function(spectrum))
+            except Exception:
+                pass
+
+    def get_plot_reference_modes(self):
+        from chisurf.core.plotting.reference_modes import modes_named
+
+        return modes_named(self.presentation.get("reference_modes", []))
+
     # --- the curve -------------------------------------------------------------
     def _update_model(self, **kwargs):
         problem = self.problem
@@ -551,6 +619,7 @@ class DescriptionModel(ModelCurve):
         active = problem.get_active_structure()
         node = problem.get_structure_curve_node(active, self.primary_dataset)
         self.y = np.array(problem.get_structure_output(active, node), dtype=float)
+        self._update_statistics()
 
     # --- persistence -----------------------------------------------------------
     def get_state(self) -> dict:

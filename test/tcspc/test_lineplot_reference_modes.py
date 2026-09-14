@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-import chisurf.core.plot_transforms as plot_transforms
+import chisurf.core.plotting.transforms as plot_transforms
 from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
 
@@ -78,7 +78,9 @@ def test_tcspc_total_photon_mode_uses_fit_range_parameter():
     model = LifetimeModel.__new__(LifetimeModel)
     context = _context(model, [1.0, 2.0, 3.0, 4.0], {"fit_range_only": True})
 
-    result = model._tcspc_total_photons_mode(context)
+    from chisurf.core.plotting.reference_modes import total_photons
+
+    result = total_photons(context)
 
     np.testing.assert_allclose(result.y, np.array([1.0, 2.0, 3.0, 4.0]) / 5.0)
 
@@ -88,7 +90,9 @@ def test_tcspc_peak_photon_mode_uses_peak_denominator():
     model = LifetimeModel.__new__(LifetimeModel)
     context = _context(model, [1.0, 2.0, 3.0, 4.0], {"fit_range_only": False})
 
-    result = model._tcspc_peak_photons_mode(context)
+    from chisurf.core.plotting.reference_modes import peak_photons
+
+    result = peak_photons(context)
 
     np.testing.assert_allclose(result.y, np.array([1.0, 2.0, 3.0, 4.0]) / 4.0)
 

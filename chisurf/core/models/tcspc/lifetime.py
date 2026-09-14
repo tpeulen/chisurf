@@ -553,89 +553,6 @@ class LifetimeModel(ModelCurve):
     # --- plot-reference overlay modes (they live here, not in a widget, so both
     # the generated editor and the remaining legacy widgets get them) ---
 
-    def _tcspc_reference_window(
-            self,
-            context: plot_transforms.PlotReferenceContext
-    ) -> np.ndarray:
-        """Return the y-window used for photon normalization.
-
-        Parameters
-        ----------
-        context : PlotReferenceContext
-            Current plot-transform context.
-
-        Returns
-        -------
-        numpy.ndarray
-            Finite y-values used for the denominator.
-        """
-        y = np.asarray(context.y, dtype=float)
-        if not bool(context.parameters.get("fit_range_only", False)):
-            return y[np.isfinite(y)]
-        try:
-            data_x = np.asarray(getattr(getattr(context.fit, "data", None), "x", []), dtype=float)
-            if y.size == data_x.size:
-                xmin = int(getattr(context.fit, "xmin", 0))
-                xmax = int(getattr(context.fit, "xmax", y.size))
-                y = y[max(0, xmin):min(y.size, xmax)]
-        except Exception:
-            pass
-        return y[np.isfinite(y)]
-
-    def _tcspc_total_photons_mode(
-            self,
-            context: plot_transforms.PlotReferenceContext
-    ) -> plot_transforms.PlotReferenceResult:
-        """Normalize TCSPC counts by total photons.
-
-        Parameters
-        ----------
-        context : PlotReferenceContext
-            Current plot-transform context.
-
-        Returns
-        -------
-        PlotReferenceResult
-            Photon-normalized curve.
-        """
-        window = self._tcspc_reference_window(context)
-        denominator = float(np.nansum(window))
-        if not np.isfinite(denominator) or denominator == 0.0:
-            raise ValueError("total photon count is zero")
-        return plot_transforms.PlotReferenceResult(
-            x=context.x,
-            y=np.asarray(context.y, dtype=float) / denominator,
-            y_label="counts / total photons",
-        )
-
-    def _tcspc_peak_photons_mode(
-            self,
-            context: plot_transforms.PlotReferenceContext
-    ) -> plot_transforms.PlotReferenceResult:
-        """Normalize TCSPC counts by the peak photon count.
-
-        Parameters
-        ----------
-        context : PlotReferenceContext
-            Current plot-transform context.
-
-        Returns
-        -------
-        PlotReferenceResult
-            Peak-normalized curve.
-        """
-        window = self._tcspc_reference_window(context)
-        if window.size == 0:
-            raise ValueError("peak photon count is unavailable")
-        denominator = float(np.nanmax(window))
-        if not np.isfinite(denominator) or denominator == 0.0:
-            raise ValueError("peak photon count is zero")
-        return plot_transforms.PlotReferenceResult(
-            x=context.x,
-            y=np.asarray(context.y, dtype=float) / denominator,
-            y_label="counts / peak photons",
-        )
-
     def _donor_reference_curve(self, context: plot_transforms.PlotReferenceContext) -> np.ndarray:
         """Return a donor-reference curve for the current context.
 
@@ -878,34 +795,9 @@ class LifetimeModel(ModelCurve):
         list
             Plot reference modes.
         """
-        fit_range_param = plot_transforms.PlotReferenceParameter(
-            key="fit_range_only",
-            label="fit range",
-            kind="bool",
-            default=False,
-        )
-        modes = [
-            plot_transforms.PlotReferenceMode(
-                key="tcspc_total_photons",
-                label="Total photons",
-                callback=self._tcspc_total_photons_mode,
-                parameters=(fit_range_param,),
-                applies_to=("data", "model"),
-                y_label="counts / total photons",
-                y_range=(0, 1.0),
-                y_padding=0.05,
-            ),
-            plot_transforms.PlotReferenceMode(
-                key="tcspc_peak_photons",
-                label="Peak photons",
-                callback=self._tcspc_peak_photons_mode,
-                parameters=(fit_range_param,),
-                applies_to=("data", "model"),
-                y_label="counts / peak photons",
-                y_range=(0, 1.0),
-                y_padding=0.05,
-            ),
-        ]
+        from chisurf.core.plotting.reference_modes import photon_modes
+
+        modes = photon_modes()
         if hasattr(self, "_reference") or hasattr(type(self), "reference"):
             modes.append(
                 plot_transforms.PlotReferenceMode(

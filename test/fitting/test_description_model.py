@@ -112,10 +112,12 @@ def test_a_fit_writes_the_model_in_place_and_recovers_the_truth():
     model.structure = "lifetime.components.2"
     starts = {"lifetime.tau.0": 2.5, "lifetime.amplitude.1": 0.6, "lifetime.tau.1": 0.8}
     for parameter in model.parameters_all:
+        if getattr(parameter, 'is_output', False):
+            continue
         if parameter.canonical_id in starts:
             parameter.value = starts[parameter.canonical_id]
     fit.run()
-    values = {p.canonical_id: p.value for p in model.parameters_all}
+    values = {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)}
     for canonical in ("lifetime.tau.0", "lifetime.tau.1", "lifetime.amplitude.1"):
         assert values[canonical] == pytest.approx(TRUTH[canonical], rel=1e-3), canonical
         assert values[canonical] == model.problem.get_parameter(canonical).value
@@ -123,7 +125,7 @@ def test_a_fit_writes_the_model_in_place_and_recovers_the_truth():
 
 def test_fixing_holds_for_every_topology_and_freeing_releases_the_instrument():
     _, model = _view()
-    by_id = {p.canonical_id: p for p in model.parameters_all}
+    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, 'is_output', False)}
     by_id["instrument.n0"].fixed = True
     model.structure = "lifetime.components.3"
     assert by_id["instrument.n0"].fixed
@@ -135,11 +137,11 @@ def test_fixing_holds_for_every_topology_and_freeing_releases_the_instrument():
 
 def test_new_data_keeps_every_port_the_view_holds():
     fit, model = _view()
-    ports = {p.canonical_id: p._port.uid for p in model.parameters_all}
+    ports = {p.canonical_id: p._port.uid for p in model.parameters_all if not getattr(p, 'is_output', False)}
     model.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=np.roll(_irf(), 2)))
     fit.data = chisurf.core.data.DataCurve(x=_axis(), y=np.full(N, 50.0), ey=np.full(N, 7.0))
     assert model.problem is not None
-    assert {p.canonical_id: p._port.uid for p in model.parameters_all} == ports
+    assert {p.canonical_id: p._port.uid for p in model.parameters_all if not getattr(p, 'is_output', False)} == ports
     for canonical, uid in ports.items():
         assert model.problem.get_parameter(canonical).uid == uid
 
@@ -164,19 +166,19 @@ def test_the_search_leaves_the_model_at_its_winner_without_a_copy():
 
 def test_a_refused_search_puts_the_model_back():
     fit, model = _view(_simulated())
-    before = {p.canonical_id: p.value for p in model.parameters_all}
+    before = {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)}
     structure = model.structure
     prepared = prepare_model_search(fit)
     prepared.problem.get_initial_state()
     prepared.binding.restore(prepared.problem)
-    assert {p.canonical_id: p.value for p in model.parameters_all} == before
+    assert {p.canonical_id: p.value for p in model.parameters_all if not getattr(p, 'is_output', False)} == before
     assert model.structure == structure
 
 
 def test_state_round_trips_without_rebuilding_twice():
     fit, model = _view()
     model.structure = "lifetime.components.2"
-    by_id = {p.canonical_id: p for p in model.parameters_all}
+    by_id = {p.canonical_id: p for p in model.parameters_all if not getattr(p, 'is_output', False)}
     by_id["lifetime.tau.1"].value = 1.7
     by_id["instrument.n0"].fixed = True
     state = model.get_state()
@@ -478,3 +480,18 @@ def test_the_view_reproduces_the_classic_dnl_correction(reverse):
 
     reference, got = _classic_and_view(classic, view)
     np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+
+
+def test_the_view_presents_the_classic_outputs():
+    """The lifetime distribution, the averaged lifetimes and the photon modes."""
+    captured = {}
+    _classic_and_view(lambda m: captured.__setitem__("classic", m),
+                      lambda m: captured.__setitem__("view", m))
+    classic, view = captured["classic"], captured["view"]
+    spectrum = np.asarray(view.lifetime_spectrum)
+    np.testing.assert_allclose(np.sort(spectrum[1::2]), np.sort(classic.lifetime_spectrum[1::2]), rtol=1e-12)
+    outputs = {p.name: p.value for p in view.parameters_all if getattr(p, "is_output", False)}
+    assert outputs["<tau>x"] == pytest.approx(classic.lifetimes.species_averaged_lifetime, rel=1e-12)
+    assert outputs["<tau>F"] == pytest.approx(classic.lifetimes.fluorescence_averaged_lifetime, rel=1e-12)
+    assert {m.key for m in view.get_plot_reference_modes()} == {"tcspc_total_photons", "tcspc_peak_photons"}
+    assert "distribution" in [plot.key for plot in view.view_spec().plots]
