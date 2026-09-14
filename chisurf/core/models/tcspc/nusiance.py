@@ -210,7 +210,10 @@ class Corrections(FittingParameterGroup):
     def window_length(self, v: int):
         """Window length for the smoothing window function."""
         self._window_length.value = v
-        self._lintable = self.calc_lintable(self._curve.y)
+        # Recomputed only from a loaded curve: the smoothing can be chosen
+        # before the measurement, which used to raise here.
+        if getattr(self, "_curve", None) is not None:
+            self._lintable = self.calc_lintable(self._curve.y)
 
     @property
     def window_function(self) -> str:
@@ -221,7 +224,8 @@ class Corrections(FittingParameterGroup):
     def window_function(self, v: str):
         """Name of the window function used for smoothing."""
         self._window_function = v
-        self._lintable = self.calc_lintable(self._curve.y)
+        if getattr(self, "_curve", None) is not None:
+            self._lintable = self.calc_lintable(self._curve.y)
 
     @property
     def reverse(self) -> bool:

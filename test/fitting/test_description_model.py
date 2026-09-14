@@ -455,3 +455,26 @@ def test_the_polarized_view_reproduces_the_classic_anisotropy(polarization, code
         port.fixed = held
     model.update()
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_the_view_reproduces_the_classic_dnl_correction(reverse):
+    """A measurement of uncorrelated light, smoothed into a table, multiplies the model."""
+    x = _axis()
+    lamp = np.random.default_rng(3).poisson(np.sin(x * 2.0) * 60 + 5000).astype(float)
+
+    def classic(model):
+        model.corrections.window_function = "hamming"
+        model.corrections._window_length.value = 9
+        model.corrections.lintable = chisurf.core.curve.Curve(x=x, y=lamp.copy())
+        model.corrections.reverse = reverse
+        model.corrections.correct_dnl = True
+
+    def view(model):
+        model.set_dataset("linearization_curve", chisurf.core.curve.Curve(x=x, y=lamp.copy()))
+        model.set_scalar("lin_window_length", 9)
+        model.set_scalar("lin_window", 2)
+        model.set_scalar("reverse_linearization", 1.0 if reverse else 0.0)
+
+    reference, got = _classic_and_view(classic, view)
+    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)

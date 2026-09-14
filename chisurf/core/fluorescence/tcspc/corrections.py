@@ -93,19 +93,14 @@ def compute_linearization_table(
            1.        , 1.        , 1.        ])
 
     """
-    x2 = data.copy()
-    x2 /= x2[x_min:x_max].mean()
-    mnx = np.ma.array(x2)
-    mask2 = np.array([i < x_min or i > x_max for i in range(len(x2))])
-    mnx.mask = mask2
-    mnx.fill_value = fill_value
-    mnx /= mnx.mean()
-    yn = mnx.filled()
-    return chisurf.core.math.signal.window(
-        data=yn,
-        window_len=window_length,
-        window_function_type=window_function_type
-    )
+    # Moved to IMP.bff (`linearization_table`), where the TCSPC decay node
+    # derives the same table from a measured curve; this is a forwarder, so
+    # the two cannot drift apart.
+    import IMP.bff
+
+    return np.asarray(IMP.bff.linearization_table(
+        np.ascontiguousarray(np.asarray(data, dtype=float)), int(window_length),
+        str(window_function_type), int(x_min), int(x_max), float(fill_value)))
 
 
 def add_pile_up_to_model(
