@@ -17,6 +17,11 @@
               "description": "Run the optimiser on the selected fit."
             },
             {
+              "label": "MCTS",
+              "action": "mcts",
+              "description": "Search the model structure with BFF's Monte Carlo tree search: every candidate structure the model declares is refined and scored, and the winner is applied to the fit. Shown only for models BFF can search."
+            },
+            {
               "label": "Sample",
               "action": "sample",
               "description": "Sample the posterior of the free parameters. Writes the chains, the diagnostics and the project to a folder."

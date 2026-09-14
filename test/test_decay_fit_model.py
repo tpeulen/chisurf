@@ -1,14 +1,14 @@
 """Model-backed decay fitting: recovering the truth, with linkable parameters.
 
 :mod:`chisurf.core.fluorescence.decay_fit_model` fits a bare decay array through
-the real ``LifetimeModel`` stack rather than a standalone scipy optimiser, so the
-result is a live ``Fit`` whose ``FittingParameter``s behave like any other fit's.
+BFF's ``tcspc_lifetime`` model rather than a standalone scipy optimiser, so the
+result is a live ``Fit`` whose parameters behave like any other fit's.
 These tests pin both halves of that claim: the numbers must be right, *and* the
 parameters must support the ordinary bounds/linking surface.
 
-Every way of mis-configuring the model fails silently (a flat background instead
-of a decay), so the first test asserts the model is not flat before trusting any
-recovered parameter.
+A mis-configured model can fail silently (a flat background instead of a decay),
+so the first test asserts the model is not flat before trusting any recovered
+parameter.
 """
 import numpy as np
 import pytest
@@ -184,28 +184,32 @@ def test_fits_the_generated_irf_when_none_is_measured():
     assert abs(result["irf_skew"]) < 0.2, "a symmetric prompt must not fit as skewed"
 
 
+def _parameters(fit):
+    return {p.canonical_id: p for p in fit.model.parameters_all
+            if not getattr(p, "is_output", False)}
+
+
 def test_irf_shape_is_free_only_when_requested():
     y, irf = _simulate()
+    shape = ("instrument.irf_width", "instrument.irf_shape")
 
-    fixed = build_lifetime_fit(y, bin_width=DT, irf=None).model.convolve
-    assert fixed._iw.fixed and fixed._ik.fixed
+    fixed = _parameters(build_lifetime_fit(y, bin_width=DT, irf=None))
+    assert all(fixed[k].fixed for k in shape)
 
-    generated = build_lifetime_fit(y, bin_width=DT, irf=None,
-                                   fit_irf=True).model.convolve
-    assert not (generated._iw.fixed or generated._ik.fixed)
+    generated = _parameters(build_lifetime_fit(y, bin_width=DT, irf=None, fit_irf=True))
+    assert not any(generated[k].fixed for k in shape)
 
     # A measured IRF is data, not a model: its shape stays fixed.
-    measured = build_lifetime_fit(y, bin_width=DT, irf=irf,
-                                  fit_irf=True).model.convolve
-    assert measured._iw.fixed and measured._ik.fixed
+    measured = _parameters(build_lifetime_fit(y, bin_width=DT, irf=irf, fit_irf=True))
+    assert all(measured[k].fixed for k in shape)
 
 
 def test_the_irf_timeshift_stays_free():
     """Pinning it biased the lifetimes: a measured IRF's timing genuinely drifts."""
     y, irf = _simulate()
     for kw in ({}, dict(irf=irf), dict(irf=irf, fit_irf=True)):
-        c = build_lifetime_fit(y, bin_width=DT, **kw).model.convolve
-        assert not c._ts.fixed, f"timeshift was pinned for {kw}"
+        shift = _parameters(build_lifetime_fit(y, bin_width=DT, **kw))["instrument.timeshift"]
+        assert not shift.fixed, f"timeshift was pinned for {kw}"
 
 
 def test_parameters_are_fitting_parameters_with_bounds():
@@ -214,11 +218,20 @@ def test_parameters_are_fitting_parameters_with_bounds():
                                 tau_bounds=(0.05, 20.0))
     from chisurf.core.fitting.parameter import FittingParameter
 
-    lifetimes = result["model"].lifetimes._lifetimes
-    assert all(isinstance(p, FittingParameter) for p in lifetimes)
-    for p in lifetimes:
-        assert p.bounds_on, "lifetime bounds default to off and must be enabled"
-        assert p.bounds == (0.05, 20.0)
+    problem = result["model"].problem
+    parameters = _parameters(result["fit"])
+    for k in range(2):
+        p = parameters[f"lifetime.tau.{k}"]
+        assert isinstance(p, FittingParameter)
+        port = problem.get_parameter(f"lifetime.tau.{k}")
+        assert (port.get_lower_bound(), port.get_upper_bound()) == (0.05, 20.0)
+
+
+def test_more_components_than_a_search_offers_by_default():
+    y, irf = _simulate()
+    fit = build_lifetime_fit(y, bin_width=DT, irf=irf, n_components=5)
+    assert fit.model.structure == "lifetime.components.5"
+    assert np.asarray(fit.model.y).max() > 0
 
 
 def test_a_fitted_lifetime_can_be_linked_to_another_fit():
@@ -229,8 +242,8 @@ def test_a_fitted_lifetime_can_be_linked_to_another_fit():
     b = fit_lifetime_model(y, bin_width=DT, irf=irf, n_components=2,
                            tau_bounds=(0.05, 20.0))
 
-    target = a["model"].lifetimes._lifetimes[0]
-    follower = b["model"].lifetimes._lifetimes[0]
+    target = _parameters(a["fit"])["lifetime.tau.0"]
+    follower = _parameters(b["fit"])["lifetime.tau.0"]
     follower.link = target
 
     assert follower.is_linked
@@ -243,13 +256,13 @@ def test_a_fitted_lifetime_can_be_linked_to_another_fit():
 
 def test_periodic_convolution_is_requested_when_a_period_is_given():
     y, irf = _simulate()
-    aperiodic = build_lifetime_fit(y, bin_width=DT, irf=irf)
-    periodic = build_lifetime_fit(y, bin_width=DT, irf=irf, period=25.0)
+    aperiodic = build_lifetime_fit(y, bin_width=DT, irf=irf).model
+    periodic = build_lifetime_fit(y, bin_width=DT, irf=irf, period=25.0).model
 
-    assert aperiodic.model.convolve.mode == 'exp'
-    assert periodic.model.convolve.mode == 'per'
-    # `mode="per"` derives the period as 1000/rep_rate ns.
-    assert periodic.model.convolve.rep_rate == pytest.approx(1000.0 / 25.0)
+    assert aperiodic.get_scalar("periodic_excitation") == 0.0
+    assert periodic.get_scalar("periodic_excitation") == 1.0
+    assert periodic.get_scalar("period") == pytest.approx(25.0)
+    assert not np.allclose(np.asarray(aperiodic.y), np.asarray(periodic.y))
 
 
 def test_fit_range_masks_the_optimised_window():

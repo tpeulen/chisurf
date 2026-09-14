@@ -153,7 +153,7 @@ def _make_fit(
 
 
 def _configure_lifetimes(group, taus, bounds) -> None:
-    """Seed a :class:`Lifetime` group with ``taus``, in place.
+    """Seed a classic :class:`Lifetime` group (a FRET model's donor) with ``taus``.
 
     Configuring the existing components rather than appending avoids leaving the
     model's default 4 ns component in place beside the requested ones, which
@@ -169,6 +169,15 @@ def _configure_lifetimes(group, taus, bounds) -> None:
         p.value = float(tau)
         p.bounds = (lo, hi)
         p.bounds_on = True                     # bounds are off by default
+
+
+def _set_port(problem, canonical: str, value: float) -> None:
+    """Write a parameter whatever its lock; a caller's number means that number."""
+    port = problem.get_parameter(canonical)
+    held = port.fixed
+    port.fixed = False
+    port.value = float(value)
+    port.fixed = held
 
 
 def build_lifetime_fit(
@@ -189,7 +198,11 @@ def build_lifetime_fit(
     irf_skew: float = 0.0,
     period: float | None = None,
 ):
-    """Build a runnable :class:`Fit` over ``decay`` with a ``LifetimeModel``.
+    """Build a runnable :class:`Fit` over ``decay`` on BFF's TCSPC lifetime model.
+
+    The model is the ``tcspc_lifetime`` description BFF owns
+    (:func:`chisurf.core.models.description.for_family`), standing at the
+    topology with ``n_components`` lifetimes.
 
     Parameters
     ----------
@@ -198,45 +211,54 @@ def build_lifetime_fit(
     bin_width : float
         Micro-time bin width in nanoseconds.
     irf : array_like, optional
-        Measured instrument response, rescaled to counts internally (see
-        :data:`_IRF_PEAK_COUNTS`). When omitted the model generates its own
-        prompt from the ``iw``/``ik`` parameters, which ``fit_irf`` can free.
+        Measured instrument response. When omitted the model generates a
+        generalized-normal prompt at the decay's rising edge from
+        ``irf_width``/``irf_skew``, which ``fit_irf`` can free.
     n_components : int
         Number of exponential components.
     initial_lifetimes : array_like, optional
         Starting lifetimes in ns. Defaults to a log-spaced spread across
-        ``tau_bounds``, which keeps the components distinct — seeding them all at
+        ``tau_bounds``, which keeps the components distinct -- seeding them all at
         the same value leaves the Jacobian rank-deficient.
     tau_bounds : tuple of float
         ``(lower, upper)`` lifetime bounds in ns, applied to every component.
     start_bin, stop_bin : int
         Fit window as bin indices; ``stop_bin`` defaults to the last bin. The
-        model is still evaluated over the whole axis — the window only masks
+        model is still evaluated over the whole axis -- the window only masks
         which residuals the optimiser sees.
     background : float
         Constant background per bin.
     fit_background, fit_scatter : bool
-        Free the corresponding nuisance parameter (``generic.bg`` / ``generic.sc``)
-        instead of holding it fixed.
+        Free the corresponding instrument parameter instead of holding it.
     fit_irf : bool
-        Fit the *shape* of the generated prompt (``iw``/``ik``) alongside the
-        lifetimes. Has no effect when a measured ``irf`` is supplied, whose shape
-        is data rather than a model. The IRF timeshift (``ts``) is free either
-        way, following ChiSurf's default.
+        Fit the width and shape of the generated prompt alongside the lifetimes.
+        Has no effect when a measured ``irf`` is supplied, whose shape is data
+        rather than a model. The IRF timeshift is free either way: a measured
+        IRF's timing genuinely drifts, and pinning it biased the lifetimes.
     irf_width, irf_skew : float
-        Seed values for the generated prompt's width (ns) and skew. Ignored when
+        Seed values for the generated prompt's width (ns) and shape. Ignored when
         a measured ``irf`` is supplied.
     period : float, optional
         Laser period in ns. When given the convolution is periodic, so the
-        previous pulse's tail wraps into the window; otherwise it is aperiodic.
+        previous pulse's tail wraps into the window; otherwise it is single.
 
     Returns
     -------
     Fit
         A configured fit; call ``fit.run()`` to optimise it.
     """
-    import chisurf.core.models.tcspc.lifetime as lifetime_model
+    import chisurf.core.curve
+    import chisurf.core.data
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.description import for_family
 
+    y = np.asarray(decay, dtype=float).ravel()
+    n_bins = y.size
+    if n_bins < 4:
+        raise ValueError(f"decay is too short to fit: {n_bins} bins")
+    dt = float(bin_width)
+    if not dt > 0:
+        raise ValueError(f"bin_width must be positive, got {dt}")
     n = max(1, int(n_components))
     lo, hi = (float(tau_bounds[0]), float(tau_bounds[1]))
     if not 0 < lo < hi:
@@ -246,20 +268,64 @@ def build_lifetime_fit(
             else np.array([np.sqrt(lo * hi)])
     else:
         taus = np.clip(np.asarray(initial_lifetimes, dtype=float).ravel()[:n], lo, hi)
+    if taus.size < n:
+        raise ValueError(f"{n} components need {n} initial lifetimes, got {taus.size}")
 
-    fit = _make_fit(
-        lifetime_model.LifetimeModel, decay, bin_width=bin_width, irf=irf,
-        start_bin=start_bin, stop_bin=stop_bin, background=background,
-        fit_background=fit_background, fit_scatter=fit_scatter, fit_irf=fit_irf,
-        irf_width=irf_width, irf_skew=irf_skew, period=period,
-    )
-    m = fit.model
+    t = np.arange(n_bins, dtype=float) * dt
+    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
+    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
+    stop = int(np.clip(stop, 0, n_bins - 1))
+    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
 
-    # The model ships with one component already; configuring in place avoids a
-    # duplicate lifetime, which would add a spurious rank deficiency.
-    _configure_lifetimes(m.lifetimes, taus, (lo, hi))
+    fit = Fit(model_class=for_family("tcspc_lifetime"), data=data, xmin=start, xmax=stop)
+    model = fit.model
+    model.set_scalar("dt", dt)
+    periodic = period is not None and float(period) > 0
+    # Without excitation repeating inside the window, the period only bounds
+    # what the description derives from it; the window is the natural scale.
+    model.set_scalar("period", float(period) if periodic else n_bins * dt)
+    model.set_scalar("periodic_excitation", 1.0 if periodic else 0.0)
+    model.set_scalar("autoscale", 1.0)
+    model.set_scalar("max_components", float(max(3, n)))
+    if irf is not None:
+        irf_y = np.zeros(n_bins, dtype=float)
+        measured = np.asarray(irf, dtype=float).ravel()[:n_bins]
+        irf_y[:measured.size] = measured
+        model.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
+    else:
+        model.set_scalar("generated_response", 1.0)
+    for k, tau in enumerate(taus):
+        # Lifetime bounds are the caller's; the description's (up to the period)
+        # would otherwise stand.
+        model._spec.set_parameter(f"lifetime.tau.{k}", float(tau), True, lo, hi)
 
-    m.find_parameters()
+    problem = model.problem
+    if problem is None:
+        raise ValueError("the lifetime model is missing " + ", ".join(model.missing))
+    model.structure = f"lifetime.components.{n}"
+    for k in range(n):
+        _set_port(problem, f"lifetime.amplitude.{k}", 1.0 / n)
+        _set_port(problem, f"lifetime.tau.{k}", float(taus[k]))
+    _set_port(problem, "instrument.background", float(background))
+    if irf is None:
+        _set_port(problem, "instrument.irf_width", abs(float(irf_width)))
+        _set_port(problem, "instrument.irf_shape", float(irf_skew))
+
+    free = {
+        "instrument.n0": False,               # autoscaled
+        "instrument.background": bool(fit_background),
+        "instrument.scatter": bool(fit_scatter),
+        "instrument.timeshift": True,
+        "instrument.irf_width": bool(fit_irf) and irf is None,
+        "instrument.irf_shape": bool(fit_irf) and irf is None,
+    }
+    parameters = {p.canonical_id: p for p in model.parameters_all
+                  if not getattr(p, "is_output", False)}
+    for canonical, is_free in free.items():
+        parameters[canonical].fixed = not is_free
+    model.find_parameters()
+    fit.fit_range = (start, stop)
+    model.update()
     return fit
 
 
@@ -281,15 +347,15 @@ def fit_lifetime_model(
     irf_skew: float = 0.0,
     period: float | None = None,
 ) -> dict:
-    """Fit ``decay`` through a real ``LifetimeModel`` and report the result.
+    """Fit ``decay`` on BFF's TCSPC lifetime model and report the result.
 
     A model-backed counterpart to
     :func:`chisurf.core.fluorescence.decay_fit.fit_lifetime_components`. The
-    returned dictionary carries the same keys that function's callers use —
+    returned dictionary carries the same keys that function's callers use --
     ``lifetimes``, ``amplitudes``, ``lifetime_spectrum``, ``reconstruction``,
-    ``weighted_residuals``, ``chi2_reduced`` — so it can stand in for it, plus
-    ``fit`` and ``model`` (the live objects, whose ``FittingParameter``s can be
-    linked to other fits) and ``lifetime_errors`` / ``amplitude_errors``.
+    ``weighted_residuals``, ``chi2_reduced`` -- so it can stand in for it, plus
+    ``fit`` and ``model`` (the live objects, whose parameters can be linked to
+    other fits) and ``lifetime_errors`` / ``amplitude_errors``.
 
     Arguments are as for :func:`build_lifetime_fit`.
 
@@ -298,9 +364,10 @@ def fit_lifetime_model(
     dict
         ``{lifetimes, amplitudes, lifetime_spectrum, reconstruction,
         weighted_residuals, chi2_reduced, lifetime_errors, amplitude_errors,
-        background, scatter, irf_width, irf_skew, irf_shift, fit, model}``.
-        ``lifetimes`` and ``amplitudes`` are sorted by lifetime, matching
-        ``fit_lifetime_components``.
+        background, scatter, irf_width, irf_skew, irf_shift, irf_peak, fit,
+        model}``. ``lifetimes`` and ``amplitudes`` are sorted by lifetime,
+        matching ``fit_lifetime_components``. ``irf_shift`` is in channels and
+        ``irf_peak`` is where the (shifted) generated prompt peaks, in ns.
 
         ``amplitudes`` are **pre-exponential**, not the photon fractions
         ``fit_lifetime_components`` reports; convert with
@@ -315,22 +382,38 @@ def fit_lifetime_model(
     )
     fit.run()
     m = fit.model
+    m.update()
+    n = max(1, int(n_components))
+    parameters = {p.canonical_id: p for p in m.parameters_all
+                  if not getattr(p, "is_output", False)}
 
-    taus = np.asarray([p.value for p in m.lifetimes._lifetimes], dtype=float)
-    amps = np.asarray(m.lifetimes.amplitudes, dtype=float)
-    tau_err = np.asarray(
-        [getattr(p, "error_estimate", 0.0) or 0.0 for p in m.lifetimes._lifetimes],
-        dtype=float)
-    amp_err = np.asarray(
-        [getattr(p, "error_estimate", 0.0) or 0.0 for p in m.lifetimes._amplitudes],
-        dtype=float)
+    def value(canonical):
+        return float(parameters[canonical].value)
+
+    def error(canonical):
+        return float(getattr(parameters[canonical], "error_estimate", 0.0) or 0.0)
+
+    taus = np.array([value(f"lifetime.tau.{k}") for k in range(n)])
+    raw = np.abs([value(f"lifetime.amplitude.{k}") for k in range(n)])
+    total = float(raw.sum()) or 1.0
+    amps = raw / total
+    tau_err = np.array([error(f"lifetime.tau.{k}") for k in range(n)])
+    amp_err = np.array([error(f"lifetime.amplitude.{k}") for k in range(n)]) / total
 
     order = np.argsort(taus)
     taus, amps = taus[order], amps[order]
     tau_err, amp_err = tau_err[order], amp_err[order]
-
-    spectrum = np.empty(2 * taus.size, dtype=float)
+    spectrum = np.empty(2 * n, dtype=float)
     spectrum[0::2], spectrum[1::2] = amps, taus
+
+    dt = float(bin_width)
+    shift = value("instrument.timeshift")
+    irf_peak = None
+    if irf is None:
+        problem = m.problem
+        active = problem.get_active_structure()
+        prompt = np.asarray(problem.get_structure_output(active, f"{active}.generated_response"), dtype=float)
+        irf_peak = (float(np.argmax(prompt)) + shift) * dt
 
     wres = np.asarray(m.weighted_residuals, dtype=float)
     return {
@@ -342,13 +425,12 @@ def fit_lifetime_model(
         "reconstruction": np.asarray(m.y, dtype=float),
         "weighted_residuals": wres,
         "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
-        "background": float(m.generic.background),
-        "scatter": float(m.generic.scatter),
-        # Width is magnitude-only (`_process_irf` takes its absolute value), so
-        # report it as such rather than passing a negative width to callers.
-        "irf_width": abs(float(m.convolve._iw.value)),
-        "irf_skew": float(m.convolve._ik.value),
-        "irf_shift": float(m.convolve._ts.value),
+        "background": value("instrument.background"),
+        "scatter": value("instrument.scatter"),
+        "irf_width": abs(value("instrument.irf_width")),
+        "irf_skew": value("instrument.irf_shape"),
+        "irf_shift": shift,
+        "irf_peak": irf_peak,
         "fit": fit,
         "model": m,
     }
@@ -497,6 +579,13 @@ def fit_fret_model(decay, **kwargs) -> dict:
     efficiencies = 1.0 / (1.0 + (distances / r0) ** 6)
 
     wres = np.asarray(m.weighted_residuals, dtype=float)
+    irf_peak = None
+    if kwargs.get("irf") is None:
+        try:
+            # The processed prompt carries its absolute position (shift included).
+            irf_peak = float(np.argmax(np.asarray(m.convolve.irf.y, dtype=float))) * float(m.convolve.dt)
+        except Exception:
+            irf_peak = None
     return {
         "distances": distances,
         "sigmas": sigmas,
@@ -510,6 +599,7 @@ def fit_fret_model(decay, **kwargs) -> dict:
         "irf_width": abs(float(m.convolve._iw.value)),
         "irf_skew": float(m.convolve._ik.value),
         "irf_shift": float(m.convolve._ts.value),
+        "irf_peak": irf_peak,
         "reconstruction": np.asarray(m.y, dtype=float),
         "weighted_residuals": wres,
         "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),

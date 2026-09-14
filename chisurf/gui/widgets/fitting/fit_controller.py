@@ -180,6 +180,7 @@ class FittingControllerWidget(Controller):
         self.checkBox = self._editor('local_first')
 
         self.button_fit = self._button('fit')
+        self.button_mcts = self._button('mcts')
         self.button_sample = self._button('sample')
         self.button_auto_fit_range = self._button('auto_range')
         self.button_dataset_select = self._button('select_dataset')
@@ -197,6 +198,7 @@ class FittingControllerWidget(Controller):
         for name in (
                 "actionFit", "actionAutoFitRange", "actionFit_range_changed",
                 "actionChange_dataset", "actionSelectionChanged", "actionErrorEstimate",
+                "actionMCTS",
         ):
             setattr(self, name, QtWidgets.QAction(name, self))
 
@@ -600,6 +602,8 @@ class FittingControllerWidget(Controller):
         self.actionChange_dataset.triggered.connect(self.show_selector)
         self.actionSelectionChanged.triggered.connect(self.onDatasetChanged)
         self.actionErrorEstimate.triggered.connect(self.onErrorEstimate)
+        self.actionMCTS.triggered.connect(self.onRunMCTS)
+        self._refresh_mcts_availability()
 
         self.spinBox_3.valueChanged.connect(self._result_changed)
 
@@ -1149,6 +1153,152 @@ class FittingControllerWidget(Controller):
         # one is up and runs the fit in-process otherwise. Gating the button
         # on the client made a missing/late server disable fitting silently.
         self._run_fit_impl()
+
+    def onRunMCTS(self):
+        """Run the fit's declared model search through the native BFF engine."""
+        from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
+        from chisurf.core.fitting.mcts.execution import (
+            NativeSearchSettings,
+            run_native_search,
+        )
+        from chisurf.gui.task import run_in_background
+
+        fit = self.fit
+        before_snapshot = self._collect_parameter_snapshot()
+        try:
+            prepared = prepare_model_search(fit)
+        except Exception:
+            cs.logging.exception("BFF model-search preparation failed")
+            return
+        if not prepared.supported:
+            details = "; ".join(
+                f"{reason.code}: {reason.message}"
+                for reason in prepared.reasons
+            ) or "the fit has no native model-search declaration"
+            cs.logging.warning(
+                f"BFF model search is unavailable for "
+                f"{getattr(fit, 'name', 'this fit')!r}: {details}"
+            )
+            return
+
+        optimization = cs.core.settings.cs_settings.get("optimization", {})
+        values = dict(optimization.get("mcts", {}) or {})
+        search_settings = NativeSearchSettings(
+            simulations=int(values.get("n_simulations", 400)),
+            c_puct=float(values.get("c_puct", 1.4)),
+            reward_scale=float(values.get("reward_scale", 1.0)),
+            dirichlet_alpha=float(values.get("dirichlet_alpha", 0.3)),
+            # User-facing fitting is deterministic. Dirichlet noise belongs to
+            # policy self-play and is never injected into an accepted fit.
+            dirichlet_fraction=0.0,
+            seed=int(values.get("seed", 7)),
+        )
+
+        def _search(task):
+            return run_native_search(
+                prepared.problem,
+                search_settings,
+                should_cancel=lambda: task.is_cancelled,
+            )
+
+        def _apply(result):
+            restore = getattr(prepared.binding, "restore", None)
+            if result.get_cancelled():
+                # A search over a live model moved its ports while it ran.
+                if callable(restore):
+                    restore(prepared.problem)
+                cs.logging.info("BFF model search cancelled; the fit was not changed.")
+                return
+            try:
+                best_state = result.get_best_state()
+                prepared.binding.apply_state(prepared.problem, best_state)
+            except Exception:
+                if callable(restore):
+                    restore(prepared.problem)
+                cs.logging.exception("BFF model-search result could not be applied")
+                return
+            after_snapshot = self._collect_parameter_snapshot()
+            structure = str(best_state.get_structure_key())
+            accepted = bool(result.get_acceptable())
+            cs.logging.info(
+                f"BFF model search selected {structure!r}; "
+                f"reward={float(best_state.get_reward()):.6g}, "
+                f"improvement={float(result.get_improvement()):.6g}, "
+                f"acceptable={accepted}."
+            )
+            self._refresh_mcts_structure_ui(fit)
+            self._record_history(
+                action_type="fit_run_finish",
+                summary=f"accepted BFF model search for {getattr(fit, 'name', '')}",
+                payload={
+                    "fit_name": str(getattr(fit, "name", "")),
+                    "operation": "bff_model_search",
+                    "capability_id": str(prepared.capability_id),
+                    "structure": structure,
+                    "acceptable": accepted,
+                    "reward": float(best_state.get_reward()),
+                    "improvement": float(result.get_improvement()),
+                    "simulations": int(result.get_number_of_simulations()),
+                    "states_evaluated": int(result.get_number_of_states_evaluated()),
+                    "parameter_snapshot_before": before_snapshot,
+                    "parameter_snapshot_after": after_snapshot,
+                },
+            )
+
+        def _error(error):
+            cs.logging.error(
+                f"BFF model search failed for "
+                f"{getattr(fit, 'name', 'fit')!r}: {error}"
+            )
+
+        run_in_background(
+            self,
+            "Searching model space…",
+            _search,
+            maximum=0,
+            on_result=_apply,
+            on_error=_error,
+        )
+
+    def _refresh_mcts_availability(self) -> None:
+        """Offer model search only for a fit BFF can search; there is no other engine."""
+        if self.button_mcts is None:
+            return
+        available = False
+        if self.fit is not None:
+            try:
+                from chisurf.core.fitting.mcts.dispatcher import model_search_available
+
+                available = model_search_available(self.fit)
+            except Exception:
+                cs.logging.exception("could not decide whether BFF can search this fit")
+        self.button_mcts.setVisible(bool(available))
+        self.actionMCTS.setEnabled(bool(available))
+
+    def _refresh_mcts_structure_ui(self, fit) -> None:
+        """Rebuild parameter rows and redraw once after native search."""
+        try:
+            from chisurf.gui.widgets.models.model_editor import model_editor_widget
+
+            members = list(getattr(fit, "grouped_fits", []) or []) or [fit]
+            for member in members:
+                editor = model_editor_widget(member.model)
+                rebuild = getattr(editor, "rebuild", None)
+                if callable(rebuild):
+                    rebuild()
+            gui = getattr(cs, "cs", None)
+            if gui is not None:
+                show_selected = getattr(gui, "_show_only_selected_member_editor", None)
+                if callable(show_selected):
+                    show_selected(fit)
+                for sub in gui.mdiarea.subWindowList():
+                    if getattr(sub, "fit", None) is fit:
+                        refresh = getattr(sub, "refresh_current_plot", None)
+                        if callable(refresh):
+                            refresh()
+                        break
+        except Exception:
+            cs.logging.exception("could not refresh the UI after MCTS structure change")
 
     @property
     def xmin(self):

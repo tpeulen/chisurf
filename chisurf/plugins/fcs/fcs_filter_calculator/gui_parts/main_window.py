@@ -44,6 +44,7 @@ except ImportError:
 _AUTOFIT_HIDDEN_PARAMETERS = frozenset({
     "dt", "rep", "start", "stop", "irf_start", "irf_stop", "lb", "n0",
     "win-size", "tBg", "tMeas", "tDead", "r0", "g", "l1", "l2",
+    "lamp background", "irf position",
 })
 
 
@@ -90,7 +91,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._auto_fit_settings: dict = {
             "kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0,
         }
-        #: Result of the last auto-fit, including the live `Fit`/`LifetimeModel`
+        #: Result of the last auto-fit, including the live `Fit` and its model
         #: whose parameters the Auto-fit dock's table exposes for linking.
         self._auto_fit_result: dict | None = None
         self._result: FilterResult | None = None
@@ -401,7 +402,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         form.addRow(self.lbl_autofit_status)
 
         # The fitted model's parameters, shown once a fit has run. These are real
-        # `FittingParameter`s from a real `LifetimeModel`, so the table's own
+        # `FittingParameter`s of the model BFF fitted, so the table's own
         # context menu offers the standard Link… targets — that is the point of
         # fitting through the model stack rather than a standalone optimiser.
         self.autofit_parameters_host = QtWidgets.QWidget()
@@ -436,8 +437,14 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         params = []
         if model is not None:
             try:
+                # A BFF model holds every component it could use; only the
+                # fitted topology's parameters (and what it presents) are rows.
+                used = getattr(model, "structure_parameter_ids", None)
+                used = set(used()) if callable(used) else None
                 params = [p for p in model.parameters_all
-                          if getattr(p, "name", "") not in _AUTOFIT_HIDDEN_PARAMETERS]
+                          if getattr(p, "name", "") not in _AUTOFIT_HIDDEN_PARAMETERS
+                          and (used is None or getattr(p, "is_output", False)
+                               or getattr(p, "canonical_id", None) in used)]
             except Exception as error:
                 cs.logging.warning(f"Auto-fit parameter table unavailable: {error}")
                 params = []
@@ -1753,19 +1760,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self._refresh_autofit_parameters(result.get("fit"))
         detector_names = list(chs or [])
         # Write the fitted IRF back to detectors lacking a measured one. The model
-        # parameterises the prompt as a generalized normal with sigma `iw` and
-        # shape `ik`; `synthetic_irf` takes a FWHM and the *same* shape, so the
-        # width converts exactly and the skew transfers unchanged. The shift is
-        # read off the model's own processed IRF (whose peak carries the absolute
-        # position) against `_detector_irf`'s nominal 2·FWHM centre, which avoids
-        # depending on the units of the model's internal timeshift.
+        # parameterises the prompt as a generalized normal with sigma `irf_width`
+        # and shape `irf_skew`; `synthetic_irf` takes a FWHM and the *same* shape,
+        # so the width converts exactly and the skew transfers unchanged. The
+        # shift is read off where the model's shifted prompt peaks (`irf_peak`)
+        # against `_detector_irf`'s nominal 2·FWHM centre.
         fitted_fwhm = float(result.get("irf_width") or 0.0) / FWHM_TO_SIGMA
         fitted_skew = result.get("irf_skew")
         if fit_irf and fitted_fwhm > 0:
-            try:
-                irf_y = np.asarray(result["model"].convolve.irf.y, dtype=float)
-                peak_ns = float(int(np.argmax(irf_y))) * dt
-            except Exception:
+            peak_ns = result.get("irf_peak")
+            if peak_ns is None:
                 peak_ns = 2.0 * fitted_fwhm
             shift = peak_ns - 2.0 * fitted_fwhm
             for det in (detector_names or ([primary] if primary else [])):

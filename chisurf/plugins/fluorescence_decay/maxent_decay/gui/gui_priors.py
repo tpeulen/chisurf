@@ -120,6 +120,9 @@ class _MaxentPriorsMixin:
                             arr = np.asarray(model.lifetime_spectrum, dtype=float).ravel()
                         elif FRETModel is not None and isinstance(model, FRETModel):
                             arr = np.asarray(model.donor_lifetime_spectrum, dtype=float).ravel()
+                        elif getattr(model, "lifetime_spectrum", None) is not None:
+                            # A BFF-described lifetime model presents its spectrum.
+                            arr = np.asarray(model.lifetime_spectrum, dtype=float).ravel()
                     except Exception:
                         arr = None
                     if arr is None or arr.size < 2 or arr.size % 2 != 0:

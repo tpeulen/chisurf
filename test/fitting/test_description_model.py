@@ -14,6 +14,7 @@ bff = pytest.importorskip("IMP.bff")
 
 import chisurf.core.curve
 import chisurf.core.data
+import chisurf.core.models.model
 import chisurf.core.fitting.fit as fitting
 from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
 from chisurf.core.models.description import DescriptionModel, for_family
@@ -524,3 +525,26 @@ def test_a_lifetime_linked_across_two_views_is_fitted_globally():
     group[1].model.set_scalar("period", PERIOD + 0.5)
     assert group[1].model.problem is not None
     assert second["lifetime.tau.0"].is_linked
+
+
+def test_a_described_model_offers_model_search_and_a_refused_one_does_not(monkeypatch):
+    """The search button follows BFF's capability; there is no other engine."""
+    from chisurf.core.fitting.mcts import dispatcher
+    from chisurf.core.fitting.mcts.native import unsupported
+
+    fit, _ = _view()
+    assert dispatcher.model_search_available(fit)
+
+    x = _axis()
+    other = fitting.Fit(model_class=_ClassicStandIn,
+                        data=chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N)))
+    monkeypatch.setattr(dispatcher, "declare_model_search",
+                        lambda _fit: unsupported("test", "no_native_graph", "a Python node"))
+    assert not dispatcher.model_search_available(other)
+
+
+class _ClassicStandIn(chisurf.core.models.model.ModelCurve):
+    name = "stand-in"
+
+    def _update_model(self, **kwargs):
+        pass

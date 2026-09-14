@@ -214,3 +214,19 @@ def test_controller_runs_a_real_parse_fit_through_bff(monkeypatch):
     assert controller.history[0]["payload"]["capability_id"] == (
         "chisurf.fixed-structure.v1"
     )
+
+
+@pytest.mark.parametrize("available", [True, False])
+def test_the_search_button_is_shown_only_when_bff_can_search(monkeypatch, available):
+    controller = _controller()
+    shown, enabled = [], []
+    controller.button_mcts = SimpleNamespace(setVisible=shown.append)
+    controller.actionMCTS = SimpleNamespace(setEnabled=enabled.append)
+    monkeypatch.setattr(
+        "chisurf.core.fitting.mcts.dispatcher.model_search_available",
+        lambda _fit: available,
+    )
+
+    controller._refresh_mcts_availability()
+
+    assert shown == [available] and enabled == [available]

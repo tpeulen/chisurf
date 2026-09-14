@@ -1054,13 +1054,13 @@ def _autofit_widget(qtbot, tmp_path, n_components=2, kind="lifetime"):
 def test_auto_fit_runs_through_a_real_fit_object(qapp, qtbot, tmp_path):
     """The migration's premise: the auto-fit is now a real ChiSurf fit."""
     from chisurf.core.fitting.fit import Fit
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import for_family
 
     widget = _autofit_widget(qtbot, tmp_path)
 
     result = widget._auto_fit_result
     assert isinstance(result["fit"], Fit)
-    assert isinstance(result["model"], LifetimeModel)
+    assert isinstance(result["model"], for_family("tcspc_lifetime"))
 
 
 def test_autofit_parameter_table_lists_the_fitted_parameters(qapp, qtbot, tmp_path):
@@ -1072,8 +1072,9 @@ def test_autofit_parameter_table_lists_the_fitted_parameters(qapp, qtbot, tmp_pa
     table = widget.autofit_parameter_table
     assert table is not None
     names = {getattr(p, "name", "") for p in table._params}
-    # Two components -> two lifetimes and two amplitudes.
-    assert {"tL1", "tL2", "xL1", "xL2"} <= names
+    # Two components -> two lifetimes and two amplitudes, and no third.
+    assert {"t0", "t1", "a0", "a1"} <= names
+    assert not names & {"t2", "a2"}
     assert all(isinstance(p, FittingParameter) for p in table._params)
 
 
@@ -1082,7 +1083,8 @@ def test_autofit_parameter_table_hides_the_convolution_plumbing(qapp, qtbot, tmp
     widget = _autofit_widget(qtbot, tmp_path)
 
     names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
-    assert not (names & {"dt", "rep", "start", "stop", "irf_start", "irf_stop", "n0"})
+    assert not (names & {"dt", "rep", "start", "stop", "irf_start", "irf_stop", "n0",
+                         "lamp background", "irf position"})
 
 
 def test_autofit_parameters_can_be_linked(qapp, qtbot, tmp_path):
@@ -1090,8 +1092,12 @@ def test_autofit_parameters_can_be_linked(qapp, qtbot, tmp_path):
     widget_a = _autofit_widget(qtbot, tmp_path / "a")
     widget_b = _autofit_widget(qtbot, tmp_path / "b")
 
-    target = widget_a._auto_fit_result["model"].lifetimes._lifetimes[0]
-    follower = widget_b._auto_fit_result["model"].lifetimes._lifetimes[0]
+    def tau0(widget):
+        return next(p for p in widget._auto_fit_result["model"].parameters_all
+                    if getattr(p, "canonical_id", "") == "lifetime.tau.0")
+
+    target = tau0(widget_a)
+    follower = tau0(widget_b)
     follower.link = target
 
     assert follower.is_linked
@@ -1110,7 +1116,7 @@ def test_autofit_parameter_table_is_rebuilt_per_fit(qapp, qtbot, tmp_path):
 
     assert second is not first
     names = {getattr(p, "name", "") for p in second._params}
-    assert "tL3" in names, "the table still shows the two-component fit"
+    assert "t2" in names, "the table still shows the two-component fit"
 
 
 def test_fret_auto_fit_runs_through_a_real_fret_model(qapp, qtbot, tmp_path):

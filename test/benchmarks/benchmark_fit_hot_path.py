@@ -114,7 +114,7 @@ def _evaluations(profile):
 
     ``Convolve.convolve`` is called once per model evaluation, which makes it a
     more honest count than the optimiser's own iteration number (that counts
-    Jacobian sweeps as one).
+    Jacobian sweeps as one). A BFF model evaluates in C++ and reports 0.
     """
     for (_, _, name), (calls, *_rest) in pstats.Stats(profile).stats.items():
         if name == "convolve":
@@ -122,28 +122,10 @@ def _evaluations(profile):
     return 0
 
 
-def _share(profile, needle):
-    """Cumulative-time share of the profiled function named *needle*.
-
-    The largest match wins rather than the first: several frames can carry the
-    same name (a property and the method behind it, say) and the outermost is
-    the one whose cumulative time answers "what does this step cost".
-    """
-    stats = pstats.Stats(profile)
-    total = stats.total_tt
-    if not total:
-        return 0.0
-    # pstats values are (primitive calls, total calls, tottime, cumtime, callers).
-    matches = [
-        entry[3] for (_, _, name), entry in stats.stats.items() if name == needle
-    ]
-    return max(matches) / total if matches else 0.0
-
-
 def run_case(n_channels):
     """Return one row per model family for one axis length."""
     rows = []
-    for label, build in (("LifetimeModel", build_lifetime_fit), ("GaussianModel", build_fret_fit)):
+    for label, build in (("tcspc_lifetime (BFF)", build_lifetime_fit), ("GaussianModel", build_fret_fit)):
         seconds, evaluations = _time_fit(build, n_channels)
         per_evaluation = seconds / evaluations if evaluations else float("nan")
         rows.append((label, seconds, evaluations, per_evaluation * 1e6))
@@ -159,30 +141,6 @@ def main():
             print(
                 f"| {n_channels} | {label} | {seconds:.3f} | {evaluations} | {micros:.1f} |"
             )
-
-
-@pytest.mark.slow
-def test_the_convolution_dominates_the_fit():
-    """The expensive step is the convolution, and it is already compiled.
-
-    This is the assumption the numba routing rests on. If it ever stops being
-    true — a model gains a genuinely costly Python kernel, or the convolution
-    stops routing to the compiled path — the routing needs revisiting, and this
-    is where that shows up.
-    """
-    decay, irf = make_decay(1024)
-    build_lifetime_fit(decay, bin_width=BIN_WIDTH, irf=irf).run()
-
-    fit = build_lifetime_fit(decay, bin_width=BIN_WIDTH, irf=irf)
-    profile = cProfile.Profile()
-    profile.enable()
-    fit.run()
-    profile.disable()
-
-    assert _share(profile, "convolve") > 0.25, (
-        "the convolution is no longer the dominant step in a lifetime fit; the "
-        "kernel routing in test/numba_import_allowlist.txt assumes it is"
-    )
 
 
 @pytest.mark.slow

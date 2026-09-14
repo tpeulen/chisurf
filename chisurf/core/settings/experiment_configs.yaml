@@ -57,13 +57,9 @@ tcspc:
         name: Simulator
       controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCSimulatorSetupWidget
   models:
-    # Pure compute model; its editor is generated from lifetime.view.json.
-    # See okf/subsystems/gui-autoform.md.
-    - chisurf.core.models.tcspc.lifetime.LifetimeModel
     # Owned by BFF and described in data (IMP.bff data/model_search/); ChiSurf
-    # shows a view on it. The classic LifetimeModel above stays for what the
-    # description does not cover yet (non-periodic convolution, background
-    # curves, generated IRFs, linked spectra).
+    # shows a view on it. The classic LifetimeModel remains only as the base
+    # of the FRET, mixture and MaxEnt models below until they are ported.
     - chisurf.core.models.description.tcspc_lifetime
     - chisurf.core.models.description.tcspc_polarized
     - chisurf.core.models.tcspc.fret.FRETrateModel
