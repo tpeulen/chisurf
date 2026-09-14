@@ -705,12 +705,15 @@ class DescriptionModel(ModelCurve):
                 parameters=list(outputs.values()), name="Outputs")
             self._forget_discovery()
         for key, info in statistics.items():
-            spectrum = self.presented_distribution(info["of"])
+            # One distribution, or several a statistic compares (a FRET
+            # efficiency is the contrast of two lifetime spectra).
+            names = info["of"] if isinstance(info["of"], list) else [info["of"]]
+            spectra = [self.presented_distribution(name) for name in names]
             function = getattr(general, info["statistic"], None)
-            if function is None or spectrum.size < 2:
+            if function is None or any(spectrum.size < 2 for spectrum in spectra):
                 continue
             try:
-                outputs[key].value = float(function(spectrum))
+                outputs[key].value = float(function(*spectra))
             except Exception:
                 pass
 

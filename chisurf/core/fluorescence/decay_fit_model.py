@@ -2,20 +2,13 @@
 
 :mod:`chisurf.core.fluorescence.decay_fit` fits a multi-exponential decay with a
 standalone :mod:`scipy` optimiser. That is self-contained and fast, but its
-results are plain floats: they cannot be linked to another fit's parameters,
-carry no error estimates from ChiSurf's covariance machinery, and duplicate a
-forward model that :class:`~chisurf.core.models.tcspc.lifetime.LifetimeModel`
-already implements.
+results are plain floats: they cannot be linked to another fit's parameters and
+carry no error estimates from ChiSurf's covariance machinery.
 
-This module fits the *same* problem through the real model stack instead, so the
-result is a live :class:`~chisurf.core.fitting.fit.Fit` whose
-:class:`~chisurf.core.fitting.parameter.FittingParameter` objects support the
-ordinary linking, bounds and error-estimate surface.
-
-Getting a ``LifetimeModel`` to compute from an in-memory array needs several
-non-obvious settings, and **every one of them fails silently** — the model
-returns a flat background rather than raising. :func:`build_lifetime_fit`
-centralises them; see the notes there before changing any of it.
+This module fits the *same* problem on the models BFF owns instead -- the
+``tcspc_lifetime`` and ``tcspc_fret_gaussian`` descriptions -- so the result is a
+live :class:`~chisurf.core.fitting.fit.Fit` whose parameters support the ordinary
+linking, bounds and error-estimate surface.
 
 The module is Qt-free and importable headlessly.
 """
@@ -26,150 +19,6 @@ import numpy as np
 __all__ = ["build_lifetime_fit", "fit_lifetime_model",
            "build_fret_fit", "fit_fret_model"]
 
-#: Peak counts the IRF is rescaled to. ``Convolve._process_irf`` subtracts
-#: ``lamp_background`` and clips at zero *twice*, so a sum-normalised IRF (peak
-#: ~0.04) is annihilated. Only the IRF *shape* matters — the model's ``n0``
-#: autoscaling absorbs its amplitude — so rescaling is safe.
-_IRF_PEAK_COUNTS = 1.0e4
-
-
-def _as_counts_irf(irf, n_bins: int) -> np.ndarray:
-    """Return ``irf`` resized to ``n_bins`` and rescaled to counts."""
-    y = np.asarray(irf, dtype=float).ravel()
-    if y.size < n_bins:
-        padded = np.zeros(n_bins, dtype=float)
-        padded[: y.size] = y
-        y = padded
-    else:
-        y = y[:n_bins].copy()
-    peak = float(y.max()) if y.size else 0.0
-    if peak > 0:
-        y = y / peak * _IRF_PEAK_COUNTS
-    return y
-
-
-def _use_synthetic_irf(convolve, width: float, skew: float) -> None:
-    """Switch ``convolve`` to its own generated IRF and seed its shape.
-
-    ``Convolve._process_irf`` builds a generalized-normal prompt from the ``iw``
-    (width) and ``ik`` (skew) parameters whenever no IRF *curve* is stored,
-    locating it at the data's rising edge. Clearing the stored curve therefore
-    turns the IRF shape into fitted parameters rather than fixed input. The
-    backing attribute is name-mangled and its property setter dereferences the
-    value, so it has to be cleared directly.
-    """
-    object.__setattr__(convolve, "_Convolve__irf", None)
-    # Width is magnitude-only — `_process_irf` takes abs(iw), and the sign of the
-    # asymmetry lives in ik — so a fit may legitimately return a negative width.
-    convolve._iw.value = abs(float(width))
-    convolve._ik.value = float(skew)
-
-
-def _make_fit(
-    model_class,
-    decay,
-    *,
-    bin_width: float,
-    irf=None,
-    start_bin: int = 0,
-    stop_bin: int | None = None,
-    background: float = 0.0,
-    fit_background: bool = False,
-    fit_scatter: bool = False,
-    fit_irf: bool = False,
-    irf_width: float = 0.2,
-    irf_skew: float = 0.0,
-    period: float | None = None,
-    model_kw: dict | None = None,
-):
-    """Build a ``Fit`` of ``model_class`` over ``decay``, wired to compute.
-
-    Everything here is shared by every TCSPC model: the data curve, the fit
-    window, the convolution settings and the nuisance terms. The caller
-    configures whatever is model-specific (lifetimes, distances) and then calls
-    ``find_parameters()``.
-
-    Each of these settings **fails silently** when wrong, leaving a flat
-    background instead of a decay — see the module docstring.
-    """
-    import chisurf.core.data
-    from chisurf.core.fitting.fit import Fit
-
-    y = np.asarray(decay, dtype=float).ravel()
-    n_bins = y.size
-    if n_bins < 4:
-        raise ValueError(f"decay is too short to fit: {n_bins} bins")
-    dt = float(bin_width)
-    if not dt > 0:
-        raise ValueError(f"bin_width must be positive, got {dt}")
-
-    t = np.arange(n_bins, dtype=float) * dt
-    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
-
-    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
-    stop = int(np.clip(stop, 0, n_bins - 1))
-    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
-
-    fit = Fit(model_class=model_class, data=data, xmin=start, xmax=stop,
-              model_kw=dict(model_kw or {}))
-    m = fit.model
-
-    c = m.convolve
-    if irf is not None:
-        irf_y = _as_counts_irf(irf, n_bins)
-        c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
-    else:
-        _use_synthetic_irf(c, irf_width, irf_skew)
-    # The IRF is already background-free here; subtracting anything would clip it.
-    c.lamp_background = 0.0
-    c.dt = dt                                  # defaults to 1.0
-    c.start, c.stop = 0.0, n_bins * dt         # TIME units; the default stop=0
-    c._irf_start.value = 0.0                   # disables the convolution outright
-    c._irf_stop.value = n_bins * dt            # (setters wrap in np.array: broken)
-    # `mode="per"` derives its period as 1000/rep_rate ns.
-    if period is not None and float(period) > 0:
-        c.mode = 'per'
-        c.rep_rate = 1000.0 / float(period)
-    else:
-        c.mode = 'exp'
-    c.do_convolution = True
-    c._n0.fixed = True                         # autoscale == self._n0.fixed
-
-    m.generic.background = float(background)
-    m.generic._bg.fixed = not bool(fit_background)
-    m.generic._sc.fixed = not bool(fit_scatter)
-
-    # A measured IRF is data: its shape is input, not a model, so only a
-    # generated prompt has its width/skew fitted. The IRF *timeshift* is left at
-    # ChiSurf's own default (free) in both cases — a measured IRF is recorded
-    # separately from the data and its timing genuinely drifts, so pinning it
-    # here measurably biased the lifetimes.
-    shape_free = bool(fit_irf) and irf is None
-    c._iw.fixed = not shape_free
-    c._ik.fixed = not shape_free
-
-    fit.fit_range = (start, stop)
-    return fit
-
-
-def _configure_lifetimes(group, taus, bounds) -> None:
-    """Seed a classic :class:`Lifetime` group (a FRET model's donor) with ``taus``.
-
-    Configuring the existing components rather than appending avoids leaving the
-    model's default 4 ns component in place beside the requested ones, which
-    would add a duplicate lifetime and a spurious rank deficiency.
-    """
-    lo, hi = float(bounds[0]), float(bounds[1])
-    n = len(taus)
-    while len(group) < n:
-        group.append()
-    for k, tau in enumerate(taus):
-        group._amplitudes[k].value = 1.0 / n
-        p = group._lifetimes[k]
-        p.value = float(tau)
-        p.bounds = (lo, hi)
-        p.bounds_on = True                     # bounds are off by default
-
 
 def _set_port(problem, canonical: str, value: float) -> None:
     """Write a parameter whatever its lock; a caller's number means that number."""
@@ -178,6 +27,115 @@ def _set_port(problem, canonical: str, value: float) -> None:
     port.fixed = False
     port.value = float(value)
     port.fixed = held
+
+
+def _parameters(model) -> dict:
+    return {p.canonical_id: p for p in model.parameters_all if not getattr(p, "is_output", False)}
+
+
+def _described_fit(family, decay, *, bin_width, irf, start_bin, stop_bin, period, scalars=None,
+                   overrides=None):
+    """A :class:`Fit` of a BFF-described TCSPC model over ``decay``, standing complete.
+
+    What every TCSPC description shares: the decay on its time axis, the fit
+    window, the measured or modelled IRF, periodic or single convolution and an
+    autoscaled ``n0``. ``overrides`` are ``{canonical: (initial, lower, upper)}``
+    applied as the caller's bounds before the model is built.
+    """
+    import chisurf.core.curve
+    import chisurf.core.data
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.description import for_family
+
+    y = np.asarray(decay, dtype=float).ravel()
+    n_bins = y.size
+    if n_bins < 4:
+        raise ValueError(f"decay is too short to fit: {n_bins} bins")
+    dt = float(bin_width)
+    if not dt > 0:
+        raise ValueError(f"bin_width must be positive, got {dt}")
+    t = np.arange(n_bins, dtype=float) * dt
+    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
+    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
+    stop = int(np.clip(stop, 0, n_bins - 1))
+    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
+
+    fit = Fit(model_class=for_family(family), data=data, xmin=start, xmax=stop)
+    model = fit.model
+    model.set_scalar("dt", dt)
+    periodic = period is not None and float(period) > 0
+    # Without excitation repeating inside the window, the period only bounds
+    # what the description derives from it; the window is the natural scale.
+    model.set_scalar("period", float(period) if periodic else n_bins * dt)
+    model.set_scalar("periodic_excitation", 1.0 if periodic else 0.0)
+    model.set_scalar("autoscale", 1.0)
+    for name, value in (scalars or {}).items():
+        model.set_scalar(name, float(value))
+    if irf is not None:
+        irf_y = np.zeros(n_bins, dtype=float)
+        measured = np.asarray(irf, dtype=float).ravel()[:n_bins]
+        irf_y[:measured.size] = measured
+        model.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
+    else:
+        model.set_scalar("generated_response", 1.0)
+    for canonical, (initial, lower, upper) in (overrides or {}).items():
+        model._spec.set_parameter(canonical, float(initial), True, float(lower), float(upper))
+    problem = model.problem
+    if problem is None:
+        raise ValueError(f"the {family} model is missing " + ", ".join(model.missing))
+    return fit, model, problem, (start, stop)
+
+
+def _hold_instrument(model, problem, *, irf, background, fit_background, fit_scatter, fit_irf,
+                     irf_width, irf_skew, extra=None):
+    """The instrument's starting values and which of its parameters are fitted."""
+    _set_port(problem, "instrument.background", float(background))
+    if irf is None:
+        _set_port(problem, "instrument.irf_width", abs(float(irf_width)))
+        _set_port(problem, "instrument.irf_shape", float(irf_skew))
+    free = {
+        "instrument.n0": False,               # autoscaled
+        "instrument.background": bool(fit_background),
+        "instrument.scatter": bool(fit_scatter),
+        # A measured IRF's timing genuinely drifts; pinning it biased the lifetimes.
+        "instrument.timeshift": True,
+        # A measured IRF is data, not a model: only a modelled one has a shape to fit.
+        "instrument.irf_width": bool(fit_irf) and irf is None,
+        "instrument.irf_shape": bool(fit_irf) and irf is None,
+        **(extra or {}),
+    }
+    parameters = _parameters(model)
+    for canonical, is_free in free.items():
+        parameters[canonical].fixed = not is_free
+
+
+def _irf_report(model, *, irf, bin_width) -> dict:
+    value = {k: float(p.value) for k, p in _parameters(model).items()}
+    shift = value["instrument.timeshift"]
+    irf_peak = None
+    if irf is None:
+        problem = model.problem
+        active = problem.get_active_structure()
+        prompt = np.asarray(problem.get_structure_output(active, f"{active}.generated_response"), dtype=float)
+        irf_peak = (float(np.argmax(prompt)) + shift) * float(bin_width)
+    return {
+        "background": value["instrument.background"],
+        "scatter": value["instrument.scatter"],
+        # Width is magnitude-only, so report it as such.
+        "irf_width": abs(value["instrument.irf_width"]),
+        "irf_skew": value["instrument.irf_shape"],
+        "irf_shift": shift,
+        "irf_peak": irf_peak,
+    }
+
+
+def _misfit(model) -> dict:
+    wres = np.asarray(model.weighted_residuals, dtype=float)
+    return {
+        "reconstruction": np.asarray(model.y, dtype=float),
+        "weighted_residuals": wres,
+        "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
+    }
 
 
 def build_lifetime_fit(
@@ -247,18 +205,6 @@ def build_lifetime_fit(
     Fit
         A configured fit; call ``fit.run()`` to optimise it.
     """
-    import chisurf.core.curve
-    import chisurf.core.data
-    from chisurf.core.fitting.fit import Fit
-    from chisurf.core.models.description import for_family
-
-    y = np.asarray(decay, dtype=float).ravel()
-    n_bins = y.size
-    if n_bins < 4:
-        raise ValueError(f"decay is too short to fit: {n_bins} bins")
-    dt = float(bin_width)
-    if not dt > 0:
-        raise ValueError(f"bin_width must be positive, got {dt}")
     n = max(1, int(n_components))
     lo, hi = (float(tau_bounds[0]), float(tau_bounds[1]))
     if not 0 < lo < hi:
@@ -271,60 +217,20 @@ def build_lifetime_fit(
     if taus.size < n:
         raise ValueError(f"{n} components need {n} initial lifetimes, got {taus.size}")
 
-    t = np.arange(n_bins, dtype=float) * dt
-    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
-    stop = n_bins - 1 if stop_bin is None else int(stop_bin)
-    stop = int(np.clip(stop, 0, n_bins - 1))
-    start = int(np.clip(int(start_bin), 0, max(0, stop - 1)))
-
-    fit = Fit(model_class=for_family("tcspc_lifetime"), data=data, xmin=start, xmax=stop)
-    model = fit.model
-    model.set_scalar("dt", dt)
-    periodic = period is not None and float(period) > 0
-    # Without excitation repeating inside the window, the period only bounds
-    # what the description derives from it; the window is the natural scale.
-    model.set_scalar("period", float(period) if periodic else n_bins * dt)
-    model.set_scalar("periodic_excitation", 1.0 if periodic else 0.0)
-    model.set_scalar("autoscale", 1.0)
-    model.set_scalar("max_components", float(max(3, n)))
-    if irf is not None:
-        irf_y = np.zeros(n_bins, dtype=float)
-        measured = np.asarray(irf, dtype=float).ravel()[:n_bins]
-        irf_y[:measured.size] = measured
-        model.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
-    else:
-        model.set_scalar("generated_response", 1.0)
-    for k, tau in enumerate(taus):
+    fit, model, problem, window = _described_fit(
+        "tcspc_lifetime", decay, bin_width=bin_width, irf=irf, start_bin=start_bin,
+        stop_bin=stop_bin, period=period, scalars={"max_components": max(3, n)},
         # Lifetime bounds are the caller's; the description's (up to the period)
         # would otherwise stand.
-        model._spec.set_parameter(f"lifetime.tau.{k}", float(tau), True, lo, hi)
-
-    problem = model.problem
-    if problem is None:
-        raise ValueError("the lifetime model is missing " + ", ".join(model.missing))
+        overrides={f"lifetime.tau.{k}": (tau, lo, hi) for k, tau in enumerate(taus)})
     model.structure = f"lifetime.components.{n}"
     for k in range(n):
         _set_port(problem, f"lifetime.amplitude.{k}", 1.0 / n)
         _set_port(problem, f"lifetime.tau.{k}", float(taus[k]))
-    _set_port(problem, "instrument.background", float(background))
-    if irf is None:
-        _set_port(problem, "instrument.irf_width", abs(float(irf_width)))
-        _set_port(problem, "instrument.irf_shape", float(irf_skew))
-
-    free = {
-        "instrument.n0": False,               # autoscaled
-        "instrument.background": bool(fit_background),
-        "instrument.scatter": bool(fit_scatter),
-        "instrument.timeshift": True,
-        "instrument.irf_width": bool(fit_irf) and irf is None,
-        "instrument.irf_shape": bool(fit_irf) and irf is None,
-    }
-    parameters = {p.canonical_id: p for p in model.parameters_all
-                  if not getattr(p, "is_output", False)}
-    for canonical, is_free in free.items():
-        parameters[canonical].fixed = not is_free
+    _hold_instrument(model, problem, irf=irf, background=background, fit_background=fit_background,
+                     fit_scatter=fit_scatter, fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew)
     model.find_parameters()
-    fit.fit_range = (start, stop)
+    fit.fit_range = window
     model.update()
     return fit
 
@@ -384,8 +290,7 @@ def fit_lifetime_model(
     m = fit.model
     m.update()
     n = max(1, int(n_components))
-    parameters = {p.canonical_id: p for p in m.parameters_all
-                  if not getattr(p, "is_output", False)}
+    parameters = _parameters(m)
 
     def value(canonical):
         return float(parameters[canonical].value)
@@ -405,32 +310,14 @@ def fit_lifetime_model(
     tau_err, amp_err = tau_err[order], amp_err[order]
     spectrum = np.empty(2 * n, dtype=float)
     spectrum[0::2], spectrum[1::2] = amps, taus
-
-    dt = float(bin_width)
-    shift = value("instrument.timeshift")
-    irf_peak = None
-    if irf is None:
-        problem = m.problem
-        active = problem.get_active_structure()
-        prompt = np.asarray(problem.get_structure_output(active, f"{active}.generated_response"), dtype=float)
-        irf_peak = (float(np.argmax(prompt)) + shift) * dt
-
-    wres = np.asarray(m.weighted_residuals, dtype=float)
     return {
         "lifetimes": taus,
         "amplitudes": amps,
         "lifetime_spectrum": spectrum,
         "lifetime_errors": tau_err,
         "amplitude_errors": amp_err,
-        "reconstruction": np.asarray(m.y, dtype=float),
-        "weighted_residuals": wres,
-        "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
-        "background": value("instrument.background"),
-        "scatter": value("instrument.scatter"),
-        "irf_width": abs(value("instrument.irf_width")),
-        "irf_skew": value("instrument.irf_shape"),
-        "irf_shift": shift,
-        "irf_peak": irf_peak,
+        **_misfit(m),
+        **_irf_report(m, irf=irf, bin_width=bin_width),
         "fit": fit,
         "model": m,
     }
@@ -462,9 +349,10 @@ def build_fret_fit(
 ):
     """Build a runnable FRET fit: ``n_states`` Gaussian donor-acceptor distances.
 
-    Uses :class:`~chisurf.core.models.tcspc.fret.GaussianModel`, so each state is
-    a Gaussian distance distribution whose **mean, width and species fraction are
-    fitted parameters**, alongside the donor-only fraction ``xDOnly``. That is a
+    Uses BFF's ``tcspc_fret_gaussian`` model, so each state is a Gaussian
+    distance distribution whose **mean and species fraction are fitted
+    parameters** (the width is held at ``sigma``), alongside the donor-only
+    fraction. That is a
     genuine FRET fit — the efficiencies come from fitted distances and R₀ — rather
     than lifetimes converted to efficiencies afterwards.
 
@@ -502,8 +390,6 @@ def build_fret_fit(
     Fit
         A configured fit; call ``fit.run()`` to optimise it.
     """
-    import chisurf.core.models.tcspc.fret as fret_model
-
     n = max(1, int(n_states))
     r_lo, r_hi = float(distance_bounds[0]), float(distance_bounds[1])
     if not 0 < r_lo < r_hi:
@@ -512,7 +398,6 @@ def build_fret_fit(
     r0 = float(forster_radius)
     if not r0 > 0:
         raise ValueError(f"forster_radius must be positive, got {r0}")
-
     if initial_distances is None:
         # Spread around R0, where the efficiency is most sensitive to distance.
         spread = np.linspace(0.7, 1.3, n) if n > 1 else np.array([1.0])
@@ -521,33 +406,29 @@ def build_fret_fit(
         distances = np.clip(
             np.asarray(initial_distances, dtype=float).ravel()[:n], r_lo, r_hi)
 
-    fit = _make_fit(
-        fret_model.GaussianModel, decay, bin_width=bin_width, irf=irf,
-        start_bin=start_bin, stop_bin=stop_bin, background=background,
-        fit_background=fit_background, fit_scatter=fit_scatter, fit_irf=fit_irf,
-        irf_width=irf_width, irf_skew=irf_skew, period=period,
-    )
-    m = fit.model
-
-    # The donor-only decay. `FRETModel` shares one Lifetime group between
-    # `m.donor` and `m.lifetimes`, so this is the tau_D0 the FRET rates are
-    # measured against.
-    _configure_lifetimes(m.donor, [float(donor_lifetime)], (0.01, 100.0))
-    m.donor._lifetimes[0].fixed = not bool(fit_donor_lifetime)
-
-    fp = m.fret_parameters
-    fp._forster_radius.value = r0
-    fp._tauD0.value = float(donor_lifetime)
-    fp._xDonly.value = float(x_donor_only)
-    fp._xDonly.fixed = not bool(fit_donor_only)
-
+    fit, model, problem, window = _described_fit(
+        "tcspc_fret_gaussian", decay, bin_width=bin_width, irf=irf, start_bin=start_bin,
+        stop_bin=stop_bin, period=period, scalars={"max_components": max(3, n)},
+        overrides={f"distance.mean.{k}": (r, r_lo, r_hi) for k, r in enumerate(distances)})
+    model.structure = f"tcspc_fret_gaussian.components.{n}"
     for k, r in enumerate(distances):
-        m.append(float(r), float(sigma), 1.0 / n)
-        mean = m.gaussians._gaussianMeans[k]
-        mean.bounds = (r_lo, r_hi)
-        mean.bounds_on = True
-
-    m.find_parameters()
+        _set_port(problem, f"distance.mean.{k}", float(r))
+        _set_port(problem, f"distance.sigma.{k}", float(sigma))
+        _set_port(problem, f"distance.amplitude.{k}", 1.0 / n)
+    # The donor-only decay the FRET rates are measured against.
+    _set_port(problem, "donor.amplitude.0", 1.0)
+    _set_port(problem, "donor.tau.0", float(donor_lifetime))
+    _set_port(problem, "fret.tau0", float(donor_lifetime))
+    _set_port(problem, "fret.forster_radius", r0)
+    _set_port(problem, "fret.x_donly", float(x_donor_only))
+    _hold_instrument(model, problem, irf=irf, background=background, fit_background=fit_background,
+                     fit_scatter=fit_scatter, fit_irf=fit_irf, irf_width=irf_width, irf_skew=irf_skew,
+                     extra={"fret.x_donly": bool(fit_donor_only),
+                            "donor.tau.0": bool(fit_donor_lifetime),
+                            "fret.forster_radius": False, "fret.tau0": False})
+    model.find_parameters()
+    fit.fit_range = window
+    model.update()
     return fit
 
 
@@ -568,41 +449,31 @@ def fit_fret_model(decay, **kwargs) -> dict:
     fit = build_fret_fit(decay, **kwargs)
     fit.run()
     m = fit.model
+    m.update()
+    n = max(1, int(kwargs.get("n_states", 2)))
+    value = {k: float(p.value) for k, p in _parameters(m).items()}
 
-    distances = np.asarray(m.gaussians.mean, dtype=float)
-    sigmas = np.asarray(m.gaussians.sigma, dtype=float)
-    fractions = np.asarray(m.gaussians.amplitude, dtype=float)
+    distances = np.abs([value[f"distance.mean.{k}"] for k in range(n)])
+    sigmas = np.array([value[f"distance.sigma.{k}"] for k in range(n)])
+    raw = np.abs([value[f"distance.amplitude.{k}"] for k in range(n)])
+    fractions = raw / (float(raw.sum()) or 1.0)
     order = np.argsort(distances)
     distances, sigmas, fractions = distances[order], sigmas[order], fractions[order]
 
-    r0 = float(m.fret_parameters.forster_radius)
+    r0 = value["fret.forster_radius"]
     efficiencies = 1.0 / (1.0 + (distances / r0) ** 6)
-
-    wres = np.asarray(m.weighted_residuals, dtype=float)
-    irf_peak = None
-    if kwargs.get("irf") is None:
-        try:
-            # The processed prompt carries its absolute position (shift included).
-            irf_peak = float(np.argmax(np.asarray(m.convolve.irf.y, dtype=float))) * float(m.convolve.dt)
-        except Exception:
-            irf_peak = None
     return {
         "distances": distances,
         "sigmas": sigmas,
         "fractions": fractions,
         "efficiencies": efficiencies,
-        "donor_only_fraction": float(m.fret_parameters.xDOnly),
+        "donor_only_fraction": abs(value["fret.x_donly"]),
         "forster_radius": r0,
-        "donor_lifetime": float(m.fret_parameters.tauD0),
+        "donor_lifetime": value["fret.tau0"],
         # Same IRF reporting as the lifetime fit, so callers can write the fitted
         # prompt back to a detector regardless of which fit produced it.
-        "irf_width": abs(float(m.convolve._iw.value)),
-        "irf_skew": float(m.convolve._ik.value),
-        "irf_shift": float(m.convolve._ts.value),
-        "irf_peak": irf_peak,
-        "reconstruction": np.asarray(m.y, dtype=float),
-        "weighted_residuals": wres,
-        "chi2_reduced": float(np.sum(wres ** 2) / max(1, wres.size)),
+        **_irf_report(m, irf=kwargs.get("irf"), bin_width=kwargs["bin_width"]),
+        **_misfit(m),
         "fit": fit,
         "model": m,
     }

@@ -1121,12 +1121,12 @@ def test_autofit_parameter_table_is_rebuilt_per_fit(qapp, qtbot, tmp_path):
 
 def test_fret_auto_fit_runs_through_a_real_fret_model(qapp, qtbot, tmp_path):
     """The FRET kind fits distances against R0, not lifetimes converted afterwards."""
-    from chisurf.core.models.tcspc.fret import GaussianModel
+    from chisurf.core.models.description import for_family
 
     widget = _autofit_widget(qtbot, tmp_path, n_components=2, kind="fret")
 
     result = widget._auto_fit_result
-    assert isinstance(result["model"], GaussianModel)
+    assert isinstance(result["model"], for_family("tcspc_fret_gaussian"))
     assert len(result["distances"]) == 2
     assert np.all(result["efficiencies"] >= 0) and np.all(result["efficiencies"] <= 1)
     # Every added species is a FRET species carrying a fitted efficiency.
@@ -1141,11 +1141,13 @@ def test_fret_auto_fit_exposes_distances_as_linkable_parameters(qapp, qtbot, tmp
 
     widget = _autofit_widget(qtbot, tmp_path, n_components=2, kind="fret")
 
-    means = widget._auto_fit_result["model"].gaussians._gaussianMeans
-    assert len(means) == 2
+    means = [p for p in widget._auto_fit_result["model"].parameters_all
+             if getattr(p, "canonical_id", "").startswith("distance.mean.")]
+    assert len(means) == 3        # the model holds as many as it could use
     assert all(isinstance(p, FittingParameter) for p in means)
     names = {getattr(p, "name", "") for p in widget.autofit_parameter_table._params}
-    assert any(n.startswith("R(") for n in names), f"no distance parameters in {names}"
+    # Only the fitted topology's two distances are rows.
+    assert {"RDA0", "RDA1"} <= names and "RDA2" not in names, names
 
 
 def test_derived_fret_efficiencies_still_available_without_a_fret_fit():

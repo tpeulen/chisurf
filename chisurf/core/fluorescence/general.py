@@ -140,6 +140,18 @@ def species_averaged_lifetime(
 
 
 
+def fret_efficiency_from_spectra(fret_lifetime_spectrum, donor_lifetime_spectrum) -> float:
+    """The FRET efficiency ``1 - <tau>x(DA) / <tau>x(D0)`` of two lifetime spectra.
+
+    The contrast of the species-averaged lifetimes, which is what ChiSurf's FRET
+    models report as ``fret_efficiency``.
+    """
+    donor = species_averaged_lifetime(donor_lifetime_spectrum)
+    if not donor > 0.0:
+        return float("nan")
+    return 1.0 - species_averaged_lifetime(fret_lifetime_spectrum) / donor
+
+
 def fluorescence_averaged_lifetime(
         fluorescence,
         taux: float = None,

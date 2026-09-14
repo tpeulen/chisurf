@@ -347,14 +347,16 @@ def test_fret_distances_are_fitting_parameters():
     y, irf = _simulate_fret()
     fit = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
                          donor_lifetime=TAU_D0, forster_radius=R0)
-    g = fit.model.gaussians
+    assert fit.model.structure == "tcspc_fret_gaussian.components.2"
+    parameters = _parameters(fit)
+    problem = fit.model.problem
+    means = [parameters[f"distance.mean.{k}"] for k in range(2)]
+    assert all(isinstance(p, FittingParameter) for p in means)
+    for k in range(2):
+        port = problem.get_parameter(f"distance.mean.{k}")
+        assert (port.get_lower_bound(), port.get_upper_bound()) == (10.0, 120.0)
 
-    assert len(g._gaussianMeans) == 2
-    assert all(isinstance(p, FittingParameter) for p in g._gaussianMeans)
-    for p in g._gaussianMeans:
-        assert p.bounds_on and p.bounds == (10.0, 120.0)
-
-    follower, target = g._gaussianMeans[1], g._gaussianMeans[0]
+    follower, target = means[1], means[0]
     follower.link = target
     target.value = 47.5
     assert follower.value == pytest.approx(47.5)
@@ -363,18 +365,17 @@ def test_fret_distances_are_fitting_parameters():
 def test_fret_calibration_is_held_fixed():
     """R0 and tau_D0 are calibration, not data: fitting them is ill-conditioned."""
     y, irf = _simulate_fret()
-    m = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
-                       donor_lifetime=TAU_D0, forster_radius=R0).model
+    parameters = _parameters(build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
+                                            donor_lifetime=TAU_D0, forster_radius=R0))
+    assert parameters["fret.forster_radius"].fixed
+    assert parameters["donor.tau.0"].fixed
+    assert parameters["fret.forster_radius"].value == pytest.approx(R0)
+    assert parameters["fret.tau0"].value == pytest.approx(TAU_D0)
 
-    assert m.fret_parameters._forster_radius.fixed
-    assert m.donor._lifetimes[0].fixed
-    assert m.fret_parameters.forster_radius == pytest.approx(R0)
-    assert m.fret_parameters.tauD0 == pytest.approx(TAU_D0)
-
-    freed = build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
-                           donor_lifetime=TAU_D0, forster_radius=R0,
-                           fit_donor_lifetime=True).model
-    assert not freed.donor._lifetimes[0].fixed
+    freed = _parameters(build_fret_fit(y, bin_width=DT, irf=irf, n_states=2,
+                                       donor_lifetime=TAU_D0, forster_radius=R0,
+                                       fit_donor_lifetime=True))
+    assert not freed["donor.tau.0"].fixed
 
 
 def test_fret_donor_only_fraction_is_recovered():
