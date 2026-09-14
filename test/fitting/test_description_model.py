@@ -548,3 +548,79 @@ class _ClassicStandIn(chisurf.core.models.model.ModelCurve):
 
     def _update_model(self, **kwargs):
         pass
+
+
+def _lifetime_view(taus, amplitudes, y=None):
+    fit, model = _view(y)
+    model.structure = f"lifetime.components.{len(taus)}"
+    problem = model.problem
+    for i, (a, t) in enumerate(zip(amplitudes, taus)):
+        for name, value in ((f"lifetime.amplitude.{i}", a), (f"lifetime.tau.{i}", t)):
+            port = problem.get_parameter(name)
+            held = port.fixed
+            port.fixed = False
+            port.value = value
+            port.fixed = held
+    return fit, model
+
+
+def _mixture_view(sources, y=None):
+    x = _axis()
+    y = np.full(N, 10.0) if y is None else y
+    fit = fitting.Fit(model_class=for_family("tcspc_mixture"),
+                      data=chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0))))
+    fit.xmin, fit.xmax = 0, N
+    model = fit.model
+    model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=_irf()))
+    model.set_scalar("period", PERIOD)
+    assert model.problem is None and model.missing == ["lifetime_spectrum.0"]
+    for i, source in enumerate(sources):
+        model.append_model(source, name=f"species {i}")
+    return fit, model
+
+
+def test_a_mixture_view_mixes_the_lifetimes_of_other_views():
+    _, fast = _lifetime_view([0.5], [1.0])
+    _, slow = _lifetime_view([3.0], [1.0])
+    _, mixture = _mixture_view([fast, slow])
+    assert mixture.problem is not None, mixture.missing
+    assert mixture.model_names == ["species 0", "species 1"]
+    fractions = mixture._fractions
+    assert [p.canonical_id for p in fractions] == ["mixture.fraction.0", "mixture.fraction.1"]
+    fractions[1].value = 3.0
+    _, reference = _lifetime_view([0.5, 3.0], [0.25, 0.75])
+    for model in (mixture, reference):
+        for name, value in (("instrument.n0", 4000.0), ("instrument.background", 2.0)):
+            port = model.problem.get_parameter(name)
+            held = port.fixed
+            port.fixed = False
+            port.value = value
+            port.fixed = held
+        model.update()
+    np.testing.assert_allclose(np.asarray(mixture.y), np.asarray(reference.y), rtol=1e-9, atol=1e-9)
+    assert "fit_mixer" in [getattr(s, "key", "") for panel in mixture.view_spec().sections
+                           for s in getattr(panel, "sections", ())]
+
+
+def test_a_mixture_fit_recovers_the_fractions_of_fixed_species():
+    y = _simulated()
+    _, slow = _lifetime_view([TRUTH["lifetime.tau.0"]], [1.0])
+    _, fast = _lifetime_view([TRUTH["lifetime.tau.1"]], [1.0])
+    fit, mixture = _mixture_view([slow, fast], y)
+    fit.run()
+    x = [p.value for p in mixture._fractions]
+    # The simulation leaves the first amplitude where the model starts it.
+    a0 = _view()[1].problem.get_parameter("lifetime.amplitude.0").value
+    a1 = TRUTH["lifetime.amplitude.1"]
+    assert x[1] / x[0] == pytest.approx(a1 / a0, rel=1e-3)
+
+
+def test_only_a_model_that_publishes_lifetimes_can_be_mixed():
+    _, fast = _lifetime_view([0.5], [1.0])
+    _, mixture = _mixture_view([fast])
+    with pytest.raises(ValueError):
+        mixture.append_model(mixture)
+    with pytest.raises(TypeError):
+        mixture.append_model(object())
+    mixture.pop_model()
+    assert mixture.problem is None and mixture.missing == ["lifetime_spectrum.0"]

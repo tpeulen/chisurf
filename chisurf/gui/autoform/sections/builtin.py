@@ -2966,11 +2966,15 @@ class FitMixerWidget(QtWidgets.QWidget):
             f = fits[idx]
             i = self.fit_list.count() + 1
             name = self.name_edit.text().strip() or f"x_{i}"
-            self.fit_list.addItem(f"{i}: {f.name}")
             try:
                 self._model.append_model(f.model, name)
-            except Exception:
-                pass
+            except Exception as error:
+                # Listing a model the mixture refused would show a mixture
+                # that is not the one being fitted.
+                import chisurf as cs
+                cs.logging.warning(f"could not add {f.name!r} to the mixture: {error}")
+                continue
+            self.fit_list.addItem(f"{i}: {f.name}")
         self._dispatch_update()
         self._rebuild_fractions()
 

@@ -245,6 +245,10 @@ class DescriptionModel(ModelCurve):
         self._sources: typing.Dict[str, typing.Any] = {}
         self._scalars: typing.Dict[str, float] = {}
         self._groups: typing.Dict[str, DescriptionGroup] = {}
+        #: The models this one reads a published output of (a mixture's species).
+        self._source_models: typing.List["DescriptionModel"] = []
+        self._source_names: typing.List[str] = []
+        self._bound_ports: typing.List[str] = []
 
     # --- what the description says ------------------------------------------
     @property
@@ -372,6 +376,13 @@ class DescriptionModel(ModelCurve):
                 elif self.__dict__.setdefault("_defaults", {}).get(name) != value:
                     self._defaults[name] = value
                     self._spec.set_scalar(name, value)
+        info = self.source_info
+        if info:
+            count = int(self.get_scalar(info["count"]) or 0)
+            for i in range(max(1, count)):
+                name = info["port"].format(i=i)
+                if name not in self._bound_ports:
+                    missing.append(name)
         self.missing = missing
         if missing or self.__dict__.get("_bound_primary") is None:
             return None
@@ -468,7 +479,16 @@ class DescriptionModel(ModelCurve):
             else:
                 settings.append(vs.ValueSection(label=info.get("label", name), kind="float", attr=f"scalars.{name}"))
         sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
+        sources = self.source_info
+        if sources:
+            sections.append(vs.PanelSection(title=sources.get("label", "Models"), sections=(
+                vs.CustomSection(key="fit_mixer"),)))
+        source_parameter = sources.get("parameter", "").split("{")[0] if sources else ""
         for attribute, group in self._groups.items():
+            if source_parameter and all(
+                    p.canonical_id.startswith(source_parameter) for p in group.parameters_all):
+                # Shown with its source by the models section.
+                continue
             sections.append(vs.ParameterGroupTableSection(
                 target=attribute, title=group.name,
                 parameters_source="visible_parameters", collapsible=False))
@@ -525,6 +545,95 @@ class DescriptionModel(ModelCurve):
             except Exception:
                 pass
         super().find_parameters(parameter_type=parameter_type)
+
+    # --- models this one reads (a mixture's species) -----------------------------
+    @property
+    def source_info(self) -> dict:
+        """What a description says about the models it reads, or ``{}``.
+
+        ``count`` is the scalar holding how many, ``port`` the name each is
+        bound under, ``output`` what each has to publish and ``parameter`` the
+        parameter each comes with (a mixing fraction).
+        """
+        return dict(self.presentation.get("sources") or {})
+
+    def _publishes(self, model) -> bool:
+        output = self.source_info.get("output")
+        return (isinstance(model, DescriptionModel) and model is not self and bool(output)
+                and output in model._document.get("outputs", {}))
+
+    @property
+    def source_fits(self) -> list:
+        """Every open fit whose model publishes what this model reads."""
+        import chisurf
+        found = []
+        for group in list(getattr(chisurf, "fits", []) or []):
+            for fit in (list(group) if hasattr(group, "__iter__") else [group]):
+                if self._publishes(getattr(fit, "model", None)):
+                    found.append(fit)
+        return found
+
+    #: The name the mixture editor section reads.
+    lifetime_fits = source_fits
+
+    def append_model(self, model, name: typing.Optional[str] = None) -> None:
+        """Read ``model``'s published output as one more source."""
+        info = self.source_info
+        if not info:
+            raise TypeError(f"{self.name!r} reads no other models")
+        if model is self:
+            raise ValueError("a model cannot read its own output")
+        if not self._publishes(model):
+            raise TypeError(
+                f"{type(model).__name__} publishes no {info['output']!r}; only a model "
+                "BFF describes can be read here")
+        self._source_models.append(model)
+        self._source_names.append(name or str(getattr(getattr(model, "fit", None), "name", "")
+                                              or f"model {len(self._source_models)}"))
+        self._bind_sources()
+
+    def pop_model(self, idx: typing.Optional[int] = None):
+        """Stop reading one source; the last one when ``idx`` is not given."""
+        idx = len(self._source_models) - 1 if idx is None else int(idx)
+        model = self._source_models.pop(idx)
+        self._source_names.pop(idx)
+        self._bind_sources()
+        return model
+
+    @property
+    def source_models(self) -> list:
+        return list(self._source_models)
+
+    @property
+    def model_names(self) -> typing.List[str]:
+        return list(self._source_names)
+
+    def _bind_sources(self) -> None:
+        info = self.source_info
+        for name in self._bound_ports:
+            self._spec.unset_port(name)
+        self._bound_ports = []
+        for i, model in enumerate(self._source_models):
+            problem = model.problem
+            if problem is None:
+                raise ValueError(f"{self._source_names[i]!r} is incomplete: missing "
+                                 + ", ".join(model.missing))
+            name = info["port"].format(i=i)
+            self._spec.set_port(name, problem.get_output_port(info["output"]))
+            self._bound_ports.append(name)
+        self.set_scalar(info["count"], float(max(1, len(self._source_models))))
+        self._forget_discovery()
+        factorgraph.bump_structure_version()
+
+    @property
+    def _fractions(self) -> list:
+        """The parameter each source comes with, in source order."""
+        info = self.source_info
+        if not info.get("parameter") or self.problem is None:
+            return []
+        by_id = {p.canonical_id: p for g in self._groups.values() for p in g.parameters_all}
+        return [by_id[info["parameter"].format(i=i)] for i in range(len(self._source_models))
+                if info["parameter"].format(i=i) in by_id]
 
     # --- topology --------------------------------------------------------------
     def structure_options(self) -> typing.List[typing.Tuple[str, str]]:
@@ -630,6 +739,8 @@ class DescriptionModel(ModelCurve):
         state = {
             "family": self.family,
             "scalars": dict(self._scalars),
+            # By name: a source is another fit, which a project restores itself.
+            "source_fits": list(self._source_names),
             "datasets": {
                 slot: {"x": np.asarray(getattr(c, "x", []), dtype=float).tolist(),
                        "y": np.asarray(c.y, dtype=float).tolist()}

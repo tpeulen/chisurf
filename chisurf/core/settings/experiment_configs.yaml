@@ -62,6 +62,8 @@ tcspc:
     # of the FRET, mixture and MaxEnt models below until they are ported.
     - chisurf.core.models.description.tcspc_lifetime
     - chisurf.core.models.description.tcspc_polarized
+    # Mixes the lifetimes other described fits publish.
+    - chisurf.core.models.description.tcspc_mixture
     - chisurf.core.models.tcspc.fret.FRETrateModel
     - chisurf.core.models.tcspc.fret.GaussianModel
     - chisurf.core.models.tcspc.pddem.PDDEMModel
@@ -71,6 +73,7 @@ tcspc:
     - chisurf.core.models.tcspc.distributed_acceptor.DistributedAcceptorModel
     - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
     # Pure compute model; its editor is generated from mix_model.view.json.
+    # The classic mixer, for FRET fits until those are described by BFF.
     - chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel
     - chisurf.core.models.tcspc.fret_structure.FRETStructure
     - chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel
