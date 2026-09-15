@@ -52,7 +52,7 @@ def _restore_registry(original):
 
 
 class FakeFretParameters:
-    """Stand-in for chisurf.core.models.tcspc.fret.FRETParameters."""
+    """Stand-in for chisurf.core.models.fret_parameters.FRETParameters."""
 
     def __init__(self):
         self.r0 = fp.FittingParameter(name="R0", value=52.0)

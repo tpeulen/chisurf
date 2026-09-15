@@ -281,7 +281,7 @@ def test_common_dispatcher_routes_a_multi_member_fit_to_the_joint_capability():
 
 def test_native_tcspc_members_are_refused_whole_until_joint_builder_supports_them():
     from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 
     x = np.arange(32, dtype=float) * 0.05
     y = 1000.0 * np.exp(-x / 2.0) + 1.0

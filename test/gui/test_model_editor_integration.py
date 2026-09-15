@@ -124,7 +124,7 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
-    model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeModel")
+    model_class = _resolve("chisurf.core.models.description.tcspc_lifetime")
     fit = _make_fit(model_class)
     model = fit.model
     assert model.problem is not None, model.missing
@@ -191,7 +191,7 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     from chisurf.gui.autoform.sections.builtin import FitMixerWidget
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
-    model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel")
+    model_class = _resolve("chisurf.core.models.description.tcspc_mixture")
     assert model_class.name == "Lifetime mixture"
     fit = _make_fit(model_class)
     model = fit.model
@@ -233,16 +233,16 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
 #: dropped because its factory rejected an option, and a component table that
 #: renders with no rows because nothing seeded a component.
 JSON_DESCRIBED_TCSPC_MODELS = [
-    "chisurf.core.models.tcspc.lifetime.LifetimeModel",
-    "chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel",
-    "chisurf.core.models.tcspc.fret.FRETrateModel",
-    "chisurf.core.models.tcspc.fret.GaussianModel",
-    "chisurf.core.models.tcspc.fret.WormLikeChainModel",
-    "chisurf.core.models.tcspc.fret.SawNuModel",
-    "chisurf.core.models.tcspc.fret.IsingChainModel",
-    "chisurf.core.models.tcspc.pddem.PDDEMModel",
-    "chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel",
-    "chisurf.core.models.tcspc.maxent.MaxEntFRETModel",
+    "chisurf.core.models.description.tcspc_lifetime",
+    "chisurf.core.models.description.tcspc_mixture",
+    "chisurf.core.models.description.tcspc_fret_discrete",
+    "chisurf.core.models.description.tcspc_fret_gaussian",
+    "chisurf.core.models.description.tcspc_fret_worm_like_chain",
+    "chisurf.core.models.description.tcspc_fret_saw_nu",
+    "chisurf.core.models.description.tcspc_fret_ising_chain",
+    "chisurf.core.models.description.tcspc_pddem",
+    "chisurf.core.models.description.tcspc_maxent_lifetime",
+    "chisurf.core.models.description.tcspc_maxent_fret",
     "chisurf.core.models.tcspc.fret_structure.FRETStructure",
     "chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel",
     "chisurf.core.models.fcs.parse.ParseFCSModel",

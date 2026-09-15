@@ -10,7 +10,7 @@ import numpy as np
 
 import chisurf.core.data as data
 from chisurf.core.fitting.fit import FitGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 from chisurf.server.services.fits import get_fit_info, list_fits
 from chisurf.server.session import SessionState
 

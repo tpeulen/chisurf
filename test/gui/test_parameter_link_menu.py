@@ -18,7 +18,7 @@ from qtpy import QtWidgets
 import chisurf
 import chisurf.core.data as data
 from chisurf.core.fitting.fit import FitGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
 from chisurf.gui.widgets.fitting.parameter_widgets import FittingParameterProxyController
 from chisurf.server.services.fits import get_fit_info, list_fits

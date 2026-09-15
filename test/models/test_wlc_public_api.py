@@ -13,8 +13,8 @@ import pytest
 
 import chisurf.core.fitting.fit as fit_mod
 from chisurf.core.data import DataCurve
-from chisurf.core.models.tcspc.fret import GaussianModel, WormLikeChainModel
-from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
+from chisurf.core.models.description import tcspc_fret_gaussian as GaussianModel, tcspc_fret_worm_like_chain as WormLikeChainModel
+from chisurf.core.models.description import tcspc_mixture as LifetimeMixtureModel
 
 
 def _dummy_data() -> DataCurve:

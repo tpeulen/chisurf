@@ -213,7 +213,7 @@ irf_estimation
 | [Fitting an MFD burst histogram](57_mfd_fitting.md) | `MFD` experiment, `MFD 2D` model, `chisurf.core.fluorescence.mfd` |
 | [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc fusion` |
 | [Global analysis: linking parameters across fits](60_global_analysis.md) | `fitting.fit.link_parameter`, `core.models.global_model`, `globalview` plugin |
-| [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `models.tcspc.maxent`, `math.regularization` |
+| [Maximum-entropy decay analysis](62_maxent_decay.md) | `maxent_decay` plugin, `tcspc_maxent_*` descriptions, `math.regularization` |
 | [Driving ChiSurf from its console](59_console.md) | `chisurf.gui.chinsole`, `chisurf.core.console`, `cs.fits`, `%run -i` |
 | [Notebooks that run inside ChiSurf](64_notebooks.md) | Code Editor `.ipynb` tabs, `code_editor.notebook_editor`, `core.console.shell` |
 | [Accurate FRET: calibration](fret_calibration.md) | `accurate_fret` plugin, `fret.calibration` |

@@ -119,7 +119,7 @@ def test_a_model_is_offered_only_for_the_data_it_can_fit():
 def test_a_model_that_declares_nothing_stays_offered():
     """The filter may only remove models that would fail, never surprise ones."""
     from chisurf.core.experiments.core import Experiment
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 
     experiment = Experiment(name="TCSPC")
     experiment.add_model_class(LifetimeModel)

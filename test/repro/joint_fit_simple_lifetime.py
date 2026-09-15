@@ -43,7 +43,7 @@ def main():
     print("Creating donor-only fit...")
     fit_donor = chisurf.core.fitting.fit.FitGroup(
         data=decay_donor_only,
-        model_class=chisurf.core.models.tcspc.lifetime.LifetimeModel
+        model_class=chisurf.core.models.description.tcspc_lifetime
     )
     
     model_donor = fit_donor.model
@@ -56,7 +56,7 @@ def main():
     print("Creating FRET decay fit...")
     fit_fret = chisurf.core.fitting.fit.FitGroup(
         data=decay_fret,
-        model_class=chisurf.core.models.tcspc.lifetime.LifetimeModel
+        model_class=chisurf.core.models.description.tcspc_lifetime
     )
     
     model_fret = fit_fret.model

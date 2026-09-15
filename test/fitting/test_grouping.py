@@ -25,7 +25,7 @@ import chisurf.core.actions
 import chisurf.core.actions.dataset_actions  # noqa: F401 - registers the actions
 from chisurf.core.data import DataCurve, ExperimentDataCurveGroup
 from chisurf.core.fitting.fit import FitGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 from chisurf.macros.core_data import _is_global_fit_dataset
 from chisurf.macros.core_fit import (
     _auto_link_non_nuisance_group_parameters,

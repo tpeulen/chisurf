@@ -22,7 +22,7 @@ pytest.importorskip("pyqtgraph")
 from qtpy import QtWidgets  # noqa: E402
 
 import chisurf.core.data  # noqa: E402
-import chisurf.core.models.tcspc.lifetime as lifetime_model  # noqa: E402
+import chisurf.core.models.description as lifetime_model  # noqa: E402
 from chisurf.core.fitting.fit import Fit  # noqa: E402
 
 
@@ -38,7 +38,7 @@ def single_fit():
     x = np.arange(n) * 0.032
     y = 1000 * np.exp(-x / 4.0) + 10
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
-    return Fit(model_class=lifetime_model.LifetimeModel, data=data, xmin=0, xmax=n - 1)
+    return Fit(model_class=lifetime_model.tcspc_lifetime, data=data, xmin=0, xmax=n - 1)
 
 
 def test_autorange_compat_is_applied_on_import():

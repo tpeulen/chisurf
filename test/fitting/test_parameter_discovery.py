@@ -15,7 +15,7 @@ import pytest
 import chisurf.core.data as data
 from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 
 
 def _fit(n_curves: int = 1) -> FitGroup:

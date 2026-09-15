@@ -30,7 +30,7 @@ def lifetime_model():
     try:
         import chisurf.core.fitting.fit as fit_mod
         from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeModel
+        from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
     except Exception as exc:  # pragma: no cover
         pytest.skip(f"lifetime model import failed: {exc}")
     x = np.linspace(0, 25, 256)
@@ -121,7 +121,7 @@ def test_registered_auto_lifetime_model_wires_live(qapp):
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     # resolve exactly as main_helper._resolve_class would from the yaml entry
-    path = "chisurf.core.models.tcspc.lifetime.LifetimeModel"
+    path = "chisurf.core.models.description.tcspc_lifetime"
     mod, cls = path.rsplit(".", 1)
     model_class = getattr(importlib.import_module(mod), cls)
     assert model_class.name == "Lifetime"
@@ -341,38 +341,6 @@ def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
     assert model_editor_widget(Bare()) is None
 
 
-def test_retired_lifetime_class_paths_still_resolve_to_the_pure_model(qapp):
-    """The classic Lifetime classes are gone; their names remain importable.
-
-    A user copy of ``experiment_configs.yaml`` *replaces* the bundled model list
-    and a pinned class path that no longer resolves drops the entry silently;
-    pickled projects pin paths the same way. So every retired name still
-    imports, and lands on the view that replaced it.
-    """
-    from qtpy import QtWidgets
-
-    import chisurf.gui.widgets.models.tcspc as tcspc
-    from chisurf.core.models.description import for_family
-    from chisurf.core.models.tcspc.lifetime import (
-        LifetimeMixtureModel,
-        LifetimeMixtureNewModel,
-        LifetimeModel,
-        LifetimeNewModel,
-    )
-
-    assert LifetimeModel is for_family("tcspc_lifetime")
-    assert LifetimeMixtureModel is for_family("tcspc_mixture")
-    assert tcspc.LifetimeModelWidget is LifetimeModel
-    assert tcspc.LifetimeMixtureModelWidget is LifetimeMixtureModel
-    assert LifetimeNewModel is LifetimeModel
-    assert LifetimeMixtureNewModel is LifetimeMixtureModel
-    assert not issubclass(LifetimeModel, QtWidgets.QWidget)
-    assert not issubclass(LifetimeMixtureModel, QtWidgets.QWidget)
-    # the menu names carry no stray whitespace: add_fit matches them as strings
-    assert LifetimeModel.name == "Lifetime"
-    assert LifetimeMixtureModel.name == "Lifetime mixture"
-
-
 def test_plots_come_only_from_the_view_spec(qapp):
     """A model's plots are resolved from ``view_spec().plots``, nothing else.
 
@@ -385,7 +353,7 @@ def test_plots_come_only_from_the_view_spec(qapp):
 
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     data = DataCurve(x=np.linspace(0.05, 25, 256), y=np.ones(256))
@@ -528,7 +496,7 @@ def mixture_model():
     try:
         import chisurf.core.fitting.fit as fit_mod
         from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
+        from chisurf.core.models.description import tcspc_mixture as LifetimeMixtureModel
     except Exception as exc:
         pytest.skip(f"mixture model import failed: {exc}")
     x = np.linspace(0, 25, 256)
@@ -545,7 +513,7 @@ def test_mixture_new_model_is_pure(qapp, mixture_model):
     """
     from qtpy import QtWidgets
 
-    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
+    from chisurf.core.models.description import tcspc_mixture as LifetimeMixtureModel
     assert not isinstance(mixture_model, QtWidgets.QWidget)
     # class attribute is the menu/registry label
     assert LifetimeMixtureModel.name == "Lifetime mixture"
@@ -590,7 +558,7 @@ def test_mixture_new_model_append_pop_updates_fractions(qapp, mixture_model):
 
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
     from chisurf.gui.autoform.sections.builtin import FitMixerWidget
 
     # Build a donor lifetime fit to mix in

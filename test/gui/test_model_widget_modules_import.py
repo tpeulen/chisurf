@@ -71,7 +71,6 @@ def test_every_model_module_imports(qapp, module):
         ("chisurf.gui.widgets.models.proteinmc.ProteinMCModelWidget", "ProteinMC"),
         ("chisurf.gui.widgets.models.stopped_flow.ReactionWidget", "Reaction-System"),
         ("chisurf.gui.widgets.models.pda2c.Pda2cSimpleModelWidget", "PDA2c-discrete"),
-        ("chisurf.gui.widgets.models.tcspc.LifetimeModelWidget", "Lifetime"),
         ("chisurf.gui.widgets.models.global_model.GlobalFitModelWidget", "Global fit"),
     ],
 )
@@ -88,18 +87,6 @@ def test_deprecated_widget_paths_resolve_to_the_pure_model(qapp, path, expected)
     assert cls is not None, f"{path} resolved to None"
     assert not issubclass(cls, QtWidgets.QWidget), f"{path} is still a widget"
     assert str(getattr(cls, "name", "")).strip() == expected
-
-
-def test_the_unopenable_model_still_resolves_to_none(qapp):
-    """``EtModelFreeWidget`` is deliberately ``None``.
-
-    It was registered and *abstract* (no ``update_model``), so selecting it could
-    only raise. Resolving to ``None`` makes an old config drop the entry instead
-    of crashing when it is chosen. See okf/references/known-issues.md.
-    """
-    from chisurf.gui.widgets.models import tcspc
-
-    assert tcspc.EtModelFreeWidget is None
 
 
 if __name__ == "__main__":  # pragma: no cover

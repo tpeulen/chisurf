@@ -52,13 +52,13 @@ def main():
     # Fit for donor-only decay
     fit_donor = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([decay_donor_only[0]]),
-        model_class=chisurf.core.models.tcspc.lifetime.LifetimeModel
+        model_class=chisurf.core.models.description.tcspc_lifetime
     )
     
     # Fit for FRET decay
     fit_fret = chisurf.core.fitting.fit.FitGroup(
         data=chisurf.core.data.DataGroup([decay_fret[0]]),
-        model_class=chisurf.core.models.tcspc.fret.GaussianModel
+        model_class=chisurf.core.models.description.tcspc_fret_gaussian
     )
     
     # Configure the donor-only model

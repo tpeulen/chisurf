@@ -60,7 +60,7 @@ def _grab_tcspc_lifetime_editor():
 
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.linspace(0, 25, 256)  # ns
@@ -88,7 +88,7 @@ def _grab_parameter_link_menu():
     from chisurf.gui.widgets.fitting.parameter_widgets import (
         FittingParameterProxyController,
     )
-    from chisurf.gui.widgets.models.tcspc import LifetimeModelWidget
+    from chisurf.core.models.description import tcspc_lifetime
     from chisurf.server.services.fits import get_fit_info, list_fits
     from chisurf.server.session import SessionState
 
@@ -99,7 +99,7 @@ def _grab_parameter_link_menu():
             DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
         ]
         return FitGroup(
-            data=DataCurveGroup(curves, name=name), model_class=LifetimeModelWidget
+            data=DataCurveGroup(curves, name=name), model_class=tcspc_lifetime
         )
 
     fits = [make("Donor-only"), make("FRET-global", n_curves=2)]
@@ -1098,7 +1098,7 @@ def _grab_global_view():
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
-    from chisurf.gui.widgets.models.tcspc import LifetimeModelWidget
+    from chisurf.core.models.description import tcspc_lifetime
     from chisurf.plugins.core.globalview.gui.tool import GraphWizard
 
     def make(name, tau, n_curves=1):
@@ -1108,7 +1108,7 @@ def _grab_global_view():
             DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
         ]
         return FitGroup(
-            data=DataCurveGroup(curves, name=name), model_class=LifetimeModelWidget
+            data=DataCurveGroup(curves, name=name), model_class=tcspc_lifetime
         )
 
     fits = [make("Donor-only", 4.0), make("FRET-low", 2.4, 2), make("FRET-high", 1.3)]

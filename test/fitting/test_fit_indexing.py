@@ -7,7 +7,7 @@ import chisurf as cs
 from chisurf.core.data import DataCurve, ExperimentDataCurveGroup
 from chisurf.core.fitting import find_fit_idx
 from chisurf.core.fitting.fit import FitGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
 
 
 @pytest.fixture
