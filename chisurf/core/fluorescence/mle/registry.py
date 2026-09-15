@@ -1,6 +1,6 @@
 """The MLE lifetime fit models tttrlib advertises.
 
-A thin view onto the ``fit`` category of :mod:`chisurf.core.tttrlib_registry`
+A thin view onto the ``fit`` category of :mod:`chisurf.core.registry.tttrlib`
 (the same machine-readable registry that publishes burst searches). tttrlib
 describes each estimator — fit23/24/25/26 — with a label, summary, description
 and a JSON-Schema ``params_schema`` giving each optimisable parameter's type,
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import typing
 
-from chisurf.core import tttrlib_registry
+from chisurf.core.registry import tttrlib as tttrlib_registry
 
 
 def fit_models() -> dict[str, dict[str, typing.Any]]:

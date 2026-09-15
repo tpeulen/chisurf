@@ -282,7 +282,7 @@ class AISettingsModel:
     @staticmethod
     def _get_models(base_url: str, api_key: str) -> dict:
         """GET ``{base_url}/models`` and return the parsed JSON (raises on error)."""
-        from chisurf.core import http
+        from chisurf.core.support import http
 
         headers = {"Content-Type": "application/json"}
         if api_key:

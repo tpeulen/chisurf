@@ -5,7 +5,7 @@ pool of spin boxes wired to ``[tau, gamma, r0, rho]`` with the model implicitly
 fit23. tttrlib now publishes each lifetime estimator (fit23/24/25/26) in its
 registry with a JSON-Schema for its optimisable parameters, and chisurf already
 renders JSON Schema via
-:func:`~chisurf.core.tttrlib_registry.entry_form_view_auto` and
+:func:`~chisurf.core.registry.tttrlib.entry_form_view_auto` and
 :class:`~chisurf.gui.autoform.AutoForm`, so this form is generated rather than
 authored — exactly as :class:`~chisurf.gui.widgets.burst_search_form.BurstSearchForm`
 does for burst searches. Labels, ranges, units, defaults and the
@@ -26,7 +26,7 @@ import typing
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core import tttrlib_registry
+from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.core.fluorescence.mle import registry as fit_registry
 from chisurf.gui.autoform import AutoForm
 

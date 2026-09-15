@@ -4,7 +4,7 @@ import os
 import numpy as np
 from qtpy import  QtWidgets, uic, QtCore
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.fio
 import chisurf.gui.decorators
 from chisurf.core.structure import Structure

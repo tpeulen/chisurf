@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List, Tuple
 import numpy as np
 from qtpy import QtWidgets, QtCore, QtGui
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets.settings_editor
 import chisurf.core.fluorescence.tcspc.convolve

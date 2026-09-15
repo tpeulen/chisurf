@@ -1,4 +1,4 @@
-"""Generic behaviour of :mod:`chisurf.core.tttrlib_registry`.
+"""Generic behaviour of :mod:`chisurf.core.registry.tttrlib`.
 
 The burst-search facade is exercised in the burst_selection suite; this file
 covers the module's *category-agnostic* surface — categories, look-ups, the
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from chisurf.core import tttrlib_registry as registry
+from chisurf.core.registry import tttrlib as registry
 
 
 def test_registry_returns_a_nonempty_mapping():

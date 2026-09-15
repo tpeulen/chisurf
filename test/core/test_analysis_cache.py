@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from chisurf.core.analysis_cache import (
+from chisurf.core.runtime.analysis_cache import (
     ResultCache,
     algorithm_tag,
     file_identity,
@@ -179,7 +179,7 @@ def test_two_selections_of_one_folder_remember_each_other(tmp_path, burst_files)
 
 
 def test_a_stamp_does_not_grow_without_bound(tmp_path):
-    from chisurf.core.analysis_cache import MAX_STAMP_ENTRIES
+    from chisurf.core.runtime.analysis_cache import MAX_STAMP_ENTRIES
 
     out = tmp_path / "o.bv4"
     out.write_text("x")
@@ -206,7 +206,7 @@ def test_outputs_unchanged_needs_something_recorded(tmp_path):
     assert outputs_unchanged([]) is False, "nothing recorded is not 'unchanged'"
     p = tmp_path / "a.bv4"
     p.write_text("x")
-    from chisurf.core.analysis_cache import output_identities
+    from chisurf.core.runtime.analysis_cache import output_identities
 
     ident = output_identities([p])
     assert outputs_unchanged(ident) is True

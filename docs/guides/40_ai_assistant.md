@@ -304,7 +304,7 @@ is sensitive, the local model removes the question entirely.
 ### How the request is sent
 
 ChiSurf talks to providers over its own small HTTP client
-(`chisurf.core.http`, a wrapper around Python's `urllib.request`), so there is
+(`chisurf.core.support.http`, a wrapper around Python's `urllib.request`), so there is
 no third-party networking stack in the picture. Two consequences are worth
 knowing:
 

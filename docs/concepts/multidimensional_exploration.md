@@ -112,7 +112,7 @@ means the transform is inspectable rather than baked into a loader.
 
 Those equations are user-editable text, so they cannot be handed to Python's
 `eval`. ChiSurf provides a shared **safe expression engine**
-({src}`chisurf/core/expressions.py`) that ndX uses when present: it parses an
+({src}`chisurf/core/support/expressions.py`) that ndX uses when present: it parses an
 expression to an abstract syntax tree and walks it against an explicit
 **allow-list** of node types, functions (`exp`, `sqrt`, `log`, trigonometry, …)
 and constants ($\pi$, $e$). A name that is not a known column, a listed function

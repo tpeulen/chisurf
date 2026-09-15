@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from chisurf.core.expressions import (
+from chisurf.core.support.expressions import (
     DEFAULT_POLICY,
     NDX_POLICY,
     PARSE_MODEL_POLICY,

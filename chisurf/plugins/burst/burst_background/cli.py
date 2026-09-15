@@ -14,7 +14,7 @@ import numpy as np
 import tttrlib
 
 import chisurf.core.fluorescence.burst as cs_burst
-from chisurf.core.cli_support import DidYouMeanGroup
+from chisurf.core.cli.support import DidYouMeanGroup
 
 # Import from chisurf if available, otherwise handle standalone usage
 try:  # pragma: no cover - convenience import

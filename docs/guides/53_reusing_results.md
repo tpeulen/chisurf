@@ -183,7 +183,7 @@ a genuinely independent sample, change the seed.
 The fingerprint trusts modification times. A file restored from a backup with an
 old timestamp and different content will not be noticed — the one case where you
 should delete the stamp. Content hashing is available in
-`chisurf.core.analysis_cache.fingerprint(..., content=True)` and is not used by
+`chisurf.core.runtime.analysis_cache.fingerprint(..., content=True)` and is not used by
 default because hashing a burst folder costs more than the analysis it would
 save.
 

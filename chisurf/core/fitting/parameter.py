@@ -10,7 +10,7 @@ import chisurf.core.settings
 import chisurf.core.fitting
 from chisurf.core import base
 from chisurf.core import parameter
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 
 #parameter_settings = chisurf.core.settings.parameter
 

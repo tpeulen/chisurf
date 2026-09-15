@@ -32,7 +32,7 @@ import json
 import pathlib
 
 from chisurf import typing
-from chisurf.core.i18n import tr
+from chisurf.core.support.i18n import tr
 
 
 @dataclasses.dataclass(frozen=True)
@@ -796,7 +796,7 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
     """Build a :class:`Section` from a JSON dict, validating its ``type``.
 
     User-facing text (section titles, labels, descriptions, button captions,
-    table headers, …) is localized here via :func:`chisurf.core.i18n.tr` — the
+    table headers, …) is localized here via :func:`chisurf.core.support.i18n.tr` — the
     single seam every ``view.json`` spec passes through. With no translation
     backend installed (headless/server) this is the identity function.
     """

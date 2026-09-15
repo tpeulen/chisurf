@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from qtpy import QtCore, QtWidgets
 
-import chisurf.core.plot_transforms as plot_transforms
+import chisurf.core.plotting.transforms as plot_transforms
 from chisurf.gui.plots.lineplot.lineplot import (
     LinePlot,
     LinePlotControl,

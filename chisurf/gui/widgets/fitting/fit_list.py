@@ -11,7 +11,7 @@ import matplotlib.colors as mcolors
 
 import chisurf.core.data
 import chisurf.core.fitting
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.core.settings
 
@@ -24,7 +24,7 @@ from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, fit_tooltip_html
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
 
-@chisurf.core.decorators.register
+@chisurf.core.support.decorators.register
 class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
 
     @property

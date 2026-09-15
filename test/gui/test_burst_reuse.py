@@ -162,7 +162,7 @@ def two_cde(qapp, burst_folder):
 def test_2cde_skips_only_when_its_companion_files_are_current(
     two_cde, burst_folder, monkeypatch
 ):
-    from chisurf.core import analysis_cache
+    from chisurf.core.runtime import analysis_cache
     from chisurf.gui.progress import ChiSurfProgress
 
     started = _runs(monkeypatch, ChiSurfProgress, "run")
@@ -284,7 +284,7 @@ def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
     no batch result in memory, and a fresh session that still has the exported
     fits must not refit every burst to end up writing the same numbers.
     """
-    from chisurf.core import analysis_cache
+    from chisurf.core.runtime import analysis_cache
     from chisurf.plugins.burst.burst_mle_analysis.wizard import (
         MLELifetimeAnalysisWizard,
     )
@@ -329,7 +329,7 @@ def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
 
 def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
     """The longest step in the workflow, asked for again with nothing changed."""
-    from chisurf.core import analysis_cache
+    from chisurf.core.runtime import analysis_cache
 
     # The gate is the decision, and it is worth pinning on its own: building the
     # whole selection tool here would test the wizard, not the rule.
@@ -461,7 +461,7 @@ def test_a_stopped_2cde_run_does_not_start_itself_again(
 
 def test_restart_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
     """The override has to be reachable from the panel, not only from Python."""
-    from chisurf.core import analysis_cache
+    from chisurf.core.runtime import analysis_cache
     from chisurf.gui.progress import ChiSurfProgress
 
     started = _runs(monkeypatch, ChiSurfProgress, "run")
@@ -518,7 +518,7 @@ def test_a_corrected_estimator_does_not_inherit_the_old_exports(
 ):
     """MLE is the only gate that survives a restart — and the only one that could
     hand back another version's numbers without saying so."""
-    from chisurf.core import analysis_cache
+    from chisurf.core.runtime import analysis_cache
     from chisurf.plugins.burst.burst_mle_analysis import wizard as wizard_mod
 
     wizard = wizard_mod.MLELifetimeAnalysisWizard()

@@ -804,7 +804,7 @@ design rather than by neglect.
 `cls=DidYouMeanGroup`:
 
 ```python
-from chisurf.core.cli_support import DidYouMeanGroup
+from chisurf.core.cli.support import DidYouMeanGroup
 
 @click.group(cls=DidYouMeanGroup)
 def cli():

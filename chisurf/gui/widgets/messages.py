@@ -38,7 +38,7 @@ The rendering is deliberately small — one line in the host's status bar, the
 most severe message first, with the rest in the tooltip. See
 :class:`MessageBar`.
 
-Messages are translated at render time through :func:`chisurf.core.i18n.tr`, so
+Messages are translated at render time through :func:`chisurf.core.support.i18n.tr`, so
 a language change re-renders what is already on screen; the extractor picks up
 ``Msg("…")`` literals the same way it picks up ``i18n.tr("…")``.
 """
@@ -47,7 +47,7 @@ from __future__ import annotations
 
 import typing
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui import QtCore, QtGui, QtWidgets
 
 __all__ = [

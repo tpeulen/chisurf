@@ -470,7 +470,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
     def _register_autofit_model(self, model) -> None:
         """Register the auto-fit model with the Global View parameter registry."""
         try:
-            from chisurf.core.parameter_group_registry import register_parameter_group
+            from chisurf.core.registry.parameter_groups import register_parameter_group
 
             self._registered_autofit_model = model
             register_parameter_group(
@@ -486,7 +486,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if getattr(self, "_registered_autofit_model", None) is None:
             return
         try:
-            from chisurf.core.parameter_group_registry import unregister_parameter_group
+            from chisurf.core.registry.parameter_groups import unregister_parameter_group
 
             unregister_parameter_group("fcs_filter_calc")
         except Exception:

@@ -6,7 +6,7 @@ import threading
 import numpy as np
 from typing import TYPE_CHECKING
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.parameter
 
 from chisurf.core.curve import Curve

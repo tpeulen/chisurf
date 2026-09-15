@@ -9,7 +9,7 @@ construct, or an unresolved name).
 
 It is deliberately general and configurable:
 
-* **Validation** is backed by :mod:`chisurf.core.expressions` (a safe AST
+* **Validation** is backed by :mod:`chisurf.core.support.expressions` (a safe AST
   whitelist) by default, but a caller may inject its own ``validator`` so the
   editor's ✓/✗ stays perfectly in step with whatever engine will *evaluate* the
   expressions (ndX does this so the editor never accepts a formula its own
@@ -33,7 +33,7 @@ from collections.abc import Callable, Mapping, Sequence
 import yaml
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core.expressions import (
+from chisurf.core.support.expressions import (
     DEFAULT_POLICY,
     ExpressionPolicy,
     function_signatures,
@@ -61,7 +61,7 @@ class EquationTableEditor(QtWidgets.QWidget):
         Names reference dialog. Called lazily so it always reflects live state.
     policy
         Expression policy for the default validator (ignored if ``validator`` is
-        given). Defaults to the rich :data:`~chisurf.core.expressions.DEFAULT_POLICY`.
+        given). Defaults to the rich :data:`~chisurf.core.support.expressions.DEFAULT_POLICY`.
     validator
         Optional override ``(expr, known_names, output_names) -> (ok, message)``.
         When given, replaces the built-in policy-based validator entirely.

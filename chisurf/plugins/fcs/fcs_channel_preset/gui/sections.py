@@ -14,7 +14,7 @@ edit is written straight back through ``model.add_pair`` / ``model.remove_pair``
 
 User-facing strings (column headers, the *Add* label, the A/B labels, the
 placeholder, the delete tooltip) arrive from the view spec's ``options`` and are
-localized through :func:`chisurf.core.i18n.tr`. Because those same strings live
+localized through :func:`chisurf.core.support.i18n.tr`. Because those same strings live
 under ``label`` / ``add_label`` / ``placeholder`` / ``remove_label`` / ``labels``
 keys in the JSON, ``build_tools/i18n/extract_strings.py`` collects them into the
 translation catalogue automatically.
@@ -26,7 +26,7 @@ import typing
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui.autoform.sections.registry import register_section
 
 #: Delete-column index (after the declared data columns).

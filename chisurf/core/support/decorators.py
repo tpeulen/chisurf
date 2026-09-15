@@ -21,15 +21,15 @@ def register(cls):
 
     Example usage::
 
-    @chisurf.core.decorators.register
+    @chisurf.core.support.decorators.register
     class A1():
         pass
 
-    @chisurf.core.decorators.register
+    @chisurf.core.support.decorators.register
     class B():
         pass
 
-    @chisurf.core.decorators.register
+    @chisurf.core.support.decorators.register
     class A2(A1):
         pass
 

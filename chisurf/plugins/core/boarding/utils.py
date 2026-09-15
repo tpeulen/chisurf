@@ -70,7 +70,7 @@ def mmfdb_info() -> dict:
         path = ""
     db = None
     try:
-        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import get_db
+        from chisurf.core.fio.setup_store import get_db
 
         db = get_db()
     except Exception:

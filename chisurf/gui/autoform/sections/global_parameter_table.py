@@ -8,7 +8,7 @@ Global View's *Parameters* tab. Unlike
 * spans **multiple owners** — every fit in ``chisurf.fits`` (descending into
   :class:`FitGroup` members, skipping the aggregate :class:`GlobalFitModel`) plus
   every out-of-fit group registered via
-  :mod:`chisurf.core.parameter_group_registry` (e.g. a plugin working model);
+  :mod:`chisurf.core.registry.parameter_groups` (e.g. a plugin working model);
 * routes all edits/links through an injected **mutator** (default: the
   :class:`~chisurf.gui.widgets.fitting.fitting_client.FittingClient`) so mutations
   are RPC-mediated, and out-of-fit parameters are addressed by their global
@@ -33,7 +33,7 @@ import chisurf as cs
 from chisurf import logging
 from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.parameter import Parameter
-from chisurf.core.parameter_group_registry import iter_registered_parameter_groups
+from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
 from chisurf.gui.autoform.sections.parameter_table import (
     _BooleanToggleDelegate,
     _FloatEditDelegate,
@@ -548,7 +548,7 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
     def _subscribe_events(self):
         # Registry changes (a plugin (un)registers its working model).
         try:
-            from chisurf.core import parameter_group_registry as reg
+            from chisurf.core.registry import parameter_groups as reg
 
             reg.subscribe(self._on_external_change)
             self._registry_cb = self._on_external_change
@@ -576,7 +576,7 @@ class GlobalParameterTableWidget(QtWidgets.QWidget):
         cb = getattr(self, "_registry_cb", None)
         if cb is not None:
             try:
-                from chisurf.core import parameter_group_registry as reg
+                from chisurf.core.registry import parameter_groups as reg
 
                 reg.unsubscribe(cb)
             except Exception:

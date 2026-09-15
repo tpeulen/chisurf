@@ -8,7 +8,7 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf import logging
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.misc_helpers import persist_plugin_state

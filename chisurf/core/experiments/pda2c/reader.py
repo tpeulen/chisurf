@@ -541,7 +541,7 @@ class Pda2cReader(ExperimentReader):
             pass
 
         filename.sort()
-        from chisurf.core.file_formats import FILE_FORMATS as _FILE_FORMATS
+        from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
         source_filenames = [
             {
                 'path': str(p),

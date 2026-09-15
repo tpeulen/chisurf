@@ -3694,7 +3694,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         any class whose constructor was ``*args, **kwargs``.
         """
         try:
-            from chisurf.core import tttrlib_registry as _reg
+            from chisurf.core.registry import tttrlib as _reg
             entry = _reg.describe(_reg.FIT_MODEL, model) or {}
             return int(entry.get("n_patterns", 0)) == 0
         except Exception:
@@ -3750,7 +3750,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         if model == "tail":
             return self._tail_schema()
         try:
-            from chisurf.core import tttrlib_registry as _reg
+            from chisurf.core.registry import tttrlib as _reg
             return _reg.describe(_reg.FIT_MODEL, model).get("params_schema") or {}
         except Exception:
             return {}
@@ -4454,7 +4454,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 self._ensure_channel_state(det)
         except Exception:
             pass
-        from chisurf.core import analysis_cache
+            from chisurf.core.runtime import analysis_cache
 
         x0, fixed = self.fit_parameters
         return {
@@ -4476,7 +4476,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
 
     def batch_fingerprint(self) -> str:
         """Fingerprint of the inputs, the settings, the read context and the code."""
-        from chisurf.core import analysis_cache
+        from chisurf.core.runtime import analysis_cache
 
         return analysis_cache.fingerprint(
             self.batch_input_files(), self.batch_settings(),
@@ -4527,7 +4527,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
         # workflow, and the shell asks for it on every Next. Its product is the
         # b{g,r,y}4 files, so results that are already on disk for exactly these
         # burst files and settings are the answer -- do not fit them again.
-        from chisurf.core import analysis_cache
+            from chisurf.core.runtime import analysis_cache
 
         fingerprint = self.batch_fingerprint()
         stamp_path = self.batch_stamp_path()

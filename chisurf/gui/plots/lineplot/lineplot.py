@@ -25,11 +25,11 @@ except ImportError:
 
 import chisurf.core.data
 import chisurf.core.experiments
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.core.math
 import chisurf.core.fitting
-import chisurf.core.plot_transforms as plot_transforms
+import chisurf.core.plotting.transforms as plot_transforms
 import chisurf.core.settings
 import chisurf.core.math.statistics
 from chisurf.gui.plots import plotbase

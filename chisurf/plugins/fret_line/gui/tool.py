@@ -500,7 +500,7 @@ class FRETLineTool(QtWidgets.QWidget):
         components) are dropped.
         """
         try:
-            from chisurf.core.parameter_group_registry import (
+            from chisurf.core.registry.parameter_groups import (
                 register_parameter_group,
                 unregister_parameter_group,
             )
@@ -531,7 +531,7 @@ class FRETLineTool(QtWidgets.QWidget):
     def _unregister_global_registry(self) -> None:
         """Drop all this tool's component models from the Global View registry."""
         try:
-            from chisurf.core.parameter_group_registry import unregister_parameter_group
+            from chisurf.core.registry.parameter_groups import unregister_parameter_group
         except Exception:
             return
         for owner_id in list(getattr(self, "_registered_owner_ids", ()) or ()):

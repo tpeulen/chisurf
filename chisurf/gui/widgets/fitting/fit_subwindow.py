@@ -12,7 +12,7 @@ from qtpy import QtCore, QtGui, QtWidgets, uic
 
 import chisurf as cs
 import chisurf.core.data
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.fitting
 import chisurf.core.settings
 import chisurf.gui.decorators
@@ -29,7 +29,7 @@ from chisurf.gui import dialogs
 class FitSubWindow(CustomMdiSubWindow):
 
     def update(self, *args):
-        super().update(self, *args)
+        super().update(*args)
         self.plot_tab_widget.update(*args)
         self.refresh_current_plot()
 

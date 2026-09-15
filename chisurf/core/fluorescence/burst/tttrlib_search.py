@@ -7,13 +7,13 @@ removes that chain: tttrlib publishes its burst searches — names, defaults,
 types and ranges — in its registry, and everything downstream is generated from
 that description.
 
-This module is the burst-search view of :mod:`chisurf.core.tttrlib_registry`,
+This module is the burst-search view of :mod:`chisurf.core.registry.tttrlib`,
 which reads the registry generally (burst searches, file containers, and
 whatever tttrlib adds next) and absorbs version differences. The parameter
 description is JSON Schema, which chisurf already renders, so the GUI for a
 burst search is built with no algorithm-specific code::
 
-    from chisurf.core import tttrlib_registry
+    from chisurf.core.registry import tttrlib as tttrlib_registry
     from chisurf.gui.autoform import AutoForm
 
     view = tttrlib_registry.entry_form_view("burst_search", "maxtree")
@@ -31,7 +31,7 @@ import typing
 import numpy as np
 import tttrlib
 
-from chisurf.core import tttrlib_registry
+from chisurf.core.registry import tttrlib as tttrlib_registry
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def algorithms() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
     """The burst searches tttrlib advertises, keyed by algorithm name.
 
     A thin view onto the ``burst_search`` category of
-    :mod:`chisurf.core.tttrlib_registry`, which is where version differences and
+    :mod:`chisurf.core.registry.tttrlib`, which is where version differences and
     the fallback for older tttrlib builds are handled. Returns an empty dict when
     no registry is published, so callers can fall back to chisurf's own filters.
 

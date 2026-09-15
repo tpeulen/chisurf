@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 import chisurf  # noqa: F401  (importing the package is what applies the shim)
-from chisurf.core.compat import NUMPY_ALIASES, applied_shims, apply_numpy_compat
+from chisurf.core.runtime.compat import NUMPY_ALIASES, applied_shims, apply_numpy_compat
 
 
 def test_both_spellings_exist_after_importing_chisurf():

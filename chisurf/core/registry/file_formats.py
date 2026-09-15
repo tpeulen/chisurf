@@ -6,7 +6,7 @@ Provides ``FILE_FORMATS``, a dict mapping file extensions (e.g. ``.ptu``,
 
 Usage::
 
-    from chisurf.core.file_formats import FILE_FORMATS
+    from chisurf.core.registry.file_formats import FILE_FORMATS
     info = FILE_FORMATS.get('.ptu')
     # -> {'name': 'PicoQuant PTU', 'reading_routine': 'PTU', ...}
 """

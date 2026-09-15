@@ -150,7 +150,7 @@ def post_mistral_json_with_retries(endpoint, path, headers, payload, timeout, *,
     """
     import time
 
-    from chisurf.core import http
+    from chisurf.core.support import http
 
     sleep = sleep or time.sleep
     max_attempts = 3
@@ -190,7 +190,7 @@ def post_mistral_json_with_retries(endpoint, path, headers, payload, timeout, *,
 
 def request_openai_compatible_icon_bytes(config: IconConfig, plugin_info, prompt=None) -> bytes:
     """Request an icon through an OpenAI-compatible image endpoint."""
-    from chisurf.core import http
+    from chisurf.core.support import http
 
     base_url = config.base_url
     image_model = str(config.model or "").strip()
@@ -240,7 +240,7 @@ def request_mistral_generated_icon_bytes(
     config: IconConfig, plugin_info, prompt=None, *, sleep=None
 ) -> bytes:
     """Request an icon through Mistral Agents image generation."""
-    from chisurf.core import http
+    from chisurf.core.support import http
 
     model = str(config.model or "").strip()
     api_key = api_key_for_provider("mistral")

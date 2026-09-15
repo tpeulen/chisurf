@@ -1,8 +1,22 @@
-"""Shared utilities for TTTR and FCS setup persistence (MMFDB + JSON fallback).
+"""Persistence for instrument setups: MMFDB rows, with a JSON fallback.
 
-Both ``tttr_detector_setups`` and ``fcs_channel_setups`` use the same MMFDB
-infrastructure (``mmfdb_setup`` rows keyed by ``setup_type`` in the configuration
-JSON).  This module factors out the common logic so neither duplicates it.
+TTTR detector setups and FCS channel setups are the same document under two
+``setup_type`` keys, stored either as ``mmfdb_setup`` rows or as JSON on disk;
+this module is the store both go through, so neither duplicates the logic.
+
+**It used to live under** ``chisurf/gui/widgets/wizard/tttr_channeldefinition/``
+**as** ``tttr_setup_utils``, and moving it here is the point rather than
+tidiness. It contains no Qt and never did -- 300 lines of persistence sitting
+in the presentation layer, which
+:mod:`chisurf.core.fluorescence.fcs.channel_setups` then had to reach *up*
+into, inverting the dependency the whole architecture rests on. A model that
+imports a widget package cannot be used headlessly, cannot be tested without
+one, and cannot be reasoned about as a model. The wizard that edits these
+setups is a view over this store; the store is not part of the wizard.
+
+See ``test/architecture/test_model_ui_boundary.py``, which now fails on a
+core module that imports a GUI toolkit or ``chisurf.gui`` -- this file is why
+that test could be widened from two packages to the whole of ``chisurf.core``.
 """
 import json
 import pathlib

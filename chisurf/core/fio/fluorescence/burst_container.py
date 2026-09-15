@@ -36,7 +36,7 @@ __all__ = [
 #:
 #: Deliberately short. Most burst columns say their unit in the label —
 #: ``Duration (ms)``, ``Count Rate (KHz)`` — and :func:`units_for` reads those
-#: through :func:`chisurf.core.units.split_label`, so listing them here as well
+#: through :func:`chisurf.core.support.units.split_label`, so listing them here as well
 #: would be the duplication this exists to remove. What is left is the columns
 #: the convention never covered, which are the ones that mattered: a lifetime,
 #: and the ratios that have no unit at all.
@@ -96,7 +96,7 @@ def as_table(table):
 
 #: ``Number of Photons (green)`` -> ``Number of Photons``. Only a *trailing*
 #: bracket, and only when what is inside it is not itself a unit — by the time
-#: this runs :func:`~chisurf.core.units.split_label` has already claimed the
+#: this runs :func:`~chisurf.core.support.units.split_label` has already claimed the
 #: labels whose bracket is a unit, so anything left is a detector or a window.
 _QUALIFIER = re.compile(r"^(?P<name>.*?)\s*[(\[][^)\]]+[)\]]\s*$")
 
@@ -127,7 +127,7 @@ def units_for(df, extra: Mapping[str, str] | None = None) -> dict[str, str]:
         ``{column: unit}`` for the columns that have one.
     """
     from chisurf.core.datastore import column_names
-    from chisurf.core.units import split_label
+    from chisurf.core.support.units import split_label
 
     out: dict[str, str] = {}
     for name in column_names(df):

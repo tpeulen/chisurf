@@ -1,7 +1,7 @@
 """A small, self-contained UI-language selector widget.
 
 This is the one reusable language-picker component for ChiSurf's GUI. It wraps
-the Qt-free language machinery in :mod:`chisurf.core.i18n` (locale get/set) and
+the Qt-free language machinery in :mod:`chisurf.core.support.i18n` (locale get/set) and
 the GUI translation bootstrap in :mod:`chisurf.gui.i18n` (catalogue discovery +
 live switch), exposing them as a labelled combo box that any dialog can drop in.
 
@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 
 
 class LanguageSelector(QtWidgets.QWidget):
@@ -86,7 +86,7 @@ class LanguageSelector(QtWidgets.QWidget):
         ``current`` defaults to the persisted locale; the app-wide notifier passes
         the *applied* code instead, since a live switch need not be persisted yet.
         """
-        from chisurf.core import i18n as core_i18n
+        from chisurf.core.support import i18n as core_i18n
         from chisurf.gui import i18n as gui_i18n
 
         if current is None:
@@ -176,7 +176,7 @@ class LanguageFlagSwitcher(QtWidgets.QToolButton):
         ``current`` defaults to the persisted locale; the app-wide notifier passes
         the *applied* code instead, since a live switch need not be persisted yet.
         """
-        from chisurf.core import i18n as core_i18n
+        from chisurf.core.support import i18n as core_i18n
         from chisurf.gui import i18n as gui_i18n
 
         if current is None:

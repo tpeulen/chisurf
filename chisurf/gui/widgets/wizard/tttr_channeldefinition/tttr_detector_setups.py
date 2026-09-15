@@ -8,7 +8,7 @@ from typing import Any
 
 from mmfdb.repository import MFDatabase
 from chisurf.core.settings.path_utils import get_path
-from .tttr_setup_utils import (
+from chisurf.core.fio.setup_store import (
     SetupTypeConfig,
     json_loads,
     load_mmfdb_setups,
@@ -31,7 +31,7 @@ DETECTOR_CONFIG = SetupTypeConfig(
 
 
 def setup_id_for_name(name: str, user_id: str = "") -> str:
-    from .tttr_setup_utils import setup_id_for_name as _sifn
+    from chisurf.core.fio.setup_store import setup_id_for_name as _sifn
     return _sifn(name, user_id, "tttr_detector_setup")
 
 
@@ -44,12 +44,12 @@ def _json_loads(value):
 
 
 def _db(db_path=None):
-    from .tttr_setup_utils import get_db
+    from chisurf.core.fio.setup_store import get_db
     return get_db(db_path)
 
 
 def _use_mmfdb(file_path=None) -> bool:
-    from .tttr_setup_utils import use_mmfdb
+    from chisurf.core.fio.setup_store import use_mmfdb
     return use_mmfdb(file_path, DETECTOR_SETUPS_FILE)
 
 
@@ -178,12 +178,12 @@ def _detector_save_row_fn(
 
 
 def _load_mmfdb_detector_setups(db: MFDatabase, user_id: str | None = None) -> dict:
-    from .tttr_setup_utils import load_mmfdb_setups
+    from chisurf.core.fio.setup_store import load_mmfdb_setups
     return load_mmfdb_setups(db, DETECTOR_CONFIG, user_id, row_to_data=_detector_row_to_data)
 
 
 def _set_last_used(db: MFDatabase, setup_name: str) -> None:
-    from .tttr_setup_utils import set_last_used
+    from chisurf.core.fio.setup_store import set_last_used
     set_last_used(db, DETECTOR_CONFIG, setup_name)
 
 
@@ -192,12 +192,12 @@ def _migrate_json_setups_to_mmfdb(
     path: pathlib.Path,
     user_id: str | None = None,
 ) -> bool:
-    from .tttr_setup_utils import migrate_json_to_mmfdb
+    from chisurf.core.fio.setup_store import migrate_json_to_mmfdb
     return migrate_json_to_mmfdb(db, DETECTOR_CONFIG, path, user_id=user_id, save_row_fn=_detector_save_row_fn)
 
 
 def _load_json_detector_setups(path: pathlib.Path, file_path=None) -> dict:
-    from .tttr_setup_utils import load_json_setups
+    from chisurf.core.fio.setup_store import load_json_setups
     return load_json_setups(path, file_path=file_path)
 
 

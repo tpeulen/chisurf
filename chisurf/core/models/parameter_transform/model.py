@@ -6,7 +6,7 @@ import types
 import inspect
 from typing import TYPE_CHECKING
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.parameter
 import chisurf.core.models
 

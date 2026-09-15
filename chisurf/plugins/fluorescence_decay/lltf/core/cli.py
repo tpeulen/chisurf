@@ -11,7 +11,7 @@ import sys
 import click
 import yaml
 
-from chisurf.core.cli_support import DidYouMeanGroup
+from chisurf.core.cli.support import DidYouMeanGroup
 
 from .fitter import fit_lifetime
 

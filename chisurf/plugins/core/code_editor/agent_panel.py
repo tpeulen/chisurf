@@ -1591,7 +1591,7 @@ updated: 2026-06-09
     @staticmethod
     def _call_agent_request(request: dict) -> str:
         """Call the LLM API using a prebuilt request."""
-        from chisurf.core import http
+        from chisurf.core.support import http
 
         error = request.get("error")
         if error:

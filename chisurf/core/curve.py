@@ -10,7 +10,7 @@ import numpy as np
 import chisurf.core.fio
 import chisurf.core.fio.ascii
 import chisurf.core.base
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.math
 
 

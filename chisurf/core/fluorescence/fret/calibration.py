@@ -29,7 +29,7 @@ import numpy as np
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
-from chisurf.core.labels import to_rich
+from chisurf.core.support.labels import to_rich
 
 __all__ = [
     "CalibrationParameters",
@@ -103,7 +103,7 @@ class CalibrationParameters(FittingParameterGroup):
 
             The ``name`` is what code, links and the ndxplorer mapping key on and
             must not change; the ``label`` is the plain spelling of what the
-            reader should see, typeset by :func:`chisurf.core.labels.to_rich` so
+            reader should see, typeset by :func:`chisurf.core.support.labels.to_rich` so
             a parameter table shows γ and Φ<sub>A</sub> rather than ``gamma``
             and ``PhiA``.
             """

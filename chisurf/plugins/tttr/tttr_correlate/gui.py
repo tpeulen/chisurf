@@ -13,7 +13,7 @@ import numpy as np
 import tttrlib
 
 import chisurf.core.curve
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 #import cs.gui.tools
 import chisurf.core.fio
 import chisurf.core.fluorescence

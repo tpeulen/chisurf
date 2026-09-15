@@ -28,15 +28,15 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 RETIRED = {
     "deprecation": (
         "deprecation",
-        "use chisurf.core.decorators.deprecated",
+        "use chisurf.core.support.decorators.deprecated",
     ),
     "click_didyoumean": (
         "click-didyoumean",
-        "use chisurf.core.cli_support.DidYouMeanGroup",
+        "use chisurf.core.cli.support.DidYouMeanGroup",
     ),
     "tqdm": (
         "tqdm",
-        "use chisurf.core.progress.progress / trange",
+        "use chisurf.core.runtime.progress.progress / trange",
     ),
     "msgpack_numpy": (
         "msgpack-numpy",
@@ -78,7 +78,7 @@ RETIRED = {
     ),
     "requests": (
         "requests",
-        "use chisurf.core.http",
+        "use chisurf.core.support.http",
     ),
     "emcee": (
         "emcee",

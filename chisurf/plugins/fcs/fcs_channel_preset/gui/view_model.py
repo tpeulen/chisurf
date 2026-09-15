@@ -117,7 +117,7 @@ class FCSChannelViewModel:
         self._is_public = bool(cfg.get("_is_public", False)) if isinstance(cfg, dict) else False
         owner = cfg.get("_owner") if isinstance(cfg, dict) else None
         try:
-            from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import (
+            from chisurf.core.fio.setup_store import (
                 resolve_active_user_id,
             )
 

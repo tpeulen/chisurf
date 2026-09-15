@@ -1,6 +1,6 @@
 """GUI-side translation bootstrap.
 
-Binds ChiSurf's Qt-free core translation seam (:mod:`chisurf.core.i18n`) to a
+Binds ChiSurf's Qt-free core translation seam (:mod:`chisurf.core.support.i18n`) to a
 real Qt translator and installs a :class:`~qtpy.QtCore.QTranslator` for the
 configured UI language onto the running :class:`~qtpy.QtWidgets.QApplication`.
 
@@ -11,7 +11,7 @@ The single call:
 
 1. sets the core backend to ``QCoreApplication.translate`` so every
    data-driven ``view.json`` / ``manifest.json`` string (routed through
-   :func:`chisurf.core.i18n.tr`) is localized; and
+   :func:`chisurf.core.support.i18n.tr`) is localized; and
 2. loads ``chisurf/gui/i18n/chisurf_<code>.qm`` for the configured locale, which
    also covers all ``.ui`` strings for free.
 
@@ -284,7 +284,7 @@ def apply_language(code: str, app: QtWidgets.QApplication | None = None) -> str:
     Newly created widgets/dialogs render in ``code`` immediately; already-open
     windows only fully retranslate after a restart (Qt re-reads most static text
     at build time). Does not persist the choice — use
-    :func:`chisurf.core.i18n.set_locale` for that. Returns the applied code
+    :func:`chisurf.core.support.i18n.set_locale` for that. Returns the applied code
     (``en`` when the requested catalogue is missing). Emits
     :data:`language_notifier` ``language_changed`` so every open picker re-syncs.
     """
@@ -313,14 +313,14 @@ def install_translation(
         ``QApplication.instance()``.
     code
         Locale code to load. Defaults to the configured ``gui.language`` setting
-        (:func:`chisurf.core.i18n.get_locale`).
+        (:func:`chisurf.core.support.i18n.get_locale`).
 
     Returns
     -------
     str
         The locale code that was applied (``"en"`` if none/unavailable).
     """
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     app = app or QtWidgets.QApplication.instance()
 

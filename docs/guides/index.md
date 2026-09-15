@@ -198,14 +198,14 @@ irf_estimation
 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `rics_precision` calculator, `experiments.ics.precision` |
-| [Exploring & fitting multidimensional data (ndX)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.curve_fit`, `chisurf.core.expressions` |
+| [Exploring & fitting multidimensional data (ndX)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.curve_fit`, `chisurf.core.support.expressions` |
 | [From a selection to a fit: the ndX bridges](47_ndxplorer_bridges.md) | `ndxplorer.analysis.burst_bridge`, `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*` |
 | [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `sm_image_mle --roi` |
 | [Photon-by-photon kinetics: rates without binning](49_photon_by_photon_kinetics.md) | `burst_gs` plugin, `core.fluorescence.burst.gopich_szabo` |
 | [Particle tracking: from spots to a diffusion coefficient](50_particle_tracking.md) | `img_tracking` plugin, `imaging.tracking` |
 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
 | [Sending a gated burst population to FCS, TCSPC, PDA or PCH](52_send_bursts_to_analysis.md) | ndX bridge, `*.from_bursts` services |
-| [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.analysis_cache`, burst workflow steps |
+| [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.runtime.analysis_cache`, burst workflow steps |
 | [Inspecting a container: what is in a .pto](63_pto_inspector.md) | `pto_inspector` plugin, `core.fio.pto`, `core.plugin.operations`, `csg_pto_inspect` |
 | [Hidden Markov models of binned traces](54_hidden_markov_models.md) | `hmm` plugin, `chisurf.core.math.hmm`, `csc hmm` |
 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |

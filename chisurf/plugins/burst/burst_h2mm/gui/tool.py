@@ -48,7 +48,7 @@ from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.wizard import DetectorWizardPage
-from chisurf.core import analysis_cache
+from chisurf.core.runtime import analysis_cache
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.gui.widgets.tool_buttons import flag_attention
 from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide

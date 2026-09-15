@@ -46,7 +46,7 @@ def test_available_languages_and_display_names(qapp):
 
 
 def test_live_apply_and_remove(qapp):
-    from chisurf.core import i18n as ci18n
+    from chisurf.core.support import i18n as ci18n
     from chisurf.gui import i18n as gi18n
 
     try:
@@ -126,7 +126,7 @@ def test_language_flag_switcher_uk_english_and_applies(qapp, monkeypatch):
 
 def test_pickers_stay_in_sync_via_notifier(qapp, monkeypatch):
     """A language change announced app-wide re-syncs every open picker."""
-    from chisurf.core import i18n as ci18n
+    from chisurf.core.support import i18n as ci18n
     from chisurf.gui import i18n as gi18n
     from chisurf.gui.widgets.language_selector import LanguageFlagSwitcher, LanguageSelector
 

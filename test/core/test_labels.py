@@ -8,7 +8,7 @@ simply reads ``tau_D(0)`` forever — so the conversion is asserted directly.
 
 import pytest
 
-from chisurf.core.labels import to_plain, to_rich
+from chisurf.core.support.labels import to_plain, to_rich
 
 
 @pytest.mark.parametrize(

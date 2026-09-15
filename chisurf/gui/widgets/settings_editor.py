@@ -653,7 +653,7 @@ class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
             # Persist immediately and switch live so newly opened tools/dialogs
             # render in the chosen language without waiting for the tree save.
             try:
-                from chisurf.core.i18n import set_locale
+                from chisurf.core.support.i18n import set_locale
                 from chisurf.gui.i18n import apply_language
 
                 set_locale(code)

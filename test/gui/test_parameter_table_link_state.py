@@ -16,7 +16,7 @@ import chisurf.core.data as data
 from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
-from chisurf.core.parameter_group_registry import (
+from chisurf.core.registry.parameter_groups import (
     register_parameter_group,
     unregister_parameter_group,
 )

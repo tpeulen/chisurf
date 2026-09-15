@@ -148,8 +148,8 @@ def add_backbone_amide_hydrogens(
     added['i'] = np.arange(next_i, next_i + added.size)
     added['atom_id'] = np.arange(next_atom_id, next_atom_id + added.size)
     try:
-        import chisurf.core.common
-        added['mass'] = chisurf.core.common.atom_weights['H']
+        import chisurf.core.support.common
+        added['mass'] = chisurf.core.support.common.atom_weights['H']
     except (ImportError, KeyError):
         pass
     return np.concatenate([atoms, added])

@@ -15,7 +15,7 @@ utils.set_search_paths(TOPDIR)
 import chisurf.core.fitting.parameter as fp
 import chisurf.core.models  # noqa: F401
 import chisurf.core.parameter  # noqa: F401  (initialises settings)
-from chisurf.core import parameter_group_registry as reg
+from chisurf.core.registry import parameter_groups as reg
 
 
 def _group(names):

@@ -1,12 +1,12 @@
 """Tests for Mistral-backed plugin icon generation.
 
-Icon generation talks to a provider through :mod:`chisurf.core.http`, the
+Icon generation talks to a provider through :mod:`chisurf.core.support.http`, the
 in-tree HTTP client that replaced the ``requests`` dependency. These tests used
 to stub ``sys.modules["requests"]`` instead, which the production code no longer
 imports -- so they passed a ``requests_module`` argument the helpers had
 dropped, and the ones that got past that reached the *real* api.mistral.ai.
-Everything here therefore patches :func:`chisurf.core.http.post` and
-:func:`chisurf.core.http.get`, the seam actually used.
+Everything here therefore patches :func:`chisurf.core.support.http.post` and
+:func:`chisurf.core.support.http.get`, the seam actually used.
 
 The helpers now live in :mod:`chisurf.plugins.core.plugin_manager.api.icons` as
 ordinary functions over an :class:`~...api.icons.IconConfig`. They used to be
@@ -18,7 +18,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from chisurf.core import http
+from chisurf.core.support import http
 from chisurf.plugins.core.plugin_manager import AIIconRateLimitError
 from chisurf.plugins.core.plugin_manager.api import icons
 

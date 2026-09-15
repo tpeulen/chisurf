@@ -9,7 +9,7 @@ import numpy as np
 from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.experiments

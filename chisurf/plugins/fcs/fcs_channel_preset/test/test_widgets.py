@@ -11,11 +11,11 @@ def test_fcs_channel_dialog(qapp, qtbot, monkeypatch: pytest.MonkeyPatch, tmp_pa
     db_path = str(tmp_path / "sample_management.db")
 
     monkeypatch.setattr(
-        "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils.resolve_database_path",
+        "chisurf.core.fio.setup_store.resolve_database_path",
         lambda: db_path,
     )
     monkeypatch.setattr(
-        "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils.resolve_active_user_id",
+        "chisurf.core.fio.setup_store.resolve_active_user_id",
         lambda: "user_default",
     )
     monkeypatch.setattr(

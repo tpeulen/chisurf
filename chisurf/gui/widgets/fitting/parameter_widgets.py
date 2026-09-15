@@ -11,7 +11,7 @@ from qtpy import QtCore, QtGui, QtWidgets, uic
 
 import chisurf as cs
 import chisurf.core.data
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.fitting
 import chisurf.core.settings
 import chisurf.gui.decorators
@@ -769,7 +769,7 @@ class ParameterActionsMixin:
         finalise after the parameter changes.
         """
         try:
-            from chisurf.core.parameter_group_registry import (
+            from chisurf.core.registry.parameter_groups import (
                 iter_registered_parameter_groups,
             )
 

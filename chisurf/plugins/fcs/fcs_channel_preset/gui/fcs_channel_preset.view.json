@@ -1,5 +1,5 @@
 {
-  "_comment": "AutoForm view spec for the FCS channel-definition editor (PRD-40 uniformity port). All user-facing strings under label/description/title/add_label/placeholder/remove_label/labels/columns[].label are auto-translated via chisurf.core.i18n.tr at parse time and are picked up by build_tools/i18n/extract_strings.py.",
+  "_comment": "AutoForm view spec for the FCS channel-definition editor (PRD-40 uniformity port). All user-facing strings under label/description/title/add_label/placeholder/remove_label/labels/columns[].label are auto-translated via chisurf.core.support.i18n.tr at parse time and are picked up by build_tools/i18n/extract_strings.py.",
   "sections": [
     {
       "type": "choice",

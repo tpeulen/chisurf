@@ -13,7 +13,7 @@ import chisurf.gui.decorators
 import chisurf.core.settings
 import chisurf.core.fitting
 import chisurf.core.parameter
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.models
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client

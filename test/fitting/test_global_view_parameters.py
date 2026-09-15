@@ -13,7 +13,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.core.parameter_group_registry import (
+from chisurf.core.registry.parameter_groups import (
     iter_registered_parameter_groups,
     unregister_parameter_group,
 )

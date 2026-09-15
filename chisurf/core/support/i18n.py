@@ -19,7 +19,7 @@ source language and needs no catalogue.
 
 Examples
 --------
->>> from chisurf.core import i18n
+>>> from chisurf.core.support import i18n
 >>> i18n.tr("Convolution")            # identity by default
 'Convolution'
 >>> i18n.set_translation_backend(lambda ctx, text: {"Convolution": "Faltung"}.get(text, text))

@@ -7,7 +7,7 @@ import chisurf.core.fio.fluorescence.sdtfile
 
 import chisurf.core.fluorescence
 import chisurf.core.fluorescence.tcspc
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.data
 import chisurf.gui.decorators
 from chisurf.core.experiments.tcspc import TCSPCReader

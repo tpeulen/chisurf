@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from qtpy import QtWidgets
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.base
 import chisurf.gui.decorators
 import chisurf.core.structure

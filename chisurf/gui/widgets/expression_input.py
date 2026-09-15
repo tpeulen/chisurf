@@ -5,7 +5,7 @@ Where :class:`~chisurf.gui.widgets.equation_editor.EquationTableEditor` edits a
 expression — the shape of a parse-model formula (``a1*exp(-x/tau1)`` and the
 like). It gives the same "good editor" qualities in a compact form:
 
-* live validation via :mod:`chisurf.core.expressions` (a safe AST whitelist) with
+* live validation via :mod:`chisurf.core.support.expressions` (a safe AST whitelist) with
   a ✓/✗ badge and the error reason in a tooltip;
 * a names & functions reference button;
 * an optional inline LaTeX preview of the current formula;
@@ -23,7 +23,7 @@ from collections.abc import Callable, Sequence
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core.expressions import (
+from chisurf.core.support.expressions import (
     PARSE_MODEL_POLICY,
     ExpressionPolicy,
     discover_parameters,
@@ -44,7 +44,7 @@ class ExpressionInput(QtWidgets.QWidget):
         Qt parent.
     policy
         Expression policy (defaults to
-        :data:`~chisurf.core.expressions.PARSE_MODEL_POLICY`).
+        :data:`~chisurf.core.support.expressions.PARSE_MODEL_POLICY`).
     reserved_names
         Names that are valid but are *not* parameters (e.g. the independent
         variable ``x``).

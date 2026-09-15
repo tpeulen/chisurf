@@ -19,9 +19,9 @@ def gui_imports(context) -> None:
     """Import core GUI modules needed for the main window scaffold."""
     import chisurf.core.settings
     import chisurf.core.base
-    import chisurf.core.common
+    import chisurf.core.support.common
     import chisurf.core.curve
-    import chisurf.core.decorators
+    import chisurf.core.support.decorators
     import chisurf.core.parameter
     import chisurf.core.experiments
     import chisurf.core.fio

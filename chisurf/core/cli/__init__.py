@@ -12,7 +12,7 @@ from typing import Dict, Iterable, Optional, Tuple
 
 import click
 
-from chisurf.core.cli_support import DidYouMeanGroup
+from chisurf.core.cli.support import DidYouMeanGroup
 
 
 class PluginCLI(DidYouMeanGroup):
@@ -211,8 +211,7 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
     initialization or heavy dependencies.
     """
 
-    package_root = pathlib.Path(__file__).resolve().parent
-    built_in_root = package_root.parent / "plugins"
+    built_in_root = pathlib.Path(__file__).resolve().parents[2] / "plugins"
     user_root = pathlib.Path.home() / ".chisurf" / "plugins"
 
     search_roots = [

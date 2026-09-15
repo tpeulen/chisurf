@@ -344,7 +344,7 @@ def test_connect_base_joins_plugin_groups_to_the_fits():
     working model floating apart from the fits it exists to be linked against —
     the one relation the option is for.
     """
-    from chisurf.core.parameter_group_registry import (
+    from chisurf.core.registry.parameter_groups import (
         register_parameter_group,
         unregister_parameter_group,
     )

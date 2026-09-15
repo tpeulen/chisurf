@@ -403,7 +403,7 @@ parameter space. See {ref}`concept-md-bridges`.
 ## See also
 
 - Theory: {ref}`concept-multidimensional-exploration`, {ref}`concept-accurate-fret`.
-- `ndxplorer/analysis/curve_fit.py` (engine); {src}`chisurf/core/expressions.py`
+- `ndxplorer/analysis/curve_fit.py` (engine); {src}`chisurf/core/support/expressions.py`
   (safe equation engine); histogram fitting alternative:
   {doc}`FRET-efficiency histogram fitting <29_fret_histogram_fitting>`.
 </content>

@@ -39,7 +39,7 @@ class TruncatingStatusBar(QtWidgets.QStatusBar):
         # Localize static status messages (dynamic/interpolated text simply
         # falls through unchanged when no catalogue entry matches).
         try:
-            from chisurf.core.i18n import tr
+            from chisurf.core.support.i18n import tr
 
             s = tr(s)
         except Exception:

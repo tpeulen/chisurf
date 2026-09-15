@@ -285,7 +285,7 @@ def bind_ndx_parameters(ndx, *, owner_id: str = "ndxplorer",
     NdxConstants
         The bound group (already filled from the window).
     """
-    from chisurf.core.parameter_group_registry import register_parameter_group
+    from chisurf.core.registry.parameter_groups import register_parameter_group
 
     group = NdxConstants(name=label)
     group.pull(ndx)
@@ -306,7 +306,7 @@ def bind_ndx_parameters(ndx, *, owner_id: str = "ndxplorer",
 
 def unbind_ndx_parameters(owner_id: str = "ndxplorer") -> None:
     """Remove a bound group from the Global View and drop its reference."""
-    from chisurf.core.parameter_group_registry import unregister_parameter_group
+    from chisurf.core.registry.parameter_groups import unregister_parameter_group
 
     _BOUND.pop(owner_id, None)
     try:

@@ -13,7 +13,7 @@ import click
 import numpy as np
 import tttrlib
 
-from chisurf.core.cli_support import DidYouMeanGroup
+from chisurf.core.cli.support import DidYouMeanGroup
 
 # Import from chisurf if available, otherwise handle standalone usage
 try:

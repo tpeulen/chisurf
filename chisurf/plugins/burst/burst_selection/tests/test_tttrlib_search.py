@@ -170,7 +170,7 @@ def test_composite_entry_nests_the_inner_schema():
     into; the schema's ``parameters_of`` link says which entry actually defines
     them, so they can be built as widgets instead.
     """
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto("burst_search", "coincident")
     panels = view.view_spec().sections
@@ -191,7 +191,7 @@ def test_composite_entry_nests_the_inner_schema():
 
 
 def test_composite_params_fold_the_nested_values_back():
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto("burst_search", "coincident")
     params = view.params()
@@ -202,7 +202,7 @@ def test_composite_params_fold_the_nested_values_back():
 
 def test_composite_tracks_which_inner_entry_it_was_built_for():
     """The nested panel is stale when the selector names a different entry."""
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto("burst_search", "coincident")
     assert view.selector_value == "maxtree"
@@ -212,7 +212,7 @@ def test_composite_tracks_which_inner_entry_it_was_built_for():
 
 
 def test_composite_rebuilds_against_a_different_inner_entry():
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto(
         "burst_search", "coincident",
@@ -234,7 +234,7 @@ def test_plain_entries_are_not_composite():
     A plain entry still gets foldable groups; what it must not get is a nested
     panel for some other entry's parameters.
     """
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto("burst_search", "maxtree")
     assert not isinstance(view, registry.CompositeEntryView)
@@ -244,7 +244,7 @@ def test_plain_entries_are_not_composite():
 def test_parameters_are_split_into_foldable_groups():
     """A dozen parameters in one column is unreadable; the schema says how to
     group them, so the grouping is the algorithm's decision, not the GUI's."""
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     panels = registry.entry_form_view_auto(
         "burst_search", "maxtree"
@@ -265,7 +265,7 @@ def test_parameters_are_split_into_foldable_groups():
 
 def test_nested_values_reach_the_search(photons):
     """The folded parameters are what the inner search actually receives."""
-    from chisurf.core import tttrlib_registry as registry
+    from chisurf.core.registry import tttrlib as registry
 
     view = registry.entry_form_view_auto(
         "burst_search", "coincident",

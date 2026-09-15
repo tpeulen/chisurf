@@ -27,7 +27,7 @@ from typing import Any
 
 from qtpy import QtWidgets
 
-from chisurf.core.expressions import DEFAULT_POLICY, NDX_POLICY
+from chisurf.core.support.expressions import DEFAULT_POLICY, NDX_POLICY
 from chisurf.gui.widgets.equation_editor import EquationTableEditor
 
 from .registry import register_section

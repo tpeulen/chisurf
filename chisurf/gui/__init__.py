@@ -85,6 +85,28 @@ def _setup_action_dispatcher_scheduler():
         pass
 
 
+def _install_presenter():
+    """Register this GUI as the model layer's presenter.
+
+    ``run_on_gui_thread`` is the presenter: run a callable where a widget may
+    safely be touched. The deferrer is a zero-delay single-shot timer, which
+    is how Qt spells "after the current call returns" -- the model uses it
+    when the view would otherwise rebuild itself from a half-finished
+    operation.
+    """
+    try:
+        from chisurf.core.runtime import presentation
+
+        presentation.set_presenter(
+            run_on_gui_thread,
+            lambda func: QtCore.QTimer.singleShot(0, func),
+        )
+    except Exception:
+        # A GUI that cannot register still runs; the model then notifies
+        # inline, which is the headless behaviour and is safe.
+        pass
+
+
 def initialize_gui_executors():
     """Explicitly initialize GUI executors. Should be called from the GUI thread."""
     global _gui_executor
@@ -100,6 +122,14 @@ def initialize_gui_executors():
     
     # Set up action dispatcher scheduler to run debounced actions on GUI thread
     _setup_action_dispatcher_scheduler()
+
+    # Attach this view to the model's presentation seam. The model calls
+    # `chisurf.core.runtime.presentation.notify` / `.defer` and knows nothing about
+    # Qt; this is the one place that says who listens. Installed here rather
+    # than at import so a process that imports `chisurf.gui` without ever
+    # raising a window does not claim to be a presenter.
+    _install_presenter()
+
     
 def run_on_gui_thread(func, *args, **kwargs):
     """Ensure *func* executes on the Qt GUI thread.
@@ -526,9 +556,9 @@ def setup_gui(
         # Phase 1: Only what's needed for the main window scaffold
         import chisurf.core.settings
         import chisurf.core.base
-        import chisurf.core.common
+        import chisurf.core.support.common
         import chisurf.core.curve
-        import chisurf.core.decorators
+        import chisurf.core.support.decorators
         import chisurf.core.parameter
         import chisurf.core.experiments
         import chisurf.core.fio

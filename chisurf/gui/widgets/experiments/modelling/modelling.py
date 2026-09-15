@@ -3,7 +3,7 @@ import chisurf as cs
 
 
 import chisurf.core.base
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.experiments
 import chisurf.gui.decorators
 import chisurf.gui.widgets

@@ -1,4 +1,4 @@
-"""Headless tests for the translation seam (:mod:`chisurf.core.i18n`).
+"""Headless tests for the translation seam (:mod:`chisurf.core.support.i18n`).
 
 These run without Qt: the core seam must default to identity and must localize
 data-driven specs once a translation backend is bound, so the server/headless
@@ -15,7 +15,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def _reset_backend():
     """Ensure each test starts and ends with the identity backend."""
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     i18n.set_translation_backend(None)
     yield
@@ -23,7 +23,7 @@ def _reset_backend():
 
 
 def test_tr_identity_by_default():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     assert i18n.tr("Convolution") == "Convolution"
     assert i18n.tr("") == ""
@@ -39,17 +39,17 @@ def test_core_i18n_is_qt_free():
     import subprocess
 
     code = (
-        "import sys, chisurf.core.i18n\n"
+        "import sys, chisurf.core.support.i18n\n"
         "bad = [m for m in sys.modules if m.startswith(('PyQt5', 'PySide', 'qtpy'))]\n"
         "assert not bad, bad\n"
-        "assert chisurf.core.i18n.tr('X') == 'X'\n"
+        "assert chisurf.core.support.i18n.tr('X') == 'X'\n"
     )
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert proc.returncode == 0, proc.stderr
 
 
 def test_backend_swap_translates_and_falls_back():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     mapping = {"Convolution": "Faltung", "Detector": "Detektor"}
     i18n.set_translation_backend(lambda ctx, text: mapping.get(text, text))
@@ -59,7 +59,7 @@ def test_backend_swap_translates_and_falls_back():
 
 
 def test_backend_exception_falls_back_to_source():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     def boom(ctx, text):
         raise RuntimeError("catalogue on fire")
@@ -69,7 +69,7 @@ def test_backend_exception_falls_back_to_source():
 
 
 def test_view_spec_titles_localized_on_parse():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
     from chisurf.core.dataspec import _section_from_dict
 
     i18n.set_translation_backend(lambda ctx, text: {"Convolution": "Faltung"}.get(text, text))
@@ -78,7 +78,7 @@ def test_view_spec_titles_localized_on_parse():
 
 
 def test_nested_item_and_label_text_localized():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
     from chisurf.core.dataspec import _section_from_dict
 
     de = {"On": "Ein", "Off": "Aus", "Run": "Start"}
@@ -94,7 +94,7 @@ def test_nested_item_and_label_text_localized():
 
 
 def test_manifest_localizes_description_not_identity_keys():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
     from chisurf.core.plugin.manifest import PluginManifest
 
     i18n.set_translation_backend(
@@ -116,7 +116,7 @@ def test_manifest_localizes_description_not_identity_keys():
 
 
 def test_get_locale_defaults_to_en():
-    from chisurf.core import i18n
+    from chisurf.core.support import i18n
 
     # With no gui.language set, or on any read failure, the default is English.
     assert isinstance(i18n.get_locale(), str)

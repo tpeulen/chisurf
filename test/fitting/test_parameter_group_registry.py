@@ -1,6 +1,6 @@
 """Tests for the process-global out-of-fit parameter-group registry.
 
-See :mod:`chisurf.core.parameter_group_registry`.
+See :mod:`chisurf.core.registry.parameter_groups`.
 """
 
 import gc
@@ -15,7 +15,7 @@ utils.set_search_paths(TOPDIR)
 import chisurf.core.parameter  # noqa: F401  (initialises chisurf.core.settings)
 import chisurf.core.models  # noqa: F401
 import chisurf.core.fitting.parameter as fp
-from chisurf.core import parameter_group_registry as reg
+from chisurf.core.registry import parameter_groups as reg
 
 
 def _make_group(names):

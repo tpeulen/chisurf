@@ -7,14 +7,14 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 
-DeprecatedWarning = chisurf.core.decorators.DeprecatedWarning
-UnsupportedWarning = chisurf.core.decorators.UnsupportedWarning
-deprecated = chisurf.core.decorators.deprecated
-_deprecation_state = chisurf.core.decorators._deprecation_state
-_running_version = chisurf.core.decorators._running_version
-_version_key = chisurf.core.decorators._version_key
+DeprecatedWarning = chisurf.core.support.decorators.DeprecatedWarning
+UnsupportedWarning = chisurf.core.support.decorators.UnsupportedWarning
+deprecated = chisurf.core.support.decorators.deprecated
+_deprecation_state = chisurf.core.support.decorators._deprecation_state
+_running_version = chisurf.core.support.decorators._running_version
+_version_key = chisurf.core.support.decorators._version_key
 
 
 def _warn_of(function, *args, **kwargs):
@@ -28,15 +28,15 @@ def _warn_of(function, *args, **kwargs):
 class Tests(unittest.TestCase):
 
     def test_register(self):
-        @chisurf.core.decorators.register
+        @chisurf.core.support.decorators.register
         class A1():
             pass
 
-        @chisurf.core.decorators.register
+        @chisurf.core.support.decorators.register
         class B():
             pass
 
-        @chisurf.core.decorators.register
+        @chisurf.core.support.decorators.register
         class A2(A1):
             pass
 
@@ -67,7 +67,7 @@ class Tests(unittest.TestCase):
 
     def test_set_module(self):
         name = 'test_module_name'
-        @chisurf.core.decorators.set_module(name)
+        @chisurf.core.support.decorators.set_module(name)
         def example():
             pass
         self.assertEqual(
@@ -77,7 +77,7 @@ class Tests(unittest.TestCase):
 
 
 class DeprecationTests(unittest.TestCase):
-    """Pin the version bookkeeping of :func:`chisurf.core.decorators.deprecated`."""
+    """Pin the version bookkeeping of :func:`chisurf.core.support.decorators.deprecated`."""
 
     def test_version_key_orders_dev_below_release(self):
         self.assertLess(_version_key("20.01.01"), _version_key("26.dev4401"))

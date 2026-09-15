@@ -75,7 +75,7 @@ def test_composite_search_renders_a_nested_panel(qapp):
     # The coincident search delegates its per-group parameters to another search;
     # the widget must render those as a nested panel (via entry_form_view_auto),
     # not as a raw JSON box, and expose them under "parameters".
-    from chisurf.core import tttrlib_registry
+    from chisurf.core.registry import tttrlib as tttrlib_registry
 
     if "coincident" not in tttrlib_search.algorithms():
         pytest.skip("this tttrlib has no composite burst search")

@@ -7,7 +7,7 @@ at by a test without patching a dialog.
 
 import pytest
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui import QtWidgets
 from chisurf.gui.widgets.messages import MessageBar, MessagesMixin, Msg
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool

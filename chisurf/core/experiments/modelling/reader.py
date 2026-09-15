@@ -5,7 +5,7 @@ from __future__ import annotations
 from chisurf import typing
 
 import chisurf.core.base
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.fio
 import chisurf.core.structure
 from chisurf.core.experiments.core.reader import ExperimentReader

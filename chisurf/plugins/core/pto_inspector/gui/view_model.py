@@ -211,7 +211,7 @@ class PtoInspectorViewModel:
             item = self.selected
             what = f"“{item.name}” is not a curve" if item else "nothing selected"
             return {"x_label": what, "y_label": "", "log_x": False, "log_y": False}
-        from chisurf.core.units import symbol
+        from chisurf.core.support.units import symbol
 
         item = self.selected
         x_unit = symbol(str(curve.get("x_units", "") or ""))

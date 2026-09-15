@@ -25,7 +25,7 @@ del _sys_path_setup
 
 # Dependency APIs that were renamed out from under us (NumPy 2 removed np.trapz
 # and friends). Restored before anything computes with them -- see the module.
-from chisurf.core import compat as _compat  # noqa: F401
+from chisurf.core.runtime import compat as _compat  # noqa: F401
 
 import chisurf.core.info
 
@@ -99,11 +99,11 @@ def registered_parameter_groups() -> typing.List[typing.Tuple[str, str, typing.A
     """Return parameter groups registered outside ``fits`` (e.g. by plugins).
 
     Thin re-export of
-    :func:`chisurf.core.parameter_group_registry.iter_registered_parameter_groups`
+    :func:`chisurf.core.registry.parameter_groups.iter_registered_parameter_groups`
     so the Global View can enumerate out-of-fit groups the same way it reaches
     ``chisurf.fits``. Each item is ``(owner_id, label, group)``.
     """
-    from chisurf.core.parameter_group_registry import (
+    from chisurf.core.registry.parameter_groups import (
         iter_registered_parameter_groups,
     )
 

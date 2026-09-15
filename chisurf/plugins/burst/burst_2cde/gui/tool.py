@@ -20,7 +20,7 @@ from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button, flag_attention
 from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.plugins.burst.burst_2cde.core import computation as core
-from chisurf.core import analysis_cache
+from chisurf.core.runtime import analysis_cache
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.gui.progress import ChiSurfProgress
 

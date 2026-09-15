@@ -11,7 +11,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 
 import chisurf.core.fitting
-from chisurf.core.file_formats import FILE_FORMATS as _FILE_FORMATS
+from chisurf.core.registry.file_formats import FILE_FORMATS as _FILE_FORMATS
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.metadata_editor import MetadataEditor

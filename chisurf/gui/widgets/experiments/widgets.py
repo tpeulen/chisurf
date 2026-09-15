@@ -7,7 +7,7 @@ import pickle
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.data
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.fio
 import chisurf.core.fitting
 import chisurf.gui.widgets
@@ -22,7 +22,7 @@ from .pch import PCHController
 from .ics import ICSController
 
 
-@chisurf.core.decorators.register
+@chisurf.core.support.decorators.register
 class ExperimentalDataSelector(QtWidgets.QTreeWidget):
 
     @property

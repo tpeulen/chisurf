@@ -2,7 +2,7 @@
 """Extract ChiSurf's translatable UI strings into Qt ``.ts`` catalogues.
 
 ChiSurf's user-facing text lives in three surfaces (see
-``okf/references/ui-glossary.md`` and the ``chisurf.core.i18n`` module docstring):
+``okf/references/ui-glossary.md`` and the ``chisurf.core.support.i18n`` module docstring):
 
 * **data-driven** — ``*.view.json`` (AutoForm) and ``manifest.json`` plugin specs.
   These are *data*, not source literals, so Qt's ``pylupdate5`` cannot see them.
@@ -12,7 +12,7 @@ ChiSurf's user-facing text lives in three surfaces (see
 * **declarative** — the hand-built ``.ui`` files. ``pylupdate5`` extracts these
   natively (context = the form's class name), so they are translated for free at
   runtime once a ``QTranslator`` is installed.
-* **imperative** — ``chisurf.core.i18n.tr(...)`` calls in ``.py`` (message boxes,
+* **imperative** — ``chisurf.core.support.i18n.tr(...)`` calls in ``.py`` (message boxes,
   window titles, custom-section labels). ``pylupdate5`` cannot see the aliased
   ``i18n.tr`` token, so :func:`_collect_from_python` walks the AST and feeds those
   literals into the same ``_i18n_autogen.py`` stub under the ``chisurf`` context.
@@ -46,7 +46,7 @@ AUTOGEN = pathlib.Path(__file__).resolve().parent / "_i18n_autogen.py"
 DEFAULT_LOCALES = ("en", "de", "es", "fr", "pt", "ru")
 
 #: Qt translation context shared by every data-driven string. Must match
-#: :data:`chisurf.core.i18n.DEFAULT_CONTEXT`.
+#: :data:`chisurf.core.support.i18n.DEFAULT_CONTEXT`.
 CONTEXT = "chisurf"
 
 #: Keys carrying user-facing text in view.json / manifest.json, collected
@@ -119,7 +119,7 @@ def _collect_from_python(strings: set[str]) -> None:
     """Collect literal strings passed to the imperative ``i18n.tr(...)`` seam.
 
     Imperative GUI code (message boxes, window titles, custom-section labels)
-    localizes text through :func:`chisurf.core.i18n.tr`, which routes to
+    localizes text through :func:`chisurf.core.support.i18n.tr`, which routes to
     ``QCoreApplication.translate("chisurf", text)`` — the same flat ``chisurf``
     context as the data-driven strings. ``pylupdate5`` only recognizes a literal
     ``.tr(``/``translate(`` token, so an aliased ``i18n.tr`` call is invisible to

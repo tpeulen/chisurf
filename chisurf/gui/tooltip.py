@@ -91,11 +91,11 @@ def wrap_tooltip(text: str, width: int | None = None) -> str:
 
     Existing explicit line breaks are preserved (each paragraph wrapped
     independently); rich-text/HTML tooltips are returned unchanged. Plain
-    tooltips are localized here (:func:`chisurf.core.i18n.tr`) — the app-wide
+    tooltips are localized here (:func:`chisurf.core.support.i18n.tr`) — the app-wide
     tooltip event filter routes every ``setToolTip`` through this function, so
     this is the single seam that localizes imperative tooltip strings.
     """
-    from chisurf.core.i18n import tr
+    from chisurf.core.support.i18n import tr
 
     text = str(text or "").strip()
     if not text or text.startswith("<"):

@@ -668,7 +668,7 @@ class GraphWizard(ChisurfDockTool):
             fc = get_fitting_client()
             fit_list = fc.get_fit_objects() if fc is not None else []
         if group_list is None:
-            from chisurf.core.parameter_group_registry import (
+            from chisurf.core.registry.parameter_groups import (
                 iter_registered_parameter_groups,
             )
             group_list = iter_registered_parameter_groups()

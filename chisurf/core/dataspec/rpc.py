@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 
 from chisurf import typing
-from chisurf.core.i18n import tr
+from chisurf.core.support.i18n import tr
 
 from . import (
     ChoiceSection,

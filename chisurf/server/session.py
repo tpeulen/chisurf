@@ -127,13 +127,13 @@ class SessionState:
         """Return out-of-fit parameter groups as ``(owner_id, label, group)``.
 
         Delegates to the process-global
-        :mod:`chisurf.core.parameter_group_registry`, so a plugin working model
+        :mod:`chisurf.core.registry.parameter_groups`, so a plugin working model
         registered in the shared (local/hybrid) process is visible to the
         server-side parameter listing. Returns an empty list in a pure server
         process where those GUI-side groups do not exist.
         """
         try:
-            from chisurf.core.parameter_group_registry import (
+            from chisurf.core.registry.parameter_groups import (
                 iter_registered_parameter_groups,
             )
 

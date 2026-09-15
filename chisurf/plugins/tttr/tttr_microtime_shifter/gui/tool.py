@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.path_list_section import PathListWidget
 from chisurf.gui.glyphs import Glyphs

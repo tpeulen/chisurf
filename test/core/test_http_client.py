@@ -1,6 +1,6 @@
 """The in-tree HTTP client, exercised against a real local server.
 
-``chisurf.core.http`` replaced a third-party client that nothing declared, so
+``chisurf.core.support.http`` replaced a third-party client that nothing declared, so
 these tests pin the behaviour the call sites rely on: JSON round trips, query
 parameters, an error status arriving as a *response* rather than an exception,
 and a transport failure arriving as one.
@@ -15,7 +15,7 @@ import threading
 
 import pytest
 
-from chisurf.core import http as client
+from chisurf.core.support import http as client
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):

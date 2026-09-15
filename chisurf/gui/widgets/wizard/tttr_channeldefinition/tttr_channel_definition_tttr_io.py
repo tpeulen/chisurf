@@ -297,7 +297,7 @@ def on_calc_g_factor(page, row=None):
                     g_factor_decay_uuid = None
                     g_factor_calibration_id = None
                     try:
-                        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import resolve_active_user_id
+                        from chisurf.core.fio.setup_store import resolve_active_user_id
                         
                         l1_widget = page.detectors_form.cellWidget(row, 4)
                         l2_widget = page.detectors_form.cellWidget(row, 5)
@@ -434,7 +434,7 @@ def on_calc_g_factor(page, row=None):
                     g_factor_calibration_id = None
                     try:
                         from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
-                        from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_setup_utils import resolve_active_user_id
+                        from chisurf.core.fio.setup_store import resolve_active_user_id
                         client = VvVhGFactorClient()
                         
                         # Determine actual file path (the user might have loaded another one in the widget)

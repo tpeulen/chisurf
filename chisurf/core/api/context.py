@@ -104,12 +104,12 @@ class PluginContext:
         label : str, optional
             Human-readable Owner-column label (defaults to ``owner_id``).
         """
-        from chisurf.core.parameter_group_registry import register_parameter_group
+        from chisurf.core.registry.parameter_groups import register_parameter_group
 
         register_parameter_group(model, owner_id=owner_id, label=label or owner_id)
 
     def unregister_working_model(self, owner_id: str) -> None:
         """Remove a model previously exposed via :meth:`register_working_model`."""
-        from chisurf.core.parameter_group_registry import unregister_parameter_group
+        from chisurf.core.registry.parameter_groups import unregister_parameter_group
 
         unregister_parameter_group(owner_id)

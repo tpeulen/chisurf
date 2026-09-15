@@ -43,7 +43,7 @@ from __future__ import annotations
 
 from qtpy import QtWidgets
 
-from chisurf.core import i18n
+from chisurf.core.support import i18n
 from chisurf.gui.autoform.auto_form import AutoForm
 from chisurf.gui.glyphs import Glyphs
 

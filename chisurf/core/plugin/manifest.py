@@ -6,7 +6,7 @@ import pathlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from chisurf.core.i18n import tr
+from chisurf.core.support.i18n import tr
 
 
 @dataclass

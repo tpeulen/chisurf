@@ -500,7 +500,7 @@ class DataStoreSource(TableSource):
             return name, ""
         label = name
         if code:
-            from chisurf.core.units import symbol
+            from chisurf.core.support.units import symbol
 
             unit = symbol(code)
             if unit and f"[{unit}]" not in name:

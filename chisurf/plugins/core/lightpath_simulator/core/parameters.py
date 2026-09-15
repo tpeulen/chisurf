@@ -330,7 +330,7 @@ def register_lightpath_parameters(matrices: dict, *, owner_id: str = "lightpath"
     LightPathParameters
         The registered group.
     """
-    from chisurf.core.parameter_group_registry import register_parameter_group
+    from chisurf.core.registry.parameter_groups import register_parameter_group
 
     group = _REGISTERED.get(owner_id)
     if group is None:
@@ -348,7 +348,7 @@ def register_lightpath_parameters(matrices: dict, *, owner_id: str = "lightpath"
 
 def unregister_lightpath_parameters(owner_id: str = "lightpath") -> None:
     """Remove a registered optical model from the Global View."""
-    from chisurf.core.parameter_group_registry import unregister_parameter_group
+    from chisurf.core.registry.parameter_groups import unregister_parameter_group
 
     _REGISTERED.pop(owner_id, None)
     try:

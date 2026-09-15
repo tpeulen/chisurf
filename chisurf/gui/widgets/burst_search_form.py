@@ -8,7 +8,7 @@ code, a settings dataclass and the marshalling code.
 
 This widget takes the other route: tttrlib publishes each burst search's
 parameters as a JSON Schema through its registry, and chisurf already renders
-JSON Schema via :func:`~chisurf.core.tttrlib_registry.entry_form_view_auto` and
+JSON Schema via :func:`~chisurf.core.registry.tttrlib.entry_form_view_auto` and
 :class:`~chisurf.gui.autoform.AutoForm`, so the form is generated rather than
 authored. Labels, ranges, units, tooltips and defaults all come from tttrlib, and
 a burst search added there appears here on upgrade with no change to this file.
@@ -34,7 +34,7 @@ import typing
 
 from qtpy import QtWidgets, QtCore
 
-from chisurf.core import tttrlib_registry
+from chisurf.core.registry import tttrlib as tttrlib_registry
 from chisurf.core.fluorescence.burst import tttrlib_search
 from chisurf.gui.autoform import AutoForm
 

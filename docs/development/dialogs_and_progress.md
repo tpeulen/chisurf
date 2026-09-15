@@ -312,14 +312,14 @@ spans) and its attribute name, and the replacement answers the plain
 progress host, so `ChiSurfProgress` started anywhere in that window renders
 there.
 
-## Progress with no GUI at all — `chisurf.core.progress`
+## Progress with no GUI at all — `chisurf.core.runtime.progress`
 
 `ChiSurfProgress` lives in `chisurf/gui/` and takes a widget, so Qt-free code —
 `chisurf.core.*`, the ZMQ server, a CLI — cannot use it. Those loops draw a plain
 terminal bar instead:
 
 ```python
-from chisurf.core.progress import progress, trange
+from chisurf.core.runtime.progress import progress, trange
 
 for index, row in progress(df.iterrows(), total=len(df), desc="BVA bursts"):
     ...

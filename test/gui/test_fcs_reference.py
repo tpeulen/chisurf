@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-import chisurf.core.plot_transforms as plot_transforms
+import chisurf.core.plotting.transforms as plot_transforms
 from chisurf.core.fluorescence.fcs import fcs_diffusion_reference
 from chisurf.gui.widgets.models.fcs.parse_fcs_widget import ParseFCSWidget
 

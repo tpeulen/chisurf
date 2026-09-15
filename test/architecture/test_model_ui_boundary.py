@@ -16,7 +16,7 @@ thirty under ``chisurf.core``; it now checks all of them, which is what makes
 "ChiSurf follows MVC" a property of the tree rather than an intention.
 
 **When the model has to tell a view something**, it calls
-:mod:`chisurf.core.presentation` -- ``notify`` for "this changed", ``defer``
+:mod:`chisurf.core.runtime.presentation` -- ``notify`` for "this changed", ``defer``
 for "this changed, but rebuild after I have finished". The view installs
 itself as the presenter once, at start-up. Headless there is no presenter and
 the callable runs inline, which is the behaviour the CLI, the server and most
@@ -115,7 +115,7 @@ def test_the_model_layer_does_not_import_a_view():
     assert not new, (
         "chisurf.core is the model layer and must not depend on a view.\n"
         "When the model has to tell a view something, call\n"
-        "chisurf.core.presentation.notify (or .defer) and let the view "
+        "chisurf.core.runtime.presentation.notify (or .defer) and let the view "
         "install itself.\nOffending imports:\n" + "\n".join(lines))
 
 
