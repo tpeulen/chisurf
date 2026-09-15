@@ -130,8 +130,8 @@ def owner_of_module(dotted: str, owners: dict[str, str]) -> str | None:
     """The id of the plugin owning *dotted*, by longest-prefix match.
 
     Longest-prefix rather than first match, because plugins nest: a module under
-    ``chisurf.plugins.misc.games.lumis_quest`` belongs to ``lumis_quest``, not to
-    the ``games`` hub that contains it.
+    ``chisurf.plugins.misc.games.breakout`` belongs to ``breakout``, not to the
+    ``games`` hub that contains it.
     """
     best: str | None = None
     best_len = -1

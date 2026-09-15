@@ -9,6 +9,103 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+**Cloud zoom artifacts closed (2026-08-17, night).** Two residual cloud bugs
+after the screen-space pass. (1) `Weather.update` respawned clouds at a fixed
+±60 world units past the box edge -- fine at the old zoom, but a zoomed cloud
+sprite is hundreds of units wide, so it popped into existence fully on-screen;
+respawn now wraps outside each cloud's *own* width (`80 * scale`). (2) The
+>25%-box-jump handler rescaled particle positions, teleporting every cloud
+mid-screen the frame the zoom moved; worse, its replacement-by-modulo mapped
+the negative x a drifting cloud legitimately holds on entry onto the screen.
+The box reflow is now a **conditional single fold** (`x -= w * (x >= w)`):
+growth is a no-op, a shrink moves only the overflow back to the left edge,
+and folds landing within one sprite width of the edge park fully off-screen.
+Verified by a 6000-frame zoom tour (176→1200→176→330→176→3000): 0 visible
+teleports, clouds contained at every plateau. 542 tests green.
+
+**The HUD has its own zoom reference; weather is screen-space (2026-08-17,
+evening).** The "text no fit" after the 4:3 change had a systemic cause: every
+HUD/menu/dialogue text height and pitch was authored in world units against
+the old 330-tall view, but the HUD scale divided by `VIEW_HEIGHT` — 1 at the
+new 176 default — so panels overflowed a screen half the world size (menu
+rows past the bottom, band lines past the sides). Fix: `HUD_REFERENCE = 330`
+and the seven HUD-authored `camera.height / VIEW_HEIGHT` sites now divide by
+it, so the whole HUD shrinks with the view; the map-scale cave markers and
+CRT scanlines stay world-relative. The bottom band additionally wraps lines
+wider than the view (`_wrap`), and village labels cull on their own label
+position rather than the compound centre. Weather sprites (rain/leaf/snow/
+cloud) now multiply their world size by `camera.height / VIEW_HEIGHT` — a
+screen-space effect drawn in world units must grow with the view or a zoom
+out turns rain to specks. Verified with a glyph-extent probe (patched
+`scene.draw_text`): 0 of ~200 texts clipped across walk/battle/menu/options
+at zooms 176/330/700 on an 800x600 canvas. 542 games+chigame tests green.
+
+**Weather now follows the zoom, and the game windows default to 4:3
+(2026-08-17).** The weather box was a fixed 432x252 world units, which was
+right at exactly one zoom: zoomed out it rained on one corner of the screen,
+and the battle zoom hung most of it off-screen. `_update_weather` now sizes
+`weather.view` from the live camera each frame (canvas aspect, 4:3 fallback,
+clamped at MAP_THRESHOLD), rescaling particle populations when the box jumps
+by >25% so a storm keeps covering the screen; `Weather.update` gained a
+horizontal wrap for falling kinds (sway could strand a leaf off-screen for
+most of a minute after a shrink). The lumis and ninja windows and the capture
+gallery default to 4:3 (`800x600` / capture `size=(800,600)`) — the panels
+and battle text were laid out against a near-square canvas and ran off the
+bottom at a widescreen default. Regression:
+`test_weather_covers_the_view_at_every_zoom`. 542 games+chigame tests green.
+
+**Lumis Quest now shows weather and a varied skyline (2026-08-17).** The
+"missing clouds/leaves" report had a dead-code root cause: `_weather_kinds`
+read `land.state`, but `Region` had **no** `state` attribute, so weather was
+`()` everywhere except the dark manifold — the cloud/leaf machinery never ran.
+Fixed at the root: `Region.state` is now a worst-first property over its rooms
+(one withered page rains on the whole land; only a fully settled land is
+clear), wild lands drift leaves under cloud, scouted lands keep fair-weather
+cloud. `_draw_weather` also never *drew* CLOUD — it does now, through a new
+`Weather.clouds()` accessor (fx.py), as drifting 80x36 `fx_cloud` sprites at
+alpha 0.5 in the upper third of the view (same layout as the engine's own
+`draw()` path). The town's look is less stamp-like too: two more CC0 buildings
+cut from the village sheet (`import_bigart.py` — `house_temple` 48x48 pyramid
+roof, `house_lodge` 32x48 domed dwelling, both verified bleed-free against
+their sheet neighbours by component analysis), making four house styles picked
+per page address. All this sits on the earlier same-day work: view height
+330→176 (11 tiles, matching the ninja room), per-material tile variant
+families (grass x5, sand x4, road x3, water x2) picked by positional hash in
+`_draw_tiles`, and battle framing split out as `BATTLE_VIEW = 330` so the
+fight keeps its own zoom. 524 games+chigame tests green (the one red,
+`test_pyqtgraph_seam`, is the peer's chimol/lineplot front, not this).
+
+**Sound is opt-in now (2026-08-17).** `GameHost.with_audio` defaults to
+**False**: no game dock starts playing music at whoever opened it. Opting in
+is a shared checkable **Sound** button (`chigame.sound_button(host)`) in
+every game window (ninja, lumis, pong, breakout, tetris, minesweeper,
+number_quest), which calls `GameHost.set_audio_enabled(True)` — that
+rebuilds the mixer live and picks up the music context the host tracked
+while silent (`_music_context_wanted`). Verified: all seven windows
+instantiate headlessly with `audio.enabled == False`, the toggle on the
+ninja window enables music in the right context and untoggling silences it;
+558 chigame+games tests green. `test_chigame_audio.py` was still poking the
+pre-rename `game.iris` — repointed at `player_pos`.
+
+**The wall y-sort gap is closed (2026-08-17).** The last known visual
+divergence from the author's game — chigame drawing every tile under the
+actors — is ported: `ninja_adventure/game.py` builds wall TileMaps (map
+layers 0/1) separately and merges their per-tile instances into the actors'
+painter queue, keyed on tile-centre-y + 3 (the reference's
+`y_sort_origin = -5` applied to a tile's bottom edge; an actor's key is its
+feet). The floor layers (2/3, z -2/-1) stay bulk-drawn under everything.
+Verified: draw-order probe (player above a wall tile is occluded, below it
+is not), and a rebuilt independent ground-truth walker — tiles-only render
+is 100% pixel-exact against the JSON map composed straight from the shipped
+sheets (which are themselves byte-identical to the author's). The earlier
+"65% mismatch" scare was the spawn fade/weather, not tiles: a full-frame
+diff MUST neutralise the transition and weather first (the capture script's
+`weather.set(())` gets undone by `update`, which re-applies the area's
+environment every frame — monkeypatch `_draw_hud`-style overlays out
+instead). One nit left in that area: `TileMap.draw_visible` is still the
+fast path for floors; wall tiles go one-row-per-`add_array`, fine at a few
+hundred rows but worth revisiting if a map ever walls a whole screen.
+
 **The real "tiles are shit" cause: the importer transposed Godot's atlas
 coords (2026-08-15, commit 2d6d8d9a4).** The layer-order fix above was real
 but only half the story. `import_ninja_map` decoded `atlas_y = int2 >> 16`
@@ -28,8 +125,8 @@ corners — the GPU samples centers, and corner sampling alone moved agreement
 from 88.8% to 99.3%. Also ported with it: the teleporter's real arrival
 semantics (`character.gd`: land at `target + (player − source) +
 target.direction*25` — the port had used the *source's* direction, mirroring
-her 25 px to the wrong side). Still not ported: wall-layer y-sort with
-actors, below.
+her 25 px to the wrong side). The wall-layer y-sort with actors landed
+2026-08-17 — see the top of this section.
 
 **Tile stacking fixed by the reference's own z-indices (2026-08-15).** The
 `67ab53442` "layer order" fix was inverted: it read "Godot layer 0 is the
@@ -43,9 +140,9 @@ top, y-sorted. `ninja_adventure/game.py` now builds the layers in descending
 index order — ground painted first, canopy over it — verified per-pixel
 against the converted map (the ground-truth walk must take layers *topmost
 first*, i.e. reversed draw order; walking it in draw order just re-derives
-the renderer's own mistake). Still not ported: the reference y-sorts the wall
-layers *with the actors* (`y_sort_origin -5`), so a player behind a house
-should be occluded by its front wall; chigame draws all tiles under actors.
+the renderer's own mistake). The reference y-sorts the wall layers *with
+the actors* (`y_sort_origin -5`); ported 2026-08-17, see the top of this
+section.
 
 **The reference game itself is playable now (2026-08-14, T-20260814-05).**
 `chisurf/plugins/misc/games/ninja_adventure/` runs the author's own village

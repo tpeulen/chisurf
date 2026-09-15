@@ -14,45 +14,418 @@ sibling: none
 
 # Where to pick this up
 
-**Handover, 2026-08-12 (settings became data; the game became an easter egg).**
-*"in chimol edit all settings must be displayed in 3d view, make new settings
-widget/editor inspired by imgui, also use such setting from lumis quest (lumis
-quest may depend on chimol). make lumis quest an easter egg. lumis quest is not
-allowed to be hardcoded all must run through the settings and engine."*
+**Follow-up 3, 2026-08-24 (the dark manifold has a loop).** The front "the
+dark manifold still has the least to *do*" — closed with three pieces that
+make a dive a decision instead of a walk:
 
-* **The settings are declared, not written into the menu** — `api/settings.py`.
-  Each one gives its kind, bounds, choices, default and one line of
-  documentation; the menu renders whatever is declared, `SettingsModel.adjust`
-  steps a value inside its own range, and an action is a hook. The three
-  parallel `elif` ladders keyed by row number (row text, which control, what a
-  press does) are gone. The declaration type is **Chimol's**
-  (`chimol.renderer.ui.settings_editor.Setting`), which is what "lumis quest may
-  depend on chimol" bought: the game and the molecular viewer describe settings
-  the same way and are drawn by the same controls.
-* **The game's attributes are views onto the store.** `walk_speed`,
-  `view_height`, `screen_mode`, `scheme`, the volumes, the gamelogic flags —
-  all `property` objects over `self.settings`, so every existing call site
-  reads the store without a hundred-call-site edit. Hooks apply what a change
-  *means* (rebinding the controller, telling the mixer).
-* **Settings are part of the run.** `RunState.settings`, restored even from a
-  save with no team in it. Unknown keys are dropped on the way in, so a renamed
-  setting cannot stop a run from loading. `VERSION` was not bumped: the field
-  has a default, and bumping it would throw away every existing save.
-* **The way in is the Konami code** (`chisurf/gui/easter_egg.py`), installed on
-  the *application* so it works wherever the focus is. Matching is on the last
-  keys entered rather than a counter a wrong key resets — `Up Up Up Down Down …`
-  contains the code and is how people actually type it. The guide said "open it
-  from Tools → Miscellaneous → Games", which had been wrong since the manifest
-  set `menu_hidden`.
+* **Ferals.** The dark population now holds beasts that crossed with their
+  labels still burning — five per region, kind ``beast`` + ``feral`` flag,
+  species pinned on the npc so the fight is the animal standing there and
+  the label is rolled once from its own name (the same feral is the same
+  fight every visit; the dark is a place, not a slot machine). Their tiers
+  run **one step hotter than the lit land's** — the lit wild scales to your
+  licence and the ash has never heard of it — which is the pull to come down
+  at all. ``steering.temper_for`` grew a ``feral`` branch: the flight default
+  is the lit world's mercy about animals that did not choose this, and these
+  did not get it — they hunt (homing positive, tier-scaled speed).
+* **Unbinding down there pays.** A feral fight is a normal ``Battle``, so
+  the spoils flow is the lit one: the unbound label goes into your hand and
+  the body walks free — the beaten npc is removed from the ash on dismissal.
+  ``_try_encounter`` grew a dark branch (``_try_feral_encounter`` /
+  ``_feral_in_reach`` / ``_feral_beast``): no rooms to guard, no licence in
+  force, the *lit* tile decides the terrain because the geography is shared.
+* **The dark bleeds.** ``gamelogic.dark_drain`` (0–5/s, default 1.5 — a new
+  setting in the GAMELOGIC tab) drains photons while under; at zero it
+  starts on Iris's vitality at 1 per half-second, **floored at one** — the
+  dark squeezes, it does not kill. No recovery station down there, on
+  purpose: what you bring is what you have. Fractional carry accumulators
+  keep the bar reading whole photons.
 
-**Open, in order.** (1) The tabs still show eight rows in a fixed window: the
-ninth OPTIONS row (*watch the opening again*) is only reachable by scrolling,
-which a screenshot shows and no test does. (2) The rest of the game's constants
-— `SPRINT`, `CAMERA_LAG`, `LUMI_TRAIL`, the jump numbers, encounter rates — are
-still module constants; they are the next candidates for the registry, and the
-registry is where a difficulty setting would come from. (3) `_menu_click_target`
-hit-tests rows with its own arithmetic rather than the boxes the draw laid out,
-so a control that moves has to be moved in two places.
+Tests: ferals exist and hunt; a feral encounter fights the standing species
+and does not reroll; a win hands you the label and clears the ash; the bleed
+runs in the dark only and floors at one. The four menu-row tests that pinned
+GAMELOGIC row indices moved down a slot (the price of a new setting — the
+registry is the one source of row order). Guide updated: the manifold is
+"three things to do" now. Traps: the ``self._autosave_timer = 0.0`` init
+line appears **twice** (__init__ and update's reset) — an edit by that line
+alone lands in update() and breaks the autosave branch (caught by
+collection, not by a test); and ``_collect_spoils`` dedupes labels by
+``probe_id``, so a dark-win test must assert membership, not count.
+
+**Follow-up 2, 2026-08-24 (towns stop being wallpaper).** Continued down the
+open front "the town plazas are bare". Three changes, all in the generator
+and the ground materials rather than new mechanisms:
+
+* **The village floor was one cell stamped everywhere.** ``floor`` (the tan
+  made-ground inside walled villages) and ``plaza`` (the stone square) each
+  carried a single decorative medallion cell, so every settlement read as
+  wallpaper. Both now have three-cell positional variant families
+  (``floor2/3`` from the interior sheet's plain tan run, ``plaza2/3`` from
+  its plain stone run), tone-matched to their bases -- the checkerboard rule
+  from the ash work applies to made ground too.
+* **Ground clutter exists.** New tiles ``CRATE``/``POT`` (47/48), cut from
+  the **in-tree** engine pack (14x15/14x16 props centred on a transparent
+  tile by the import script's ``_load_padded``; same CC0 source as the pack,
+  so they re-cut anywhere without a junk/ clone), with string-art fallbacks
+  in ``SPRITES`` (the shipped-art guardrail test caught their absence -- the
+  atlas only packs names in ``SPRITES``, so a shipped tile without one is a
+  KeyError waiting for a frame; the interior crash was the same class).
+  ``places.paint`` scatters them on made ground, only against something
+  solid, never beside a gate or clinic; they block only their bottom half
+  (``tiles.SOLIDITY``), so they can dress a street without narrowing one.
+* **Flowers no longer transplant lawns.** The scatter took
+  ``FLOOR or GRASS``, and a flower-with-its-grass sprite on a tan floor
+  read as squares of lawn in the street; now grass only, and the gardens
+  carry the villages' greenery.
+* **Design call, recorded so it is not re-derived:** crates and pots cross
+  into the dark manifold **unchanged** -- deliberately *not* mapped to RUIN.
+  Every ruin down there is a premises somebody kept stocked; fourteen
+  scatter rolls per village of salvageable pots would dilute that into a
+  farming node (and the salvage test caught exactly that, a pot-ruin
+  shadowing the premises it sat beside).
+
+**Follow-up, 2026-08-24 (interior draw crash + the second iris/lumi
+reversal).** *"KeyError: 'samurai_blue_down_0' … also the hound before looked
+better, before it became a pig, also iris was better, before the ninja
+palette swap."*
+
+* **A populated interior could not draw at all.** `_draw_interior` built the
+  indoor cast's sprite names from **pack sheet stems**
+  (`samurai_blue_down_0`) — names no resolver answers and no atlas carries —
+  so the first frame inside any building with people died on a KeyError. It
+  had survived every test because no test *drew* while indoors; the update
+  loop ran, the draw loop never did. Fixed onto the game's own role
+  vocabulary (`villager_0` for the green-robed tradesfolk, `townsfolk_0`
+  otherwise), and the new
+  `test_a_populated_interior_renders_a_frame` enters a building, checks the
+  uvs, and draws a frame — the gap in coverage that let this ship.
+* **Iris and Lumi are string art again — the second reversal, and it should
+  now be treated as settled.** The user reverted the pack-art cast once on
+  the morning of 2026-08-14, was talked back by that evening's "use all from
+  ninja game", and has now reverted it again on their own play ("iris was
+  better before the ninja palette swap", "the hound before looked better,
+  before it became a pig"). `sheetart._SHEETS` no longer lists `iris` or
+  `lumi`, and `names()` no longer generates their names — the resolver was
+  the quiet way back, because `build_atlas` packs its answer *before* the
+  string art. Three seams needed moving with them, all traps for a third
+  attempt: the walk cycle the draw code steps is **two frames** again (the
+  four-frame clock arrived with the pack sheets; `%4` asked for
+  `iris_down_2`/`lumi_down_2` the string art does not have); the swing pose
+  `iris_{facing}_a` is aliased to the stride frame in `SPRITES` (author a
+  real lunge there if wanted — do not special-case the draw site); and the
+  hound waiting in the grass is drawn through the NPC path, which steps her
+  `%2` explicitly. `test_player_and_companion_are_string_art` now pins both
+  layers a swap can sneak back through (shipped tiles *and* resolver), and
+  `test_every_name_the_game_can_construct_is_in_the_atlas` pins the exact
+  name set the reverted draw code constructs. Everyone else — villagers,
+  keepers, Wardens, beasts — keeps the pack art.
+
+**Handover, 2026-08-23 (T-20260823-01: the world stops reading as someone
+else's tech demo).** *"make lumis quest a good game."* Read the fresh capture
+gallery before touching anything; four things in it were actively wrong:
+
+* **The bestiary was one animal.** `sheetart.resolve` answered *every*
+  `body_*` name with `animal.png` cell (0,0) — the pack-art reversal had
+  quietly flattened twelve distinct string-art families into a single pig
+  wearing different tints, on the overworld and on the battle pads alike.
+  Now only `body_boar` wears the pack animal (it is a pig; that is the one
+  family it reads as) and every other family falls through to its own
+  drawing. Pinned by `test_only_the_boar_wears_the_pack_animal`, which also
+  asserts the twelve drawings stay pair-wise distinct.
+* **The country rock read as pumpkins.** `PROPS["rock"]` was
+  pyzelda's `test/rock.png`, a warm orange boulder — scattered over green
+  grass it reads as food, not geology. Re-cut from `objects/09.png`, the
+  grey-blue boulder.
+* **The dark manifold was one stamped interior floor, and its rocks glowed
+  green.** `ash` was cut from `tileset_interior_floor` (paving), with no
+  variant family; and ROCK crosses into the manifold unchanged while its
+  sprite is composited over *grass* at pack time, so four grass corners
+  rode every boulder into the ash. Now: `ash`/`ash2`/`ash3` are the floor
+  sheet's trodden-earth interior cells (16,18), (17,18), (19,18) — picked
+  opaque and within a couple of tone steps of each other, because a tone
+  spread inside the family paints the manifold as a **checkerboard** (the
+  first cut used a darker cell and did exactly that; the run also holds
+  empty cells — (16,19) and (20,18) have alpha 0 — and orange-rooted and
+  grey-edged cells that read as scatter). And `_prepare_visuals` builds a
+  `_tile_uv_dark` twin of the tile table that points every grass-backed
+  prop at its `*_ash` composite (`rock_ash` exists; the mechanism generalises
+  if another prop ever crosses). Tests:
+  `test_ash_has_a_variant_family_so_the_manifold_is_not_one_stamped_tile`,
+  `test_the_dark_rock_stands_on_ash_not_grass`,
+  `test_the_dark_ground_draws_ash_backed_rocks_and_varied_ash`.
+* **Clouds were scenery-scale and the HUD labels were illegible.** Clouds
+  drew 36 world units tall — over half the 11-tile view — at alpha 0.5,
+  washing out whatever was under them; now 13 units at 0.32, centred on
+  their own state (the old `-30*zoom` x-offset fudged a centre the sprite
+  path already treats as a centre). The weapon/magic labels sat as bare
+  coloured text over a bright sky; they sit on flat dark chips now
+  (`ui/panel` quads — `scene.window`'s frame bands are thicker than a
+  7-unit label and the text poked out of its own chip). The labels stay at
+  their exact row y: nudging one down a unit put it on the EN readout's
+  line and `test_the_readouts_do_not_print_through_each_other` caught it.
+
+Gallery re-shot and read (`chisurf/plugins/misc/games/test/renders/` —
+battle shows two different creatures, the manifold shows boar/quadruped/jelly
+on even trodden earth, clouds are sky-scale). 434 lumis + games tests green.
+Also marked the healed npcs hitch-frame known-issue FIXED. Still open, in the
+order they matter: (1) the dark manifold is *visually* fixed but still has
+the least to *do* — encounters down there, a reason to walk it past the
+tower; (2) the five standalone mini-games are reachable only through one
+innkeeper line — weaving them into the world as events is unbuilt; (3) the
+town plazas are bare (sand + two planters in the capture) — premises,
+stalls and garden beds exist in the API but do not dress the square;
+(4) Phase 7's network half; (5) the bodies' stable design decision.
+
+**Reversal, evening 2026-08-14 (T-20260814-05).** The morning direction below
+("iris should be no ninja, use old, the hound should be no pig, use old") was
+superseded by an explicit *"use all from ninja game, port to chisurf, make
+chigame good, and make lumis quest good"*. Iris and Lumi are pack art again —
+via `gui/sheetart.py`, which answers the game's sprite names with engine-pack
+sheet frames *inside the game's own atlas pipeline* (a resolver, not a re-cut
+of the terrain strip), so `tileart.tiles()` never names them and
+`test_player_and_companion_are_string_art` still holds for what it actually
+pins. The cast: iris = the hero sheet, villagers/keepers/healers = the
+blue-robed figure, wardens/emissaries/lanternwrights = the green, beasts and
+creatures = the two-column animal sheet, with weapons and quarter-step
+vitality strips in the atlas under their own names, four-frame walk cycles,
+attack poses and a real weapon sprite in the swing. Land-state weather
+(rain/clouds on withered land, fog in the dark manifold, drifting leaves in
+wild country) rides the engine's `Weather`. The pinning test now guards the
+wrong invariant if the reversal stands — replace it with one that pins the
+*resolver's* answer for `iris_*`/`lumi_*` when the overworld commit lands
+(the overworld/pixelart/capture edits are interleaved with a peer's uncommitted
+rename work in the same files and land as one commit with it).
+
+**Handover, 2026-08-14 (village ambience + map palette; player/hound
+reverted).** *"iris should be no ninja, use old, the hound should be no pig,
+use old. i ref to the villages, missing falling leaves, the use of terrain in
+the map (ugly)."*
+
+* **Player and companion are string art again.** The ninja/pig cut read as
+  someone else's characters; `CHAR_TILES` no longer maps `iris_*`/`lumi_*`, so
+  the authored rows in `pixelart.py` draw them. Pinned by
+  `test_player_and_companion_are_string_art` so a re-run of the import script
+  cannot quietly bring the pack versions back. Villagers, keepers, healers,
+  emissaries, townsfolk, Wardens and the pig-as-wildlife keep the pack art.
+* **Villages get falling leaves.** `_ambient_leaves` drifts autumn-coloured
+  leaf particles down through the view while the player stands inside a
+  settlement (one every 0.3 s, 6 s fall, sideways drift + gravity, off with
+  the particle setting or outside a village). Verified 5 alive after 1.5 s of
+  capture; `test_leaves_fall_in_a_village_and_only_there` pins both sides.
+* **The map's terrain colours come from the real tile art.** `_palette` is now
+  the per-tile *average of the shipped sprites*, not the hand-picked
+  `tile_colors` table (which stays as fallback): the shipped tiles already
+  agree with each other, so the whole-world map reads as a miniature of the
+  world instead of a second, clashing palette. Grass went from flat
+  (0.12,0.18,0.13) to the real art's (0.68,0.73,0.22).
+* **Villages are grass, not paving.** `graphics.json` now maps the premises
+  tiles (well/tavern/shop/smithy/shrine/hall/lantern/sign/stall) to grass
+  instead of plaza/floor -- the reference's villages are grass with dirt
+  paths, and a whole compound of flat grey plaza was most of why ours read as
+  a slab. The paved square keeps its plaza.
+* The junk/ checkout was re-cloned to full (it had been stripped to 4
+  characters); note the upstream GitHub repo ships only those 4 character
+  sheets -- it is the demo repo, not the full itch pack.
+
+**Handover, 2026-08-14 (the cast is Ninja Adventure pack art).**
+*"https://pixel-boy.itch.io/ninja-adventure-asset-pack looks much nicer, make
+it look equally nice, download code for gfx and match"*
+
+* **The whole cast now ships as real pack art**, cut from the Ninja Adventure
+  GitHub repo (the junk/ checkout already had all four character sheets; the
+  upstream repo ships exactly those four -- ninja_blue, pig, samurai_blue,
+  samurai_green -- it is the demo repo, not the full itch pack). The import
+  script's `CHAR_TILES` maps every character slot: player = ninja walk cycle
+  (facing columns 0=down/1=up/3=right per the pack's own
+  `sprite_character.gd`, walk rows 0 and 2), companion = the pig (side-facing
+  2-frame, mirrored like the pack itself mirrors it), villagers/keepers =
+  samurai green, townsfolk/healers/emissaries = samurai blue, Wardens = the
+  **attack row** of each samurai sheet (a raised weapon reads as a boss).
+  Wraiths and the spirit/squid beast families stay string art -- the pack has
+  nothing that reads as either. Verified numerically (all facings differ,
+  walk frames differ, frames carry 6-8 distinct colors); 50 tiles in the
+  shipped strip; 422 tests pass. The old note "Iris stayed string art" in
+  `import_tileart.py` is superseded by the user's explicit ask.
+* **Fixed a rename leftover**: three `_iris_hit_flash` references survived the
+  game-lingo purge, so the enemy-AI hit cooldown (`_player_hit_flash`) never
+  actually gated player damage. Renamed; the flash cooldown works again.
+
+**Open, in order.** (1) The dark manifold still reads as sparse. (2) The five
+standalone mini-games from Part 7 are not woven into the world. (3) Phase 7's
+network half (live ZMQ presence) is unbuilt.
+
+**Handover, 2026-08-13 (all constants are settings; Warden bosses have
+phases).** *"improve lumis quest."*
+
+* **Every gameplay constant the PRD named is now a setting.** The first pass
+  moved `SPRINT`, `CAMERA_LAG`, `LUMI_TRAIL` and wired four dead toggles. This
+  pass finished the job: `GRAVITY` (→ `gamelogic.gravity`, 500--1400),
+  `JUMP_SPEED` (→ `gamelogic.jump_power`, 140--340), `TYPE_CPS` (→
+  `options.text_speed`, 8--96 cps) and `AUTOSAVE_SECONDS` (→
+  `options.autosave_interval`, 15--300s) are all in the registry. The module
+  constants are deleted. `JUMP_CUT`, `HOP_HEIGHT`, `TYPE_BLIP_EVERY` are kept
+  as constants -- they define the feel of an arc rather than a difficulty knob.
+  The registry now holds **26 settings** across two tabs, all declared, all
+  wired, all part of the save.
+* **Warden boss fights now have a surge phase.** The PRD's most player-visible
+  open front ("a Warden fight is mechanically a re-skinned wild encounter,
+  just harder") is closed. Below 50% HP, each Warden gains a **signature move**
+  that fires every third round in place of the basic emit, drawn from the
+  photophysics its lesson teaches: Tolm **FLARE** (bleaching pulse + bench
+  splash), Ysolde **SPLIT** (refracts the beam, shelves the active fighter),
+  Kestrel **VEIL** (shifts emission beyond the loadout for one turn), Nera
+  **TIDE** (heals itself + douses the fighter), Ovid **ECLIPSE** (drags the
+  fighter into the dark state + self-stuns for the regen cycle). This is
+  what separates a boss from a stat-boosted random encounter: the player
+  has to adapt mid-fight rather than just out-damage.
+
+**Open, in order.** (1) The dark manifold has rekindle + salvage but still
+reads as sparse compared to the lit world. (2) The five standalone mini-games
+from Part 7 are not woven into the world as in-world events. (3) Phase 7's
+network half (live ZMQ presence, shared territory) is unbuilt. (4) The bodies'
+stable in the farm layer (feed/rest mechanics) needs a design decision: nothing
+on `Beast` carries fatigue today.
+
+**Handover, 2026-08-13 (boss bar + surge indicator on the battle screen).**
+*"cont."*
+
+* **Warden fights now show a boss bar at the top of the battle screen** --
+  the creature card in the corner was too small for something the whole fight
+  is about. The bar shows the Warden's title and HP, and turns red with
+  "!! SURGE !!" when the phase change is live. The battle log for Warden
+  fights now shows 3 entries instead of 2, so signature move descriptions stay
+  on screen long enough to read.
+
+**Open, in order.** (1) Creatures don't gain XP or level up from fights -- only
+the player does. A creature-level system (more HP/attack after wins) is the
+most Pokemon-like gap. (2) There is no Pokedex/bestiary screen tracking what
+the player has seen and caught. (3) The dark manifold still reads as sparse.
+
+**Handover, 2026-08-13 (creatures level up: the Pokemon loop).** *"continue."*
+
+* **Team creatures now gain XP and level up from battle wins.** `Fighter`
+  grew `level` and `xp` fields; `gain_xp(amount)` advances levels when the
+  threshold (`LEVEL_XP` curve: 8, 20, 40, 70, ...) is crossed, healing to the
+  new max on each level-up (standard RPG convention). Each level multiplies
+  max HP and attack by `1 + (level-1) * 0.12`, so a level-5 creature has ~50%
+  more of both. XP is awarded on win in `_settle`: `(opponent_tier + 1) * 3`,
+  doubled for Warden fights, split among surviving team members. The save
+  format's team tuples grew from 4 elements to 6 (additive: old saves still
+  parse). The fighter card now shows `T{tier}  Lv{level}`, and the PARTY tab
+  row shows `Lv{level}` too.
+
+**Open, in order.** (1) The game engine must be abstract and data-driven,
+running off JSON definitions rather than hardcoded Python. (2) There is no
+Pokedex/bestiary screen tracking what the player has seen and caught. (3) The
+dark manifold has rekindle + salvage but still reads as sparse. (4) The five
+standalone mini-games from Part 7 are not woven into the world as in-world
+events. (5) Phase 7's network half (live ZMQ presence, shared territory) is
+unbuilt.
+
+**Handover, 2026-08-13 (the engine is JSON-driven).** *"engine must be so
+abstract that also the game play mechanics can change by modifying the json"*
+
+* **All game content and mechanics are now JSON.** Ten data files drive the
+  game: `bestiary.json` (species, traits, bands, thresholds), `battle.json`
+  (damage scales, trait rules, cost rules, surge moves, leveling, messages),
+  `crafting.json` (materials, recipes), `perks.json` (level perks),
+  `game_state.json` (XP curves, rewards, achievements), `npc_lines.json`
+  (all NPC dialogue), `story.json` (narrative arc), `wardens.json` (bosses),
+  `dialogue.json` (interactive scenes), `agents.json` (townsfolk AI).
+  The Python modules are now **generic interpreters**: `battle.py`'s `_damage`
+  iterates JSON-defined trait rules with conditions and effects (no if/elif
+  chain), `_warden_surge_move` dispatches JSON-defined effect sequences (no
+  Python elif per Warden), `bleach_rate` iterates JSON cost-rule multipliers,
+  and every log message reads from `battle.json`'s `messages` templates.
+  Adding a trait, changing a surge move, or tuning a cost rate is editing
+  JSON, not writing Python. Constants were renamed to generic terms
+  (`STUN_CHANCE` not `TRIPLET_BASE`, `DOT_FRACTION` not `VENOM_BLEED`,
+  `REGEN_FRACTION` not `REGROWTH`, `FRIENDLY_FIRE_COST` not `CROSSTALK_COST`).
+
+* **Graphics and sound are JSON-driven too.** `data/graphics.json` defines
+  every tile→sprite mapping, indoor sprites, structure sprites, house tints,
+  weapon stats + colors + sfx, magic stats + colors, tile map-view colors,
+  dark-wash/fog colors, emissary tints, building height, walk FPS, and art
+  file references. `data/sound.json` defines every SFX event→clip mapping,
+  music contexts, music track definitions (clip/root/tempo/loop), soundtrack
+  list, and the default frequency for each sound event. The Python code loads
+  these at module level into the same dict names the code already used
+  (`TILE_SPRITES`, `WEAPON_DATA`, `MAGIC_DATA`, `TILE_COLORS`, etc.), so
+  changing a weapon's damage, a tile's color, or what clip a sound uses is
+  editing JSON.
+
+**Open, in order.** (1) There is no Pokedex/bestiary screen tracking what the
+player has seen and caught. (2) The dark manifold still reads as sparse. (3)
+The five standalone mini-games from Part 7 are not woven into the world. (4)
+Phase 7's network half (live ZMQ presence) is unbuilt.
+
+**Handover, 2026-08-13 (title screen OPTIONS + debug jump).**
+*"the start screen should allow to open options, in option allow to enable dbg
+mode. dbg mode should allow to jump to different parts of the game. dbg should
+list milestones in storyline."*
+
+* **The title screen now has an OPTIONS row** that opens a subscreen with a
+  framed window matching the console dialogue style. The subscreen has a
+  **debug mode toggle** (off by default). When debug mode is on, a
+  **"DEBUG: jump to milestone..."** row appears that opens a second subscreen
+  listing all 13 story beats (wake, the-hound, the-marked, ... the-dawn) as
+  selectable rows. Selecting one jumps the game straight to that milestone:
+  starts a quick-start run if none exists, witnesses the beat, sets dark/light
+  state appropriately, and enters play. Cancel returns through the subscreen
+  hierarchy to the title. The `_title_input` method dispatches to
+  `_title_sub_input` when a subscreen is open; `_draw_title_subscreen` renders
+  both subscreens with the same window-frame styling as the rest of the game.
+
+**Open, in order.** (1) The dark manifold still reads as sparse. (2) The five
+standalone mini-games from Part 7 are not woven into the world. (3) Phase 7's
+network half (live ZMQ presence) is unbuilt.
+
+**Handover, 2026-08-13 (CODEX/Pokedex tab).** *"go"*
+
+* **A CODEX tab is now in the pause menu** (between MAP and RIG). It lists
+  every species in the bestiary with three marks: `[*]` for owned (in team or
+  befriended bodies), `[v]` for seen (encountered in battle), `[ ]` for
+  undiscovered (shown as `???`). The last row shows `N/23 species discovered`.
+  Wild encounters now record the opponent's species key in a
+  `_codex_encountered` set on the run, so the codex fills as the player
+  explores. Battle swap already existed (Send X is a battle option when you
+  have living bench fighters).
+
+**Open, in order.** (1) There is no Pokedex/bestiary screen tracking what the
+fits its own rows).** *"improve lumis quest."*
+
+* **Four settings that existed in the menu but had no effect are now wired.**
+  `enemy_aggro_radius` was a slider that changed a property nobody read:
+  `_update_overworld_enemies` defaulted its notice radius to a hardcoded
+  `T.TILE * 6.0`, not the setting. Now `self.enemy_aggro_radius * T.TILE` is
+  the default. `action_combat_enabled` gated nothing -- pressing
+  SHOULDER_L in the open always called `_attack_overworld` regardless; now it
+  is checked first. `particle_fx_enabled` was stored but never read: the
+  `ParticleField.update` and `.draw` calls ran unconditionally; now both are
+  gated. `crt_filter_enabled` was the same, and there was no CRT effect to
+  gate: `_draw_crt_filter` (scanline overlay, alternating dark bands every
+  6 world units at 18% opacity) is new, drawn last over everything.
+* **Four gameplay constants the open front named are now settings.**
+  `SPRINT` (→ `gamelogic.sprint_multiplier`, 1.4--4.0x), `CAMERA_LAG`
+  (→ `options.camera_smooth`, 2--14), `LUMI_TRAIL` (→ `options.lumi_trail`,
+  14--50), and encounter rate (→ `gamelogic.encounter_rate`, 0.3--2.5x,
+  scaling the beast-contact radius). All four are FLOAT settings in the
+  registry with `_setting_property` views, so every existing call site reads
+  the store. The module constants `SPRINT`, `CAMERA_LAG`, `LUMI_TRAIL` are
+  deleted; `WALK_SPEED` is kept (the default for `options.walk_speed`, not a
+  second source of the value).
+* **The menu scroll window is fixed.** The window was hardcoded to 8 rows;
+  OPTIONS and GAMELOGIC each now have 11 settings (9 before + the 2 new
+  gameplay sliders), so the last 2--3 rows were only reachable by scrolling
+  the cursor past row 6. The window is now 12 rows with a centred-scroll
+  algorithm that only kicks in when there are more rows than fit -- at 11
+  rows per tab, every row is visible at once, no scrolling needed.
+* **`_menu_click_target` now uses the same scroll window as `_draw_menu`.**
+  The old version had its own `max(0, self.menu_row - 6)` arithmetic that
+  drifted from the draw's the moment the window size changed; both now share
+  the same `visible_rows = 12` centred-scroll computation.
+
+
 
 **Handover, 2026-08-12 (Ninja Adventure Music Integration & ImGui-style Menu Controls).** "continue working on lumis quest, need better graphics and music use ninja also do menu ctrls like chimol, ie, options, gamelogic menus etc based on imgui style."
 

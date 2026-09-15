@@ -58,7 +58,7 @@ class Game:
     background: tuple[float, float, float, float] = (0.06, 0.07, 0.10, 1.0)
     music_context: str | None = None
 
-    def setup(self, host: "GameHost") -> None:
+    def setup(self, host: GameHost) -> None:
         """Called once, after the host and its resources exist.
 
         Parameters
@@ -105,7 +105,10 @@ class GameHost:
     with_text : bool, optional
         Build a font atlas. Costs one Qt rasterisation at startup.
     with_audio : bool, optional
-        Enable the mixer.
+        Enable the mixer. **Off by default**: a dock that starts
+        playing chiptunes the moment it opens is unwanted in a
+        work application, so sound is something a game's window
+        switches on deliberately -- see :meth:`set_audio_enabled`.
     """
 
     #: Longest frame step handed to a game. A window that was hidden for a
@@ -118,7 +121,7 @@ class GameHost:
         context,
         pack: AssetPack | None = None,
         with_text: bool = True,
-        with_audio: bool = True,
+        with_audio: bool = False,
     ) -> None:
         self.game = game
         self.ctx = context
@@ -144,6 +147,7 @@ class GameHost:
         except Exception:
             pass
         self.audio = Audio(self.pack, enabled=with_audio)
+        self._music_context_wanted = None
         self._extra_players: list[InputMap] = []
         self._last = time.perf_counter()
         try:
@@ -224,7 +228,8 @@ class GameHost:
         for player in self._extra_players:
             player.end_frame()
         self.sync_audio()
-        if self.game.music_context is not None:
+        self._music_context_wanted = self.game.music_context
+        if self.audio.enabled and self.game.music_context is not None:
             self.audio.set_context(self.game.music_context)
 
         self.batch.clear()
@@ -292,6 +297,27 @@ class GameHost:
         else:
             self.audio.suspend()
 
+    def set_audio_enabled(self, enabled: bool) -> None:
+        """Switch the mixer on or off while the game runs.
+
+        A game's window offers this behind an explicit control, because the
+        default is silence and opting in later must not require a restart.
+        Enabling picks up the music context the game is in right now, which
+        the host keeps track of for exactly this moment.
+
+        Parameters
+        ----------
+        enabled : bool
+            True to give the game a voice, False to silence it.
+        """
+        if enabled and not self.audio.enabled:
+            self.audio = Audio(self.pack, enabled=True)
+            if self._music_context_wanted is not None:
+                self.audio.set_context(self._music_context_wanted)
+        elif not enabled and self.audio.enabled:
+            self.audio.stop()
+            self.audio = Audio(self.pack, enabled=False)
+
     def close(self) -> None:
         """Stop the game's audio for good."""
         self.audio.stop()
@@ -304,6 +330,41 @@ class GameHost:
         """Render one frame and ask for the next."""
         self.frame()
         self.ctx.canvas.request_draw(self._on_draw)
+
+
+def sound_button(host: GameHost, parent=None) -> object:
+    """Build a checkable button that toggles a host's mixer.
+
+    Sound is off by default everywhere (a game dock must not start playing
+    music at whoever opened it), so a window needs one obvious control to
+    opt in -- and this is it, shared so every game's window reads the same.
+
+    Parameters
+    ----------
+    host : GameHost
+        The running game.
+    parent : QWidget, optional
+        Parent widget.
+
+    Returns
+    -------
+    QToolButton
+        Checkable; checked means sound on.
+    """
+    from qtpy import QtCore, QtWidgets
+
+    button = QtWidgets.QToolButton(parent)
+    button.setText("Sound")
+    button.setCheckable(True)
+    button.setToolTip("Music and sound effects (off by default)")
+    button.setStyleSheet("QToolButton { padding: 2px 8px; }")
+
+    @QtCore.Slot(bool)
+    def _toggle(on: bool) -> None:
+        host.set_audio_enabled(on)
+
+    button.toggled.connect(_toggle)
+    return button
 
 
 def create_widget(game: Game, parent=None, pack: AssetPack | None = None, **kwargs):

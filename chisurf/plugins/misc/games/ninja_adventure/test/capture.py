@@ -1,8 +1,7 @@
 """Drive the Ninja Adventure port headlessly and save a PNG gallery.
 
-Same contract as the Lumis Quest capture harness: the real ``update`` and
-``draw`` through :func:`chisurf.gui.chigame.capture`, every screen in a
-deterministic state, written under ``test/renders/``.
+The real ``update`` and ``draw`` through :func:`chisurf.gui.chigame.capture`,
+every screen in a deterministic state, written under ``test/renders/``.
 
 Run::
 

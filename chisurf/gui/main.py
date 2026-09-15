@@ -19,7 +19,7 @@ from chisurf.gui import misc_helpers, project_helpers, fit_helpers
 
 
 import chisurf as cs
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.base
 import chisurf.core.fio
 import chisurf.core.experiments
@@ -1106,15 +1106,6 @@ class Main(
         except Exception:
             pass
 
-        # The one way into the hidden game. See chisurf/gui/easter_egg.py for
-        # why it is not a menu entry.
-        try:
-            from chisurf.gui import easter_egg
-
-            self._easter_egg = easter_egg.install(QtWidgets.QApplication.instance())
-        except Exception:
-            self._easter_egg = None
-
         misc_helpers.setup_log_list_widget(self)
         self._init_history_browser()
 
@@ -1989,6 +1980,7 @@ class Main(
             except Exception:
                 pass
             fit_window.show()
+            fit_window.refresh_current_plot()
         except Exception:
             import chisurf.logging
             chisurf.logging.exception("Failed to open fit subwindow")
@@ -2040,6 +2032,11 @@ class Main(
         """Close all MDI fit subwindows without triggering fit-remove actions."""
         try:
             for sub in list(self.mdiarea.subWindowList()):
+                # ``close()`` is deferred by Qt. Project replacement may create
+                # the restored windows before that event runs, leaving both
+                # generations in the MDI area. Detach synchronously at the
+                # application-state transaction boundary, then close resources.
+                self.mdiarea.removeSubWindow(sub)
                 sub.close()
         except Exception:
             pass

@@ -36,7 +36,6 @@ from chisurf.gui.chigame.actors import (
     Destroyable,
     Team,
     Weapon,
-    draw_sorted,
     strike,
 )
 from chisurf.gui.chigame.behavior import Follow, Patrol, Sense
@@ -162,6 +161,7 @@ class NinjaAdventure(chigame.Game):
         }
         self.destroyables: list[Destroyable] = []
         self.layers: list[TileMap] = []
+        self.wall_layers: list[TileMap] = []
         self.solid_cells: set[tuple[int, int]] = set()
         # The reference's base map scene pins the stacking with per-layer
         # z-indices: layer 3 is "Floor" (z_index -2, the ground), layer 2
@@ -190,9 +190,16 @@ class NinjaAdventure(chigame.Game):
                 if (cell["source"], cell["ax"], cell["ay"]) in solids_raw:
                     self.solid_cells.add((cell["x"], cell["y"]))
             origin = (offset[0] + min(xs) * tile, offset[1] + min(ys) * tile)
-            self.layers.append(
-                TileMap(grid, None, tile=tile, offset=origin)
-            )
+            tile_map = TileMap(grid, None, tile=tile, offset=origin)
+            self.layers.append(tile_map)
+            # The reference y-sorts its two wall layers WITH the actors
+            # (``y_sort_enabled`` + ``y_sort_origin = -5`` on layers 0/1 of
+            # ``system/map/map.tscn``): a player below a house walks in front
+            # of its front wall, one above it is hidden behind the roof.
+            # Layers 2/3 carry negative z-indices and stay under everything,
+            # so only the wall maps join the actors' painter queue.
+            if layer["index"] <= 1:
+                self.wall_layers.append(tile_map)
 
         uv_table = np.zeros((len(self._uv_entries), 4), dtype=np.float32)
         for index, (grid_name, ax, ay) in enumerate(self._uv_entries):
@@ -568,15 +575,35 @@ class NinjaAdventure(chigame.Game):
         camera = scene.camera
         width, height = scene.batch._ctx.size
         aspect = width / max(height, 1)
+        walls = set(self.wall_layers)
         for layer in self.layers:
-            layer.draw_visible(scene, camera, aspect)
+            if layer not in walls:
+                layer.draw_visible(scene, camera, aspect)
 
+        # The wall tiles y-sort with the figures, keyed the reference's way:
+        # a tile's sort origin is its bottom edge shifted by the layer's
+        # ``y_sort_origin`` of -5, which is its centre y + 3. An actor's key
+        # is its feet, so a figure below a wall tile draws over it and one
+        # above is hidden behind it, exactly as the Godot scene sorts.
+        entries: list[tuple[float, object]] = []
+        for wall in self.wall_layers:
+            instances = wall.visible_instances(camera, aspect)
+            for row in instances:
+                entries.append((float(row[1]) + 3.0, row))
         figures = [a for a in self.actors if a is not self.player]
         figures += self.destroyables
-        draw_sorted(scene, figures)
-        if self.player.health is None or self.player.health.alive:
-            self.player_weapon.draw(scene, self.player)
-            self.player.draw(scene)
+        entries += [(figure.draw_order, figure) for figure in figures
+                    if figure.health is None or figure.health.alive]
+        player_alive = self.player.health is None or self.player.health.alive
+        if player_alive:
+            entries.append((self.player.draw_order, self.player))
+        for _key, thing in sorted(entries, key=lambda item: item[0]):
+            if isinstance(thing, np.ndarray):
+                scene.batch.add_array(thing.reshape(1, -1))
+            else:
+                if thing is self.player and player_alive:
+                    self.player_weapon.draw(scene, self.player)
+                thing.draw(scene)
 
         self.weather.draw(scene, camera)
 

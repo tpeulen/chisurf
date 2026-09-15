@@ -196,42 +196,6 @@ def test_a_game_in_a_window_nobody_is_looking_at_goes_quiet(qapp):
     host.close()
 
 
-def test_music_follows_where_the_player_is(qapp, tmp_path):
-    """One context everywhere is one loop everywhere, which is the whole bug."""
-    pytest.importorskip("wgpu")
-    from chisurf.plugins.misc.games.lumis_quest.api.world import build_world
-    from chisurf.plugins.misc.games.lumis_quest.gui.overworld import OverworldGame
-
-    root = tmp_path / "docs" / "guides"
-    root.mkdir(parents=True)
-    for index in range(6):
-        (root / f"p{index}.md").write_text(f"# P{index}\n\nProse.\n", encoding="utf-8")
-    (root / "index.md").write_text(
-        "# Guides\n\n```{toctree}\n\n" + "\n".join(f"p{i}" for i in range(6)) + "\n```\n",
-        encoding="utf-8",
-    )
-    world = build_world(tmp_path / "docs")
-    game = OverworldGame(world=world, save_path=tmp_path / "run.json")
-    from chisurf.gui import chigame
-
-    chigame.capture(game, size=(64, 64), frames=1,
-                    script=lambda index, host: game.finish_loading(skip_prologue=True))
-
-    village = world.villages[0]
-    col, row, width, height = village.rect
-    game.player_pos = [(col + width / 2) * 18.0, (row + height * 0.6) * 18.0]
-    assert game.music_context == "town"
-    game.dark = True
-    assert game.music_context == "underworld"
-    game.dark = False
-    game.battle = object()
-    assert game.music_context == "battle"
-    game.battle = None
-    game.player_pos = [4.0, 4.0]
-    assert game.music_context == "overworld"
-    assert set(audio.CONTEXTS) >= {"town", "underworld", "battle", "overworld"}
-
-
 def test_the_synthesiser_is_fast_enough_to_run_at_load_time():
     """A track that takes a second to build is a second of frozen window."""
     import time

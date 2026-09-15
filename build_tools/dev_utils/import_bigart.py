@@ -53,6 +53,15 @@ RECTS: dict[str, tuple[int, int, int, int]] = {
     # placeholder next to it. Two variants sit on the sheet (autumn above,
     # green below); the green one matches this world's palette.
     "big_tree": (0, 144, 64, 192),
+    # A steep pyramid roof on stilts -- the closest thing on the sheet to a
+    # watchtower or wayside shrine, for a street's more solemn addresses.
+    # Packed alone in the sheet's top-right corner, so the crop is clean.
+    "house_temple": (272, 0, 320, 48),
+    # A second domed dwelling with its own porch below the dome -- smaller
+    # and rounder than the barn, so a street reads as neighbours rather
+    # than one plan stamped twice. Its sheet neighbours touch at the tile
+    # line, which the crop follows exactly.
+    "house_lodge": (64, 96, 96, 144),
 }
 
 

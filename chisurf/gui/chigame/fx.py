@@ -9,8 +9,6 @@ nothing when off.
 
 from __future__ import annotations
 
-import random
-
 import numpy as np
 
 from .render import Camera
@@ -198,10 +196,21 @@ class Weather:
             left = states[:, 1] > self.view[1]
             states[left, 1] -= self.view[1]
             states[left, 0] = np.random.random(int(left.sum())) * self.view[0]
+            # Sway can walk a particle past the side of a box that shrank
+            # under it (a zoom in), and a falling kind has no horizontal
+            # wrap of its own -- without this it would hang off-screen until
+            # its next bottom wrap, which for a leaf is most of a minute.
+            wide = states[:, 0] > self.view[0]
+            states[wide, 0] -= self.view[0]
         if self._clouds is not None:
             self._clouds[:, 0] += 12.0 * self._clouds[:, 2] * dt
-            left = self._clouds[:, 0] > self.view[0] + 60.0
-            self._clouds[left, 0] = -60.0
+            # Wrap each cloud outside its *own* width: the sprite is roughly
+            # 80 source pixels times the cloud's scale, and a fixed ±60-unit
+            # margin pops a zoomed cloud into existence fully on-screen --
+            # at a close zoom the art is hundreds of world units wide.
+            width = 80.0 * self._clouds[:, 2]
+            gone = self._clouds[:, 0] - width > self.view[0]
+            self._clouds[gone, 0] = -width[gone]
         if self.fog_alpha != self.fog_target:
             step = dt / 2.0
             if self.fog_alpha < self.fog_target:
@@ -229,6 +238,25 @@ class Weather:
             ``(x, y, scale, phase)`` in view coordinates, top-left origin.
         """
         states = self._drops.get(kind)
+        if states is None:
+            return
+        for x, y, scale, phase in states:
+            yield float(x), float(y), float(scale), float(phase)
+
+    def clouds(self):
+        """Yield the drifting cloud states, view-relative.
+
+        Clouds are not a falling kind: they live in their own population and
+        drift sideways rather than fall, so a game drawing weather through
+        its own sprite names gets them through this rather than
+        :meth:`particles`.
+
+        Yields
+        ------
+        tuple of float
+            ``(x, y, scale, phase)`` in view coordinates, top-left origin.
+        """
+        states = self._clouds
         if states is None:
             return
         for x, y, scale, phase in states:

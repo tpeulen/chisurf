@@ -34,8 +34,15 @@ class NinjaAdventureWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.game = NinjaAdventure()
         canvas, self.host = chigame.create_widget(self.game, parent=self)
+        bar = QtWidgets.QHBoxLayout()
+        bar.setContentsMargins(4, 2, 4, 0)
+        bar.addWidget(chigame.sound_button(self.host, self))
+        bar.addStretch(1)
+        layout.addLayout(bar)
         layout.addWidget(canvas)
-        self.resize(900, 640)
+        # 4:3 -- the game's panels and battle text were laid out against a
+        # nearly square canvas; a widescreen default put them off the bottom.
+        self.resize(800, 600)
 
     def closeEvent(self, event) -> None:
         """Stop the audio when the dock closes.

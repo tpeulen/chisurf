@@ -63,13 +63,18 @@ SIZE = 16
 #: Grass and water each get a second variant because the renderer picks between
 #: two by position -- one tile repeated across a field betrays the grid
 #: immediately, and that is as true of good art as of bad.
+#: Grass, sand and road carry whole families now (the floor sheet's own
+#: variant runs), picked per position by the renderer the same way.
 TILES: dict[str, tuple[str, int, int]] = {
     "grass": ("tileset_floor", 2, 12),
     "grass2": ("tileset_floor", 3, 12),
-    # No sand2: the renderer only picks a positional variant where a "<name>2"
-    # sprite exists, and sand has none. Cutting a tile nothing draws is waste,
-    # and the guard in test_pixelart is what said so.
+    "grass3": ("tileset_floor", 1, 12),
+    "grass4": ("tileset_floor", 4, 12),
+    "grass5": ("tileset_floor", 0, 12),
     "sand": ("tileset_floor", 2, 5),
+    "sand2": ("tileset_floor", 1, 5),
+    "sand3": ("tileset_floor", 3, 5),
+    "sand4": ("tileset_floor", 4, 5),
     # Two *interior* water cells, whose ripples fall in different places. The
     # renderer alternates them on a clock, so the pair has to differ in detail
     # and not in kind: pairing a rippled tile with the block's plain fill makes
@@ -79,15 +84,38 @@ TILES: dict[str, tuple[str, int, int]] = {
     "water2": ("tileset_floor", 6, 23),
     "marsh": ("tileset_floor", 12, 12),
     "road": ("tileset_floor", 13, 19),
+    "road2": ("tileset_floor", 12, 19),
+    "road3": ("tileset_floor", 14, 19),
     "garden": ("tileset_floor", 15, 12),
     # The made ground -- paving, boards, the recovery pad, and the dark
     # manifold's dead stone -- comes from the interior sheet, because the floor
     # sheet is all *natural* ground and its palest tile is snow. A town square
     # paved in snow was the first thing the screenshot said.
     "plaza": ("tileset_interior_floor", 14, 11),
+    "plaza2": ("tileset_interior_floor", 19, 7),
+    "plaza3": ("tileset_interior_floor", 20, 8),
     "floor": ("tileset_interior_floor", 14, 5),
+    # The made ground carries positional variants like every natural material
+    # -- one repeated cell stamped a diamond medallion across every village
+    # floor and read as wallpaper. The picks are the same sheets' plain runs:
+    # opaque, and within a few tone steps of their base (a tone spread inside
+    # the family paints the ground as a checkerboard -- see the ash note).
+    "floor2": ("tileset_interior_floor", 19, 1),
+    "floor3": ("tileset_interior_floor", 20, 2),
     "clinic": ("tileset_interior_floor", 11, 4),
-    "ash": ("tileset_interior_floor", 12, 13),
+    # The dark manifold's ground. The interior-floor cell this replaced was
+    # paving -- a cobbled floor reading across open ash country as one
+    # repeated room. These are the floor sheet's trodden-earth interior
+    # cells: opaque, within a couple of tone steps of each other (the run
+    # also holds light cells, orange-rooted cells and grey edge pieces -- a
+    # tone spread inside the family is what painted the manifold as a
+    # checkerboard once already), differing in their faint streaks and
+    # marks. The renderer picks between them per position like every other
+    # family; the roads keep their own lighter cells, so "your own road"
+    # still reads against the ash.
+    "ash": ("tileset_floor", 16, 18),
+    "ash2": ("tileset_floor", 17, 18),
+    "ash3": ("tileset_floor", 19, 18),
     "boards": ("tileset_interior_floor", 1, 13),
     "iwall": ("tileset_interior_floor", 14, 13),
 }
@@ -105,15 +133,37 @@ CHAR_SOURCE = pathlib.Path("junk/NinjaAdventure/content/character")
 #: way the string art did. Villagers and townsfolk only ever face the camera
 #: today, so they take the down-facing frames only.
 CHAR_TILES: dict[str, tuple[str, int, int]] = {
-    # Iris stayed string art (gui/pixelart.py's _IRIS_* rows) after this ran
-    # once: ninja_blue read as a generic hooded ninja rather than as her, and
-    # the request the second time round was for the original look with a
-    # bigger head, not a different character. Villagers and townsfolk keep
-    # the pack art -- nobody has an opinion about their faces.
+    # The player and the companion stay **string art** (gui/pixelart.py's
+    # own rows): this ran once with ninja_blue for the player and the pig for
+    # the hound, and both read as someone else's characters -- a generic
+    # hooded ninja is not her, and a pig is not a hound of light. Villagers,
+    # townsfolk, keepers, healers, emissaries and the Wardens keep the pack
+    # art -- nobody has an opinion about their faces, and the attack-row
+    # Wardens read as bosses.
     "villager_0": ("samurai_green/samurai_green", 0, 0),
     "villager_1": ("samurai_green/samurai_green", 0, 1),
     "townsfolk_0": ("samurai_blue/sprite", 0, 0),
     "townsfolk_1": ("samurai_blue/sprite", 0, 1),
+    "keeper_0": ("samurai_green/samurai_green", 0, 2),
+    "keeper_1": ("samurai_green/samurai_green", 0, 3),
+    "healer_0": ("samurai_blue/sprite", 0, 2),
+    "healer_1": ("samurai_blue/sprite", 0, 3),
+    "emissary_0": ("samurai_blue/sprite", 1, 0),
+    "emissary_1": ("samurai_blue/sprite", 1, 1),
+    # Wardens: the attack row (4) of the samurai sheets -- a raised weapon
+    # reads as a boss from across the square.
+    "warden_0": ("samurai_green/samurai_green", 0, 4),
+    "warden_1": ("samurai_blue/sprite", 0, 4),
+    # Animals and beasts: the pig (the pack's own animal; unmarked wildlife
+    # has no identity to betray) and the samurai walk frames for the hooded
+    # "marked" variants. Wraiths and the spirit/squid families stay string
+    # art -- the pack has nothing that reads as either.
+    "animal_0": ("pig/pig", 0, 0), "animal_1": ("pig/pig", 1, 0),
+    "beast_0": ("pig/pig", 0, 0), "beast_1": ("pig/pig", 1, 0),
+    "ninja_beast_0": ("ninja_blue/sprite", 0, 1),
+    "ninja_beast_1": ("ninja_blue/sprite", 0, 3),
+    "samurai_beast_0": ("samurai_green/samurai_green", 0, 1),
+    "samurai_beast_1": ("samurai_green/samurai_green", 0, 3),
 }
 
 #: Sprite name -> file under :data:`PROP_SOURCE`, for ground-cover props that
@@ -122,12 +172,24 @@ CHAR_TILES: dict[str, tuple[str, int, int]] = {
 #: composite over whatever :data:`TILES` entry is drawn underneath -- see
 #: ``gui.pixelart.OVER_GROUND``.
 PROPS: dict[str, str] = {
-    # A round boulder with a mossy top, replacing the flat 3-tone string art.
-    "rock": "test/rock.png",
+    # A grey-blue boulder, replacing both the flat 3-tone string art and the
+    # orange `test/rock.png` boulder this cut ran with for a while -- on green
+    # grass a warm brown-orange round prop reads as pumpkins, not geology.
+    "rock": "objects/09.png",
     # A white five-petal flower on nothing, replacing the string-art scatter.
     "flowers": "grass/grass_3.png",
 }
 
+#: Ground clutter cut from the **in-tree** engine pack rather than from a
+#: junk/ checkout -- same CC0 NinjaAdventure source the engine assets carry
+#: (see that pack's CREDITS.md), so these re-cut anywhere without a clone.
+#: The pack's props are authored smaller than a tile (a 14x15 crate), so they
+#: are centred on a transparent 16x16 canvas rather than resampled.
+PACK_PROP_SOURCE = pathlib.Path("chisurf/gui/chigame/assets/pixel/props")
+PACK_PROPS: dict[str, str] = {
+    "crate": "crate",
+    "pot": "pot",
+}
 
 def _load(path: pathlib.Path) -> np.ndarray:
     """Read a PNG as RGBA.
@@ -152,6 +214,35 @@ def _load(path: pathlib.Path) -> np.ndarray:
     height, stride = image.height(), image.bytesPerLine()
     raw = np.frombuffer(image.constBits().asstring(stride * height), np.uint8)
     return raw.reshape(height, stride // 4, 4)[:, : image.width()].copy()
+
+
+def _load_padded(path: pathlib.Path) -> np.ndarray:
+    """Read an in-tree pack prop and centre it on a transparent tile.
+
+    :data:`PACK_PROPS` art is authored at its own size (a 14x15 crate), not
+    on the tile grid. Centring it on a transparent :data:`SIZE` canvas keeps
+    every pixel of it; resampling would blur it, and a corner anchor would
+    make every crate lean north-west.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The image.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(SIZE, SIZE, 4)`` uint8.
+    """
+    image = _load(path)
+    height, width = image.shape[:2]
+    if height > SIZE or width > SIZE:
+        raise SystemExit(f"{path}: {width}x{height} does not fit a {SIZE} tile")
+    canvas = np.zeros((SIZE, SIZE, 4), dtype=np.uint8)
+    x = (SIZE - width) // 2
+    y = (SIZE - height) // 2
+    canvas[y:y + height, x:x + width] = image
+    return canvas
 
 
 def _load_native(path: pathlib.Path) -> np.ndarray:
@@ -250,7 +341,7 @@ def build() -> None:
               for name in {sheet for sheet, _, _ in TILES.values()}}
     char_sheets = {name: _load(CHAR_SOURCE / f"{name}.png")
                    for name in {sheet for sheet, _, _ in CHAR_TILES.values()}}
-    names = sorted(TILES) + sorted(CHAR_TILES) + sorted(PROPS)
+    names = sorted(TILES) + sorted(CHAR_TILES) + sorted(PROPS) + sorted(PACK_PROPS)
     source: dict[str, list] = {}
     strip = np.zeros((SIZE, SIZE * len(names), 4), dtype=np.uint8)
     for index, name in enumerate(names):
@@ -268,6 +359,9 @@ def build() -> None:
             if cell.shape[:2] != (SIZE, SIZE):
                 raise SystemExit(f"{name}: {sheet} has no cell at ({col},{row})")
             source[name] = [sheet, col, row]
+        elif name in PACK_PROPS:
+            cell = _load_padded(PACK_PROP_SOURCE / f"{PACK_PROPS[name]}.png")
+            source[name] = [f"pack:{PACK_PROPS[name]}"]
         else:
             cell = _load_native(PROP_SOURCE / PROPS[name])
             source[name] = [PROPS[name]]

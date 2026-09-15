@@ -64,7 +64,7 @@ from .audio import Audio
 from .behavior import Follow, Patrol, Sense, wander
 from .camera import GLIDE_TIME, ROOM_SIZE, RoomCamera
 from .fx import CLOUD, FOG, LEAF, RAIN, SNOW, Transition, Weather
-from .game import Game, GameHost, capture, create_widget, save_png
+from .game import Game, GameHost, capture, create_widget, save_png, sound_button
 from .gpu import GpuContext, create_offscreen, get_adapter, get_device
 from .input import Action, InputMap
 from .pack import SheetPack
@@ -152,6 +152,7 @@ __all__ = [
     "get_device",
     "load_pixel_pack",
     "save_png",
+    "sound_button",
     "strike",
     "wander",
     "wavelength_to_srgb",
