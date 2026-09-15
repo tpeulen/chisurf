@@ -78,4 +78,4 @@ Polymer distance distributions.
 - Concept: {ref}`concept-distance-distributions` — why the donor decay carries
   the *width* and a steady-state efficiency does not, and how to choose $p(R)$.
 - {src}`chisurf/core/math/functions/rdf.py` (`saw_nu`, `ising_chain`, `worm_like_chain`, `gaussian_chain`)
-- Models: `core/models/tcspc/fret.py` (`SawNuModel`, `IsingChainModel`), `core/models/pda2c/saw_nu.py`.
+- Models: the IMP.bff descriptions `tcspc_fret_saw_nu` and `tcspc_fret_ising_chain` (shown in ChiSurf through `chisurf.core.models.description`), and `core/models/pda2c/saw_nu.py`.

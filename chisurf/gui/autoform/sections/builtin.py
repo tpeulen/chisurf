@@ -2839,7 +2839,7 @@ def _image_section_factory(model, target: str, **options):
     return ImageMapWidget(model, target, **options)
 
 
-# --- fit mixer (LifetimeMixtureModel AutoForm section) ---------------------
+# --- fit mixer (the tcspc_mixture view's AutoForm section) ----------------
 @register_section("fit_mixer")
 class FitMixerWidget(QtWidgets.QWidget):
     """Fit-selector and fraction-parameter UI for the LifetimeMixture AutoForm section.
@@ -2850,7 +2850,7 @@ class FitMixerWidget(QtWidgets.QWidget):
 
         {"type": "custom", "key": "fit_mixer"}
 
-    The model must expose the ``LifetimeMixtureModel`` API:
+    The model must expose the mixture API (the ``tcspc_mixture`` view's):
     ``lifetime_fits``, ``append_model(model, name)``, ``pop_model(idx)``,
     ``_fractions`` and ``model_names``.
     """

@@ -148,8 +148,9 @@ single-molecule work and is a non-issue there.
   they appear in the model editor.
 - Related concepts: {ref}`concept-fret` · {ref}`concept-anisotropy` ·
   {ref}`concept-distance-distributions` · {ref}`concept-maximum-entropy`.
-- Implementation: `chisurf/core/models/tcspc/pddem.py` (`PDDEM`,
-  `PDDEMModel`) with its editor layout `pddem.view.json`.
+- Implementation: the IMP.bff description `tcspc_pddem` (IMP.bff's
+  `data/model_search/tcspc_pddem.json`); ChiSurf's editor is generated from it
+  by `chisurf.core.models.description`.
 - Literature: {cite}`kalinin2004` for the PDDEM treatment;
   {cite}`lakowicz2006`, the energy-transfer chapters, for homo-transfer and for
   transfer to acceptors distributed in one, two or three dimensions.
