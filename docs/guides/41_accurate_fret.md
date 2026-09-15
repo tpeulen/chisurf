@@ -245,7 +245,7 @@ offset.
 ## Doing it entirely inside ndX
 
 If the bursts are already open in ndX, the round trip through this tool is
-unnecessary. ndX's own toolbar carries **🎯 Optimize FRET calibration**,
+unnecessary. ndX's own toolbar carries **🎯 FRET calibration**,
 which does the whole thing in one click on the loaded measurement:
 
 1. it reads the burst columns out of the window;
@@ -258,6 +258,33 @@ which does the whole thing in one click on the loaded measurement:
 4. it adds the accurate per-burst columns — `FRET efficiency (accurate)`,
    `Stoichiometry (accurate)`, `R_DA (accurate)`, `Off static FRET line` and
    `Population` — so they can be plotted and gated like any other column.
+
+While it runs, the toolbar shows a progress bar: the calibration is six
+refinement passes plus the bootstrap resamples, twice over when the backgrounds
+are fitted, and the bar counts those steps. Cancelling stops it and returns
+what it has, saying so in the report.
+
+The report opens in a window you can resize and read — the factor table, the
+uncertainties, the populations, and what was held fixed with the value this
+measurement would have given instead. Two buttons sit beside it: **Save
+calibration…** and **Save report…**.
+
+### Keeping a calibration
+
+**💾 Save calibration** and **📂 Load calibration** sit next to the calibrate
+button, and the calibration is stored **in the `.pto` measurement by default**.
+That container already holds the photon stream, the burst table and the
+background estimate; factors determined from that measurement belong beside
+them rather than in a file next to it that the next copy leaves behind. Each
+save is its own object, so an earlier calibration survives a later one, and
+loading takes the most recent unless you pick another.
+
+A separate `.fretcal.json` file is written instead when the window has no
+container, when the container cannot be written to, or when you ask for one. It
+is plain JSON, so it can be read, diffed and mailed without this program.
+
+Loading never changes anything silently: it shows which constants would change,
+and from what to what, before applying them.
 
 Step 4 is not redundant. ndX's own efficiency equation corrects donor
 leakage but has **no direct-excitation term**, so pushing constants alone cannot

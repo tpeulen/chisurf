@@ -59,6 +59,12 @@ class CalibrationOptions:
         self.linker_sigma: float = 6.0
         #: Also add the accurate per-burst E / S / R_DA columns.
         self.inject_columns: bool = True
+        #: Store the result in the measurement when it finishes. On by default
+        #: and into the `.pto` container by default: a calibration determined
+        #: from a measurement belongs beside that measurement's photons and
+        #: burst table, not in a file next to it that a later copy leaves
+        #: behind. Off writes nothing; the report window can still save.
+        self.save_when_done: bool = True
 
     def view_spec(self):
         """Resolve the AutoForm view spec from the authored view.json."""
@@ -84,6 +90,10 @@ class CalibrationOptions:
             "inject_columns": bool(self.inject_columns),
         }
 
+    def save_requested(self) -> bool:
+        """Whether the finished calibration should be stored automatically."""
+        return bool(self.save_when_done)
+
 
 def ask_calibration_options(parent, donor_lifetime: float = 4.0):
     """Show the options and return them, or ``None`` if the user cancelled."""
@@ -93,7 +103,7 @@ def ask_calibration_options(parent, donor_lifetime: float = 4.0):
 
     options = CalibrationOptions(donor_lifetime=donor_lifetime)
     dialog = QtWidgets.QDialog(parent)
-    dialog.setWindowTitle("Optimize FRET calibration")
+    dialog.setWindowTitle("FRET calibration")
     layout = QtWidgets.QVBoxLayout(dialog)
     layout.addWidget(AutoForm(options, dialog))
     buttons = QtWidgets.QDialogButtonBox(

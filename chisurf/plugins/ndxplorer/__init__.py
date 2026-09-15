@@ -139,7 +139,22 @@ if __name__ == "plugin":
                 ndx, donor_lifetime=float(constants.get("tauD0", 4.0) or 4.0))
             if options is None:
                 return
-            result = optimize_calibration_from_ndx(ndx, **options.as_kwargs())
+            # A calibration is six refinement passes plus fifty bootstrap
+            # resamples, and with `background="fit"` all of that twice. That is
+            # long enough that a window which simply stops responding looks
+            # broken, so the steps the calibration already counts are shown.
+            from chisurf.gui.progress import ChiSurfProgress
+
+            with ChiSurfProgress(ndx, "FRET calibration…", 100) as bar:
+                def _report(step: int, total: int, message: str) -> bool:
+                    """Drive the bar; False stops the calibration."""
+                    if total > 0:
+                        bar.setRange(0, int(total))
+                    bar.update_progress(int(step), message)
+                    return not bar.wasCanceled()
+
+                result = optimize_calibration_from_ndx(
+                    ndx, progress=_report, **options.as_kwargs())
             if not result.get("ok"):
                 dialogs.warning(
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
@@ -188,16 +203,30 @@ if __name__ == "plugin":
                 lines += ["", "Background: none (set to zero)"]
             if result["injected"]:
                 lines += ["", "New columns: " + ", ".join(result["injected"])]
-            dialogs.information(
-                ndx,
-                "Accurate FRET — calibration applied",
-                "The correction factors were optimized against the loaded data.",
-                detail="\n".join(lines),
+            # Store it before showing the report: the numbers are worth more
+            # than the window, and a user who closes the report should not
+            # thereby have discarded the calibration.
+            saved = None
+            if getattr(options, "save_when_done", False):
+                from chisurf.plugins.ndxplorer.calibration_io import save_calibration
+
+                saved = save_calibration(
+                    dict(getattr(ndx, "constants", {}) or {}),
+                    ndx=ndx, result=result, embed=True,
+                )
+            from chisurf.plugins.ndxplorer.calibration_report import (
+                show_calibration_report,
+            )
+
+            show_calibration_report(
+                ndx, "FRET calibration — applied", "\n".join(lines),
+                constants=dict(getattr(ndx, "constants", {}) or {}),
+                result=result, ndx=ndx, saved=saved,
             )
 
         calibration_toolbar = ndx.addToolBar("Accurate FRET")
         calibration_toolbar.setObjectName("ndxplorerAccurateFretToolbar")
-        calibrate_action = calibration_toolbar.addAction("🎯 Optimize FRET calibration")
+        calibrate_action = calibration_toolbar.addAction("🎯 FRET calibration")
         calibrate_action.setToolTip(
             "Find the donor-only / acceptor-only / FRET populations in the loaded "
             "bursts and determine the correction factors from them.\n\n"
@@ -209,6 +238,145 @@ if __name__ == "plugin":
             "code as the Accurate FRET step, not a second implementation."
         )
         calibrate_action.triggered.connect(_optimize_calibration)
+
+        def _save_calibration() -> None:
+            """Store the window's current constants as a calibration."""
+            from chisurf.plugins.ndxplorer.calibration_io import (
+                SUFFIX, container_of, save_calibration,
+            )
+            from qtpy import QtWidgets
+
+            constants = dict(getattr(ndx, "constants", {}) or {})
+            if not constants:
+                dialogs.warning(ndx, "FRET calibration",
+                                "This window carries no constants to save.")
+                return
+            container = container_of(ndx)
+            if container:
+                answer = QtWidgets.QMessageBox.question(
+                    ndx, "Save calibration",
+                    "Store the calibration in the measurement?\n\n"
+                    f"{container}\n\n"
+                    "Yes keeps it beside the photons and the burst table. "
+                    "No writes a separate file instead.",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    | QtWidgets.QMessageBox.Cancel,
+                    QtWidgets.QMessageBox.Yes,
+                )
+                if answer == QtWidgets.QMessageBox.Cancel:
+                    return
+                if answer == QtWidgets.QMessageBox.Yes:
+                    out = save_calibration(constants, ndx=ndx, embed=True)
+                    dialogs.information(
+                        ndx, "FRET calibration",
+                        f"Stored in {out.get('target', '')}" if out.get("ok")
+                        else f"Could not store: {out.get('error')}")
+                    return
+            start = (container.rsplit(".", 1)[0] + SUFFIX) if container else ("calibration" + SUFFIX)
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                ndx, "Save calibration", start,
+                f"FRET calibration (*{SUFFIX});;All files (*)")
+            if not path:
+                return
+            out = save_calibration(constants, ndx=ndx, path=path, embed=False)
+            dialogs.information(
+                ndx, "FRET calibration",
+                f"Saved to {out.get('target', '')}" if out.get("ok")
+                else f"Could not save: {out.get('error')}")
+
+        def _load_calibration() -> None:
+            """Read a calibration back and, if the user agrees, apply it."""
+            from chisurf.plugins.ndxplorer.calibration_io import (
+                SUFFIX, load_calibration, stored_calibrations,
+            )
+            from qtpy import QtWidgets
+
+            stored = stored_calibrations(ndx)
+            loaded = None
+            if stored:
+                answer = QtWidgets.QMessageBox.question(
+                    ndx, "Load calibration",
+                    f"This measurement carries {len(stored)} stored "
+                    f"calibration(s).\n\nLoad the most recent one? "
+                    f"No opens a file instead.",
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    | QtWidgets.QMessageBox.Cancel,
+                    QtWidgets.QMessageBox.Yes,
+                )
+                if answer == QtWidgets.QMessageBox.Cancel:
+                    return
+                if answer == QtWidgets.QMessageBox.Yes:
+                    loaded = load_calibration(ndx=ndx)
+            if loaded is None:
+                path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                    ndx, "Load calibration", "",
+                    f"FRET calibration (*{SUFFIX});;All files (*)")
+                if not path:
+                    return
+                loaded = load_calibration(path=path)
+            if not loaded.get("ok"):
+                dialogs.warning(ndx, "FRET calibration", str(loaded.get("error")))
+                return
+
+            constants = loaded.get("constants") or {}
+            before = dict(getattr(ndx, "constants", {}) or {})
+            # Show what would change BEFORE changing it: applying a calibration
+            # silently replaces numbers the user may have determined elsewhere.
+            changes = [
+                f"  {name}: {before.get(name, '—')!s} → {value}"
+                for name, value in sorted(constants.items())
+                if before.get(name) != value
+            ]
+            detail = "\n".join(
+                [f"Saved {loaded.get('saved_utc', '')} ({loaded.get('where')}: "
+                 f"{loaded.get('target', '')})"]
+                + ([f"Note: {loaded['note']}"] if loaded.get("note") else [])
+                + ["", ("Changes:" if changes else "Nothing would change.")]
+                + changes
+            )
+            if QtWidgets.QMessageBox.question(
+                    ndx, "Load calibration",
+                    "Apply this calibration to the window?\n\n" + detail,
+                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                    QtWidgets.QMessageBox.Yes) != QtWidgets.QMessageBox.Yes:
+                return
+            ndx.constants = {**before, **constants}
+            data_source = getattr(ndx, "data_source", None)
+            try:
+                if data_source is not None and hasattr(data_source, "compute_columns"):
+                    data_source.compute_columns(getattr(ndx, "equations", None))
+                if hasattr(ndx, "update_plots"):
+                    ndx.update_plots()
+            except Exception:
+                log("Loaded the calibration, but could not refresh the plots")
+            if ndx_parameters is not None:
+                ndx_parameters.pull(ndx)
+            if loaded.get("report"):
+                from chisurf.plugins.ndxplorer.calibration_report import (
+                    show_calibration_report,
+                )
+
+                show_calibration_report(
+                    ndx, "FRET calibration — loaded", loaded["report"],
+                    constants=dict(ndx.constants), ndx=ndx,
+                )
+
+        save_action = calibration_toolbar.addAction("💾 Save calibration")
+        save_action.setToolTip(
+            "Store the window's correction factors.\n\n"
+            "Into the .pto measurement by default, beside the photons and the "
+            "burst table it was determined from; a separate file when the "
+            "window has no container or you ask for one."
+        )
+        save_action.triggered.connect(_save_calibration)
+
+        load_action = calibration_toolbar.addAction("📂 Load calibration")
+        load_action.setToolTip(
+            "Read correction factors back — from this measurement's own stored "
+            "calibration, or from a file.\n\n"
+            "Shows what would change before changing anything."
+        )
+        load_action.triggered.connect(_load_calibration)
 
         if ndx_parameters is not None:
             def _sync_constants() -> None:

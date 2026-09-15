@@ -332,6 +332,15 @@ def classify_es_populations(stoichiometry, efficiency=None, *,
         makes the ``gamma``/``beta`` fit possible.
     donor_only_above : float, optional
         A mixture component centred above this stoichiometry is donor-only.
+    progress : callable, optional
+        Called as ``progress(step, total, message)`` after each refinement
+        iteration and each bootstrap resample, so a caller can drive a bar.
+        The work is not uniform -- the classification runs once per iteration
+        and the bootstrap once per resample -- so the steps are counted, not
+        timed. Returning ``False`` asks the calibration to stop early and
+        return what it has; anything else continues. Exceptions raised by the
+        callback are not caught: a cancel that has to be signalled by raising
+        is the caller's business, not this function's.
     acceptor_only_below : float, optional
         A mixture component centred below this stoichiometry is acceptor-only.
     max_components : int, optional
@@ -1009,7 +1018,8 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
                    assume_one_to_one: bool = True, min_population: int = 20,
                    max_fret_populations: int = 3,
                    donor_only_above: float = 0.75,
-                   acceptor_only_below: float = 0.25) -> AutoCalibration:
+                   acceptor_only_below: float = 0.25,
+                   progress=None) -> AutoCalibration:
     """Determine all FRET correction factors automatically from one measurement.
 
     The procedure, iterated until the factors stop moving (the classification
@@ -1133,6 +1143,21 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
     #: seed factors and their complaints are usually resolved by convergence.
     iteration_messages: list[str] = []
 
+    #: Steps a caller can watch: one per refinement iteration, one per
+    #: bootstrap resample. Counted rather than timed -- an iteration that
+    #: converges early simply leaves the bar short, which is honest.
+    _total_steps = int(n_iterations) + int(n_bootstrap)
+    _step = 0
+
+    def _tick(message: str) -> bool:
+        """Report one step; False when the caller asked to stop."""
+        nonlocal _step
+        _step += 1
+        if progress is None:
+            return True
+        return progress(_step, _total_steps, message) is not False
+
+    cancelled = False
     for iteration in range(1, int(n_iterations) + 1):
         iteration_messages = []
         es = corrected_es(
@@ -1196,6 +1221,11 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
             )
 
         current = np.array([calib.alpha, calib.delta, calib.gamma, calib.beta])
+        if not _tick(f"refining the correction factors (pass {iteration})"):
+            cancelled = True
+            messages.append(f"stopped by the caller after {iteration} iteration(s)")
+            previous = current
+            break
         if np.max(np.abs(current - previous)) < float(tolerance):
             converged = True
             previous = current
@@ -1208,8 +1238,9 @@ def auto_calibrate(i_dd, i_da, i_aa=None, *, calibration=None, lightpath: dict |
     # The data uncertainty first (bootstrap), then the optics prior: the
     # posterior weight of each side is only meaningful once both widths exist.
     uncertainties = _bootstrap_uncertainties(
-        calib, dd, da, aa, tau, line, split, n_bootstrap=n_bootstrap, seed=seed,
-        min_population=min_population,
+        calib, dd, da, aa, tau, line, split,
+        n_bootstrap=0 if cancelled else n_bootstrap, seed=seed,
+        min_population=min_population, tick=_tick,
     )
     if not np.isfinite(uncertainties.get("gamma", float("nan"))):
         uncertainties["gamma"] = float(gamma_estimates.get("lifetime_sigma", float("nan")))
@@ -1388,7 +1419,7 @@ def _combine_with_optics_priors(calib, data_sigma: dict, estimated: dict,
 
 
 def _bootstrap_uncertainties(calib, dd, da, aa, tau, line, split, *, n_bootstrap: int,
-                             seed: int, min_population: int) -> dict:
+                             seed: int, min_population: int, tick=None) -> dict:
     """Bootstrap the factor uncertainties with the population assignment fixed.
 
     Resampling *within* each class (rather than re-running the classification)
@@ -1404,7 +1435,10 @@ def _bootstrap_uncertainties(calib, dd, da, aa, tau, line, split, *, n_bootstrap
     idx_a = np.flatnonzero(split.acceptor_only)
     idx_f = np.flatnonzero(split.fret)
 
-    for _ in range(int(n_bootstrap)):
+    for _resample in range(int(n_bootstrap)):
+        if tick is not None and not tick(
+                f"bootstrapping the uncertainties ({_resample + 1}/{int(n_bootstrap)})"):
+            break
         if idx_d.size:
             s = rng.integers(0, idx_d.size, idx_d.size)
             collected["alpha"].append(leakage_from_donor_only(
