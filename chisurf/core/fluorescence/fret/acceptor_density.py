@@ -51,6 +51,7 @@ __all__ = [
     "transfer_efficiency",
     "quenching_factor",
     "quench_decay",
+    "absolute_density",
 ]
 
 #: Allowed dimensionalities.
@@ -155,3 +156,8 @@ def quench_decay(donor_decay_curve: np.ndarray, time: np.ndarray, tau_d0: float,
         raise ValueError(
             f"donor_decay_curve and time must have the same shape, got {y.shape} and {t.shape}")
     return y * quenching_factor(t, tau_d0, c_over_c0, dimension)
+
+
+def absolute_density(c_over_c0: float, forster_radius: float, dimension: int) -> float:
+    """The absolute acceptor density C/C0 * C0, in length^-dimension."""
+    return float(c_over_c0) * characteristic_density(forster_radius, dimension)

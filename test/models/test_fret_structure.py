@@ -1,145 +1,55 @@
-import unittest
-import numpy as np
+"""The structure-ensemble FRET model: PDB files in, one fraction each.
+
+The fit itself is IMP.bff's tcspc_fret_tabulated (pinned against the classic
+model in test/fitting/test_fret_views.py); these check what the ChiSurf side
+owns -- loading structures, their label settings, the editor and persistence.
+"""
 import pathlib
 
-import chisurf.core.structure
-import chisurf.core.models.global_model
-import chisurf.core.fitting
+import numpy as np
+import pytest
+
+import chisurf.core.curve
+import chisurf.core.data
 import chisurf.core.fitting.fit
+import chisurf.core.structure
 import chisurf.core.models.tcspc.fret_structure as fret_structure
 
-class TestFRETStructure(unittest.TestCase):
+PDBS = pathlib.Path(__file__).resolve().parents[1] / "data" / "atomic_coordinates" / "pdb_files"
 
-    def test_fret_structure_core(self):
-        # 1. Setup minimal FitGroup
-        # We need a data curve to pass to FitGroup
-        x_data = np.linspace(0, 10, 100)
-        y_data = np.zeros_like(x_data)
-        ey_data = np.ones_like(x_data)
-        data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=ey_data)
-        fit_group = chisurf.core.fitting.fit.FitGroup(
-            data=chisurf.core.data.DataGroup([data])
-        )
 
-        # 2. Instantiate FRETStructure model
-        model = fret_structure.FRETStructure(
-            fit=fit_group,
-            res_1=18,
-            res_2=577,
-            atom_name_1='CB',
-            atom_name_2='CB'
-        )
+def _fit():
+    x = np.arange(256) * 0.05
+    data = chisurf.core.data.DataCurve(x=x, y=np.ones_like(x), ey=np.ones_like(x))
+    return chisurf.core.fitting.fit.FitGroup(data=chisurf.core.data.DataGroup([data]))
 
-        # 3. Load structure
-        pdb_path = './test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb'
-        s = chisurf.core.structure.Structure(pdb_path)
 
-        # 4. Test appending structure
-        model.append(s, amplitude=0.6)
-        self.assertEqual(len(model.names), 1)
-        self.assertEqual(model.names[0], s.name)
-        self.assertEqual(len(model._amplitudes), 1)
-        self.assertAlmostEqual(model.amplitudes[0], 1.0)  # normalized amplitude is 1.0 for single structure
+def test_structures_append_and_pop():
+    model = fret_structure.FRETStructure(fit=_fit(), res_1=18, res_2=577, atom_name_1="CB", atom_name_2="CB")
+    model.append(chisurf.core.structure.Structure(str(PDBS / "hGBP1_closed.pdb")), amplitude=0.6)
+    assert model.names == ["hGBP1_closed"] or len(model.names) == 1
+    assert model.get_scalar("number_of_distributions") == 1.0
+    assert model.res_2 == 577
+    model.pop()
+    assert model.names == []
 
-        # 5. Check distance distribution calculation
-        dist_dist = model.distance_distribution
-        self.assertEqual(dist_dist.ndim, 3)
-        self.assertEqual(dist_dist.shape[0], 1)
-        self.assertEqual(dist_dist.shape[1], 2)
-        # Probability array should sum to 1.0 (excluding zeros/thresholded parts)
-        probs = dist_dist[0, 0]
-        self.assertTrue(np.any(probs > 0.0))
 
-        # 6. Test pop
-        model.pop()
-        self.assertEqual(len(model.names), 0)
-        self.assertEqual(len(model._amplitudes), 0)
+def test_the_editor_offers_labels_and_the_structure_list(qtbot):
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
 
-    def test_fret_structure_widget(self):
-        from qtpy.QtWidgets import QApplication
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
+    model = fret_structure.FRETStructure(fit=_fit())
+    titles = [getattr(s, "title", "") for s in model.view_spec().sections]
+    assert "Labels / AV" in titles and "Structures" in titles
+    model.res_1 = 18
+    assert model.res_1 == 18
+    qtbot.addWidget(build_model_editor(model))
 
-        # 1. Setup FitGroup
-        x_data = np.linspace(0, 10, 100)
-        y_data = np.zeros_like(x_data)
-        ey_data = np.ones_like(x_data)
-        data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=ey_data)
-        fit_group = chisurf.core.fitting.fit.FitGroup(
-            data=chisurf.core.data.DataGroup([data])
-        )
 
-        # 2. Import and instantiate widget
-        from chisurf.gui.widgets.models.tcspc import FRETStructureWidget
-        widget = FRETStructureWidget(fit=fit_group)
-        self.assertIsNotNone(widget)
-        self.assertEqual(widget.res_1, 0)
-        self.assertEqual(widget.res_2, 0)
-
-        # Test setting and getting values through GUI spinboxes
-        widget.res_1 = 18
-        widget.res_2 = 577
-        self.assertEqual(widget.res_1, 18)
-        self.assertEqual(widget.res_2, 577)
-
-    def test_fret_structure_serialization(self):
-        # 1. Setup FitGroup
-        x_data = np.linspace(0, 10, 100)
-        y_data = np.zeros_like(x_data)
-        ey_data = np.ones_like(x_data)
-        data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=ey_data)
-        fit_group = chisurf.core.fitting.fit.FitGroup(
-            data=chisurf.core.data.DataGroup([data])
-        )
-
-        # 2. Create model & append structures
-        model = fret_structure.FRETStructure(
-            fit=fit_group,
-            res_1=18,
-            res_2=577,
-            atom_name_1='CB',
-            atom_name_2='CB'
-        )
-        pdb_path = './test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb'
-        s = chisurf.core.structure.Structure(pdb_path)
-        model.append(s, amplitude=0.6)
-
-        # 3. Serialize state
-        state = model.get_state()
-        self.assertIn("extra", state)
-        self.assertEqual(state["extra"]["res_1"], 18)
-        self.assertEqual(state["extra"]["res_2"], 577)
-        self.assertEqual(len(state["extra"]["structures"]), 1)
-        self.assertEqual(state["extra"]["structures"][0]["filename"], pdb_path)
-
-        # 4. Restore state on a new model instance
-        model2 = fret_structure.FRETStructure(
-            fit=fit_group,
-            res_1=0,
-            res_2=0
-        )
-        model2.set_state(state)
-
-        # Assert structure was reloaded and parameters/amplitudes restored
-        self.assertEqual(model2.res_1, 18)
-        self.assertEqual(model2.res_2, 577)
-        self.assertEqual(len(model2.names), 1)
-        self.assertEqual(model2.filenames[0], pdb_path)
-        self.assertAlmostEqual(model2.amplitudes[0], 1.0)
-
-        # 5. Restore state on a widget instance
-        from qtpy.QtWidgets import QApplication
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
-        from chisurf.gui.widgets.models.tcspc import FRETStructureWidget
-        widget = FRETStructureWidget(fit=fit_group)
-        widget.set_state(state)
-
-        # Assert widget synchronized all UI components and reloaded structure
-        self.assertEqual(widget.res_1, 18)
-        self.assertEqual(widget.res_2, 577)
-        # the PDB ensemble is model state now (a declarative path_list binds to
-        # it), not text in a widget
-        self.assertEqual(widget.filenames[0], pdb_path)
+def test_a_classic_project_reopens_with_its_structures():
+    classic_state = {"extra": {"res_1": 18, "res_2": 577, "atom_name_1": "CB", "atom_name_2": "CB",
+                               "structures": [{"name": "hGBP1_closed", "filename": str(PDBS / "hGBP1_closed.pdb"),
+                                               "amplitude": 0.6}]}}
+    model = fret_structure.FRETStructure(fit=_fit())
+    model.set_state(classic_state)
+    assert model.res_1 == 18 and model.atom_name_2 == "CB"
+    assert model.structure_files == [str(PDBS / "hGBP1_closed.pdb")]

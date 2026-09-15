@@ -383,6 +383,9 @@ class DescriptionModel(ModelCurve):
                 name = info["port"].format(i=i)
                 if name not in self._bound_ports:
                     missing.append(name)
+            axis_port = info.get("axis_port")
+            if axis_port and axis_port not in self.__dict__.get("_value_ports", {}):
+                missing.append(axis_port)
         self.missing = missing
         if missing or self.__dict__.get("_bound_primary") is None:
             return None
@@ -480,10 +483,11 @@ class DescriptionModel(ModelCurve):
                 settings.append(vs.ValueSection(label=info.get("label", name), kind="float", attr=f"scalars.{name}"))
         sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
         sources = self.source_info
-        if sources:
+        if sources and sources.get("kind") != "values":
             sections.append(vs.PanelSection(title=sources.get("label", "Models"), sections=(
                 vs.CustomSection(key="fit_mixer"),)))
-        source_parameter = sources.get("parameter", "").split("{")[0] if sources else ""
+        source_parameter = (sources.get("parameter", "").split("{")[0]
+                            if sources and sources.get("kind") != "values" else "")
         for attribute, group in self._groups.items():
             if source_parameter and all(
                     p.canonical_id.startswith(source_parameter) for p in group.parameters_all):
@@ -592,6 +596,28 @@ class DescriptionModel(ModelCurve):
                                               or f"model {len(self._source_models)}"))
         self._bind_sources()
 
+    def append_values(self, values, name: typing.Optional[str] = None) -> None:
+        """Bind a given array as one more source (a description with `kind: values`)."""
+        info = self.source_info
+        if info.get("kind") != "values":
+            raise TypeError(f"{self.name!r} reads models, not given values")
+        self._source_models.append(np.ascontiguousarray(np.asarray(values, dtype=float).ravel()))
+        self._source_names.append(name or f"values {len(self._source_models)}")
+        self._bind_sources()
+
+    def set_port_values(self, name: str, values) -> None:
+        """Bind a given array to a port the description reads (a distance axis)."""
+        port = _bff.GraphPort(list(np.asarray(values, dtype=float).ravel()))
+        self.__dict__.setdefault("_value_ports", {})[name] = port
+        self._spec.set_port(name, port)
+        self._forget_discovery()
+        factorgraph.bump_structure_version()
+
+    def clear_sources(self) -> None:
+        self._source_models.clear()
+        self._source_names.clear()
+        self._bind_sources()
+
     def pop_model(self, idx: typing.Optional[int] = None):
         """Stop reading one source; the last one when ``idx`` is not given."""
         idx = len(self._source_models) - 1 if idx is None else int(idx)
@@ -613,13 +639,20 @@ class DescriptionModel(ModelCurve):
         for name in self._bound_ports:
             self._spec.unset_port(name)
         self._bound_ports = []
-        for i, model in enumerate(self._source_models):
-            problem = model.problem
-            if problem is None:
-                raise ValueError(f"{self._source_names[i]!r} is incomplete: missing "
-                                 + ", ".join(model.missing))
+        for i, source in enumerate(self._source_models):
             name = info["port"].format(i=i)
-            self._spec.set_port(name, problem.get_output_port(info["output"]))
+            if info.get("kind") == "values":
+                # A port of our own holding the array; kept, since the spec only
+                # references it.
+                port = _bff.GraphPort(list(source))
+                self.__dict__.setdefault("_value_ports", {})[name] = port
+                self._spec.set_port(name, port)
+            else:
+                problem = source.problem
+                if problem is None:
+                    raise ValueError(f"{self._source_names[i]!r} is incomplete: missing "
+                                     + ", ".join(source.missing))
+                self._spec.set_port(name, problem.get_output_port(info["output"]))
             self._bound_ports.append(name)
         self.set_scalar(info["count"], float(max(1, len(self._source_models))))
         self._forget_discovery()
@@ -689,16 +722,17 @@ class DescriptionModel(ModelCurve):
 
     def _update_statistics(self) -> None:
         statistics = self.presentation.get("statistics", {})
-        # Scalars a node computes itself (an efficiency from a density), shown
-        # the same way.
-        values = self.presentation.get("values", {})
-        if not statistics and not values:
+        # Reporting a description asks the application for (an efficiency
+        # from a density): a Python function of parameters, called on demand
+        # rather than evaluated by the graph on every fit iteration.
+        reports = self.presentation.get("reports", {})
+        if not statistics and not reports:
             return
         import chisurf.core.fluorescence.general as general
         outputs = self.__dict__.get("_statistic_parameters")
         if outputs is None:
             outputs = {}
-            for key, info in {**statistics, **values}.items():
+            for key, info in {**statistics, **reports}.items():
                 outputs[key] = FittingParameter(
                     value=0.0, name=info.get("label", key), fixed=True, is_output=True)
                 # Not a parameter of the BFF model: derived from it, shown beside it.
@@ -720,14 +754,41 @@ class DescriptionModel(ModelCurve):
             except Exception:
                 pass
         problem = self.problem
-        if values and problem is not None:
-            active = problem.get_active_structure()
-            for key, info in values.items():
+        if reports and problem is not None:
+            for key, info in reports.items():
                 try:
-                    read = problem.get_structure_port(active, f"{active}.{info['node']}", info["port"])
-                    outputs[key].value = float(np.atleast_1d(read)[0])
+                    outputs[key].value = float(self._call_report(problem, info))
                 except Exception:
                     pass
+
+    def _call_report(self, problem, info: dict):
+        """A report's function on its arguments: `#parameter`, `@axis.<name>` or a number."""
+        import importlib
+        module_name, function_name = info["function"].split(":")
+        function = getattr(importlib.import_module(module_name), function_name)
+        axes = self._structure_axes(problem.get_active_structure())
+        arguments = {}
+        for name, reference in info.get("arguments", {}).items():
+            if isinstance(reference, str) and reference.startswith("#"):
+                arguments[name] = float(problem.get_parameter(reference[1:]).value)
+            elif isinstance(reference, str) and reference.startswith("@axis."):
+                arguments[name] = axes[reference[len("@axis."):]]
+            else:
+                arguments[name] = reference
+        return function(**arguments)
+
+    def _structure_axes(self, key: str) -> dict:
+        """The axis values of a structure key, read against the description's template key."""
+        import re
+        template = (self._document.get("template") or {}).get("key", "")
+        names = re.findall(r"\{(\w+)\}", template)
+        if not names:
+            return {}
+        pattern = re.escape(template)
+        for name in names:
+            pattern = pattern.replace(re.escape("{" + name + "}"), f"(?P<{name}>-?\\d+)")
+        match = re.fullmatch(pattern, key)
+        return {k: int(v) for k, v in match.groupdict().items()} if match else {}
 
     def get_plot_reference_modes(self):
         from chisurf.core.plotting.reference_modes import modes_named

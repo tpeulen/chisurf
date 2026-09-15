@@ -256,3 +256,41 @@ def test_acceptor_density(dimension, periodic):
                  {"acceptor.c_over_c0": 0.8, "fret.tau0": 4.0},
                  scalars={"periodic_excitation": 1.0 if periodic else 0.0})
     np.testing.assert_allclose(np.asarray(view.y), np.asarray(reference), rtol=1e-9, atol=1e-9)
+
+
+def test_a_structure_ensemble():
+    """FRET against the accessible volumes of two structures at equal fractions.
+
+    ChiSurf's classic structure model is replaced; its curve at these numbers
+    was stored before (data/fret_structure_reference.json).
+    """
+    import json
+    import pathlib
+    import chisurf.core.structure
+    from chisurf.core.models.tcspc.fret_structure import FRETStructure
+
+    reference = json.loads((pathlib.Path(__file__).parent / "data" / "fret_structure_reference.json")
+                           .read_text())["curve"]
+    fit = fitting.Fit(model_class=FRETStructure, data=_data())
+    fit.xmin, fit.xmax = 0, N
+    model = fit.model
+    model.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=_irf()))
+    model.set_scalar("period", PERIOD)
+    model.res_1, model.res_2, model.atom_name_1, model.atom_name_2 = 18, 577, "CB", "CB"
+    pdbs = pathlib.Path(__file__).resolve().parents[1] / "data" / "atomic_coordinates" / "pdb_files"
+    model.load_structures([pdbs / "hGBP1_closed.pdb", pdbs / "hGBP1_open.pdb"])
+    assert model.names and len(model.structure_files) == 2
+    problem = model.problem
+    assert problem is not None, model.missing
+    for canonical, value in {"donor.amplitude.0": 1.0, "donor.tau.0": 3.8, "fret.x_donly": 0.15,
+                             "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0,
+                             "distance.amplitude.0": 0.5, "distance.amplitude.1": 0.5}.items():
+        _set(problem, canonical, value)
+    model.update()
+    np.testing.assert_allclose(np.asarray(model.y), np.asarray(reference), rtol=1e-9, atol=1e-9)
+    # The ensemble and its label settings survive a save and reload.
+    restored = fitting.Fit(model_class=FRETStructure, data=_data()).model
+    restored.set_dataset("response", chisurf.core.curve.Curve(x=_axis(), y=_irf()))
+    restored.set_scalar("period", PERIOD)
+    restored.set_state(model.get_state())
+    assert restored.res_2 == 577 and restored.structure_files == model.structure_files
