@@ -66,17 +66,25 @@ def test_describe_returns_the_entry_for_a_known_name():
     assert entry["name"] == name
 
 
+def _parameterless_container():
+    for name, entry in registry.entries(registry.FILE_CONTAINER).items():
+        if not (entry.get("params_schema") or {}).get("properties"):
+            return name
+    pytest.skip("every file container of this tttrlib declares parameters")
+
+
 def test_defaults_of_a_parameterless_entry_is_empty():
-    # File containers describe something with no parameters, so there is nothing
-    # to default — an empty dict rather than an error.
-    name = next(iter(registry.entries(registry.FILE_CONTAINER)))
+    # Most file containers describe something with no parameters, so there is
+    # nothing to default -- an empty dict rather than an error. (Ranged readers
+    # declare first_record/n_records now, so pick one that declares nothing.)
+    name = _parameterless_container()
     assert registry.defaults(registry.FILE_CONTAINER, name) == {}
 
 
 def test_entry_form_view_refuses_a_parameterless_entry():
-    # A container has no params_schema, so it cannot become a form; the module
-    # says so rather than building an empty one.
-    name = next(iter(registry.entries(registry.FILE_CONTAINER)))
+    # A container without a params_schema cannot become a form; the module says
+    # so rather than building an empty one.
+    name = _parameterless_container()
     with pytest.raises(ValueError, match="no parameters"):
         registry.entry_form_view(registry.FILE_CONTAINER, name)
     with pytest.raises(ValueError, match="no parameters"):

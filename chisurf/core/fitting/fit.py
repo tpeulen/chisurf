@@ -2412,10 +2412,12 @@ def sample_fit(
     sample_model = fit.model
     if global_posterior:
         sample_model = cs.core.fitting.factorgraph.posterior_model(fit)
-        if method not in ('blocked', 'collapsed', 'de'):
+        samplers = cs.core.fitting.sample.SAMPLERS
+        joint = [k for k, e in samplers.items() if e.get('samples_global_posterior')]
+        if samplers.get(cs.core.fitting.sample.resolve_sampler(method), {}).get('samples_global_posterior') is not True:
             raise ValueError(
-                "global_posterior=True requires method='blocked', 'collapsed' or 'de'; "
-                "the ensemble, slice and mcmc backends sample fit.model only."
+                "global_posterior=True requires method=" + ", ".join(repr(k) for k in joint)
+                + "; the other samplers sample fit.model only."
             )
         sample_model.update()
 
@@ -2627,81 +2629,28 @@ def sample_fit(
                 current_total_done = done_steps + done
                 progress_callback(current_total_done, total_steps)
 
-        if method == 'de':
-            r = cs.core.fitting.sample.sample_differential_evolution(
-                fit=fit,
-                steps=steps,
-                thin=thin,
-                chi2max=chi2max,
-                temp=temp,
-                callback=sampler_callback,
-                check_cancel=check_cancel,
-                model=sample_model,
-                **kwargs
-            )
-        elif method == 'collapsed':
-            r = cs.core.fitting.sample.sample_marginal_shared(
-                fit=fit,
-                steps=steps,
-                thin=thin,
-                step_size=step_size,
-                temp=temp,
-                check_cancel=check_cancel,
-                model=sample_model,
-                **kwargs
-            )
-        elif method == 'blocked':
-            # Independent sub-problems are sampled apart and merged exactly;
-            # with a single component this is the plain blocked walk.
-            r = cs.core.fitting.sample.sample_independent_components(
-                fit=fit,
-                steps=steps,
-                thin=thin,
-                chi2max=chi2max,
-                step_size=step_size,
-                temp=temp,
-                callback=sampler_callback,
-                check_cancel=check_cancel,
-                model=sample_model,
-                **kwargs
-            )
-        elif method == 'mcmc':
-            r = cs.core.fitting.sample.walk_mcmc(
-                fit=fit,
-                steps=steps,
-                thin=thin,
-                chi2max=chi2max,
-                step_size=step_size,
-                temp=temp,
-                callback=sampler_callback,
-                check_cancel=check_cancel,
-                **kwargs
-            )
-        elif method == 'slice':
-            r = cs.core.fitting.sample.sample_ensemble_slice(
-                fit,
-                steps=steps,
-                nwalkers=int(requested_walkers or max(int(fit.n_free * 2) + 2, 10)),
-                thin=thin,
-                chi2max=chi2max,
-                callback=sampler_callback,
-                check_cancel=check_cancel,
-                **kwargs
-            )
-        else:  # 'ensemble' (and the legacy name 'emcee')
-            # Ensure at least 10 walkers and at least 2*ndim+2 for robustness,
-            # unless the settings ask for a specific ensemble size.
-            n_walkers = int(requested_walkers or max(int(fit.n_free * 2) + 2, 10))
-            r = cs.core.fitting.sample.sample_ensemble(
-                fit,
-                steps=steps,
-                nwalkers=n_walkers,
-                thin=thin,
-                chi2max=chi2max,
-                callback=sampler_callback,
-                check_cancel=check_cancel,
-                **kwargs
-            )
+        # One call for every sampler: the registry entry says what it is, the
+        # function's signature what it takes.
+        sampler_entry = cs.core.fitting.sample.SAMPLERS[method]
+        sampler_function = cs.core.fitting.sample.sampler_function(method)
+        offered = dict(
+            fit=fit, steps=steps, thin=thin, chi2max=chi2max, step_size=step_size, temp=temp,
+            callback=sampler_callback, check_cancel=check_cancel, sampler=method,
+        )
+        if sampler_entry.get('samples_global_posterior'):
+            offered['model'] = sample_model
+        parameters = inspect.signature(sampler_function).parameters
+        if 'nwalkers' in parameters:
+            # at least 2 ndim + 2 and 10 walkers (the kernel's declared default
+            # rule), unless the settings ask for a specific ensemble size
+            rule = sampler_entry.get('default_walkers') or {}
+            n_default = max(int(rule.get('per_dim', 2)) * int(fit.n_free) + int(rule.get('offset', 2)),
+                            int(rule.get('minimum', 10)))
+            offered['nwalkers'] = int(requested_walkers or n_default)
+        r = sampler_function(
+            **{k: v for k, v in offered.items() if k in parameters},
+            **kwargs
+        )
 
         if success:
             save_chain(r, fn_final)

@@ -64,16 +64,26 @@ def have_sampler() -> bool:
     return _bff is not None
 
 
-# Warm-up defaults, mirroring the C++ side's own per-algorithm defaults.
-# They must be set *explicitly* because the C++ derives its default from
-# the first run() call's n_steps -- which under segmented driving is the
-# segment length, not the run length.
+def _kernel_entry(algorithm: str) -> dict:
+    """The IMP.bff registry entry of a sampler kernel (category ``sampler``)."""
+    entries = _bff.registry("sampler") if hasattr(_bff, "registry") else {}
+    if algorithm in entries:
+        return entries[algorithm]
+    for entry in entries.values():
+        if algorithm in entry.get("aliases", ()):
+            return entry
+    return {}
+
+
+# Warm-up defaults come from the kernel's registry entry, where the C++ side
+# declares them. They must still be set *explicitly* because the C++ derives
+# its default from the first run() call's n_steps -- which under segmented
+# driving is the segment length, not the run length.
 def _default_n_adapt(algorithm: str, steps: int) -> int:
-    if algorithm == "de":
-        return min(500, max(50, steps // 4))
-    if algorithm == "metropolis":
-        return min(500, max(100, steps // 20))
-    return 0  # stretch: chisurf's ensemble samplers have no warm-up
+    rule = _kernel_entry(algorithm).get("default_warmup") or {}
+    if rule.get("rule") == "clip":
+        return min(int(rule["max"]), max(int(rule["min"]), int(steps) // int(rule.get("divisor", 1))))
+    return int(rule.get("value", 0))
 
 
 def _seed_int(seed) -> int:
@@ -213,7 +223,8 @@ def sample_via_graph(
         flat = [int(i) for block in blocks for i in block]
         sizes = [len(block) for block in blocks]
         s.set_blocks(flat, sizes)
-    if algorithm == "metropolis" and use_curvature:
+    if _kernel_entry(algorithm).get("uses_covariance_seed") and use_curvature \
+            and not _kernel_entry(algorithm).get("requires_gradient"):
         # The curvature at the optimum is very nearly the ideal
         # preconditioner (chisurf's _seed_block_covariances), and without it
         # a strongly correlated posterior mixes so badly that 4000 steps
@@ -324,9 +335,10 @@ def _result(sampler, model, algorithm: str) -> dict:
                    else chain[np.newaxis, :, :]),
         'n_evaluations': int(sampler.n_evaluations),
     }
-    if algorithm == "de":
+    entry = _kernel_entry(algorithm)
+    if entry.get("population") == "chains":
         result['n_chains'] = n_walkers
-    if algorithm == "metropolis":
+    if entry.get("uses_blocks"):
         rates = np.asarray(sampler.block_acceptance_rates, dtype=float)
         if rates.size:
             result['block_acceptance'] = rates

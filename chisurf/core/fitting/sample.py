@@ -1,6 +1,7 @@
 """Parameter-space sampling backends (Metropolis and ensemble MCMC)."""
 from __future__ import annotations
 
+import collections.abc
 import inspect
 import math
 import typing
@@ -11,6 +12,7 @@ import chisurf as cs
 import chisurf.core.fitting
 import chisurf.core.fitting.ensemble
 import chisurf.core.fitting.minimizer
+from chisurf.core.registry import catalog as _catalog
 
 #: Relative forward-difference step for the conditional Jacobian of a local fit.
 #: The square root of the machine epsilon balances truncation against
@@ -53,7 +55,59 @@ def _rng(seed) -> np.random.Generator:
     return np.random.default_rng(seed)
 
 
+def register_sampler(key, kernel=None, label=None, description=None, legacy=False,
+                     samples_global_posterior=False, aliases=()):
+    """Register a sampling function in the registry (category ``sampler``).
+
+    The sampler list, the dispatcher in :func:`chisurf.core.fitting.fit.sample_fit`,
+    the sampling engine and every selector read the registry, so a sampler exists by
+    being registered here, next to its code -- nothing lists samplers by hand.
+
+    Parameters
+    ----------
+    key : str
+        The name settings and the API use for it.
+    kernel : str, optional
+        The IMP.bff sampler kernel (``IMP.bff.registry("sampler")``) this function
+        implements and, where the fit's objective builds as a graph, runs on. Its
+        entry supplies the label, description, references, requirements and
+        default warm-up unless given here; its key and aliases resolve to ``key``.
+    label, description : str, optional
+        Override the kernel's, where this function does more than the kernel
+        (independent sub-problems, a collapsed posterior) or has no kernel.
+    legacy : bool
+        Kept for compatibility; listed after the others.
+    samples_global_posterior : bool
+        Can sample a group's joint posterior (``global_posterior=True``).
+    aliases : sequence of str
+        Further names that resolve to ``key``.
+    """
+    def decorate(function):
+        entry = {'function': function.__name__, 'legacy': bool(legacy),
+                 'samples_global_posterior': bool(samples_global_posterior), 'aliases': list(aliases)}
+        if kernel:
+            entry['kernel'] = kernel
+        if label:
+            entry['label'] = label
+        if description:
+            entry['description'] = description
+            entry.setdefault('summary', description)
+        entry.setdefault('params_schema', {})
+        _catalog.register('sampler', key, entry)
+        return function
+    return decorate
+
+
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler(
+    'mcmc',
+    label='Metropolis (diagonal)',
+    description=(
+        'The historical diagonal random walk. Kept for compatibility; on a '
+        'correlated posterior it crawls.'
+    ),
+    legacy=True,
+)
 def walk_mcmc(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -558,6 +612,7 @@ def _regularised_covariance(draws: np.ndarray) -> np.ndarray | None:
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler('de', kernel='de', samples_global_posterior=True)
 def sample_differential_evolution(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -1082,6 +1137,17 @@ def walk_mcmc_blocked(
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler(
+    'blocked',
+    kernel='metropolis',
+    label='Blocked (covariance)',
+    description=(
+        'Proposes from a per-block covariance seeded by the curvature at '
+        'the optimum, with independent sub-problems sampled apart and '
+        'merged exactly. The one to reach for on a correlated posterior.'
+    ),
+    samples_global_posterior=True,
+)
 def sample_independent_components(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -1387,6 +1453,17 @@ def _profile_locals(groups, model, include_priors: bool = True):
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler(
+    'collapsed',
+    label='Collapsed (linked global fit)',
+    description=(
+        'Integrates each dataset\'s private parameters out analytically '
+        'and samples only the shared ones -- the right choice for a linked '
+        'global fit, where linking lowers the dimension but makes the '
+        'posterior harder to sample.'
+    ),
+    samples_global_posterior=True,
+)
 def sample_marginal_shared(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -1950,6 +2027,7 @@ def _sample_ensemble(
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler('ensemble', kernel='stretch')
 def sample_ensemble(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -2066,6 +2144,7 @@ def sample_ensemble(
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+@register_sampler('slice', kernel='slice')
 def sample_ensemble_slice(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -2231,70 +2310,42 @@ def ensemble_result(
     }
 
 
-#: The samplers this module advertises: name -> what it is, what it does, and
-#: the function that runs it. One list, so the dispatcher in
-#: :func:`chisurf.core.fitting.fit.sample_fit`, the engine and every selector in
-#: the GUI agree on what exists -- a sampler added here shows up in all three
-#: without anyone editing a combo box.
-SAMPLERS = {
-    'blocked': {
-        'label': 'Blocked (covariance)',
-        'function': 'sample_independent_components',
-        'description': (
-            'Proposes from a per-block covariance seeded by the curvature at '
-            'the optimum, with independent sub-problems sampled apart and '
-            'merged exactly. The one to reach for on a correlated posterior.'
-        ),
-    },
-    'collapsed': {
-        'label': 'Collapsed (linked global fit)',
-        'function': 'sample_marginal_shared',
-        'description': (
-            'Integrates each dataset\'s private parameters out analytically '
-            'and samples only the shared ones -- the right choice for a linked '
-            'global fit, where linking lowers the dimension but makes the '
-            'posterior harder to sample.'
-        ),
-    },
-    'de': {
-        'label': 'Differential evolution',
-        'function': 'sample_differential_evolution',
-        'description': (
-            'Proposes from the differences between a population of chains, so '
-            'it needs neither a gradient nor a covariance and cannot be misled '
-            'by one taken at the wrong point.'
-        ),
-    },
-    'ensemble': {
-        'label': 'Ensemble (stretch)',
-        'function': 'sample_ensemble',
-        'description': (
-            'Affine-invariant walkers that stretch towards each other: the '
-            'proposal takes its scale and correlations from the ensemble, so '
-            'nothing has to be known about the posterior in advance.'
-        ),
-    },
-    'slice': {
-        'label': 'Ensemble slice',
-        'function': 'sample_ensemble_slice',
-        'description': (
-            'The same ensemble directions, sampled by slice sampling instead '
-            'of accept/reject: no step size, every walker moves every step, at '
-            'several model evaluations per step.'
-        ),
-    },
-    'mcmc': {
-        'label': 'Metropolis (diagonal)',
-        'function': 'walk_mcmc',
-        'description': (
-            'The historical diagonal random walk. Kept for compatibility; on a '
-            'correlated posterior it crawls.'
-        ),
-    },
-}
+class _SamplerTable(collections.abc.Mapping):
+    """The samplers the registry holds (category ``sampler``), as ``{name: entry}``.
 
-#: Names accepted for a sampler that is not called that any more.
-SAMPLER_ALIASES = {'emcee': 'ensemble'}
+    Every entry has at least ``label``, ``description`` and ``function`` (the
+    function in this module that runs it). Assembled from the registrations
+    (:func:`register_sampler`) and IMP.bff's own entries on every read -- a sampler
+    registered in either appears in the dispatcher, the engine and every selector
+    without anyone editing a list. A compiled sampler without a chisurf function
+    is offered when chisurf can drive it (no gradient required): it runs through
+    :func:`sample_registered_kernel`. Legacy samplers are listed last.
+    """
+
+    def _entries(self):
+        merged = _catalog.registry('sampler')
+        out = {}
+        for key, entry in merged.items():
+            if entry.get('provider') == 'chisurf':
+                out[key] = entry
+            elif not entry.get('requires_gradient') and entry.get('kind'):
+                out[key] = dict(entry, function='sample_registered_kernel')
+        ordered = sorted(out, key=lambda k: bool(out[k].get('legacy')))
+        return {k: out[k] for k in ordered}
+
+    def __getitem__(self, key):
+        return self._entries()[key]
+
+    def __iter__(self):
+        return iter(self._entries())
+
+    def __len__(self):
+        return len(self._entries())
+
+
+#: The samplers, read from the registry: name -> entry (``label``,
+#: ``description``, ``function``, ...). See :class:`_SamplerTable`.
+SAMPLERS = _SamplerTable()
 
 
 def resolve_sampler(name: str) -> str:
@@ -2303,7 +2354,9 @@ def resolve_sampler(name: str) -> str:
     Parameters
     ----------
     name : str
-        Sampler name as configured or requested.
+        Sampler name as configured or requested: a registered name, or any alias
+        its entry or its IMP.bff kernel declares (``emcee`` and ``stretch`` name
+        ``ensemble``, ``metropolis`` names ``blocked``).
 
     Returns
     -------
@@ -2312,8 +2365,10 @@ def resolve_sampler(name: str) -> str:
         with a warning: a typo in a setting should cost a different sampler,
         not the run.
     """
-    key = str(name or '').strip().lower()
-    key = SAMPLER_ALIASES.get(key, key)
+    try:
+        key = _catalog.resolve('sampler', name)
+    except ValueError:
+        key = None
     if key not in SAMPLERS:
         cs.logging.warning("unknown sampler %r; using 'ensemble'", name)
         return 'ensemble'
@@ -2336,6 +2391,23 @@ def sampler_function(name: str):
     return globals()[SAMPLERS[resolve_sampler(name)]['function']]
 
 
+def sample_registered_kernel(fit, steps: int, thin: int = 1, chi2max: float = np.inf, temp: float = 1.0,
+                             callback: typing.Callable = None, check_cancel: typing.Callable = None,
+                             model=None, seed=None, sampler: str = None, **settings) -> dict:
+    """Run an IMP.bff sampler kernel that has no chisurf function of its own.
+
+    ``sampler`` is its registry key. Needs a fit whose objective builds as a
+    graph; a fit that does not is refused rather than sampled some other way.
+    """
+    from chisurf.core.fitting import sampler_bff
+    result = sampler_bff.sample_via_graph(
+        fit, model if model is not None else fit.model, sampler, steps=steps, thin=thin,
+        chi2max=chi2max, temp=temp, seed=seed, callback=callback, check_cancel=check_cancel, **settings)
+    if result is None:
+        raise ValueError(f"sampler {sampler!r} runs only on a fit whose objective builds as a graph")
+    return result
+
+
 def sampler_choices():
     """Return the samplers as ``(name, label)`` pairs for a selector.
 
@@ -2344,7 +2416,7 @@ def sampler_choices():
     list of tuple
         One pair per advertised sampler, in declaration order.
     """
-    return [(name, entry['label']) for name, entry in SAMPLERS.items()]
+    return [(name, entry.get('label', name)) for name, entry in SAMPLERS.items()]
 
 
 #: Arguments every sampler takes that are plumbing, not settings: the thing

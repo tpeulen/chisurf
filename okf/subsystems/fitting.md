@@ -15,7 +15,13 @@ timestamp: '2026-07-05T00:00:00Z'
    (`sampler_bff.py` — begin, per-state progress, intermediate saves, end)
    and on `objective_type` (least-squares vs likelihood, the BUG-10
    threshold work). Correct stale statements in place rather than appending.
-2. The GUI-facing contract (born-consistent fits, `Fit.update()` publishing
+2. **The sampler registry landed (2026-09-15)**; see "Which samplers exist" below. Open:
+   the ensemble/slice/DE results still offer R-hat across *walkers* (`chains` is a
+   per-walker reshape in `sampler_bff._result`), which the registry entries' own
+   `required_checks` call invalid -- the cross-run R-hat is the decisive one; make the
+   report say so per sampler from the entry. Settings YAML comments still name the
+   samplers in prose.
+3. The GUI-facing contract (born-consistent fits, `Fit.update()` publishing
    ``fit.updated``, the RPC facade as routing not capability) is documented
    at the fitting-flow step below; the graph seam's own contract lives in
    [graph objective](/subsystems/graph-objective.md).
@@ -275,6 +281,36 @@ any free parameter the graph cannot connect to data.
 `factorgraph.STRUCTURE_VERSION` invalidates cached graphs; it is bumped by
 `Parameter.link`, `Parameter.fixed`, `FittingParameterGroup.find_parameters` and
 the `GlobalFitModel` membership mutators.
+
+# Which samplers exist: the registry
+
+The sampler list is not written anywhere in chisurf. It is read, on every access, from
+one merged registry (`chisurf/core/registry/catalog.py`): tttrlib's and IMP.bff's
+compiled registries (same mechanism: `tttrlib.registry()`, `IMP.bff.registry()`) plus
+chisurf's own registrations of the same entry shape. Every function in
+`chisurf/core/registry/tttrlib.py` reads that merged table, so `entry_form_view` renders
+a form for an IMP.bff sampler's `params_schema` exactly as for a tttrlib burst search.
+
+- **A sampling function registers beside its code.** `@register_sampler(key, kernel=...)`
+  in `sample.py` names the IMP.bff kernel it implements (`ensemble` -> `stretch`,
+  `slice` -> `slice`, `de` -> `de`, `blocked` -> `metropolis`) or none (`collapsed`,
+  `mcmc`). The merged entry starts from the kernel's (requirements, schema, references,
+  default warm-up, population) and chisurf's keys override (`blocked` and `collapsed`
+  keep their own description: they do more than the kernel). The kernel's key and
+  aliases resolve to the chisurf name, so `stretch`, `emcee`, `metropolis` all work in a
+  setting; the chisurf names settings already use are unchanged.
+- **`SAMPLERS` is a view**, not a table: `{name: entry}` with `label`, `description`,
+  `function`. `resolve_sampler`, `sampler_function`, `sampler_choices`, the dispatcher in
+  `sample_fit` (one signature-filtered call instead of a branch per name), the global-
+  posterior check (`samples_global_posterior` in the entry) and `SamplingEngine` all read
+  it. A compiled kernel with no chisurf function and no gradient requirement is offered
+  through `sample_registered_kernel` (graph objectives only); a kernel that needs a
+  gradient (`nuts`) is in the registry but not offered. Legacy samplers list last.
+- **`sampler_bff.py` asks the kernel entry** for its default warm-up
+  (`default_warmup`), whether it takes a curvature seed (`uses_covariance_seed`),
+  chains (`population`) and blocks (`uses_blocks`); the mirrored per-name defaults are
+  gone. Guard: `test/fitting/test_sampler_registry.py` (a kernel registered in IMP.bff at
+  run time appears in `SAMPLERS`; no dispatcher branches on a sampler name).
 
 # Posterior sampling and its diagnostics
 

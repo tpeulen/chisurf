@@ -1,4 +1,4 @@
-"""Access to tttrlib's machine-readable registry.
+"""Access to the machine-readable registry of tttrlib (and IMP.bff, and chisurf).
 
 tttrlib publishes what it can do as JSON: which burst searches exist, which file
 containers it reads, and for anything callable a JSON Schema of its parameters
@@ -43,18 +43,17 @@ FIT_SETUP = "fit_setup"
 def registry() -> typing.Dict[str, typing.Dict[str, typing.Any]]:
     """The whole registry as ``{category: {name: entry}}``.
 
-    Returns an empty dict on a tttrlib with no registry, so callers can offer the
-    registry-driven features when available and fall back otherwise.
-    """
-    getter = getattr(tttrlib, "registry", None)
-    if getter is not None:
-        return getter()
+    Not only tttrlib's any more: IMP.bff publishes its registry with the same
+    mechanism, and chisurf registers what only it implements in the same shape,
+    so this is :func:`chisurf.core.registry.catalog.registry` -- every function in
+    this module (``entries``, ``describe``, ``defaults``, ``entry_form_view``) works
+    for an entry from any of them.
 
-    # tttrlib older than the general registry published burst searches only.
-    legacy = getattr(tttrlib.TTTR, "burst_search_algorithms", None)
-    if legacy is not None:
-        return {BURST_SEARCH: legacy()}
-    return {}
+    Returns an empty dict when no library publishes a registry, so callers can offer
+    the registry-driven features when available and fall back otherwise.
+    """
+    from chisurf.core.registry import catalog
+    return catalog.registry()
 
 
 def categories() -> typing.List[str]:

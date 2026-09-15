@@ -2,6 +2,21 @@
 
 ## 2026-09-15
 
+* **Samplers come from the registry.** chisurf's `SAMPLERS` table, `SAMPLER_ALIASES`,
+  the name-by-name dispatch in `sample_fit`, the backend dict in `SamplingEngine` and
+  the mirrored warm-up defaults in `sampler_bff.py` are replaced by one merged registry
+  (`chisurf/core/registry/catalog.py`: tttrlib + IMP.bff + chisurf registrations of the
+  same shape) and `@register_sampler` beside each sampling function. tpeulen: "a
+  handwritten list is really bad, chisurf should pickup what is there, make it similar to
+  tttrlib i do not want different mechas" / "change also chisurf". Depends on IMP.bff's
+  registry and sampler kernels (bff `a7ac00e`, `e9bc4ab`, `b627921`) and tttrlib's
+  `RegistryCore.h` (`9e85d61e3`). Tests: `test/fitting/test_sampler_registry.py` (14, with a
+  negative control for the name-dispatch guard) and 135 existing sampler/engine/registry/
+  GUI tests pass. Fixed on the way: `test/core/test_tttrlib_registry.py` assumed the first
+  file container declares no parameters (ranged readers now declare
+  `first_record`/`n_records`). Behaviour change: the collapsed sampler now receives the
+  progress callback (the old branch omitted it).
+
 * **The classic TCSPC models are gone; lifetime, FRET, PDDEM and MaxEnt are
   views on BFF.** ChiSurf `61803a747` (with `8358c23c8`), bff `fda8d76`,
   `19aa53f`, `cc7a612`, `a49062d`. `chisurf.core.models.tcspc.{lifetime,fret,
