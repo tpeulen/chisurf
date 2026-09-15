@@ -48,20 +48,12 @@ def _two_fit_group() -> FitGroup:
     return group
 
 
-def test_nuisance_parameters_are_collected_from_the_nuisance_containers():
-    """Instrument and correction parameters count as nuisance, physics does not.
-
-    The collector walks the model's attributes for the containers named
-    ``generic``/``corrections``/``convolve`` (and anything spelled *nuisance*,
-    misspelling included) and takes their parameter names.
-    """
+def test_nuisance_parameters_are_the_instrument_group():
+    """Instrument parameters count as nuisance, physics does not."""
     model = _two_fit_group().grouped_fits[0].model
     nuisance = _collect_group_nuisance_parameter_names(model)
-
-    # Instrument/correction parameters: background, dead time, IRF window, …
-    assert {'bg', 'dt', 'irf_start', 'irf_stop', 'lb', 'sc', 'tDead'} <= nuisance
-    # Physics parameters must not be swept in with them.
-    assert nuisance.isdisjoint({'g', 'l1', 'l2', 'r0'})
+    assert {"background", "scatter", "n0", "timeshift"} <= nuisance
+    assert not {p.name for p in model.parameters_all if p.canonical_id.startswith("lifetime.")} & nuisance
 
 
 def test_grouped_fits_auto_link_non_nuisance_parameters():

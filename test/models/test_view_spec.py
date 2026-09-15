@@ -23,51 +23,34 @@ def test_view_spec_vocabulary_is_pure_data():
     assert vs.PlotSpec("line") == vs.PlotSpec("line")
 
 
-def _make_lifetime_model():
-    """Build a LifetimeModel against a tiny in-memory fit, or skip."""
+def _make_view(family):
+    """A BFF-described TCSPC view on a tiny in-memory fit, or skip."""
     import pytest
-    try:
-        import chisurf.core.fitting.fit as fit_mod
-        from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeModel
-    except Exception as exc:  # pragma: no cover - import guard
-        pytest.skip(f"lifetime model import failed: {exc}")
+    pytest.importorskip("IMP.bff")
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.data import DataCurve
+    from chisurf.core.models.description import for_family
 
     x = np.linspace(0, 25, 256)
-    y = np.ones_like(x)
-    try:
-        data = DataCurve(x=x, y=y)
-        fit = fit_mod.Fit(model_class=LifetimeModel, data=data)
-        model = fit.model
-    except Exception as exc:  # pragma: no cover - construction guard
-        pytest.skip(f"lifetime model construction failed: {exc}")
+    fit = fit_mod.Fit(model_class=for_family(family), data=DataCurve(x=x, y=np.ones_like(x)))
+    model = fit.model
+    if "generated_response" in model.scalar_names():
+        model.set_scalar("generated_response", 1.0)   # a modelled IRF: the model builds
+    model.problem
     return model
 
 
 def test_lifetime_model_view_spec_structure():
-    """LifetimeModel exposes its editor as data with the expected sections."""
-    model = _make_lifetime_model()
+    """The lifetime view derives its editor from the description, as data."""
+    model = _make_view("tcspc_lifetime")
     spec = model.view_spec()
-
     assert isinstance(spec, vs.ModelView)
-    # nuisances + dynamic lifetimes + anisotropy
     targets = spec.section_targets()
-    for expected in ("convolve", "generic", "corrections", "lifetimes", "anisotropy"):
+    for expected in ("lifetimes", "instrument"):
         assert expected in targets, f"missing section target {expected!r}"
-
-    # the lifetimes section is dynamic with paired (amplitude, lifetime) rows
-    lifetimes = next(s for s in spec.flat_sections() if s.target == "lifetimes")
-    assert isinstance(lifetimes, vs.DynamicGroupSection)
-    assert lifetimes.row_width == 2
-    assert "lifetime_amplitude_options" in lifetimes.header_keys
-
-    # plot keys are strings, never GUI classes
     plot_keys = [p.key for p in spec.plots]
-    assert "line" in plot_keys and "residual" in plot_keys
-    for p in spec.plots:
-        assert isinstance(p.key, str)
-
-    # every section target resolves to a real attribute on the model
+    assert {"line", "residual", "distribution"} <= set(plot_keys)
+    assert all(isinstance(p.key, str) for p in spec.plots)
     for target in targets:
         assert hasattr(model, target), f"unresolved target {target!r}"
 
@@ -93,14 +76,11 @@ def test_curve_input_section_loads_from_json():
 
 
 def test_lifetime_view_has_irf_curve_input():
-    """The Lifetime editor declares an IRF curve input so the model can be
-    given an instrument response and actually compute a convolved fit."""
-    model = _make_lifetime_model()
-    spec = model.view_spec()
-    curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    irf = next((s for s in curve_inputs if s.select_action == "model.change_irf"), None)
-    assert irf is not None, "Lifetime view spec must expose an IRF curve input"
-    assert irf.target == "convolve"
+    """The lifetime editor binds a measured response through the view's dataset action."""
+    spec = _make_view("tcspc_lifetime").view_spec()
+    inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
+    irf = next((s for s in inputs if (s.action_fixed or {}).get("slot") == "response"), None)
+    assert irf is not None and irf.select_action == "model.set_dataset"
 
 
 def test_choice_and_toggle_sections_load_from_json():
@@ -123,24 +103,12 @@ def test_choice_and_toggle_sections_load_from_json():
     assert smoothing.options_source == "window_function_types"
 
 
-def test_lifetime_view_exposes_bespoke_controls():
-    """The Lifetime view declares the bespoke controls the hand-written widget
-    had: convolution type + on/off, smoothing, correction toggles, polarization."""
-    spec = _make_lifetime_model().view_spec()
-    choices = [s for s in spec.flat_sections() if isinstance(s, vs.ChoiceSection)]
-    toggles = [s for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)]
-    choice_attrs = {s.attr for s in choices}
-    toggle_attrs = {s.attr for s in toggles}
-    assert {"mode", "window_function", "polarization_type"} <= choice_attrs
-    assert "do_convolution" in toggle_attrs
-    # Pile-up / DNL / Reverse are now in a ToggleRowSection (all on one line)
-    toggle_row_attrs = {
-        item["attr"]
-        for s in spec.flat_sections()
-        if isinstance(s, vs.ToggleRowSection)
-        for item in s.items
-    }
-    assert {"correct_pile_up", "correct_dnl", "reverse"} <= toggle_row_attrs
+def test_lifetime_view_exposes_its_settings():
+    """What the hand-written widget's controls set are the description's scalars."""
+    spec = _make_view("tcspc_lifetime").view_spec()
+    attrs = {s.attr for s in spec.flat_sections() if isinstance(s, (vs.ToggleSection, vs.ValueSection))}
+    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up", "scalars.autoscale",
+            "scalars.lin_window"} <= attrs
 
 
 def test_parameter_group_view_adapter_builds_a_section():
@@ -262,65 +230,12 @@ def test_parameter_group_table_section_hashable():
     assert len({s1, s2, s3}) == 2
 
 
-def _make_mixture_model():
-    """Build a LifetimeMixtureModel against a tiny in-memory fit, or skip."""
-    import pytest
-    try:
-        import chisurf.core.fitting.fit as fit_mod
-        from chisurf.core.data import DataCurve
-        from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
-    except Exception as exc:
-        pytest.skip(f"mixture model import failed: {exc}")
-    x = np.linspace(0, 25, 256)
-    data = DataCurve(x=x, y=np.ones_like(x))
-    try:
-        fit = fit_mod.Fit(model_class=LifetimeMixtureModel, data=data)
-        return fit.model
-    except Exception as exc:
-        pytest.skip(f"mixture model construction failed: {exc}")
-
-
 def test_mix_model_view_spec_structure():
-    """LifetimeMixtureModel exposes a pure-data view spec from mix_model.view.json."""
-    model = _make_mixture_model()
-    spec = model.view_spec()
-
-    assert isinstance(spec, vs.ModelView)
-    targets = spec.section_targets()
-    for expected in ("convolve", "generic", "corrections"):
-        assert expected in targets, f"missing section target {expected!r}"
-
-    # The mixture panel declares a custom fit_mixer section
+    """The mixture view shows its sources in a fit_mixer section and a lifetime distribution."""
+    spec = _make_view("tcspc_mixture").view_spec()
     customs = [s for s in spec.flat_sections() if isinstance(s, vs.CustomSection)]
-    mixer = next((s for s in customs if s.key == "fit_mixer"), None)
-    assert mixer is not None, "mix_model.view.json must have a fit_mixer custom section"
-
-    # Plot keys are pure strings
-    plot_keys = [p.key for p in spec.plots]
-    assert "line" in plot_keys and "residual" in plot_keys and "distribution" in plot_keys
-
-
-def test_mix_model_has_irf_curve_input():
-    """The mix model editor declares an IRF curve input so convolution works."""
-    model = _make_mixture_model()
-    spec = model.view_spec()
-    irf = next(
-        (s for s in spec.flat_sections()
-         if isinstance(s, vs.CurveInputSection) and s.select_action == "model.change_irf"),
-        None,
-    )
-    assert irf is not None, "mix_model.view.json must expose an IRF curve input"
-
-
-def test_mix_model_view_spec_file_exists():
-    """mix_model.view.json is on disk next to lifetime.py."""
-    import pathlib
-    import inspect
-    from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
-
-    src = inspect.getfile(LifetimeMixtureModel)
-    json_path = pathlib.Path(src).parent / "mix_model.view.json"
-    assert json_path.exists(), f"mix_model.view.json not found at {json_path}"
+    assert any(s.key == "fit_mixer" for s in customs)
+    assert {"line", "residual"} <= {p.key for p in spec.plots}
 
 
 def test_plot_section_axis_ranges_are_parsed():

@@ -1,222 +1,88 @@
 """End-to-end headless TCSPC fit: does a lifetime fit recover known parameters?
 
-The repository had no working headless fit fixture — ``test_reference_models.py``
-uses ``model.data`` and a writable ``lifetime_spectrum``, neither of which exists
-any more — so nothing exercised the optimiser against a known answer. This does.
-
-Getting a ``LifetimeModel`` to compute at all needs four non-obvious settings,
-and **every one of them fails silently**, leaving a flat background instead of a
-decay:
-
-1. ``convolve.stop`` is in TIME units (``value // dt``) and defaults to 0, which
-   disables the convolution entirely.
-2. ``convolve.dt`` is its own parameter defaulting to 1.0, so every other
-   "time" is divided by the wrong step.
-3. ``_process_irf`` subtracts ``lamp_background`` and clips at zero, so a
-   sum-normalised IRF (peak ~0.04) is annihilated — supply the IRF in counts.
-4. ``irf_stop`` defaults to 1, leaving a one-channel IRF. Its *setter* is broken
-   (it wraps the value in ``np.array([v])``, which the parameter rejects), so
-   the backing ``_irf_stop`` parameter has to be written directly.
-
-Autoscaling is enabled by *fixing* ``n0`` (``autoscale = self._n0.fixed``).
+A two-exponential decay convolved with a measured IRF, fitted through
+ChiSurf's fit object on the described lifetime model (BFF's
+``tcspc_lifetime``). From a poor start the fit must find the truth, from the
+truth it must not walk away, and the amplitudes must stay finite on the way.
 """
 import numpy as np
 import pytest
 
+pytest.importorskip("IMP.bff")
+
+import chisurf.core.curve
 import chisurf.core.data
 from chisurf.core.fitting.fit import Fit
-import chisurf.core.models.tcspc.lifetime as lifetime_model
+from chisurf.core.models.description import for_family
 
 TRUE_TAUS = (4.0, 1.2)
 TRUE_AMPS = (0.7, 0.3)
 N_CHANNELS = 1024
 DT = 0.032
+PERIOD = 25.0
 BACKGROUND = 10.0
 
 
-def _build(start, n_channels=N_CHANNELS, dt=DT, n_photons=2e6, seed=0):
-    """Simulate a two-exponential decay and wire up a fittable model."""
-    t = np.arange(n_channels) * dt
-
-    # IRF in COUNTS: lamp_background is subtracted and clipped, so a
-    # sum-normalised IRF would be wiped out.
+def _build(start, n_photons=2e6, seed=0):
+    t = np.arange(N_CHANNELS) * DT
     irf_y = np.exp(-0.5 * ((t - 1.0) / 0.25) ** 2) * 1e4
-    irf_y[irf_y < 1e-3] = 0.0
-
-    pure = np.zeros_like(t)
-    for a, tau in zip(TRUE_AMPS, TRUE_TAUS):
-        pure += a * np.exp(-t / tau)
-    conv = np.convolve(pure, irf_y / irf_y.sum())[:n_channels]
+    pure = sum(a * np.exp(-t / tau) for a, tau in zip(TRUE_AMPS, TRUE_TAUS))
+    conv = np.convolve(pure, irf_y / irf_y.sum())[:N_CHANNELS]
     conv = conv / conv.sum() * n_photons + BACKGROUND
     y = np.random.default_rng(seed).poisson(conv).astype(float)
 
-    data = chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0)))
-    fit = Fit(model_class=lifetime_model.LifetimeModel, data=data,
-              xmin=0, xmax=n_channels - 1)
+    fit = Fit(model_class=for_family("tcspc_lifetime"),
+              data=chisurf.core.data.DataCurve(x=t, y=y, ey=np.sqrt(np.maximum(y, 1.0))),
+              xmin=0, xmax=N_CHANNELS - 1)
     m = fit.model
-
-    c = m.convolve
-    c._irf = chisurf.core.data.DataCurve(x=t, y=irf_y, ey=np.ones_like(irf_y))
-    c.lamp_background = 0.0
-    c.dt = dt                       # defaults to 1.0
-    c.start, c.stop = 0.0, n_channels * dt   # TIME units; default stop=0 disables
-    c._irf_start.value = 0.0        # setters are broken (wrap in np.array)
-    c._irf_stop.value = n_channels * dt
-    c.rep_rate = 40.0
-    c.mode = 'per'
-    c.do_convolution = True
-    c._n0.fixed = True              # autoscale = self._n0.fixed
-
-    # The model ships with one default component; configure in place rather than
-    # appending, or a duplicate lifetime adds a spurious degeneracy.
-    while len(m.lifetimes) < len(start):
-        m.lifetimes.append()
+    m.set_dataset("response", chisurf.core.curve.Curve(x=t, y=irf_y))
+    m.set_scalar("period", PERIOD)
+    m.set_scalar("periodic_excitation", 0.0)
+    m.set_scalar("autoscale", 1.0)
+    assert m.problem is not None, m.missing
+    m.structure = "lifetime.components.2"
+    parameters = {p.canonical_id: p for p in m.parameters_all}
     for k, (a, tau) in enumerate(start):
-        m.lifetimes._amplitudes[k].value = a
-        pt = m.lifetimes._lifetimes[k]
-        pt.value = tau
-        pt.bounds = (0.01, 50.0)
-        pt.bounds_on = True
-
-    m.generic.background = BACKGROUND
-    m.find_parameters()
+        parameters[f"lifetime.amplitude.{k}"].value = a
+        parameters[f"lifetime.tau.{k}"].value = tau
+    parameters["instrument.background"].value = BACKGROUND
+    # np.convolve samples each channel at its left edge, half a channel off the
+    # bin-integrated instrument: the shift is fitted rather than assumed.
+    parameters["instrument.timeshift"].fixed = False
+    m.update()
     return fit, m
 
 
-def _chi2r(m):
-    w = np.asarray(m.weighted_residuals, dtype=float)
-    return float(np.sum(w ** 2) / len(w))
+def _chi2r(fit):
+    fit.model.update()
+    return float(fit.chi2r)
+
+
+def _taus(m):
+    return sorted(p.value for p in m.parameters_all if p.canonical_id in ("lifetime.tau.0", "lifetime.tau.1"))
 
 
 def test_fixture_is_self_consistent():
-    """At the true parameters the model must actually match the data."""
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    m.update()
     y = np.asarray(m.y, dtype=float)
-
-    assert y.max() > 10 * y.min(), "model is flat — the convolution did not run"
-    assert int(np.argmax(y)) > 10, "model peak at channel 0 — IRF was not applied"
-    assert _chi2r(m) < 5.0, f"fixture not self-consistent, chi2r={_chi2r(m):.1f}"
+    assert y.max() > 10 * y.min(), "model is flat -- the convolution did not run"
+    assert int(np.argmax(y)) > 10, "model peak at channel 0 -- the IRF was not applied"
+    assert _chi2r(fit) < 5.0
 
 
 def test_fit_recovers_known_lifetimes():
-    """The whole point: a fit from a poor start must find the truth."""
-    fit, m = _build(start=[(1.0, 8.0), (1.0, 0.4)])   # far from (4.0, 1.2)
-    assert _chi2r(m) > 100, "starting guess was not actually poor"
-
-    fit.run()
-
-    taus = sorted(p.value for p in m.lifetimes._lifetimes)
-    amps = np.asarray(m.lifetimes.amplitudes, dtype=float)
-    assert np.all(np.isfinite(amps)), f"amplitudes became non-finite: {amps}"
-
-    np.testing.assert_allclose(taus, sorted(TRUE_TAUS), rtol=0.05)
-    assert _chi2r(m) < 2.0, f"fit did not converge, chi2r={_chi2r(m):.3f}"
-
-
-# This used to be a strict xfail. A parameter sitting exactly ON a bound has zero
-# derivative under the sin/arcsin transform -- d/dx[lower + (delta/2)(sin x + 1)]
-# = (delta/2) cos x, which is 0 at x = -pi/2, the internal coordinate of the
-# lower bound -- and `scatter` defaults to 0.0 with bounds (0.0, 100.0), i.e.
-# exactly there. Starting a fit at the optimum drove it 0 -> 7.8 and chi2r
-# 1.55 -> 1765 while every other parameter stayed put.
-#
-# Raising the finite-difference step fixed it without any change to the bound
-# handling: with epsfcn = 0 the probe was ~1.5e-8 relative and never left the
-# flat region around the bound, so the derivative really was zero. At 1e-6
-# (a 1e-3 relative step) the probe reaches far enough to see the real slope.
-def test_fit_does_not_destroy_a_good_solution():
-    """Starting at the optimum must not make things worse.
-
-    This is the regression that caught the infinite-bounds bug: unbounded
-    parameters were NaN in the optimiser's internal coordinates, so a fit
-    started at the truth walked away from it. It then kept failing for the
-    unrelated at-the-bound reason described above, which the finite-difference
-    step size resolved.
-    """
-    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    m.update()
-    before = _chi2r(m)
-
-    fit.run()
-    after = _chi2r(m)
-
-    assert np.isfinite(after), "fit produced a non-finite chi2r from a good start"
-    assert after < before * 10, (
-        f"fit destroyed a good solution: chi2r {before:.3f} -> {after:.3f}")
-
-
-def test_amplitudes_stay_finite():
-    """Amplitudes must not collapse to zero (0/0 in the |a|/sum|a| normalisation)."""
     fit, m = _build(start=[(1.0, 8.0), (1.0, 0.4)])
+    assert _chi2r(fit) > 100, "starting guess was not actually poor"
     fit.run()
-    raw = np.asarray([p.value for p in m.lifetimes._amplitudes], dtype=float)
-    assert np.abs(raw).sum() > 0, f"all amplitudes collapsed to zero: {raw}"
-    assert np.all(np.isfinite(m.lifetimes.amplitudes))
+    amplitudes = [p.value for p in m.parameters_all if p.canonical_id.startswith("lifetime.amplitude.")]
+    assert np.all(np.isfinite(amplitudes)) and np.abs(amplitudes).sum() > 0
+    np.testing.assert_allclose(_taus(m), sorted(TRUE_TAUS), rtol=0.05)
+    assert _chi2r(fit) < 2.0
 
 
-# ---------------------------------------------------------------------------
-# Performance-related caching must not change results
-# ---------------------------------------------------------------------------
-
-
-def test_processed_irf_is_cached_but_invalidates_on_in_place_edit():
-    """The IRF cache must key on content, not on a summary statistic.
-
-    ``_process_irf`` is memoised because rebuilding it dominated fitting, but a
-    reduction like ``sum()`` is blind to in-place reordering — ``np.roll`` keeps
-    the sum identical — which would silently serve a stale curve.
-    """
+def test_fit_does_not_destroy_a_good_solution():
     fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    before = np.array(m.convolve.irf.y, copy=True)
-
-    # repeated reads are served from the cache and must be identical
-    np.testing.assert_array_equal(np.asarray(m.convolve.irf.y), before)
-
-    # an in-place write is exactly what the cache has to notice, so take the
-    # curve's explicit escape hatch rather than replacing the array
-    with m.convolve._irf.unlocked('y'):
-        m.convolve._irf.y[:] = np.roll(m.convolve._irf.y, 7)  # sum-preserving
-    after = np.asarray(m.convolve.irf.y)
-    assert not np.array_equal(before, after), "stale IRF served after in-place roll"
-
-
-def test_processed_irf_invalidates_on_background_and_window_changes():
-    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    base = np.array(m.convolve.irf.y, copy=True)
-
-    m.convolve.lamp_background = 5.0
-    assert not np.array_equal(base, np.asarray(m.convolve.irf.y))
-
-    m.convolve.lamp_background = 0.0
-    np.testing.assert_allclose(np.asarray(m.convolve.irf.y), base, rtol=0, atol=1e-12)
-
-    m.convolve._irf_stop.value = 200 * DT   # narrow the window
-    assert not np.array_equal(base, np.asarray(m.convolve.irf.y))
-
-
-def test_timeshift_is_not_cached():
-    """``timeshift`` is a fit parameter, so it must apply after the cache."""
-    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    a = np.array(m.convolve.irf.y, copy=True)
-    m.convolve.timeshift = 5.0
-    b = np.asarray(m.convolve.irf.y)
-    assert not np.array_equal(a, b), "timeshift had no effect — it was cached away"
-
-
-def test_reading_a_parameter_does_not_change_it():
-    """Reading ``Parameter.value`` must be side-effect free.
-
-    It used to write the value back to the port on *every* read, which ran the
-    expensive sanitising setter and invalidated the node graph.
-    """
-    fit, m = _build(start=list(zip(TRUE_AMPS, TRUE_TAUS)))
-    p = m.lifetimes._lifetimes[0]
-    first = p.value
-    for _ in range(5):
-        assert p.value == first
-    # a clamped read still writes back, so bounds keep working
-    p.bounds = (1.0, 2.0)
-    p.bounds_on = True
-    p.value = 99.0
-    assert p.value == pytest.approx(2.0)
+    before = _chi2r(fit)
+    fit.run()
+    after = _chi2r(fit)
+    assert np.isfinite(after) and after < before * 10

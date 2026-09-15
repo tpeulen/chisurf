@@ -56,17 +56,11 @@ plot_cls_dist_default = [
     )
 ]
 
-# Deprecated model-class aliases. Every TCSPC model is a pure compute model whose
-# editor comes from a ``*.view.json``; these names stay importable because user
-# copies of ``experiment_configs.yaml`` *replace* the bundled model list and
-# pickled projects pin class paths, so a path that no longer resolves drops the
-# entry from the model menu without saying so.
-#
-# The hand-written widget layer they used to name is gone: ``LifetimeWidget``,
-# ``LifetimeModelWidgetBase``, ``ConvolveWidget``, ``CorrectionsWidget``,
-# ``GenericWidget``, ``AnisotropyWidget``, ``GaussianWidget`` and
-# ``DiscreteDistanceWidget`` were reachable only from each other once every model
-# became data-described.
+# Deprecated model-class aliases. Every TCSPC model is a view on a model BFF
+# describes (chisurf.core.models.description); these names stay importable
+# because user copies of ``experiment_configs.yaml`` *replace* the bundled
+# model list and pickled projects pin class paths, so a path that no longer
+# resolves drops the entry from the model menu without saying so.
 from chisurf.core.models.tcspc.fret import (
     FRETrateModel,
     GaussianModel,
@@ -78,7 +72,7 @@ from chisurf.core.models.tcspc.fret_structure import FRETStructure
 from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel, LifetimeModel
 from chisurf.core.models.tcspc.maxent import MaxEntFRETModel, MaxEntLifetimeModel
 from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
-from chisurf.core.models.tcspc.pddem import PDDEM, PDDEMModel
+from chisurf.core.models.tcspc.pddem import PDDEMModel
 
 LifetimeModelWidget = LifetimeModel
 LifetimeMixtureModelWidget = LifetimeMixtureModel
@@ -93,7 +87,6 @@ FRETStructureWidget = FRETStructure
 MaxEntLifetimeModelWidget = MaxEntLifetimeModel
 MaxEntFRETModelWidget = MaxEntFRETModel
 PDDEMModelWidget = PDDEMModel
-PDDEMWidget = PDDEM
 
 #: Deprecated and **unopenable**: ``EtModelFreeWidget`` was abstract (no
 #: ``update_model``), so selecting it in the model menu raised ``TypeError``. Its

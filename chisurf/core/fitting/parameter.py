@@ -90,8 +90,8 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         A redundant parameter carries no degree of freedom of its own and is
         kept out of the optimiser. Distinct from :attr:`fixed`: a redundant
         parameter is still *written* -- its value follows from the others -- it
-        simply is not varied. See
-        :meth:`chisurf.core.models.tcspc.lifetime.Lifetime._update_redundant_amplitude`.
+        simply is not varied (the last amplitude of a normalised set was the
+        classic case).
         """
         return self.__dict__.get("redundant", False)
 

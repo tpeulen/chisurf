@@ -4,13 +4,6 @@ import numpy as np
 import chisurf as cs
 import chisurf.core.data
 from chisurf.core.project import fit_state
-from chisurf.core.models.tcspc.nusiance import Generic, Convolve
-
-class MockModel:
-    def __init__(self):
-        self.generic = MagicMock(spec=Generic)
-        self.convolve = MagicMock(spec=Convolve)
-        self.parameters_all_dict = {}
 
 class TestUIDReattachment(unittest.TestCase):
     """
@@ -80,46 +73,6 @@ class TestUIDReattachment(unittest.TestCase):
         self.assertIs(new_model.generic.background_curve, self.bg_curve)
         self.assertIs(new_model.convolve._irf, self.irf_curve)
         print("UID Reattachment verified for mocks.")
-
-    def test_real_objects_reattachment(self):
-        """Use real Generic/Convolve objects to verify property setters."""
-        mock_fit = MagicMock()
-        mock_fit.data.x = np.arange(10)
-        mock_fit.data.y = np.ones(10)
-        mock_fit.data.ey = np.ones(10)
-        
-        gen = Generic(fit=mock_fit)
-        conv = Convolve(fit=mock_fit)
-        
-        gen.background_curve = self.bg_curve
-        conv._irf = self.irf_curve
-        
-        model = MagicMock()
-        model.generic = gen
-        model.convolve = conv
-        model.parameters_all_dict = {}
-        
-        # Serialize
-        state = fit_state._model_to_state(model)
-        
-        # Fresh objects
-        new_gen = Generic(fit=mock_fit)
-        new_conv = Convolve(fit=mock_fit)
-        new_model = MagicMock()
-        new_model.generic = new_gen
-        new_model.convolve = new_conv
-        new_model.parameters_all_dict = {}
-        
-        # Apply
-        fit_state._apply_state_to_model(new_model, state)
-        
-        # Verify
-        print(f"Original BG: {id(self.bg_curve)}, Restored BG: {id(new_gen.background_curve)}")
-        print(f"Original IRF: {id(self.irf_curve)}, Restored IRF: {id(new_conv._irf)}")
-        
-        self.assertIs(new_gen.background_curve, self.bg_curve)
-        self.assertIs(new_conv._irf, self.irf_curve)
-        print("UID Reattachment verified for real objects.")
 
 if __name__ == "__main__":
     unittest.main()

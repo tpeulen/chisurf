@@ -1,6 +1,6 @@
 """The G-factor has to correct the same channel in numerator and denominator.
 
-``LifetimeModel._tcspc_rt_curves`` turns a measured VV/VH pair into r(t) with
+``chisurf.core.fluorescence.anisotropy.rt.rt_curves`` turns a measured VV/VH pair into r(t) with
 the Schaffer/Eggeling equation. It used to compute ``(VV - VH) / (g VV + 2 VH)``
 — the denominator corrected, the numerator raw — which agrees with the truth
 only at ``g = 1`` and otherwise reports anisotropy where there is none.
@@ -33,11 +33,11 @@ def _measured(r_true):
 
 def _recover(r_true, l1=0.0, l2=0.0):
     """Return ``(r_uncorrected, r_corrected)`` for a constructed measurement."""
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     vv, vh = _measured(r_true)
     t = np.array([1.0, 2.0, 3.0])
-    _, r_unc, r_cor = LifetimeModel._tcspc_rt_curves(
+    _, r_unc, r_cor = rt_curves(
         t=t, vv=np.full(3, vv), vh=np.full(3, vh), g=G_FACTOR, l1=l1, l2=l2
     )
     return float(r_unc[0]), float(r_cor[0])
@@ -58,13 +58,13 @@ def test_an_isotropic_sample_reads_zero_whatever_the_g_factor():
     +0.167 at g = 2 — an artefact indistinguishable from real, slow-tumbling
     signal.
     """
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     t = np.array([1.0, 2.0])
     for sensitivity in (0.5, 0.65, 1.0, 1.4, 2.0):
         vv = np.full(2, 1.0)                       # isotropic: equal true intensities
         vh = np.full(2, 1.0 / sensitivity)
-        _, r_unc, _ = LifetimeModel._tcspc_rt_curves(
+        _, r_unc, _ = rt_curves(
             t=t, vv=vv, vh=vh, g=sensitivity, l1=0.0, l2=0.0
         )
         assert r_unc[0] == pytest.approx(0.0, abs=1e-12), f"g = {sensitivity}"
@@ -76,11 +76,11 @@ def test_g_of_one_is_unchanged():
     This is why the fault survived: the default G is 1, so every default-run
     number was correct and only calibrated setups were wrong.
     """
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     t = np.array([1.0, 2.0])
     vv, vh = np.full(2, 1.4), np.full(2, 0.8)
-    _, r_unc, _ = LifetimeModel._tcspc_rt_curves(t=t, vv=vv, vh=vh, g=1.0, l1=0.0, l2=0.0)
+    _, r_unc, _ = rt_curves(t=t, vv=vv, vh=vh, g=1.0, l1=0.0, l2=0.0)
     assert r_unc[0] == pytest.approx((1.4 - 0.8) / (1.4 + 2 * 0.8))
 
 
@@ -91,14 +91,14 @@ def test_it_is_the_published_equation_with_the_reciprocal_g():
     with the *same* G — the ratio a paper quotes can be typed straight in, and
     is the number tttrlib's estimators take.
     """
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     fp, fs = 1.4, 0.52
     t = np.array([1.0, 2.0])
     for G in (0.8, 1.0, 1.3, 1.9):
         for l1, l2 in ((0.0, 0.0), (0.03, 0.05), (0.02, 0.01)):
             published = (fp - G * fs) / ((1 - 3 * l2) * fp + (2 - 3 * l1) * G * fs)
-            _, _, r_cor = LifetimeModel._tcspc_rt_curves(
+            _, _, r_cor = rt_curves(
                 t=t, vv=np.full(2, fp), vh=np.full(2, fs),
                 g=G, l1=l1, l2=l2,
             )
@@ -113,12 +113,12 @@ def test_the_curve_agrees_with_the_integrals_module(qapp=None):
     value disagree about the same measurement.
     """
     from chisurf.core.fluorescence.anisotropy.integrals import anisotropy_from_integrals
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     for r_true, l1, l2 in ((0.0, 0.0, 0.0), (0.2, 0.0, 0.0),
                            (0.25, 0.03, 0.05), (0.38, 0.02, 0.01)):
         vv, vh = _measured(r_true)
-        _, _, r_cor = LifetimeModel._tcspc_rt_curves(
+        _, _, r_cor = rt_curves(
             t=np.array([1.0, 2.0]), vv=np.full(2, vv), vh=np.full(2, vh),
             g=G_FACTOR, l1=l1, l2=l2,
         )
@@ -139,13 +139,13 @@ def test_the_generator_round_trips_at_any_g():
     exposed the previous parameterisation.
     """
     from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+    from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
     t, vm, r0 = np.array([0.0, 1.0, 2.0]), np.ones(3), 0.30
     for g in (0.65, 1.0, 1.5, 2.2):
         for l1, l2 in ((0.0, 0.0), (0.03, 0.05), (0.08, 0.02)):
             vv, vh = vm_rt_to_vv_vh(t, vm, np.array([r0, 1e12]), g_factor=g, l1=l1, l2=l2)
-            _, _, r_cor = LifetimeModel._tcspc_rt_curves(t=t, vv=vv, vh=vh, g=g, l1=l1, l2=l2)
+            _, _, r_cor = rt_curves(t=t, vv=vv, vh=vh, g=g, l1=l1, l2=l2)
             assert r_cor[0] == pytest.approx(r0, abs=1e-9), f"g={g} l1={l1} l2={l2}"
 
 

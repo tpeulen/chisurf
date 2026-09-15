@@ -83,6 +83,7 @@ def test_an_incomplete_model_says_what_it_is_missing():
     x = _axis()
     data = chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N))
     fit = fitting.Fit(model_class=for_family("tcspc_lifetime"), data=data)
+    fit.model.set_scalar("generated_response", 0.0)     # a measured IRF, and none loaded
     assert fit.model.problem is None
     assert fit.model.missing == ["response"]
 
@@ -92,6 +93,8 @@ def test_parameters_are_the_models_own_ports():
     problem = model.problem
     assert problem is not None, model.missing
     for parameter in model.parameters_all:
+        if getattr(parameter, "is_output", False):
+            continue                # a statistic shown beside the parameters, not a port
         assert parameter._port.uid == problem.get_parameter(parameter.canonical_id).uid
 
 
@@ -324,15 +327,23 @@ def test_the_view_reproduces_the_classic_generated_irf():
     np.testing.assert_allclose(got, CLASSIC["generated_irf"], rtol=1e-9, atol=1e-9)
 
 
-def test_an_irf_is_missing_until_one_is_loaded_or_modelled():
+def test_the_irf_is_modelled_until_one_is_loaded():
+    """As ChiSurf's lifetime model did: no IRF loaded, a modelled one; a loaded one wins.
+
+    A switch the user sets is theirs: switched off explicitly, a missing IRF is missing.
+    """
     x = _axis()
     data = chisurf.core.data.DataCurve(x=x, y=np.ones(N), ey=np.ones(N))
     fit = fitting.Fit(model_class=for_family("tcspc_lifetime"), data=data)
     model = fit.model
     model.set_scalar("period", PERIOD)
-    assert model.problem is None and "response" in model.missing
-    model.set_scalar("generated_response", 1.0)
     assert model.problem is not None, model.missing
+    assert model.get_scalar("generated_response") == 1.0
+    model.set_dataset("response", chisurf.core.curve.Curve(x=x, y=_irf()))
+    assert model.problem is not None and model.get_scalar("generated_response") == 0.0
+    model.unset_dataset("response")
+    model.set_scalar("generated_response", 0.0)
+    assert model.problem is None and "response" in model.missing
 
 
 @pytest.mark.parametrize("polarization, code", [("vv", 1.0), ("vh", 2.0), ("vv/vh", 3.0)])

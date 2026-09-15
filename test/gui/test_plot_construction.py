@@ -42,8 +42,10 @@ def single_fit():
 
 
 def test_autorange_compat_is_applied_on_import():
-    """The shim must not depend on get_win() having run."""
+    """The shim must not depend on get_win() having run: loading the plot backend applies it."""
     import pyqtgraph as pg
+
+    import chisurf.gui.chiplot.backends.pyqtgraph_backend  # noqa: F401
     assert hasattr(pg.PlotWidget, "autoRangeEnabled"), (
         "PlotWidget.autoRangeEnabled missing -- plots built outside GUI startup "
         "will hit a swallowed AttributeError and take a degraded path")

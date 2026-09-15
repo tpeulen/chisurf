@@ -166,10 +166,9 @@ def _donor_node(amplitudes, lifetimes):
 
     The amplitudes handed in are already the *unpolarised, unquenched* ones, and
     :func:`chisurf.core.fluorescence.fret.lines.donor_lifetime_spectrum` has
-    normalised them. So both of the node's rescaling switches are off, for the
-    same reason
-    :func:`chisurf.core.fitting.minimizer._spectrum_chain` turns them off on the
-    decay it feeds (``decay.set_absolute_amplitudes(False)`` /
+    normalised them. So both of the node's rescaling switches are off, as they
+    are on any TCSPCDecay fed an already-normalised spectrum
+    (``decay.set_absolute_amplitudes(False)`` /
     ``decay.set_normalize_amplitudes(False)``): normalising again downstream
     divides by a different sum — after a rotation it is ``1 + 2 r₀`` rather than
     one — and silently rescales every pattern built from it.

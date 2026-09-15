@@ -194,6 +194,11 @@ def _collect_group_nuisance_parameter_names(model: typing.Any) -> typing.Set[str
     names: typing.Set[str] = set()
     if model is None:
         return names
+    # A model that knows which of its parameters are the instrument's says so
+    # (a BFF-described view, by its description's groups).
+    declared = getattr(model, "nuisance_parameter_names", None)
+    if callable(declared):
+        return set(declared())
     for attr_name, attr_value in getattr(model, "__dict__", {}).items():
         lname = str(attr_name).lower()
         is_nuisance_attr = (

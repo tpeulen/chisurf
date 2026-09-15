@@ -7,8 +7,6 @@ from chisurf.core.fitting.fit import Fit
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
 
-import chisurf.core.models.tcspc.lifetime as lifetime_mod
-import chisurf.core.models.tcspc.fret as fret_mod
 import chisurf.core.models.pda2c.simple as pda_simple_mod
 import chisurf.core.experiments
 import chisurf.core.fitting
@@ -231,62 +229,24 @@ def test_fit_set_state_calls_model_set_state_and_finalize():
     assert model._flag_finalize_called is True
 
 
-def test_lifetime_model_get_set_state_preserves_lifetime_components():
-    """LifetimeModel.get_state/set_state must preserve lifetimes count.
+def test_a_described_models_state_keeps_its_structure_and_values():
+    """The component count of a lifetime or FRET fit is its structure, and the state keeps it."""
+    import pytest
+    pytest.importorskip("IMP.bff")
+    from chisurf.core.models.description import for_family
 
-    This exercises the ``lifetimes_n`` structural extra in fit_state.
-    """
-
-    # Small dummy TCSPC-like dataset
-    x = np.arange(10, dtype=float)
-    y = np.ones_like(x)
-    data = DataCurve(x=x, y=y)
-
-    fit1 = Fit(model_class=lifetime_mod.LifetimeModel, data=data)
-    m1 = fit1.model
-
-    # Ensure multiple lifetime components
-    m1.lifetimes.append()
-    m1.lifetimes.append()
-    n1 = len(m1.lifetimes)
-    assert n1 >= 2
-
-    state = m1.get_state()
-
-    fit2 = Fit(model_class=lifetime_mod.LifetimeModel, data=data)
-    m2 = fit2.model
-    assert len(m2.lifetimes) != n1
-
-    m2.set_state(state)
-    assert len(m2.lifetimes) == n1
-
-
-def test_fret_gaussian_model_get_set_state_preserves_gaussians():
-    """GaussianModel.get_state/set_state must preserve Gaussians count."""
-
-    # Minimal TCSPC-like dataset
-    x = np.arange(10, dtype=float)
-    y = np.exp(-x / 4.0)
-    data = DataCurve(x=x, y=y)
-
-    fit1 = Fit(model_class=chisurf.core.models.tcspc.fret.GaussianModel, data=data)
-    m1 = fit1.model
-    # Clear any default Gaussians, then add two
-    m1.gaussians.clear()
-    m1.gaussians.append(mean=2.0, sigma=0.5, x=1.0)
-    m1.gaussians.append(mean=5.0, sigma=1.0, x=0.5)
-    n1 = len(m1.gaussians)
-    assert n1 == 2
-
-    state = m1.get_state()
-
-    fit2 = Fit(model_class=chisurf.core.models.tcspc.fret.GaussianModel, data=data)
-    m2 = fit2.model
-    # Ensure starting configuration differs
-    assert len(m2.gaussians) != n1
-
-    m2.set_state(state)
-    assert len(m2.gaussians) == n1
+    x = np.arange(64, dtype=float) * 0.1
+    data = DataCurve(x=x, y=np.exp(-x / 4.0) * 100 + 1)
+    for family, key, canonical in (("tcspc_lifetime", "lifetime.components.3", "lifetime.tau.2"),
+                                   ("tcspc_fret_gaussian", "tcspc_fret_gaussian.components.2", "distance.mean.1")):
+        first = Fit(model_class=for_family(family), data=data).model
+        first.structure = key
+        next(p for p in first.parameters_all if p.canonical_id == canonical).value = 7.25
+        second = Fit(model_class=for_family(family), data=data).model
+        assert second.structure != key
+        second.set_state(first.get_state())
+        assert second.structure == key
+        assert next(p for p in second.parameters_all if p.canonical_id == canonical).value == pytest.approx(7.25)
 
 
 def test_pda_probch0_length_preserved_via_model_state():

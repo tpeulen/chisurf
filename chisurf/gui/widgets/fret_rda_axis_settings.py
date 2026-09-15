@@ -11,7 +11,6 @@ from qtpy import QtWidgets
 
 import chisurf as cs
 import chisurf.core.fluorescence
-import chisurf.core.models.tcspc.fret as tcspc_fret
 import chisurf.core.settings
 from chisurf.core.settings.settings_utils import build_fret_rda_axis, set_fret_rda_axis
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
@@ -39,7 +38,7 @@ class FretRdaAxisSettingsWidget(QtWidgets.QGroupBox):
             "Distance axis used for FRET-related distance distributions.\n"
             "These values control cs.core.settings.fret['rda_min'], "
             "['rda_max'], ['rda_resolution'] and ['rda_scale'] which "
-            "define the grid cs.core.models.tcspc.fret.rda_axis (log or "
+            "define the grid cs.core.fluorescence.rda_axis (log or "
             "linear spacing)."
         )
         description.setWordWrap(True)
@@ -146,11 +145,7 @@ class FretRdaAxisSettingsWidget(QtWidgets.QGroupBox):
             return
 
         try:
-            try:
-                cs.core.fluorescence.rda_axis = new_axis
-            except Exception:
-                pass
-            tcspc_fret.rda_axis = new_axis
+            cs.core.fluorescence.rda_axis = new_axis
         except Exception:
             pass
 

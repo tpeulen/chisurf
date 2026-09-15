@@ -117,21 +117,27 @@ artefact.
 
 ## The two models
 
-**`MaxEntLifetimeModel`** recovers $p(\tau)$ on a lifetime grid. Use it when the
-question is whether the sample has discrete states at all.
+**Lifetime: MaxEnt** (`tcspc_maxent_lifetime`) recovers $p(\tau)$ on a lifetime
+grid. Use it when the question is whether the sample has discrete states at all.
 
-**`MaxEntFRETModel`** recovers $p(R)$ directly on a distance grid, using the
-same solver with the FRET kernel substituted
-({src}`chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py#solve_fret_mem`).
+**FRET: MaxEnt distances** (`tcspc_maxent_fret`) recovers $p(R)$ directly on a
+distance grid: each grid distance quenches the donor through the same transfer
+rates the parametric FRET models use, and the same solver distributes the
+amplitude.
 This is the model-free counterpart to the parametric distance distributions in
 {ref}`concept-distance-distributions`: no Gaussian, no chain model, no assumed
 shape. That freedom is exactly why it needs more photons and more care — a
 parametric model with two parameters is far better conditioned than a
 hundred-bin grid, *when the model is right*.
 
-Both carry the usual TCSPC nuisances — time shift, background, scatter, IRF
-background — and both can optimize them alongside the distribution rather than
-requiring them to be fixed first.
+Both run in IMP.bff: the grid's decays are the instrument's own basis (the
+same response preparation and convolution as every other lifetime fit), and
+the entropy-regularised programme is tttrlib's Skilling–Bryan engine. Both
+carry the usual TCSPC nuisances — time shift, background, scatter, IRF
+background — and fit them alongside the distribution. Beside the $\chi^2_r$
+the programme minimises, the fit reports a second $\chi^2_r$ weighted by the
+model rather than the data, which was never optimised against and so can
+disagree.
 
 ## Reading a MEM result
 
@@ -180,8 +186,8 @@ spread of the feature you care about.
 - Related concepts: {ref}`concept-tcspc-lifetime` (the forward model and its
   nuisance terms) · {ref}`concept-distance-distributions` (the parametric
   alternative) · {ref}`concept-parameter-uncertainty`.
-- Implementation: `chisurf/core/models/tcspc/maxent.py`
-  (`MaxEntLifetimeModel`, `MaxEntFRETModel`) ·
+- Implementation: IMP.bff `MaxEntSpectrum` and the `tcspc_maxent_lifetime` /
+  `tcspc_maxent_fret` descriptions, shown by `chisurf.core.models.description` ·
   {src}`chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py#solve_lifetime_mem`
   · {src}`chisurf/core/math/regularization.py#sample_lcurve`; plugin
   `chisurf/plugins/fluorescence_decay/maxent_decay/`.

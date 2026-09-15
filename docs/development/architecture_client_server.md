@@ -125,7 +125,7 @@ Example fit summary, as returned by `fit.list` (`_fit_dto`):
   "n_free": 5,
   "dataset_name": "sample.ptu",
   "dataset_uid": "dataset-uuid",
-  "model_name": "LifetimeModel",
+  "model_name": "Lifetime",
   "parameter_count": 12,
   "data": {},
   "model": {},

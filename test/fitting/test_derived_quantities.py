@@ -96,22 +96,28 @@ def test_an_instance_may_add_one_the_class_never_anticipated():
     assert derived.derived_quantity_names(fit.model) == ["ratio"]
 
 
-def test_the_tcspc_models_declare_the_quantities_they_print():
-    """The reason this exists: these were printed with no error bar at all."""
-    from chisurf.core.models.tcspc.fret import FRETModel
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+def test_the_tcspc_views_declare_the_quantities_they_print():
+    """The reason this exists: these were printed with no error bar at all.
 
-    lifetime = LifetimeModel.__dict__['derived_quantities']
-    assert 'species_averaged_lifetime' in lifetime
-    assert 'fluorescence_averaged_lifetime' in lifetime
-    # FRETModel must *extend*, not replace: <tau>x is still reported there.
-    collected = []
-    for klass in reversed(FRETModel.__mro__):
-        for n in klass.__dict__.get('derived_quantities', ()) or ():
-            if n not in collected:
-                collected.append(n)
-    assert 'fret_efficiency' in collected
-    assert 'species_averaged_lifetime' in collected
+    A described model's statistics are its derived quantities, readable by name.
+    """
+    pytest.importorskip("IMP.bff")
+    import chisurf.core.data
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.description import for_family
+
+    x = np.arange(128) * 0.05
+    for family, expected in (("tcspc_lifetime", {"tau_species", "tau_fluorescence"}),
+                             ("tcspc_fret_gaussian", {"tau_species", "fret_efficiency"})):
+        fit = Fit(model_class=for_family(family),
+                  data=chisurf.core.data.DataCurve(x=x, y=np.exp(-x / 2.0) * 1000 + 1))
+        model = fit.model
+        model.set_scalar("generated_response", 1.0)
+        names = derived.derived_quantity_names(model)
+        present = set(model.presentation.get("statistics", {}))
+        assert expected & present <= set(names), (family, names)
+        values = derived.evaluate_derived(model, names)
+        assert np.all(np.isfinite(values[:len(present)])), (family, dict(zip(names, values)))
 
 
 def test_a_quantity_that_raises_costs_one_value_not_the_whole_report():

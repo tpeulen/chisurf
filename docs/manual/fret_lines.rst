@@ -147,13 +147,10 @@ To create a static FRET line programmatically:
 .. code-block:: python
 
    import numpy as np
-   import chisurf.core.models.tcspc.fret
    import chisurf.core.fluorescence.fret.fret_line
 
-   # Set up the R_DA axis
-   chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       np.log10(1.0), np.log10(500.0), 512
-   )
+   # The lines are computed on BFF-described FRET models (tcspc_fret_gaussian);
+   # the distance axis is the model's own (scalars rda_min, rda_max, rda_resolution).
 
    # Create a static FRET line with R0=52, sigma=6, tau0=4
    static_fl = chisurf.core.fluorescence.fret.fret_line.StaticFRETLine(
@@ -184,13 +181,10 @@ To create a dynamic FRET line with two states:
 .. code-block:: python
 
    import numpy as np
-   import chisurf.core.models.tcspc.fret
    import chisurf.core.fluorescence.fret.fret_line
 
-   # Set up the R_DA axis
-   chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       np.log10(1.0), np.log10(500.0), 512
-   )
+   # The lines are computed on BFF-described FRET models (tcspc_fret_gaussian);
+   # the distance axis is the model's own (scalars rda_min, rda_max, rda_resolution).
 
    # Create a dynamic FRET line with two states
    # State 1: R1=40 Å, sigma1=6 Å
@@ -201,7 +195,7 @@ To create a dynamic FRET line with two states:
        sigma_1=6.0,
        sigma_2=6.0,
        n_points=100,
-       parameter_range=(0, 1)  # Vary x(G,2) from 0 to 1
+       parameter_range=(0, 10)  # the weight of state 2 against state 1 (distance.amplitude.1)
    )
    
    # Calculate the FRET line
@@ -210,7 +204,7 @@ To create a dynamic FRET line with two states:
    # Access the conversion function data
    tau_f, tau_x = dynamic_fl.conversion_function
    
-   # The parameter values represent x(G,2), the fraction of state 2
+   # The parameter values are the weight of state 2 (state 1 is held at 1)
    x_values = dynamic_fl.parameter_values
 
 FRET Line Properties
@@ -227,20 +221,21 @@ Both static and dynamic FRET line objects provide the following properties and m
 - ``fret_efficiencies``: Array of FRET efficiencies along the line
 - ``fluorescence_averaged_lifetimes``: Array of tau_f values
 - ``species_averaged_lifetimes``: Array of tau_x values
-- ``parameter_values``: Array of the varied parameter (R or x)
+- ``parameter_values``: Array of the varied parameter
 - ``polynom_coefficients``: Polynomial coefficients approximating the conversion function
+- ``model``: the described FRET model the line is computed on; ``parameter(name)``
+  finds one of its parameters by canonical id (``distance.mean.0``) or displayed name
 
 **For StaticFRETLine:**
 
-- ``sigma``: Width of the Gaussian distance distribution
-- ``mean_distance``: Mean distance R(G,1)
+- ``sigma``: Width of the Gaussian distance distribution (``distance.sigma.0``);
+  the line sweeps the mean distance ``distance.mean.0``
 
 **For DynamicFRETLine:**
 
-- ``mean_distance_1``: Mean distance of state 1 (R(G,1))
-- ``mean_distance_2``: Mean distance of state 2 (R(G,2))
-- ``sigma_1``: Width of state 1 distribution (s(G,1))
-- ``sigma_2``: Width of state 2 distribution (s(G,2))
+- ``sigma``: The widths of the two states, ``(distance.sigma.0, distance.sigma.1)``;
+  the means are ``distance.mean.0`` and ``distance.mean.1``, and the line sweeps
+  the weight of state 2, ``distance.amplitude.1``
 
 Visualizing FRET Lines
 ----------------------
@@ -273,7 +268,7 @@ For dynamic FRET lines, you can use a color gradient to show the transition:
    # Plot dynamic FRET line
    fig, ax = plt.subplots(figsize=(8, 6))
    tau_f, tau_x = dynamic_fl.conversion_function
-   x_values = dynamic_fl.parameter_values  # x(G,2) values
+   x_values = dynamic_fl.parameter_values  # weight of state 2
    
    # Color points by state fraction
    sc = ax.scatter(tau_f, tau_x, c=x_values, cmap='viridis', s=50, alpha=0.8)
@@ -287,7 +282,7 @@ For dynamic FRET lines, you can use a color gradient to show the transition:
    
    # Add colorbar
    cbar = fig.colorbar(sc, ax=ax)
-   cbar.set_label('x(G,2) (State 2 fraction)')
+   cbar.set_label('weight of state 2')
    plt.show()
 
 Interpreting FRET Lines
@@ -349,13 +344,10 @@ FRET lines:
    """Complete FRET Lines Example"""
    import numpy as np
    import matplotlib.pyplot as plt
-   import chisurf.core.models.tcspc.fret
    import chisurf.core.fluorescence.fret.fret_line
 
-   # Set up the R_DA axis
-   chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-       np.log10(1.0), np.log10(500.0), 512
-   )
+   # The lines are computed on BFF-described FRET models (tcspc_fret_gaussian);
+   # the distance axis is the model's own (scalars rda_min, rda_max, rda_resolution).
 
    # Create static FRET line (R0=52, sigma=6, tau0=4)
    static_fl = chisurf.core.fluorescence.fret.fret_line.StaticFRETLine(
@@ -372,7 +364,7 @@ FRET lines:
        sigma_1=6.0,
        sigma_2=6.0,
        n_points=100,
-       parameter_range=(0, 1)
+       parameter_range=(0, 10)
    )
    dynamic_fl.update()
 
@@ -403,7 +395,7 @@ FRET lines:
    ax2.legend()
    ax2.grid(True, alpha=0.3)
    ax2.set_aspect('equal')
-   fig.colorbar(sc, ax=ax2, label='x(G,2)')
+   fig.colorbar(sc, ax=ax2, label='weight of state 2')
 
    plt.tight_layout()
    plt.savefig('fret_lines_comparison.png', dpi=150)
@@ -468,24 +460,18 @@ Troubleshooting
 
 **Common Issues:**
 
-1. **Missing R_DA axis**: Ensure the R_DA axis is set before creating FRET lines:
-   
-   .. code-block:: python
-   
-      chisurf.core.models.tcspc.fret.rda_axis = np.logspace(
-          np.log10(1.0), np.log10(500.0), 512
-      )
+1. **The distances do not reach far enough**: the distance axis belongs to the
+   model. Set it on the line's model before updating:
 
-2. **AttributeError: module 'chisurf.core.fitting' has no attribute 'fit'**:
-   
-   This indicates the `fit` submodule is not imported. Make sure to import it:
-   
    .. code-block:: python
-   
-      import chisurf.core.fitting.fit
 
-3. **KeyError: 's(G,1)'**: This means the Gaussian component parameters were not properly 
-   initialized. Call `find_parameters()` after appending gaussians.
+      static_fl.model.set_scalar("rda_min", 1.0)
+      static_fl.model.set_scalar("rda_max", 500.0)
+      static_fl.model.set_scalar("rda_resolution", 512)
+
+2. **KeyError naming a parameter**: parameters are addressed by canonical id
+   (``distance.mean.0``, ``fret.x_donly``) or by the name the editor shows;
+   ``line.model.parameters_all`` lists both.
 
 4. **SVD convergence errors**: These can occur with certain parameter combinations. Try 
    adjusting the distance range or number of points.

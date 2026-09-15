@@ -254,6 +254,12 @@ class DescriptionModel(ModelCurve):
         for name, info in (self._document.get("ports") or {}).items():
             if isinstance(info, dict) and "default" in info:
                 self.set_port_values(name, info["default"])
+        # What the description presents as numbers (statistics, reports,
+        # values) are the model's derived quantities: readable by name and
+        # reported with an uncertainty like any other.
+        presentation = self.presentation
+        self.__dict__["derived_quantities"] = tuple(
+            [*presentation.get("statistics", {}), *presentation.get("reports", {}), *presentation.get("values", {})])
         self._assign_group_position(fit)
 
     def _assign_group_position(self, fit) -> None:
@@ -324,6 +330,8 @@ class DescriptionModel(ModelCurve):
     def get_scalar(self, name: str) -> typing.Optional[float]:
         if name in self._scalars:
             return self._scalars[name]
+        if name in self.__dict__.get("_automatic_scalars", {}):
+            return self._automatic_scalars[name]
         default = self.presentation.get("scalars", {}).get(name, {}).get("default")
         if default is None:
             default = self._document.get("optional_scalars", {}).get(name)
@@ -375,8 +383,20 @@ class DescriptionModel(ModelCurve):
         if "fit_stop" in optional:
             self._spec.set_scalar("fit_stop", float(max(0, min(len(y), xmax))))
         # Instrument numbers the data names (a pixel size) are held at its value.
-        defaults = (getattr(data, "meta_data", None) or {}).get("parameter_defaults") or {}
+        meta = getattr(data, "meta_data", None) or {}
+        defaults = meta.get("parameter_defaults") or {}
         self.__dict__["_pending_defaults"] = {str(k): float(v) for k, v in defaults.items()}
+        # Calibration a reader records on the data (a G factor) starts the
+        # parameters the description maps it to; they stay the user's to change.
+        starts = {}
+        for key, canonical in self.presentation.get("meta_parameters", {}).items():
+            if key.startswith("_"):
+                continue
+            try:
+                starts[str(canonical)] = float(meta[key])
+            except (KeyError, TypeError, ValueError):
+                continue
+        self.__dict__["_pending_starts"] = starts
 
     @property
     def problem(self):
@@ -386,10 +406,24 @@ class DescriptionModel(ModelCurve):
         required = list(self._spec.get_dataset_names())
         # An optional measurement can still be needed: a description says
         # which switch makes it unnecessary (a modelled IRF instead of a
-        # measured one), and while that switch is off it is missing.
+        # measured one). Until the user sets that switch, it follows the
+        # measurement -- on while nothing is loaded, off once something is --
+        # which is what ChiSurf's lifetime model did with an unloaded IRF.
+        # A switch the user set is theirs, and while it is off the
+        # measurement is missing.
+        automatic = self.__dict__.setdefault("_automatic_scalars", {})
         for slot, info in self.presentation.get("datasets", {}).items():
             unless = info.get("required_unless")
-            if unless and slot not in required and not (self.get_scalar(unless) or 0.0):
+            if not unless or slot in required:
+                continue
+            if unless not in self._scalars:
+                wanted = 0.0 if slot in self._sources else 1.0
+                if automatic.get(unless) != wanted:
+                    automatic[unless] = wanted
+                    self._spec.set_scalar(unless, wanted)
+                    self._forget_discovery()
+                continue
+            if not (self.get_scalar(unless) or 0.0):
                 required.append(slot)
         for slot in required:
             if slot != self.primary_dataset and slot not in self._sources:
@@ -428,6 +462,16 @@ class DescriptionModel(ModelCurve):
                     port.fixed = False
                     port.value = value
                     model.set_parameter_locked(canonical, True)
+        starts = self.__dict__.pop("_pending_starts", None)
+        if starts:
+            ids = set(model.get_parameter_ids())
+            for canonical, value in starts.items():
+                if canonical in ids:
+                    port = model.get_parameter(canonical)
+                    held = port.fixed
+                    port.fixed = False
+                    port.value = value
+                    port.fixed = held
         return model
 
     def _adopt(self, problem) -> None:
@@ -747,8 +791,11 @@ class DescriptionModel(ModelCurve):
             document = object.__getattribute__(self, "_document")
         except Exception:
             raise AttributeError(name)
-        if name in document.get("presentation", {}).get("distributions", {}):
+        presentation = document.get("presentation", {})
+        if name in presentation.get("distributions", {}):
             return self.presented_distribution(name)
+        if any(name in presentation.get(kind, {}) for kind in ("statistics", "reports", "values")):
+            return self._presented_number(name)
         raise AttributeError(name)
 
     def _update_statistics(self) -> None:
@@ -762,7 +809,6 @@ class DescriptionModel(ModelCurve):
         values = self.presentation.get("values", {})
         if not statistics and not reports and not values:
             return
-        import chisurf.core.fluorescence.general as general
         outputs = self.__dict__.get("_statistic_parameters")
         if outputs is None:
             outputs = {}
@@ -775,31 +821,40 @@ class DescriptionModel(ModelCurve):
             self.__dict__["outputs"] = FittingParameterGroup(
                 parameters=list(outputs.values()), name="Outputs")
             self._forget_discovery()
-        for key, info in statistics.items():
+        for key in (*statistics, *reports, *values):
+            try:
+                outputs[key].value = self._presented_number(key)
+            except Exception:
+                pass
+
+    def _presented_number(self, key: str) -> float:
+        """A statistic, report or value the description presents, computed now."""
+        presentation = self.presentation
+        if key in presentation.get("statistics", {}):
+            import chisurf.core.fluorescence.general as general
+            info = presentation["statistics"][key]
             # One distribution, or several a statistic compares (a FRET
             # efficiency is the contrast of two lifetime spectra).
             names = info["of"] if isinstance(info["of"], list) else [info["of"]]
             spectra = [self.presented_distribution(name) for name in names]
-            function = getattr(general, info["statistic"], None)
-            if function is None or any(spectrum.size < 2 for spectrum in spectra):
-                continue
-            try:
-                outputs[key].value = float(function(*spectra))
-            except Exception:
-                pass
+            if any(spectrum.size < 2 for spectrum in spectra):
+                raise ValueError(f"{key!r}: a distribution it reads is empty")
+            return float(getattr(general, info["statistic"])(*spectra))
         problem = self.problem
-        if reports and problem is not None:
-            for key, info in reports.items():
-                try:
-                    outputs[key].value = float(self._call_report(problem, info))
-                except Exception:
-                    pass
-        if values and problem is not None:
-            for key, info in values.items():
-                try:
-                    outputs[key].value = self._node_value(info)
-                except Exception:
-                    pass
+        if problem is None:
+            raise ValueError(f"the model is incomplete: missing {', '.join(self.missing)}")
+        if key in presentation.get("reports", {}):
+            return float(self._call_report(problem, presentation["reports"][key]))
+        return self._node_value(presentation["values"][key])
+
+    def nuisance_parameter_names(self) -> typing.Set[str]:
+        """The names of the parameters in the description's instrument groups.
+
+        What a fit group keeps local to each curve when it links the rest:
+        ``presentation.nuisance_groups``, or the ``instrument`` group.
+        """
+        groups = set(self.presentation.get("nuisance_groups", ["instrument"]))
+        return {p.name for key, group in self._groups.items() if key in groups for p in group.parameters_all}
 
     def _node_value(self, info: dict) -> float:
         """A scalar a description names by node and port, from the live model."""
@@ -898,7 +953,7 @@ class DescriptionModel(ModelCurve):
     def get_plot_reference_modes(self):
         from chisurf.core.plotting.reference_modes import modes_named
 
-        return modes_named(self.presentation.get("reference_modes", []))
+        return modes_named(self.presentation.get("reference_modes", []), model=self)
 
     # --- the curve -------------------------------------------------------------
     def _update_model(self, **kwargs):

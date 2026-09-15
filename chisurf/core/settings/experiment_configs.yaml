@@ -58,8 +58,7 @@ tcspc:
       controller_class: chisurf.gui.widgets.experiments.tcspc.controller.TCSPCSimulatorSetupWidget
   models:
     # Owned by BFF and described in data (IMP.bff data/model_search/); ChiSurf
-    # shows a view on it. The classic LifetimeModel/FRETModel remain only as
-    # the base of the classic models below until they are ported.
+    # shows a view on it.
     - chisurf.core.models.description.tcspc_lifetime
     - chisurf.core.models.description.tcspc_polarized
     # Mixes the lifetimes other described fits publish.
@@ -76,12 +75,10 @@ tcspc:
     # A donor quenched by acceptors at a density in 1, 2 or 3 dimensions.
     - chisurf.core.models.description.tcspc_fret_acceptor_density
     - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
-    # Pure compute model; its editor is generated from mix_model.view.json.
-    # The classic mixer, for the classic models below until they are described by BFF.
-    - chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel
     - chisurf.core.models.tcspc.fret_structure.FRETStructure
-    - chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel
-    - chisurf.core.models.tcspc.maxent.MaxEntFRETModel
+    # Maximum-entropy distributions over the instrument's own basis.
+    - chisurf.core.models.description.tcspc_maxent_lifetime
+    - chisurf.core.models.description.tcspc_maxent_fret
 
 
 stopped_flow:

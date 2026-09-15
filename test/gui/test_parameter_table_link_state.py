@@ -96,7 +96,7 @@ def test_unlinking_an_out_of_fit_parameter_reaches_the_backend(session):
     """The reported bug: "parameter 'gG/gR' not found" on every unlink."""
     fit, group, client = session
     parameter = group.parameters_all[0]
-    parameter.link = fit.model.parameters_all_dict["sc"]
+    parameter.link = fit.model.parameters_all_dict["scatter"]
     table = ParameterGroupTableWidget(group.parameters_all, parent=None)
     client.calls.clear()
 
@@ -116,7 +116,7 @@ def test_a_backend_free_table_unlinks_locally(session):
     """
     fit, group, client = session
     parameter = group.parameters_all[0]
-    parameter.link = fit.model.parameters_all_dict["sc"]
+    parameter.link = fit.model.parameters_all_dict["scatter"]
     table = ParameterGroupTableWidget(group.parameters_all, parent=None, remote=False)
     client.calls.clear()
 
@@ -129,7 +129,7 @@ def test_a_backend_free_table_unlinks_locally(session):
 def test_a_fit_parameter_still_carries_its_fit(session):
     """The fit address is kept alongside the UUID, so finalisation still lands."""
     fit, _group, _client = session
-    parameter = fit.model.parameters_all_dict["sc"]
+    parameter = fit.model.parameters_all_dict["scatter"]
     table = ParameterGroupTableWidget([parameter], parent=None)
 
     address = table._controller(0)._rpc_address(parameter)
@@ -142,19 +142,19 @@ def test_a_fit_parameter_still_carries_its_fit(session):
 def test_a_linked_follower_is_italic(session):
     """A borrowed value reads as borrowed."""
     fit, _group, _client = session
-    follower = fit.model.parameters_all_dict["bg"]
-    follower.link = fit.model.parameters_all_dict["sc"]
+    follower = fit.model.parameters_all_dict["background"]
+    follower.link = fit.model.parameters_all_dict["scatter"]
 
     assert ParameterGroupTableModel._font(follower).italic()
-    assert ParameterGroupTableModel._font(fit.model.parameters_all_dict["sc"]) is None
+    assert ParameterGroupTableModel._font(fit.model.parameters_all_dict["scatter"]) is None
 
 
 def test_a_value_the_fit_will_not_move_is_dimmed(session):
     """Fixed and linked values are dimmed; the name is not, and free values are not."""
     fit, _group, _client = session
-    fixed = fit.model.parameters_all_dict["dt"]
+    fixed = fit.model.parameters_all_dict["timeshift"]
     fixed.fixed = True
-    free = fit.model.parameters_all_dict["xL1"]
+    free = fit.model.parameters_all_dict["t0"]
     free.fixed = False
 
     assert ParameterGroupTableModel._foreground("value", fixed) is not None
@@ -189,8 +189,8 @@ def test_a_parameter_is_addressed_by_its_own_fit_not_its_group(qapp, monkeypatch
     assert len(members) == 2 and fit.selected_fit_index == 0
 
     # The parameter of the member that is *not* selected.
-    target = members[1].model.parameters_all_dict["dt"]
-    other = members[0].model.parameters_all_dict["dt"]
+    target = members[1].model.parameters_all_dict["n0"]
+    other = members[0].model.parameters_all_dict["n0"]
     target.value, other.value = 101.0, 100.0
 
     controller = FittingParameterProxyController(target)

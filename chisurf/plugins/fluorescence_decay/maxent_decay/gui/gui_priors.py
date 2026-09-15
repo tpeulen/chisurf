@@ -91,15 +91,6 @@ class _MaxentPriorsMixin:
     def _on_load_donor_from_fit_clicked(self) -> None:
         QtWidgets, _, chisurf, _ = ensure_qt_stack()
 
-        try:
-            from chisurf.core.models.tcspc.lifetime import LifetimeModel  # type: ignore
-        except Exception:
-            LifetimeModel = None  # type: ignore[assignment]
-        try:
-            from chisurf.core.models.tcspc.fret import FRETModel  # type: ignore
-        except Exception:
-            FRETModel = None  # type: ignore[assignment]
-
         candidates = []
         labels = []
 
@@ -116,13 +107,12 @@ class _MaxentPriorsMixin:
                         continue
                     arr = None
                     try:
-                        if LifetimeModel is not None and isinstance(model, LifetimeModel):
-                            arr = np.asarray(model.lifetime_spectrum, dtype=float).ravel()
-                        elif FRETModel is not None and isinstance(model, FRETModel):
-                            arr = np.asarray(model.donor_lifetime_spectrum, dtype=float).ravel()
-                        elif getattr(model, "lifetime_spectrum", None) is not None:
-                            # A BFF-described lifetime model presents its spectrum.
-                            arr = np.asarray(model.lifetime_spectrum, dtype=float).ravel()
+                        # A BFF-described model presents its donor spectrum
+                        # (FRET families) or its lifetime spectrum.
+                        for attribute in ("donor_lifetime_spectrum", "lifetime_spectrum"):
+                            if getattr(model, attribute, None) is not None:
+                                arr = np.asarray(getattr(model, attribute), dtype=float).ravel()
+                                break
                     except Exception:
                         arr = None
                     if arr is None or arr.size < 2 or arr.size % 2 != 0:

@@ -1474,11 +1474,12 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
     def _lifetime_groups(self):
         """Yield ``(fit_index, fit, group)`` for every lifetime group in all fits.
 
-        Operates on core :class:`Lifetime` groups (not widgets), so it works for
-        both legacy and auto-rendered models.
+        Operates on parameter groups that carry amplitude and lifetime
+        parameters (not widgets). ChiSurf's classic ``Lifetime`` group was the
+        one kind; TCSPC models are now BFF-described views, whose lifetimes are
+        description parameters, so an application-side group is recognised by
+        what it holds rather than by a class that no longer exists.
         """
-        from chisurf.core.models.tcspc.lifetime import Lifetime
-
         try:
             from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
@@ -1489,7 +1490,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         for fg in fit_groups:
             for fit in fg:
                 for a in getattr(fit.model, "aggregated_parameters", []):
-                    if isinstance(a, Lifetime):
+                    if hasattr(a, "_amplitudes") and hasattr(a, "_lifetimes"):
                         yield idx, fit, a
             idx += 1
 

@@ -1,8 +1,8 @@
 """Offscreen-Qt tests for the AutoModelWidget renderer.
 
-These verify that a *pure* LifetimeModel can be rendered into a real editor by
-composition (no inheritance), that the dynamic lifetime list is wired to the
-model's own append/pop, and that custom/registered sections appear. Qt runs in
+These verify that the lifetime model -- a view on BFF's ``tcspc_lifetime`` --
+renders into a real editor by composition, that picking a topology rebuilds
+the parameter rows, and that custom/registered sections appear. Qt runs in
 offscreen mode so the tests stay headless.
 """
 from __future__ import annotations
@@ -36,7 +36,14 @@ def lifetime_model():
     x = np.linspace(0, 25, 256)
     data = DataCurve(x=x, y=np.ones_like(x))
     fit = fit_mod.Fit(model_class=LifetimeModel, data=data)
+    assert fit.model.problem is not None, fit.model.missing   # the IRF is modelled until one is loaded
     return fit.model
+
+
+def _rows(widget):
+    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
+    return len(widget.parameter_widgets) + sum(
+        t.table_model.rowCount() for t in widget.findChildren(ParameterGroupTableWidget))
 
 
 def test_auto_model_widget_renders_sections(qapp, lifetime_model):
@@ -47,51 +54,23 @@ def test_auto_model_widget_renders_sections(qapp, lifetime_model):
     spec = lifetime_model.view_spec()
     # count includes one trailing stretch item added by rebuild()
     assert w._layout.count() == len(spec.sections) + 1
-    # parameter widgets were created for the resolvable groups
-    assert len(w.parameter_widgets) > 0
+    # parameter rows were created for the resolvable groups
+    assert _rows(w) > 0
 
-
-def test_dynamic_group_add_remove_drives_model(qapp, lifetime_model):
-    from chisurf.core.models import view_spec as vs
+def test_picking_a_topology_rebuilds_the_rows(qapp, lifetime_model):
+    """A component count is a structure: choosing another shows its rows."""
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(lifetime_model)
-    group = lifetime_model.lifetimes
-    n0 = len(group)
-
-    # find the dynamic section's add/del buttons by walking the built tree
-    section = next(s for s in lifetime_model.view_spec().flat_sections()
-                   if isinstance(s, vs.DynamicGroupSection))
-    assert section.target == "lifetimes"
-
-    # simulate add via the model (what the add button calls)
-    group.append()
-    assert len(group) == n0 + 1
-    # rebuild reflects new row count
+    before = _rows(w)
+    lifetime_model.structure = "lifetime.components.2"
     w.rebuild()
-    assert len(w.parameter_widgets) > 0
+    assert _rows(w) == before + 2
 
 
 def test_custom_section_registered(qapp):
     from chisurf.gui.autoform.sections.registry import get_section_factory
     assert get_section_factory("lifetime_amplitude_options") is not None
-
-
-def test_lifetime_header_has_read_link_controls(qapp, lifetime_model):
-    """The ported header exposes abs/norm + read/link, wired to the core group."""
-    from chisurf.gui.autoform.sections.registry import get_section_factory
-
-    factory = get_section_factory("lifetime_amplitude_options")
-    header = factory(model=lifetime_model, target="lifetimes")
-    assert header.absolute is not None and header.normalize is not None
-    assert header.read_btn is not None and header.link_btn is not None
-    # building the target menu must not raise even with no other fits present
-    header._build_target_menu(header.read_menu, header._read_values)
-    header._build_target_menu(header.link_menu, header._link_to)
-    # linking to another core Lifetime group sets the link on the model side
-    other = lifetime_model.lifetimes.__class__(name="lifetimes", fit=lifetime_model.fit)
-    header._link_to(other)
-    assert lifetime_model.lifetimes.link is other
 
 
 def test_plot_keys_resolve(qapp):
@@ -158,8 +137,7 @@ def test_registered_auto_lifetime_model_wires_live(qapp):
 
 
 def test_code_view_resolves_model_view_json(qapp, lifetime_model):
-    """The fit window's plot/code toggle resolves the model's view.json so it
-    can open it next to the model source (PRD-38)."""
+    """The fit window's code toggle opens what the editor is derived from: the description."""
     import pathlib
 
     from chisurf.gui.devtools.source_jump import resolve_model_view_spec_path
@@ -167,11 +145,9 @@ def test_code_view_resolves_model_view_json(qapp, lifetime_model):
     target = resolve_model_view_spec_path(lifetime_model)
     assert target is not None
     path, line = target
-    assert pathlib.Path(path).name == "lifetime.view.json"
-    assert pathlib.Path(path).exists()
-    assert line == 1
+    assert pathlib.Path(path).name == "tcspc_lifetime.json"
+    assert pathlib.Path(path).exists() and line == 1
 
-    # a model without view_spec_file resolves to None
     class Bare:
         pass
     assert resolve_model_view_spec_path(Bare()) is None
@@ -263,18 +239,11 @@ def test_code_view_legacy_widget_resolves_to_compute_model(qapp):
 
 
 def test_parameter_group_sections_populate(qapp, lifetime_model):
-    """Nuisance groups define params as plain attributes surfaced lazily by
-    find_parameters(); the renderer must trigger that so convolve/generic/
-    corrections aren't drawn empty (regression: only Lifetimes populated)."""
+    """Every parameter the active structure uses is drawn: the lifetimes and the instrument."""
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(lifetime_model)
-    # convolve alone contributes ~11 scalar params; total must exceed the 2
-    # lifetime params that were the only ones rendering before the fix. Nuisance
-    # groups now render as compact parameter-group tables, so count their rows too.
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-    table_rows = sum(t.table_model.rowCount() for t in w.findChildren(ParameterGroupTableWidget))
-    assert len(w.parameter_widgets) + table_rows > 12
+    assert _rows(w) >= len(lifetime_model.structure_parameter_ids())
 
 
 @pytest.fixture
@@ -295,70 +264,45 @@ def registered_lifetime_model(lifetime_model):
 
 
 def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_model, monkeypatch):
-    """The IRF curve_input renders as a CurveInputWidget and its selection
-    dispatches the configured action with the index/name payload keys."""
+    """The IRF input renders as a CurveInputWidget and a selection dispatches the
+    view's dataset action with its slot and the index/name payload keys."""
     import chisurf as cs
     from chisurf.gui.autoform.sections.builtin import CurveInputWidget
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(registered_lifetime_model)
-    curve_widgets = w.findChildren(CurveInputWidget)
-    assert curve_widgets, "expected at least one CurveInputWidget (IRF)"
-    irf = next(c for c in curve_widgets if c._section.select_action == "model.change_irf")
+    irf = next(c for c in w.findChildren(CurveInputWidget)
+               if (c._section.action_fixed or {}).get("slot") == "response")
 
     dispatched = []
-    monkeypatch.setattr(
-        cs.core.actions, "dispatch",
-        lambda name, payload=None: dispatched.append((name, dict(payload or {}))),
-    )
+    monkeypatch.setattr(cs.core.actions, "dispatch",
+                        lambda name, payload=None: dispatched.append((name, dict(payload or {}))))
 
-    # simulate a selection without opening the real selector dialog
     class _Sel:
         selected_curve_index = 3
         curve_name = "irf_curve.txt"
     irf._selector = _Sel()
     irf._on_change()
 
-    names = [n for n, _ in dispatched]
-    assert "model.change_irf" in names
-    payload = dict(dispatched[names.index("model.change_irf")][1])
-    assert payload.get("irf_idx") == 3
-    assert payload.get("irf_name") == "irf_curve.txt"
-    assert "fit_index" in payload
+    name, payload = next((n, p) for n, p in dispatched if n == "model.set_dataset")
+    assert payload.get("idx") == 3 and payload.get("name") == "irf_curve.txt"
+    assert payload.get("slot") == "response" and "fit_index" in payload
 
 
 def test_choice_and_toggle_controls_mutate_the_model(qapp, lifetime_model):
-    """choice/toggle sections render and their changes write through to the
-    bound model attribute (convolution type, do_convolution, polarization)."""
+    """The topology is a choice and the switches are scalars; both write through."""
     from chisurf.gui.autoform.sections.builtin import ChoiceWidget, ToggleWidget
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(lifetime_model)
     choices = {c._section.attr: c for c in w.findChildren(ChoiceWidget)}
     toggles = {t._section.attr: t for t in w.findChildren(ToggleWidget)}
+    assert "structure" in choices
+    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up"} <= set(toggles)
 
-    assert {"mode", "window_function", "polarization_type"} <= set(choices)
-    assert "do_convolution" in toggles
-
-    # toggle writes through to convolve.do_convolution
-    before = lifetime_model.convolve.do_convolution
-    toggles["do_convolution"].checkbox.setChecked(not before)
-    assert lifetime_model.convolve.do_convolution == (not before)
-
-    # mode renders as inline radios (style="radio"); selecting one writes through
-    mode = choices["mode"]
-    assert mode.combo is None and mode._radios, "mode should be radio-style"
-    next(r for r in mode._radios if r.text() == "exp").setChecked(True)
-    assert lifetime_model.convolve.mode == "exp"
-
-    # polarization is a combo and writes through
-    choices["polarization_type"].combo.setCurrentText("vv")
-    assert lifetime_model.anisotropy.polarization_type == "vv"
-
-    # smoothing options come from the named source
-    opts = [choices["window_function"].combo.itemText(i)
-            for i in range(choices["window_function"].combo.count())]
-    assert "hanning" in opts and "flat" in opts
+    before = bool(lifetime_model.get_scalar("convolve"))
+    toggles["scalars.convolve"].checkbox.setChecked(not before)
+    assert bool(lifetime_model.get_scalar("convolve")) == (not before)
 
 
 def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
@@ -398,18 +342,17 @@ def test_add_fit_display_path_wires_pure_model(qapp, lifetime_model):
 
 
 def test_retired_lifetime_class_paths_still_resolve_to_the_pure_model(qapp):
-    """The hand-written Lifetime editors are gone; their names remain importable.
+    """The classic Lifetime classes are gone; their names remain importable.
 
-    Deleting a registered model class is what broke the model combobox the last
-    time this flip was attempted: a user copy of ``experiment_configs.yaml``
-    *replaces* the bundled model list rather than merging with it, and a pinned
-    class path that no longer resolves drops the entry silently instead of
-    failing. Pickled projects pin paths the same way. So every retired name must
-    still import and must land on the pure model that replaced it.
+    A user copy of ``experiment_configs.yaml`` *replaces* the bundled model list
+    and a pinned class path that no longer resolves drops the entry silently;
+    pickled projects pin paths the same way. So every retired name still
+    imports, and lands on the view that replaced it.
     """
     from qtpy import QtWidgets
 
     import chisurf.gui.widgets.models.tcspc as tcspc
+    from chisurf.core.models.description import for_family
     from chisurf.core.models.tcspc.lifetime import (
         LifetimeMixtureModel,
         LifetimeMixtureNewModel,
@@ -417,25 +360,17 @@ def test_retired_lifetime_class_paths_still_resolve_to_the_pure_model(qapp):
         LifetimeNewModel,
     )
 
-    # the retired widget names are aliases of the pure models now
+    assert LifetimeModel is for_family("tcspc_lifetime")
+    assert LifetimeMixtureModel is for_family("tcspc_mixture")
     assert tcspc.LifetimeModelWidget is LifetimeModel
     assert tcspc.LifetimeMixtureModelWidget is LifetimeMixtureModel
-
-    # so are the retired "(new)" prototype names
     assert LifetimeNewModel is LifetimeModel
     assert LifetimeMixtureNewModel is LifetimeMixtureModel
-
-    # and what they resolve to is Qt-free, so AutoForm renders the editor
     assert not issubclass(LifetimeModel, QtWidgets.QWidget)
     assert not issubclass(LifetimeMixtureModel, QtWidgets.QWidget)
-
     # the menu names carry no stray whitespace: add_fit matches them as strings
     assert LifetimeModel.name == "Lifetime"
-    assert LifetimeMixtureModel.name == "Lifetime mixer"
-
-    # both editors are described by JSON, not by Python
-    assert LifetimeModel.view_spec_file == "lifetime.view.json"
-    assert LifetimeMixtureModel.view_spec_file == "mix_model.view.json"
+    assert LifetimeMixtureModel.name == "Lifetime mixture"
 
 
 def test_plots_come_only_from_the_view_spec(qapp):
@@ -613,16 +548,16 @@ def test_mixture_new_model_is_pure(qapp, mixture_model):
     from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
     assert not isinstance(mixture_model, QtWidgets.QWidget)
     # class attribute is the menu/registry label
-    assert LifetimeMixtureModel.name == "Lifetime mixer"
+    assert LifetimeMixtureModel.name == "Lifetime mixture"
 
 
 def test_mixture_new_model_view_spec_has_fit_mixer(qapp, mixture_model):
-    """The view spec loaded from mix_model.view.json declares a fit_mixer section."""
+    """The mixture's derived editor declares a fit_mixer section."""
     from chisurf.core.models import view_spec as vs
     spec = mixture_model.view_spec()
     customs = [s for s in spec.flat_sections() if isinstance(s, vs.CustomSection)]
     mixer = next((s for s in customs if s.key == "fit_mixer"), None)
-    assert mixer is not None, "mix_model.view.json must contain a fit_mixer custom section"
+    assert mixer is not None, "the mixture editor must contain a fit_mixer custom section"
 
 
 def test_mixture_new_model_fit_mixer_section_registered(qapp):

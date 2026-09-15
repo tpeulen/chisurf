@@ -100,7 +100,7 @@ Edit `~/.chisurf/experiment_configs.yaml` and add the dotted path under the
 ```yaml
 tcspc:
   models:
-    - chisurf.gui.widgets.models.tcspc.LifetimeModelWidget
+    - chisurf.core.models.description.tcspc_lifetime
     - my_package.my_models.MyScaledModel        # <- your model
 ```
 

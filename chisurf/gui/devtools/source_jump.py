@@ -175,6 +175,18 @@ def resolve_model_view_spec_path(model: Any) -> Optional[Tuple[str, int]]:
     Returns:
         ``(json_path, 1)`` if the file exists, otherwise ``None``.
     """
+    # A BFF-described model's editor is derived from its description: the
+    # description file is what to open.
+    family = getattr(model, "family", None)
+    if isinstance(family, str) and family and getattr(model, "presentation", None) is not None:
+        try:
+            import IMP.bff
+
+            path = pathlib.Path(IMP.bff.get_data_path(f"model_search/{family}.json"))
+            if path.exists():
+                return (str(path), 1)
+        except Exception:
+            pass
     cls = resolve_compute_model_class(model)
     if cls is None:
         return None

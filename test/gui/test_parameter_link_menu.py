@@ -95,7 +95,7 @@ def _fit_menu(menu: QtWidgets.QMenu, suffix: str) -> QtWidgets.QMenu:
 
 def test_menu_offers_the_parameters_of_a_fresh_fit(session):
     """The reported bug: the target list came up empty."""
-    source = session[0].model.parameters_all_dict["sc"]
+    source = session[0].model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(source).build_link_menu()
     all_parameters = _submenu(_fit_menu(menu, "- A"), "All parameters")
     assert len(_entries(all_parameters)) > 1
@@ -103,30 +103,29 @@ def test_menu_offers_the_parameters_of_a_fresh_fit(session):
 
 def test_the_source_parameter_is_the_only_one_excluded(session):
     """Its twin in another fit is a link target; only the clicked one is not."""
-    source = session[0].model.parameters_all_dict["sc"]
+    source = session[0].model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(source).build_link_menu()
-    assert "sc" not in _entries(_fit_menu(menu, "- A"))
-    assert "sc" in _entries(_fit_menu(menu, "- B"))
+    assert "scatter" not in _entries(_fit_menu(menu, "- A"))
+    assert "scatter" in _entries(_fit_menu(menu, "- B"))
 
 
 def test_targets_are_grouped_as_the_model_presents_them(session):
     """Not one flat list: the model's sub-groups are their own submenus."""
-    source = session[0].model.parameters_all_dict["sc"]
+    source = session[0].model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(source).build_link_menu()
     fit_menu = _fit_menu(menu, "- A")
     titles = {a.text() for a in fit_menu.actions() if a.menu() is not None}
     assert "All parameters" in titles
     assert titles - {"All parameters"}
-    # Models spell their groups inconsistently ("convolve" beside "Corrections");
-    # the menu titles them uniformly.
+    # The menu titles the groups uniformly.
     assert all(title[:1] == title[:1].upper() for title in titles)
-    grouped = _submenu(fit_menu, "Convolve")
-    assert "dt" in _entries(grouped)
+    grouped = _submenu(fit_menu, "Instrument")
+    assert "timeshift" in _entries(grouped)
 
 
 def test_every_curve_of_a_group_is_offered(session):
     """A fit group answers ``model`` with one member; all of them are targets."""
-    source = session[0].model.parameters_all_dict["sc"]
+    source = session[0].model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(source).build_link_menu()
     members = [a.text() for a in _fit_menu(menu, "- B").actions() if a.menu() is not None]
     assert len(members) == 2
@@ -135,21 +134,21 @@ def test_every_curve_of_a_group_is_offered(session):
 def test_triggering_an_entry_links_to_that_parameter(session):
     """Clicking the twin in the other fit links to *that* parameter."""
     source, other = session[0], session[1]
-    parameter = source.model.parameters_all_dict["sc"]
+    parameter = source.model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(parameter).build_link_menu()
     member = [a for a in _fit_menu(menu, "- B").actions() if a.menu() is not None][0].menu()
-    target = [a for a in _submenu(member, "All parameters").actions() if a.text() == "sc"][0]
+    target = [a for a in _submenu(member, "All parameters").actions() if a.text() == "scatter"][0]
 
     target.trigger()
 
     assert parameter.is_linked
-    assert parameter.link is other.grouped_fits[0].model.parameters_all_dict["sc"]
+    assert parameter.link is other.grouped_fits[0].model.parameters_all_dict["scatter"]
 
 
 def test_a_fit_without_parameters_says_so(session, monkeypatch):
     """An empty popup reads as a broken menu; the menu names the condition."""
     # "walked, owns nothing" — the state a model with no parameters is in.
     monkeypatch.setattr(session[0].model, "_parameters", [])
-    parameter = session[1].grouped_fits[0].model.parameters_all_dict["sc"]
+    parameter = session[1].grouped_fits[0].model.parameters_all_dict["scatter"]
     menu = FittingParameterProxyController(parameter).build_link_menu()
     assert _entries(_fit_menu(menu, "- A")) == ["(no parameters)"]

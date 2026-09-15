@@ -205,7 +205,7 @@ Used by: `chisurf.core.structure.av.*` and related structure modelling code.
 
 ### 1.7 `fret` (global FRET distance grid)
 
-Used primarily by `chisurf.core.models.tcspc.fret` and helper functions.
+Used by `chisurf.core.fluorescence.rda_axis` (the photon-distribution models and helper functions).
 
 - **`rda_min`**, **`rda_max`**  
   Minimum and maximum donor–acceptor distances (in Å) defining the global

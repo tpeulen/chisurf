@@ -24,16 +24,11 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-import scipy.stats
 
 import chisurf.core.math.linalg
 import chisurf.core.math.optimization
 from chisurf.core.curve import Curve
-from chisurf.core.data import DataCurve
-from chisurf.core.fitting.fit import Fit
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
-X = np.arange(64, dtype=float)
 
 
 # --------------------------------------------------------------- Richardson-Lucy
@@ -104,47 +99,6 @@ def test_the_deleted_algorithm_is_reproducible_for_the_record():
 
 
 # --------------------------------------------------------- convolution straggler
-
-
-def _convolve():
-    """A `Convolve` on a 64-channel decay carrying a wide, shifted IRF.
-
-    Same fixture shape as ``test/tcspc/test_convolve_do_convolution.py``.
-    """
-    data = DataCurve(x=X, y=1000.0 * np.exp(-X / 4.0))
-    fit = Fit(model_class=LifetimeModel, data=data)
-    convolve = fit.model.convolve
-    convolve._irf = Curve(x=X, y=scipy.stats.norm.pdf(X, loc=5.0, scale=1.0))
-    convolve._irf_start.value = 0.0
-    convolve._irf_stop.value = float(len(X))
-    convolve._stop.value = float(len(X))
-    return convolve
-
-
-def test_full_mode_convolution_is_pinned():
-    """Pin ``nusiance.py``'s ``"full"``-mode ``np.convolve`` output.
-
-    Guards the exact numbers ``parse``/``av_decay``
-    models fit against, in case a future change (e.g. a forward to an
-    engine kernel) is made without re-deriving this parity check.
-    """
-    convolve = _convolve()
-    given = np.exp(-X / 2.0)
-
-    decay = convolve.convolve(given, mode="full")
-
-    # Reproduce nusiance.py's own normalisation of the IRF exactly (resize to
-    # the data shape, normalise to unit sum) and the raw numpy computation it
-    # runs at line ~945, so this test fails the moment either changes.
-    irf_y = np.resize(convolve._irf.y, X.shape)
-    irf_y = irf_y / irf_y.sum()
-    n_points = irf_y.shape[0]
-    expected = np.convolve(given, irf_y, mode="full")[:n_points]
-
-    # Not bit-exact: the model path caches ``irf_y`` (see nusiance.py's
-    # ``_irf_y_cache``) while this recomputes it, and float summation order
-    # differs between the two -- both are float64, so tight is still tight.
-    np.testing.assert_allclose(decay, expected, rtol=1e-12, atol=1e-15)
 
 
 def test_sconv_is_not_a_drop_in_for_full_mode_np_convolve():

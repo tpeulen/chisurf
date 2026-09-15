@@ -108,137 +108,67 @@ def _make_fit(model_class):
 
 
 def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
-    """Walk the full add-fit path for the pure Lifetime model and assert the
-    editor a user would see is actually usable: it builds, every parameter group
-    renders its parameters, the IRF curve input is present, and the model
-    produces a finite decay."""
+    """Walk the full add-fit path for the Lifetime model (a view on BFF's
+    tcspc_lifetime) and assert the editor a user would see is usable: it builds,
+    every parameter the structure uses renders, the IRF input and the switches
+    are present, the tables drop columns by priority, and the model computes."""
     from qtpy import QtWidgets
 
     from chisurf.core.models import view_spec as vs
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import (
-        build_model_editor,
-        model_plot_specs,
+    from chisurf.gui.autoform.sections.parameter_table import (
+        COL_BOUNDS_ON,
+        COL_ERROR,
+        COL_VALUE,
+        ParameterGroupTableWidget,
     )
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeModel")
     fit = _make_fit(model_class)
     model = fit.model
+    assert model.problem is not None, model.missing
 
     # (a) build_model_editor must return a real widget (the add-fit crash site)
     editor = build_model_editor(model)
     assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)  # the exact call that used to raise
+    QtWidgets.QVBoxLayout().addWidget(editor)
 
-    # (b) the editor is not a row of empty titled boxes (per-parameter widgets
-    # and/or compact parameter-group tables)
-    from chisurf.gui.autoform.sections.parameter_table import (
-        PairedParameterTableWidget,
-        ParameterGroupTableWidget,
-    )
-    table_rows = sum(t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget))
-    assert len(editor.parameter_widgets) + table_rows > 12, "parameter groups rendered empty"
+    # (b) every parameter of the active structure is on screen
+    tables = editor.findChildren(ParameterGroupTableWidget)
+    rows = len(editor.parameter_widgets) + sum(t.table_model.rowCount() for t in tables)
+    assert rows >= len(model.structure_parameter_ids()), "parameter groups rendered empty"
 
-    # (b2) the lifetime (x/tau) and rotation (b/rho) components render as paired
-    # tables: one row per component, two parameter slots per row side by side.
-    paired = editor.findChildren(PairedParameterTableWidget)
-    assert paired, "paired component tables did not render"
-    for t in paired:
-        assert t.table_model.width == 2, "paired table expected 2 params per component"
-        # 1 index column + 2 slots x 6 (value/fixed/lo/hi/bounds/error) columns
-        assert t.table_model.columnCount() == 1 + 2 * 6
-    # the lifetime components table starts populated (at least one component row)
-    assert any(t.table_model.rowCount() >= 1 for t in paired), "no paired component rows"
-
-    # (b3) bounds columns are always wanted and hidden only for want of room --
-    # there is no toggle to find them behind. A one-parameter-per-row table shows
-    # them when given the width; squeezed, columns are dropped by priority.
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform.sections.parameter_table import COL_BOUNDS_ON
-
-    gen = next(
-        (t for t in editor.findChildren(ParameterGroupTableWidget) if t.has_bounds_columns()),
-        None,
-    )
+    # (b2) squeezed, a table drops columns by priority; widened, it brings them back
+    gen = next((t for t in tables if t.has_bounds_columns()), None)
     assert gen is not None, "no bounds-capable parameter table found"
 
-    from chisurf.gui.autoform.sections.parameter_table import COL_ERROR, COL_VALUE
-
     def _at_width(width: int):
-        """Render the editor at `width` and return the sample table's view.
-
-        The editor is shown (offscreen): a table's viewport has no width until the
-        widget is laid out, so an unshown editor reports nothing to fit columns
-        into and drops them all.
-        """
         editor.show()
-        editor.setFixedWidth(width)   # resize() is refused below the layout minimum
+        editor.setFixedWidth(width)
         qapp.processEvents()
         editor.resize(width, max(editor.sizeHint().height(), 600))
         qapp.processEvents()
         return gen.table_view
 
-    # Given the room, a one-parameter-per-row table shows its bounds columns...
-    view = _at_width(560)
-    assert not view.isColumnHidden(COL_BOUNDS_ON), (
-        "a single-column table should show the bounds columns when they fit"
-    )
-    # ...and so does a table packing two parameters per row, when it has the room:
-    # nothing hides bounds on principle any more, only for want of space.
-    for paired in editor.findChildren(PairedParameterTableWidget):
-        pv, pm = paired.table_view, paired.table_model
-        if not paired.has_bounds_columns() or pm.rowCount() == 0:
-            continue
-        if pv.horizontalScrollBar().maximum() == 0 and not pv.isColumnHidden(COL_BOUNDS_ON):
-            break   # at least one wide component table shows them: the rule holds
-    # (a narrow one may still have dropped them -- that is the width check, below)
-
-    # Squeezed, the table drops columns by priority rather than truncating
-    # everything equally: bounds first, then the error estimate, and the value is
-    # kept longest because a value you cannot read is the table failing.
+    assert not _at_width(560).isColumnHidden(COL_BOUNDS_ON)
     view = _at_width(210)
-    assert view.isColumnHidden(COL_BOUNDS_ON), "bounds not dropped on a narrow table"
-    assert not view.isColumnHidden(COL_VALUE), "the value column must survive"
+    assert view.isColumnHidden(COL_BOUNDS_ON) and not view.isColumnHidden(COL_VALUE)
     view = _at_width(150)
-    assert view.isColumnHidden(COL_ERROR), "error not dropped on a very narrow table"
-    assert not view.isColumnHidden(COL_VALUE), "the value column must survive"
-
-    # Widening brings them back, in reverse priority order.
+    assert view.isColumnHidden(COL_ERROR) and not view.isColumnHidden(COL_VALUE)
     view = _at_width(560)
-    assert not view.isColumnHidden(COL_ERROR), "error not restored when it fits again"
-    assert not view.isColumnHidden(COL_BOUNDS_ON), "bounds not restored when they fit again"
-    editor.setMaximumWidth(16777215)  # undo setFixedWidth for later assertions
+    assert not view.isColumnHidden(COL_ERROR) and not view.isColumnHidden(COL_BOUNDS_ON)
+    editor.setMaximumWidth(16777215)
 
-    # (c) every parameter-group section resolves to a group that actually has params
+    # (c) the IRF input binds the view's response slot
     spec = model.view_spec()
-    for section in spec.flat_sections():
-        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
-            group = getattr(model, section.target)
-            if hasattr(group, "find_parameters") and not list(group.parameters_all):
-                group.find_parameters()
-            assert list(group.parameters_all), f"group {section.target!r} has no parameters"
-
-    # (d) the IRF curve input is present so the model can be given an instrument response
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any(s.select_action == "model.change_irf" for s in curve_inputs), "no IRF curve input"
+    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), "no IRF curve input"
 
-    # (d2) the bespoke enum/bool controls the hand-written widget had are present
-    # (convolution type + on/off, smoothing, correction toggles, polarization).
-    choice_attrs = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ChoiceSection)}
-    toggle_attrs = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)}
-    toggle_row_attrs = {
-        item["attr"]
-        for s in spec.flat_sections()
-        if isinstance(s, vs.ToggleRowSection)
-        for item in s.items
-    }
-    all_toggle_attrs = toggle_attrs | toggle_row_attrs
-    assert {"mode", "window_function", "polarization_type"} <= choice_attrs, (
-        f"missing choice controls; have {choice_attrs}")
-    assert "do_convolution" in toggle_attrs, f"missing do_convolution toggle; have {toggle_attrs}"
-    assert {"correct_pile_up", "correct_dnl", "reverse"} <= all_toggle_attrs, (
-        f"missing toggle controls; have {all_toggle_attrs}")
+    # (d) the switches the hand-written widget had are the description's scalars
+    toggles = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)}
+    assert {"scalars.convolve", "scalars.periodic_excitation", "scalars.pile_up",
+            "scalars.reverse_linearization"} <= toggles, toggles
 
     # (e) plots resolve and the model computes a finite, non-empty curve
     assert model_plot_specs(model), "no plot specs resolved"
@@ -262,7 +192,7 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeMixtureModel")
-    assert model_class.name == "Lifetime mixer"
+    assert model_class.name == "Lifetime mixture"
     fit = _make_fit(model_class)
     model = fit.model
 
@@ -275,15 +205,15 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     # (b) the view spec declares a fit_mixer custom section
     spec = model.view_spec()
     customs = [s for s in spec.flat_sections() if isinstance(s, vs.CustomSection)]
-    assert any(s.key == "fit_mixer" for s in customs), "no fit_mixer section in mix_model.view.json"
+    assert any(s.key == "fit_mixer" for s in customs), "no fit_mixer section in the mixture editor"
 
     # (c) a FitMixerWidget is present in the rendered editor
     mixer_widgets = editor.findChildren(FitMixerWidget)
     assert mixer_widgets, "FitMixerWidget not found in rendered editor"
 
-    # (d) the IRF curve input is declared so the model can be convolved
+    # (d) the IRF input is declared so the model can be convolved
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any(s.select_action == "model.change_irf" for s in curve_inputs), "no IRF curve input"
+    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), "no IRF curve input"
 
     # (e) plots resolve
     assert model_plot_specs(model), "no plot specs resolved"
