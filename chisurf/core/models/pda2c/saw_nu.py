@@ -15,7 +15,7 @@ import numpy as np
 
 import chisurf as cs
 import chisurf.core.math.functions.rdf as rdf
-import chisurf.core.models.tcspc.fret
+import chisurf.core.fluorescence
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.pda2c.pdagauss import Pda2cGaussianDistanceModel
 
@@ -26,7 +26,7 @@ class Pda2cSawNuDistances(FittingParameterGroup):
     @property
     def distribution(self) -> np.ndarray:
         """Return the SAW-ν distance distribution as a 2xN ``(r, p(r))`` array."""
-        r = cs.core.models.tcspc.fret.rda_axis
+        r = cs.core.fluorescence.rda_axis
         p = rdf.saw_nu(r, self._r_rms.value, self._nu.value)
         s = p.sum()
         if s > 0.0:

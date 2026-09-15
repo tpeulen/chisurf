@@ -340,17 +340,17 @@ def test_run_mem_convention_is_half_nu_not_nu_squared():
     assert not np.allclose(via_run_mem, via_half_naive, rtol=1e-2, atol=1e-6)
 
 
-def test_the_maxent_decay_solver_reaches_the_engine_through_the_seam():
-    """The plugin's ``_run_mem`` is a seam call, not a second engine call site."""
+def test_the_maxent_decay_solver_runs_the_engines_maxent_model():
+    """The tool's MEM is BFF's MaxEnt description, not a Python or tttrlib copy."""
     import inspect
 
     from chisurf.plugins.fluorescence_decay.maxent_decay.core import solver
 
-    src = inspect.getsource(solver._run_mem)
-    assert "maxent_normal_equations" in src
-    assert "tcspc_run_mem" not in src.split('"""')[-1], "no direct engine call"
-    assert not hasattr(solver, "_quadpr_bound"), "the dead bound-QP copy is gone"
-    assert not hasattr(solver, "_tttrlib"), "the engine handle moved to the seam"
+    src = inspect.getsource(solver)
+    assert "tcspc_maxent_lifetime" in src and "tcspc_maxent_fret" in src
+    for gone in ("_run_mem", "_build_Fi_lifetimes", "_quadpr_bound", "_tttrlib"):
+        assert not hasattr(solver, gone), gone
+    assert "tttrlib" not in src.split('"""', 2)[-1], "no tttrlib call below the module docstring"
 
 
 # --------------------------------------------------------- caller: 2D-FLC ILT

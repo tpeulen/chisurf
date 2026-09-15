@@ -15,7 +15,8 @@ import tttrlib
 import chisurf as cs
 import chisurf.core.math.datatools
 import chisurf.core.math.functions.distributions
-import chisurf.core.models.tcspc.fret
+import chisurf.core.fluorescence
+import chisurf.core.models.fret_parameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
 from chisurf.core.models.model import ModelCurve
@@ -35,7 +36,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
     small number of Gaussian distance components. The
     :attr:`distribution` property turns these parameters into a
     normalized distance distribution on the grid defined by
-    ``cs.core.models.tcspc.fret.rda_axis``.
+    ``cs.core.fluorescence.rda_axis``.
     """
 
     @property
@@ -74,7 +75,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         amplitudes = self.amplitudes
         if means.size == 0:
             return np.zeros((2, 0), dtype=np.float64)
-        r = cs.core.models.tcspc.fret.rda_axis
+        r = cs.core.fluorescence.rda_axis
 
         # Optional limited-width mode: interpret stored sigmas as
         # percentages of the mean distance, so that for a component with
@@ -248,9 +249,7 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         if len(self.distances) == 0:
             self.distances.append()
 
-        self.fret_parameters = cs.core.models.tcspc.fret.FRETParameters(
-            enable_fret_efficiency=False
-        )
+        self.fret_parameters = chisurf.core.models.fret_parameters.FRETParameters()
 
         # Which 1D projection of the S1S2 matrix the fit runs on, how it is
         # binned, and under which counting statistic. Editable in the model

@@ -51,9 +51,6 @@ def test_phasor_service_over_inprocess_client(client):
 def test_lines_service_phasor_and_fret_over_inprocess_client(client):
     from ndxplorer.rpc import LinesService
 
-    import chisurf.core.models.tcspc.fret as fret_mod
-
-    fret_mod.rda_axis = np.logspace(np.log10(1), np.log10(500))
     svc = LinesService(client)
 
     phasor_lines = svc.phasor.overlays(frequency_mhz=80.0, sets=["semicircle"])
@@ -61,7 +58,7 @@ def test_lines_service_phasor_and_fret_over_inprocess_client(client):
 
     fret_lines = svc.fret_line.overlays(
         components=[{"model_name": "FRET: FD (Gaussian)", "n_components": 1, "params": {}}],
-        sweep={"kind": "param", "component": 0, "name": "R(G,1)"},
+        sweep={"kind": "param", "component": 0, "name": "distance.mean.0"},
         param_min=20.0,
         param_max=100.0,
         n_points=6,

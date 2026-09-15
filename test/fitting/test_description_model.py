@@ -7,6 +7,9 @@ the model in place, and changing the data rebuilds nothing the view holds.
 
 from __future__ import annotations
 
+import json
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -18,6 +21,10 @@ import chisurf.core.models.model
 import chisurf.core.fitting.fit as fitting
 from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
 from chisurf.core.models.description import DescriptionModel, for_family
+
+#: ChiSurf's classic LifetimeModel at the numbers the parity tests below use,
+#: recorded before it was removed (see the file's _comment).
+CLASSIC = json.loads((pathlib.Path(__file__).parent / "data" / "classic_tcspc_reference.json").read_text())["lifetime"]
 
 N = 128
 DT = 0.048
@@ -209,33 +216,11 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
     background, clip, zero outside [irf_start, irf_stop), shift, normalise --
     and BFF now does the same in the graph, so the view needs no Python curve.
     """
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
-
     x = _axis()
     irf = _irf() + 6.0                      # a lamp background under the IRF
     y = np.random.default_rng(4).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 10).astype(float)
     ey = np.sqrt(np.maximum(y, 1.0))
-
-    classic_fit = fitting.Fit(model_class=LifetimeModel,
-                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
-    classic_fit.xmin, classic_fit.xmax = 0, N
-    classic = classic_fit.model
-    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
-    classic.convolve.dt = DT
-    classic.convolve.rep_rate = 1000.0 / PERIOD
-    classic.convolve._lb.value = 6.5
-    classic.convolve._irf_start.value = 0.4
-    classic.convolve._irf_stop.value = 3.6
-    classic.convolve._ts.value = 0.7
-    classic.convolve._n0.fixed = False
-    classic.convolve._n0.value = 9000.0
-    classic.generic._sc.value = 0.02
-    classic.generic._bg.value = 3.0
-    classic.lifetimes._lifetimes[0].value = 3.2
-    classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
-    classic.find_parameters()
-    classic.update()
-    reference = np.array(classic.y)
+    reference = np.asarray(CLASSIC["irf_preparation"])
 
     fit, model = _view(y)
     fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
@@ -244,7 +229,7 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
     model.set_scalar("response_stop", 3.6)
     problem = model.problem
     model.structure = "lifetime.components.2"
-    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
+    amplitudes = CLASSIC["amplitudes"]
     values = {
         "lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
         "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
@@ -263,31 +248,11 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
 
 def test_the_view_reproduces_the_classic_background_pattern():
     """A measured background decay, split from the fluorescence by measurement time."""
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
-
     x = _axis()
-    irf = _irf()
     pattern = 30.0 + 20.0 * np.exp(-0.5 * ((x - 2.5) / 0.6) ** 2)
     y = np.random.default_rng(8).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 40).astype(float)
     ey = np.sqrt(np.maximum(y, 1.0))
-
-    classic_fit = fitting.Fit(model_class=LifetimeModel,
-                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
-    classic_fit.xmin, classic_fit.xmax = 0, N
-    classic = classic_fit.model
-    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
-    classic.convolve.dt = DT
-    classic.convolve.rep_rate = 1000.0 / PERIOD
-    classic.convolve._ts.value = 0.8
-    classic.convolve._n0.fixed = False
-    classic.convolve._n0.value = 1.0
-    classic.generic.background_curve = chisurf.core.curve.Curve(x=x, y=pattern.copy())
-    classic.generic._tmeas_bg.value = 5.0
-    classic.generic._tmeas_exp.value = 3.0
-    classic.lifetimes._lifetimes[0].value = 2.1
-    classic.find_parameters()
-    classic.update()
-    reference = np.array(classic.y)
+    reference = np.asarray(CLASSIC["background_pattern"])
 
     fit, model = _view(y)
     fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
@@ -307,38 +272,17 @@ def test_the_view_reproduces_the_classic_background_pattern():
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
 
 
-def _classic_and_view(configure_classic, configure_view, n_lifetimes=2):
-    """Build the classic LifetimeModel and the view over the same decay and IRF."""
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
-
+def _view_at_classic_numbers(configure_view, n_lifetimes=2):
+    """The view over the decay and IRF the classic parity cases used, at their numbers."""
     x = _axis()
-    irf = _irf()
     y = np.random.default_rng(11).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
     ey = np.sqrt(np.maximum(y, 1.0))
-    classic_fit = fitting.Fit(model_class=LifetimeModel,
-                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
-    classic_fit.xmin, classic_fit.xmax = 0, N
-    classic = classic_fit.model
-    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
-    classic.convolve.dt = DT
-    classic.convolve.rep_rate = 1000.0 / PERIOD
-    classic.convolve._n0.fixed = False
-    classic.convolve._n0.value = 5000.0
-    classic.generic._sc.value = 0.01
-    classic.generic._bg.value = 2.0
-    classic.lifetimes._lifetimes[0].value = 3.2
-    if n_lifetimes == 2:
-        classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
-    configure_classic(classic)
-    classic.find_parameters()
-    classic.update()
-
     fit, model = _view(y)
     fit.data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
     configure_view(model)
     problem = model.problem
     model.structure = f"lifetime.components.{n_lifetimes}"
-    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
+    amplitudes = CLASSIC["amplitudes"]
     values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
               "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
     if n_lifetimes == 2:
@@ -350,30 +294,21 @@ def _classic_and_view(configure_classic, configure_view, n_lifetimes=2):
         port.value = value
         port.fixed = held
     model.update()
-    return np.array(classic.y), np.array(model.y)
+    return model
 
 
 @pytest.mark.parametrize("mode, convolve", [("exp", True), ("per", False), ("exp", False)])
 def test_the_view_reproduces_the_classic_convolution_modes(mode, convolve):
-    def classic(model):
-        model.convolve.mode = mode
-        model.convolve.do_convolution = convolve
-
     def view(model):
         model.set_scalar("periodic_excitation", 1.0 if mode == "per" else 0.0)
         model.set_scalar("convolve", 1.0 if convolve else 0.0)
 
-    reference, got = _classic_and_view(classic, view)
-    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+    got = _view_at_classic_numbers(view).y
+    np.testing.assert_allclose(got, CLASSIC["convolution"][f"{mode}-{convolve}"], rtol=1e-9, atol=1e-9)
 
 
 def test_the_view_reproduces_the_classic_generated_irf():
     """No IRF loaded: both model it as a generalized-normal peak at the decay's rise."""
-    def classic(model):
-        model.convolve.unload_irf()           # nothing measured
-        model.convolve._iw.value = 0.09
-        model.convolve._ik.value = -0.25
-
     def view(model):
         model.unset_dataset("response")
         model.set_scalar("generated_response", 1.0)
@@ -385,8 +320,8 @@ def test_the_view_reproduces_the_classic_generated_irf():
             port.value = value
             port.fixed = held
 
-    reference, got = _classic_and_view(classic, view)
-    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+    got = _view_at_classic_numbers(view).y
+    np.testing.assert_allclose(got, CLASSIC["generated_irf"], rtol=1e-9, atol=1e-9)
 
 
 def test_an_irf_is_missing_until_one_is_loaded_or_modelled():
@@ -403,36 +338,13 @@ def test_an_irf_is_missing_until_one_is_loaded_or_modelled():
 @pytest.mark.parametrize("polarization, code", [("vv", 1.0), ("vh", 2.0), ("vv/vh", 3.0)])
 def test_the_polarized_view_reproduces_the_classic_anisotropy(polarization, code):
     """VV, VH and VV/VH decays with two rotations, g and the l1/l2 mixing."""
-    from chisurf.core.models.tcspc.lifetime import LifetimeModel
-
     x = _axis()
     irf = _irf()
     y = np.random.default_rng(12).poisson(2000.0 * np.exp(-np.maximum(x - 1.0, 0) / 2.0) + 20).astype(float)
     ey = np.sqrt(np.maximum(y, 1.0))
-    classic_fit = fitting.Fit(model_class=LifetimeModel,
-                              data=chisurf.core.data.DataCurve(x=x, y=y, ey=ey))
-    classic_fit.xmin, classic_fit.xmax = 0, N
-    classic = classic_fit.model
-    classic.convolve._irf = chisurf.core.curve.Curve(x=x, y=irf.copy())
-    classic.convolve.dt = DT
-    classic.convolve.rep_rate = 1000.0 / PERIOD
-    classic.convolve._n0.fixed = False
-    classic.convolve._n0.value = 5000.0
-    classic.lifetimes._lifetimes[0].value = 3.2
-    classic.lifetimes.append(amplitude=0.45, lifetime=0.6)
-    anisotropy = classic.anisotropy
-    anisotropy.polarization_type = polarization
-    while len(anisotropy) < 2:
-        anisotropy.add_rotation(b=0.2, rho=1.0)
-    anisotropy._bs[0].value, anisotropy._rhos[0].value = 0.3, 0.8
-    anisotropy._bs[1].value, anisotropy._rhos[1].value = 0.1, 4.0
-    anisotropy._r0.value, anisotropy._g.value = 0.36, 1.2
-    anisotropy._l1.value, anisotropy._l2.value = 0.03, 0.04
-    classic.find_parameters()
-    classic.update()
-    reference = np.array(classic.y)
-    amplitudes = [a.value for a in classic.lifetimes._amplitudes]
-    rotations = [b.value for b in anisotropy._bs]
+    reference = np.asarray(CLASSIC["polarized"][polarization])
+    amplitudes = CLASSIC["amplitudes"]
+    rotations = CLASSIC["polarized_rotations"]
 
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=ey)
     fit = fitting.Fit(model_class=for_family("tcspc_polarized"), data=data)
@@ -466,34 +378,24 @@ def test_the_view_reproduces_the_classic_dnl_correction(reverse):
     x = _axis()
     lamp = np.random.default_rng(3).poisson(np.sin(x * 2.0) * 60 + 5000).astype(float)
 
-    def classic(model):
-        model.corrections.window_function = "hamming"
-        model.corrections._window_length.value = 9
-        model.corrections.lintable = chisurf.core.curve.Curve(x=x, y=lamp.copy())
-        model.corrections.reverse = reverse
-        model.corrections.correct_dnl = True
-
     def view(model):
         model.set_dataset("linearization_curve", chisurf.core.curve.Curve(x=x, y=lamp.copy()))
         model.set_scalar("lin_window_length", 9)
         model.set_scalar("lin_window", 2)
         model.set_scalar("reverse_linearization", 1.0 if reverse else 0.0)
 
-    reference, got = _classic_and_view(classic, view)
-    np.testing.assert_allclose(got, reference, rtol=1e-9, atol=1e-9)
+    got = _view_at_classic_numbers(view).y
+    np.testing.assert_allclose(got, CLASSIC["dnl"][str(reverse)], rtol=1e-9, atol=1e-9)
 
 
 def test_the_view_presents_the_classic_outputs():
     """The lifetime distribution, the averaged lifetimes and the photon modes."""
-    captured = {}
-    _classic_and_view(lambda m: captured.__setitem__("classic", m),
-                      lambda m: captured.__setitem__("view", m))
-    classic, view = captured["classic"], captured["view"]
+    view = _view_at_classic_numbers(lambda m: None)
     spectrum = np.asarray(view.lifetime_spectrum)
-    np.testing.assert_allclose(np.sort(spectrum[1::2]), np.sort(classic.lifetime_spectrum[1::2]), rtol=1e-12)
+    np.testing.assert_allclose(np.sort(spectrum[1::2]), np.sort(CLASSIC["lifetime_spectrum"][1::2]), rtol=1e-12)
     outputs = {p.name: p.value for p in view.parameters_all if getattr(p, "is_output", False)}
-    assert outputs["<tau>x"] == pytest.approx(classic.lifetimes.species_averaged_lifetime, rel=1e-12)
-    assert outputs["<tau>F"] == pytest.approx(classic.lifetimes.fluorescence_averaged_lifetime, rel=1e-12)
+    assert outputs["<tau>x"] == pytest.approx(CLASSIC["tau_x"], rel=1e-12)
+    assert outputs["<tau>F"] == pytest.approx(CLASSIC["tau_f"], rel=1e-12)
     assert {m.key for m in view.get_plot_reference_modes()} == {"tcspc_total_photons", "tcspc_peak_photons"}
     assert "distribution" in [plot.key for plot in view.view_spec().plots]
 

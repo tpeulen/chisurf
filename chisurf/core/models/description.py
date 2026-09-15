@@ -249,6 +249,11 @@ class DescriptionModel(ModelCurve):
         self._source_models: typing.List["DescriptionModel"] = []
         self._source_names: typing.List[str] = []
         self._bound_ports: typing.List[str] = []
+        # A port the description gives a default for (a MaxEnt prior) is bound
+        # to it, so the model builds before anyone supplies one.
+        for name, info in (self._document.get("ports") or {}).items():
+            if isinstance(info, dict) and "default" in info:
+                self.set_port_values(name, info["default"])
         self._assign_group_position(fit)
 
     def _assign_group_position(self, fit) -> None:
@@ -503,6 +508,11 @@ class DescriptionModel(ModelCurve):
             else:
                 settings.append(vs.ValueSection(label=info.get("label", name), kind="float", attr=f"scalars.{name}"))
         sections.append(vs.PanelSection(title="Settings", collapsed=True, sections=tuple(settings)))
+        if presentation.get("regularization"):
+            sections.append(vs.PanelSection(title="L-curve", collapsed=True, sections=(
+                vs.CustomSection(key="lcurve", target="l_curve", options={
+                    "compute_action": "compute_l_curve", "select_action": "set_reg_from_lcurve_index",
+                    "n_points": 16}),)))
         sources = self.source_info
         if sources and sources.get("kind") != "values":
             sections.append(vs.PanelSection(title=sources.get("label", "Models"), sections=(
@@ -747,13 +757,16 @@ class DescriptionModel(ModelCurve):
         # from a density): a Python function of parameters, called on demand
         # rather than evaluated by the graph on every fit iteration.
         reports = self.presentation.get("reports", {})
-        if not statistics and not reports:
+        # A number a node computes anyway (a second chi-square, an entropy),
+        # read from its port.
+        values = self.presentation.get("values", {})
+        if not statistics and not reports and not values:
             return
         import chisurf.core.fluorescence.general as general
         outputs = self.__dict__.get("_statistic_parameters")
         if outputs is None:
             outputs = {}
-            for key, info in {**statistics, **reports}.items():
+            for key, info in {**statistics, **reports, **values}.items():
                 outputs[key] = FittingParameter(
                     value=0.0, name=info.get("label", key), fixed=True, is_output=True)
                 # Not a parameter of the BFF model: derived from it, shown beside it.
@@ -781,6 +794,77 @@ class DescriptionModel(ModelCurve):
                     outputs[key].value = float(self._call_report(problem, info))
                 except Exception:
                     pass
+        if values and problem is not None:
+            for key, info in values.items():
+                try:
+                    outputs[key].value = self._node_value(info)
+                except Exception:
+                    pass
+
+    def _node_value(self, info: dict) -> float:
+        """A scalar a description names by node and port, from the live model."""
+        problem = self.problem
+        active = problem.get_active_structure()
+        return float(np.atleast_1d(problem.get_structure_port(active, f"{active}.{info['node']}", info["port"]))[0])
+
+    # --- regularization ----------------------------------------------------------
+    @property
+    def l_curve(self):
+        """The last regularization sweep (:meth:`compute_l_curve`), or None."""
+        return self.__dict__.get("_l_curve")
+
+    def compute_l_curve(self, n_points: int = 16, log10_min: typing.Optional[float] = None,
+                        log10_max: typing.Optional[float] = None) -> None:
+        """Sweep the description's regularization parameter and record misfit against solution.
+
+        ``presentation.regularization`` names the parameter (a log10 weight)
+        and the node ports holding the misfit and the solution's norm; the
+        parameter is put back afterwards.
+        """
+        import chisurf.core.math.regularization as regularization
+
+        info = self.presentation.get("regularization")
+        problem = self.problem
+        if not info or problem is None:
+            raise RuntimeError(f"{self.name!r} has no regularization to sweep")
+        port = problem.get_parameter(info["parameter"])
+        center = float(port.value)
+        low = center - 2.0 if log10_min is None else float(log10_min)
+        high = center + 2.0 if log10_max is None else float(log10_max)
+        weights = np.linspace(low, high, max(2, int(n_points)))
+        held = port.fixed
+        misfit, solution = [], []
+        try:
+            port.fixed = False
+            for weight in weights:
+                port.value = float(weight)
+                misfit.append(self._node_value(info["misfit"]))
+                solution.append(abs(self._node_value(info["solution"])))
+        finally:
+            port.value = center
+            port.fixed = held
+        misfit, solution = np.asarray(misfit), np.asarray(solution)
+        corner = None
+        try:
+            corner = int(regularization.discrete_lcurve_corner(misfit, solution))
+        except Exception:
+            pass
+        self.__dict__["_l_curve"] = regularization.LCurveData(
+            reg=10.0 ** weights, residual_norm=misfit, solution_norm=solution, corner_index=corner)
+        self.__dict__["_l_curve_log10"] = weights
+
+    def set_reg_from_lcurve_index(self, index: int) -> None:
+        """Commit the swept weight at ``index`` to the regularization parameter."""
+        weights = self.__dict__.get("_l_curve_log10")
+        info = self.presentation.get("regularization")
+        if weights is None or not info or self.problem is None:
+            return
+        port = self.problem.get_parameter(info["parameter"])
+        held = port.fixed
+        port.fixed = False
+        port.value = float(weights[int(index)])
+        port.fixed = held
+        self.update()
 
     def _call_report(self, problem, info: dict):
         """A report's function on its arguments: `#parameter`, `@axis.<name>` or a number."""

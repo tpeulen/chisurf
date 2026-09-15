@@ -64,7 +64,8 @@ import numpy as np
 import tttrlib
 
 import chisurf as cs
-import chisurf.core.models.tcspc.fret
+import chisurf.core.fluorescence
+import chisurf.core.models.fret_parameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
 from chisurf.core.math.functions.distributions import normal_distribution
@@ -237,9 +238,7 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
         super().__init__(fit, **kwargs)
         self.nuisance = nuisance or Pda2cFretNuisance(name="pda_fret_nuisance", fit=fit, **kwargs)
         self.states = states or Pda2cDynamicStates(name="pda_dynamic_states", fit=fit, **kwargs)
-        self.fret_parameters = chisurf.core.models.tcspc.fret.FRETParameters(
-            enable_fret_efficiency=False
-        )
+        self.fret_parameters = chisurf.core.models.fret_parameters.FRETParameters()
         self.n_grid = int(n_grid)
         kw_pda = {
             "hist2d_nmax": fit.data.pda["maximum_number_of_photons"],
@@ -287,7 +286,7 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
     def _update_model(self, verbose: bool | None = None, **kwargs):
         """Build the two-state dynamic probability spectrum and update the curve."""
         st = self.states
-        r = chisurf.core.models.tcspc.fret.rda_axis
+        r = chisurf.core.fluorescence.rda_axis
         R0 = self.fret_parameters.forster_radius
         E = distance_to_fret_efficiency(r, R0)
         pG = green_probability_from_efficiency(E, self.nuisance)

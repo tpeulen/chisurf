@@ -43,12 +43,12 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 
-# display name → "module:ClassName" of the TCSPC widget-model
+# display name → "module:attribute" of the BFF-described view class
 WIDGET_MODELS: dict[str, str] = {
-    "FRET: FD (Gaussian)": "chisurf.gui.widgets.models.tcspc:GaussianModelWidget",
-    "FRET: FD (Worm-like chain)": "chisurf.gui.widgets.models.tcspc:WormLikeChainModelWidget",
-    "FRET: FD (Discrete)": "chisurf.gui.widgets.models.tcspc:FRETrateModelWidget",
-    "Lifetime": "chisurf.gui.widgets.models.tcspc:LifetimeModelWidget",
+    "FRET: FD (Gaussian)": "chisurf.core.models.description:tcspc_fret_gaussian",
+    "FRET: FD (Worm-like chain)": "chisurf.core.models.description:tcspc_fret_worm_like_chain",
+    "FRET: FD (Discrete)": "chisurf.core.models.description:tcspc_fret_discrete",
+    "Lifetime": "chisurf.core.models.description:tcspc_lifetime",
 }
 
 # dock page titles
@@ -80,10 +80,14 @@ def _resolve_class(path: str):
 
 
 def _new_fit_group(model_class) -> _fit.FitGroup:
-    """Build a standalone FitGroup carrying a fresh widget-model."""
+    """Build a standalone FitGroup carrying a fresh view; it models its IRF, a line needs no data."""
     x = np.linspace(0.0, 50.0, 200)
-    dg = _data.ExperimentDataCurveGroup([_data.DataCurve(x=x, y=np.zeros_like(x))])
-    return _fit.FitGroup(data=dg, model_class=model_class)
+    dg = _data.ExperimentDataCurveGroup([_data.DataCurve(x=x, y=np.ones_like(x))])
+    group = _fit.FitGroup(data=dg, model_class=model_class)
+    model = group.model
+    if "generated_response" in getattr(model, "scalar_names", lambda: [])():
+        model.set_scalar("generated_response", 1.0)
+    return group
 
 
 def _make_plot_widget(parent=None):

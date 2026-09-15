@@ -1,12 +1,23 @@
+"""Maximum-entropy TCSPC analysis for the MaxEnt decay tool, run by BFF.
+
+The inversion is the engine's (``tcspc_maxent_lifetime`` / ``tcspc_maxent_fret``:
+a MaxEntSpectrum over TCSPCDecay's basis, tttrlib's Skilling-Bryan programme
+underneath); the MEM TCSPC model that used to live in tttrlib, with its own
+convolution and IRF shift, is gone. This module keeps the tool's contract --
+the arguments the GUI passes and the result dictionary the plots, the sampler
+and the saved JSON read -- and translates both ways.
+
+What the translation fixes: ``lamp_scatter`` multiplies the lamp as given
+(after the lamp background is taken off), as it always did; ``timeshift``
+keeps the tool's sign (TCSPCDecay shifts the other way); a single excitation (``period`` None or <= 0) is a period long
+enough that no earlier pulse is left. The nuisance search is BFF's fit of the
+free instrument parameters instead of a coordinate walk.
+"""
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple
 
 import numpy as np
 
-from chisurf.core.progress import trange as _mem_trange
-
-
 MIN_PROB = 1e-12
-
 
 def load_tcspc_two_column(path: str) -> np.ndarray:
     """Load a two-column TCSPC text file ("Chan  Data") like extract2c.c.
@@ -147,274 +158,141 @@ def auto_fit_range_tcspc(
     return start, stop
 
 
-def _require_design_builders():
-    """Return the photon library's design-matrix builders, or say why not.
 
-    The maximum-entropy TCSPC engine lives in the photon library
-    (``MaxEntTcspc``); ChiSurf holds the workflow around it and no second copy
-    of the maths. The builders were exposed with the four output vectors as
-    *arguments*, which no Python caller can supply, so a checkout older than
-    that fix has the names but not the functions -- detected here rather than
-    at the call site, where it surfaces as an unreadable ``TypeError``.
-
-    Returns
-    -------
-    tuple of callable
-        ``(tcspc_build_fi_lifetimes, tcspc_build_fi_distances)``.
-
-    Raises
-    ------
-    RuntimeError
-        If the photon library is missing or predates the NumPy bindings.
-    """
-    try:
-        import tttrlib
-    except ImportError as exc:  # pragma: no cover - tttrlib is a hard dependency
-        raise RuntimeError(
-            "the maximum-entropy TCSPC engine is provided by tttrlib, which "
-            "could not be imported"
-        ) from exc
-    try:
-        return tttrlib.tcspc_build_fi_lifetimes, tttrlib.tcspc_build_fi_distances
-    except AttributeError as exc:
-        raise RuntimeError(
-            "tttrlib does not expose tcspc_build_fi_lifetimes / "
-            "tcspc_build_fi_distances; rebuild it (the design-matrix builders "
-            "carry the maximum-entropy convolution)"
-        ) from exc
+def _lamp_background(lamp: np.ndarray, irf_background: Optional[float]) -> float:
+    """The constant under the lamp: the tail median, unless given."""
+    if irf_background is not None:
+        return float(irf_background)
+    tail = lamp[-min(500, lamp.size):]
+    return float(np.median(tail)) if tail.size else 0.0
 
 
-def _build_Fi_distances(
-    decay: np.ndarray,
-    lamp: np.ndarray,
-    dt: float,
-    R: np.ndarray,
-    tau0: float,
-    R0: float,
-    donly: np.ndarray,
-    x_donly: float,
-    timeshift: float,
-    background: float,
-    lamp_scatter: float,
-    fitstart: int,
-    fitstop: int,
-    period: float,
-    irf_background: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build the distance-axis design matrix (me_vin4_E.m analogue).
+def _fit_window(decay: np.ndarray, fitrange, fit_start_fraction: float) -> Tuple[int, int]:
+    if fitrange is None:
+        return auto_fit_range_tcspc(decay, count_threshold=100.0, area=0.999,
+                                    start_fraction=float(fit_start_fraction), start_at_peak=True)
+    start, stop = int(fitrange[0]), int(fitrange[1])
+    return max(0, start), min(decay.size - 1, stop)
 
-    Column *j* is the donor decay quenched at the FRET rate of ``R[j]``,
-    convolved with the shifted IRF and mixed with the unquenched donor by
-    ``x_donly``, divided through by the Poisson weight. The convolution runs in
-    the photon library; ``timeshift`` is in detector channels (samples), to match
-    ChiSurf's ``Curve.__lshift__``, and may be fractional.
 
-    Parameters
-    ----------
-    decay, lamp : numpy.ndarray
-        Measured decay and the raw instrument response. ``irf_background`` is
-        subtracted from ``lamp`` before the shift.
-    dt : float
-        Channel width, in the units of ``tau0``.
-    R : numpy.ndarray
-        Distance grid; every entry must be positive.
-    tau0, R0 : float
-        Donor lifetime without acceptor and the Foerster radius.
-    donly : numpy.ndarray
-        Donor-only reference as ``[c1, tau1, c2, tau2, ...]``.
-    x_donly : float
-        Donor-only fraction, clamped into ``[0, 1]``.
-    timeshift, background, lamp_scatter : float
-        IRF shift and the two additive terms.
-    fitstart, fitstop : int
-        Fit range, inclusive; clamped to the shorter of decay and IRF.
-    period : float
-        Excitation period; ``<= 0`` selects a single-shot convolution.
-    irf_background : float
-        Counts subtracted from the IRF before shifting.
+def _grid(values: np.ndarray, what: str) -> Tuple[float, float, int]:
+    values = np.asarray(values, dtype=float).ravel()
+    values = values[values > 0.0]
+    if values.size < 2:
+        raise ValueError(f"the {what} grid needs at least two positive points")
+    if not np.allclose(np.diff(values), values[1] - values[0], rtol=1e-6, atol=1e-12):
+        raise ValueError(f"the {what} grid must be evenly spaced")
+    return float(values[0]), float(values[-1]), int(values.size)
 
-    Returns
-    -------
-    Fi : numpy.ndarray
-        ``(M, len(R))`` design matrix.
-    y, sigma, fit_additive : numpy.ndarray
-        Data, Poisson weight and the additive model term over the fit range.
-    """
+
+def _solve(family: str, decay, lamp, dt, grid, fitrange, fit_start_fraction, period, nu, max_iter,
+           prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance,
+           extra_parameters: Dict[str, Tuple[float, bool, float, float]], scalars: Optional[Dict[str, float]] = None):
+    import IMP.bff as bff
+
     decay = np.asarray(decay, dtype=float).ravel()
     lamp = np.asarray(lamp, dtype=float).ravel()
-    R = np.asarray(R, dtype=float).ravel()
-    donly = np.asarray(donly, dtype=float).ravel()
+    n = decay.size
+    if lamp.size != n:
+        lamp = np.resize(lamp, n)
+    start, stop = _fit_window(decay, fitrange, fit_start_fraction)
+    lamp_bg = _lamp_background(lamp, irf_background)
+    lamp_area = float(np.clip(lamp - lamp_bg, 0.0, None).sum())
+    low, high, bins = _grid(grid, "lifetime" if family.endswith("lifetime") else "distance")
 
-    if decay.size == 0 or lamp.size == 0 or R.size == 0 or donly.size == 0:
-        raise ValueError("decay, lamp, R and donly must be non-empty")
-    if donly.size % 2 != 0:
-        raise ValueError("donly must contain amplitude/tau pairs")
-    if np.any(R <= 0.0):
-        raise ValueError("R grid must be positive")
+    data = bff.FitDataset()
+    data.set_values_array(np.ascontiguousarray(decay))
+    data.set_noise_family(bff.FIT_NOISE_FAMILY_POISSON)
+    mask = np.zeros(n)
+    mask[start:stop + 1] = 1.0
+    data.set_mask_array(np.ascontiguousarray(mask))
+    response = bff.FitDataset()
+    response.set_values_array(np.ascontiguousarray(lamp))
 
-    _, build_distances = _require_design_builders()
-    return build_distances(
-        decay, lamp, float(dt), R, float(tau0), float(R0), donly, float(x_donly),
-        float(timeshift), float(background), float(lamp_scatter),
-        int(fitstart), int(fitstop), float(period), float(irf_background),
-    )
+    spec = bff.ModelSearchSpec.from_name(family)
+    spec.set_dataset("decay", data)
+    spec.set_dataset("response", response)
+    spec.set_scalar("dt", float(dt))
+    single_shot = period is None or float(period) <= 0.0
+    spec.set_scalar("period", 1.0e3 * n * float(dt) if single_shot else float(period))
+    spec.set_scalar("max_iterations", float(max_iter))
+    for name, value in (scalars or {}).items():
+        spec.set_scalar(name, float(value))
+    prior_port = bff.GraphPort([0.0])
+    spec.set_port("maxent_prior", prior_port)
+    free = bool(optimize_nuisance)
+    parameters = {
+        "maxent.log10_nu": (np.log10(float(nu)), False, -12.0, 6.0),
+        "maxent.grid_from": (low, False, 0.0, 1e9),
+        "maxent.grid_to": (high, False, 0.0, 1e9),
+        "maxent.grid_bins": (float(bins), False, 2.0, 1e5),
+        # The tool's shift moves the lamp the other way from TCSPCDecay's.
+        "instrument.timeshift": (-float(timeshift), free, -20.0, 20.0),
+        "instrument.background": (float(background), free, 0.0, 1e12),
+        "instrument.response_background": (lamp_bg, free, 0.0, 1e12),
+        "instrument.scatter": (float(lamp_scatter) * lamp_area, False, -1e12, 1e12),
+        **extra_parameters,
+    }
+    for canonical, (value, is_free, lower, upper) in parameters.items():
+        spec.set_parameter(canonical, float(value), bool(is_free), float(lower), float(upper))
+    problem = spec.build()
+    key = problem.get_structure_keys()[0]
+    problem.activate_structure(key)
+    for canonical, (value, _, _, _) in parameters.items():
+        port = problem.get_parameter(canonical)
+        held = port.fixed
+        port.fixed = False
+        port.value = float(value)
+        port.fixed = held
+    if prior is not None:
+        prior_vec = np.asarray(prior, dtype=float).ravel()
+        if prior_vec.size != bins:
+            raise ValueError("prior must have same length as the grid")
+        prior_port.set_value_vector(list(prior_vec))
+    if free:
+        config = bff.ModelSearchConfig()
+        config.set_number_of_simulations(1)
+        config.set_seed(0)
+        search = bff.ModelSearch(problem)
+        search.set_config(config)
+        problem.activate_state(search.run().get_best_state())
 
+    def port(node, name):
+        return np.asarray(problem.get_structure_port(key, f"{key}.{node}", name), dtype=float)
 
-def _build_Fi_lifetimes(
-    decay: np.ndarray,
-    lamp: np.ndarray,
-    dt: float,
-    tau: np.ndarray,
-    timeshift: float,
-    background: float,
-    lamp_scatter: float,
-    fitstart: int,
-    fitstop: int,
-    period: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Build the lifetime-axis design matrix (me_vin4.m analogue).
-
-    Column *j* is a single exponential of lifetime ``tau[j]`` convolved with the
-    shifted IRF, divided through by the Poisson weight. The convolution runs in
-    the photon library; ``timeshift`` is in detector channels (samples) and may
-    be fractional.
-
-    Parameters
-    ----------
-    decay, lamp : numpy.ndarray
-        Measured decay and the instrument response. Unlike the distance builder
-        this one takes the IRF already background-corrected.
-    dt : float
-        Channel width.
-    tau : numpy.ndarray
-        Lifetime grid. Non-positive entries are dropped.
-    timeshift, background, lamp_scatter : float
-        IRF shift and the two additive terms.
-    fitstart, fitstop : int
-        Fit range, inclusive; clamped to the shorter of decay and IRF.
-    period : float
-        Excitation period; ``<= 0`` selects a single-shot convolution.
-
-    Returns
-    -------
-    Fi : numpy.ndarray
-        ``(M, len(tau))`` design matrix.
-    y, sigma, fit_additive : numpy.ndarray
-        Data, Poisson weight and the additive model term over the fit range.
-    """
-    decay = np.asarray(decay, dtype=float).ravel()
-    lamp = np.asarray(lamp, dtype=float).ravel()
-    tau = np.asarray(tau, dtype=float).ravel()
-
-    if decay.size == 0 or lamp.size == 0 or tau.size == 0:
-        raise ValueError("decay, lamp and tau must be non-empty")
-
-    tau = tau[tau > 0.0]
-    if tau.size == 0:
-        raise ValueError("tau grid must contain positive values")
-
-    build_lifetimes, _ = _require_design_builders()
-    return build_lifetimes(
-        decay, lamp, float(dt), tau,
-        float(timeshift), float(background), float(lamp_scatter),
-        int(fitstart), int(fitstop), float(period),
-    )
+    # The spectrum the basis was built over: the grid, or the FRET-quenched donor.
+    source = "fret" if family.endswith("fret") else "grid"
+    spectrum = np.asarray(problem.get_structure_output(key, f"{key}.{source}"), dtype=float)
+    basis = port("basis", "basis").reshape(n, -1)
+    amplitudes = port("maxent", "amplitudes")
+    value = lambda canonical: float(problem.get_parameter(canonical).value)
+    return problem, key, port, spectrum, basis, amplitudes, (start, stop), value
 
 
-
-# The bound-constrained QP that used to sit here (`_quadpr_bound`, a clamping
-# active-set sweep) is gone: it had no callers left once the MEM optimiser
-# moved into the photon library, whose `quadpr_bound` is the same routine and
-# is the one the optimiser actually runs.
-
-
-def _run_mem(
-    H: np.ndarray,
-    g0: np.ndarray,
-    m: np.ndarray,
-    const_chi2: float,
-    nu: float,
-    progress_cb: Optional[Callable[[int, float, float, float, float], None]] = None,
-    max_iter: int = 200,
-    tol: float = 1e-4,
-    min_prob: float = MIN_PROB,
-) -> Dict[str, Any]:
-    """Run the MEM optimiser on a prepared quadratic form.
-
-    Reaches the optimiser through
-    :func:`chisurf.core.fitting.inversion.maxent_normal_equations`, the one
-    seam every regularised inversion in the tree goes through. ``nu`` here is
-    the weight in the optimiser's own
-    :attr:`~chisurf.core.fitting.inversion.EntropyWeight.RUN_MEM` units --
-    the objective ``chi2 - nu*S/2`` -- which is *not* the ``1/2 chi2 -
-    alpha*S`` spelling the FCS and DEER inversions use; declaring it keeps
-    the two from being swapped silently.
-
-    ChiSurf carried a NumPy transcription of the optimiser until 2026-08-31;
-    on a 120-lifetime grid the two returned the same solution to the last
-    printed digit (chi2r 1.040852, identical ``p``) with the compiled one
-    **3.1x** faster (70 ms against 222 ms), so the copy was deleted. It
-    mattered more than 3x sounds: this is the *inner* solve of the nuisance
-    search, which calls it hundreds of times. The outer search over
-    timeshift/background/scatter is ChiSurf's own and has no upstream
-    equivalent, so it stays here.
-
-    Parameters
-    ----------
-    H : numpy.ndarray
-        ``(n, n)`` curvature of the chi-square term.
-    g0 : numpy.ndarray
-        ``(n,)`` linear term.
-    m : numpy.ndarray
-        ``(n,)`` prior (the "default model").
-    const_chi2 : float
-        The data-only constant of the chi-square.
-    nu : float
-        Entropy weight.
-    progress_cb : callable, optional
-        ``progress_cb(iteration, chisq, S, Q, dgrad)``. The compiled optimiser
-        does not report per iteration, so this is called **once** with the
-        converged values rather than once per map. Callers use it to drive a
-        progress dialog, which a single terminal update still serves; nothing
-        reads the intermediate values.
-    max_iter, tol, min_prob : float
-        Iteration limit, convergence tolerance and the floor on ``p``.
-
-    Returns
-    -------
-    dict
-        ``p``, ``chisq``, ``S``, ``Q``, ``history``, the ``*_esm`` companions,
-        ``nu`` and ``niter``.
-    """
-    from chisurf.core.fitting.inversion import EntropyWeight, maxent_normal_equations
-
-    result = maxent_normal_equations(
-        H, g0, m, float(const_chi2), float(nu),
-        convention=EntropyWeight.RUN_MEM,
-        max_iter=int(max_iter), tol=float(tol), min_prob=float(min_prob),
-    )
-
-    chisq, S, Q = float(result.chisq), float(result.S), float(result.Q)
-    niter = int(result.niter)
-    # One entry, not a trace: the compiled optimiser does not hand back its
-    # per-iteration path, and `dgrad` has no final value to report. The api
-    # layer reads this with a default, so a one-element history is well-formed.
-    history = [(chisq, S, Q, float("nan"))]
-    if progress_cb is not None:
-        progress_cb(niter, chisq, S, Q, float("nan"))
-
+def _result(decay, design, amplitudes, prepared, window, value, port, nu_input, prior, bins, dt):
+    start, stop = window
+    y = np.asarray(decay, dtype=float)[start:stop + 1]
+    sigma = np.sqrt(np.maximum(y, 1.0))
+    fit_additive = value("instrument.background") + value("instrument.scatter") * prepared[start:stop + 1]
+    Fi = design[start:stop + 1] / sigma[:, None]
+    M = float(y.size)
+    y_w = (y - fit_additive) / sigma
+    chisq = float(port("maxent", "chisq")[0])
+    entropy = float(port("maxent", "entropy")[0])
+    nu = float(port("maxent", "nu")[0])
+    lamp_scatter = 0.0
+    prior_vec = (np.full(bins, 1.0 / bins) if prior is None
+                 else np.maximum(np.asarray(prior, dtype=float), MIN_PROB) / np.sum(np.maximum(prior, MIN_PROB)))
     return {
-        "p": result.p,
-        "chisq": chisq,
-        "S": S,
-        "Q": Q,
-        "history": history,
-        "p_esm": result.p_esm,
-        "chisq_esm": result.chisq_esm,
-        "S_esm": result.S_esm,
-        "Q_esm": result.Q_esm,
-        "nu": float(nu),
-        "niter": niter,
+        "p": amplitudes, "chisq": chisq, "S": entropy, "Q": chisq - 0.5 * nu * entropy,
+        "chisq_pearson": float(port("maxent", "chisq_pearson")[0]),
+        "converged": bool(port("maxent", "converged")[0]),
+        "nu": nu, "nu_input": float(nu_input),
+        "fitrange": (int(start), int(stop)), "dt": float(dt),
+        "timeshift": -value("instrument.timeshift"), "background": value("instrument.background"),
+        "irf_background": value("instrument.response_background"), "lamp_scatter": lamp_scatter,
+        "fit_additive": fit_additive, "H": (2.0 / M) * (Fi.T @ Fi), "g0": (2.0 / M) * (y_w @ Fi),
+        "y": y, "sigma": sigma, "Fi": Fi, "prior": prior_vec,
     }
 
 
@@ -443,315 +321,23 @@ def solve_lifetime_mem(
     nuisance_param_tol: float = 1e-3,
     prior: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]:
-    """MEM analysis of TCSPC lifetimes (Python analogue of me_vin4.m).
+    """MEM analysis of TCSPC lifetimes over an evenly spaced lifetime grid.
 
-    The default lifetime grid spans 1.0–4.0 ns with 0.01 ns spacing, i.e.
-    ``tau = np.arange(1.0, 4.0 + 1e-9, 0.01)``.
-
-    Parameters
-    ----------
-    timeshift:
-        IRF shift relative to the decay in detector channels (samples).
+    The default grid spans 1.0–4.0 ns in 0.01 ns steps. ``timeshift`` is the
+    IRF shift in channels. With ``optimize_nuisance`` the timeshift, the
+    background and the lamp background are fitted around the inversion.
+    Returns the tool's result dictionary (``p``, ``tau``, ``Fi``, ``H``, ``g0``,
+    ``y``, ``sigma``, ``fitrange``, ``fit_additive``, the instrument values used).
     """
-    decay_arr = np.asarray(decay, dtype=float).ravel()
-    lamp_arr = np.asarray(lamp, dtype=float).ravel()
-
-    if fitrange is None:
-        try:
-            if isinstance(lamp_scatter, (tuple, list)) and len(lamp_scatter) == 2:
-                fitrange = (int(lamp_scatter[0]), int(lamp_scatter[1]))
-                lamp_scatter = 0.0
-        except Exception:
-            pass
-
-    # IRF background correction: subtract constant offset from lamp and clamp
-    if irf_background is None:
-        tail_len_lamp = min(500, lamp_arr.size)
-        if tail_len_lamp > 0:
-            irf_bg_val = float(np.median(lamp_arr[-tail_len_lamp:]))
-        else:
-            irf_bg_val = 0.0
-    else:
-        irf_bg_val = float(irf_background)
-
-    lamp_corr = lamp_arr - irf_bg_val
-    lamp_corr[lamp_corr < 0.0] = 0.0
-
-    if tau is None:
-        tau_arr = np.arange(1.0, 4.0 + 1e-9, 0.01, dtype=float)
-    else:
-        tau_arr = np.asarray(tau, dtype=float).ravel()
-
-    tau_arr = tau_arr[tau_arr > 0.0]
-    if tau_arr.size == 0:
-        raise ValueError("tau grid must contain positive values")
-
-    if fitrange is None:
-        fitstart, fitstop = auto_fit_range_tcspc(
-            decay_arr,
-            count_threshold=100.0,
-            area=0.999,
-            start_fraction=float(fit_start_fraction),
-            start_at_peak=True,
-        )
-    else:
-        fitstart, fitstop = int(fitrange[0]), int(fitrange[1])
-
-    if period is None:
-        period_val = 0.0
-    else:
-        period_val = float(period)
-
-    tail_len_decay = min(500, decay_arr.size)
-    if tail_len_decay > 0:
-        decay_bg_median = float(np.median(decay_arr[-tail_len_decay:]))
-    else:
-        decay_bg_median = 0.0
-
-    bg0 = float(background) if background > 0.0 else decay_bg_median
-    ts0 = float(timeshift)
-    irf_bg0 = float(irf_bg_val)
-
-    if prior is None:
-        prior_vec = np.ones_like(tau_arr, dtype=float)
-        prior_vec /= float(np.sum(prior_vec))
-    else:
-        prior_vec = np.asarray(prior, dtype=float).ravel()
-        if prior_vec.size != tau_arr.size:
-            raise ValueError("prior must have same length as tau grid")
-        prior_vec[prior_vec <= 0.0] = MIN_PROB
-        prior_vec /= float(np.sum(prior_vec))
-
-    def _eval_mem_lifetime_single(ts_val: float, bg_val: float, irf_bg_single: float) -> Dict[str, Any]:
-        if irf_bg_single == irf_bg_val:
-            lamp_corr_single = lamp_corr
-        else:
-            lamp_corr_single = lamp_arr - irf_bg_single
-            lamp_corr_single[lamp_corr_single < 0.0] = 0.0
-
-        Fi_single, y_single, sigma_single, fit_additive = _build_Fi_lifetimes(
-            decay_arr,
-            lamp_corr_single,
-            float(dt),
-            tau_arr,
-            float(ts_val),
-            float(bg_val),
-            float(lamp_scatter),
-            int(fitstart),
-            int(fitstop),
-            period_val,
-        )
-
-        y_eff = y_single - fit_additive
-        y_w = y_eff / sigma_single
-
-        M_single = float(y_single.size)
-        H_single = (2.0 / M_single) * (Fi_single.T @ Fi_single)
-        g0_single = (2.0 / M_single) * (y_w @ Fi_single)
-        const_chi2_single = float(np.sum(y_w * y_w) / M_single)
-
-        m_single = prior_vec
-
-        res_single = _run_mem(
-            H_single,
-            g0_single,
-            m_single,
-            const_chi2_single,
-            float(nu),
-            progress_cb=progress_cb,
-            max_iter=int(max_iter),
-            tol=float(tol),
-            min_prob=MIN_PROB,
-        )
-
-        res_single.update(
-            {
-                "tau": tau_arr,
-                "fitrange": (int(fitstart), int(fitstop)),
-                "dt": float(dt),
-                "timeshift": float(ts_val),
-                "background": float(bg_val),
-                "lamp_scatter": float(lamp_scatter),
-                "fit_additive": fit_additive,
-                "irf_background": float(irf_bg_single),
-                "nu_input": float(nu),
-                "H": H_single,
-                "g0": g0_single,
-                "y": y_single,
-                "sigma": sigma_single,
-                "Fi": Fi_single,
-                "prior": prior_vec,
-            }
-        )
-        return res_single
-
-    if not optimize_nuisance:
-        # Fast path: delegate to tttrlib's C++ MEM engine when available.
-        # Matches the Python path below exactly (same H, g0, const, m, nu);
-        # see tttrlib::solve_tcspc_mem_lifetime (MaxEntTcspc.h).
-        try:
-            import tttrlib as _ttl
-            if hasattr(_ttl, "solve_tcspc_mem_lifetime"):
-                irf_bg_val_l = float(irf_bg_val)
-                bg_val_used = float(background)  # NB: Python path passes the raw
-                # background argument (0.0 by default), NOT bg0 (the median).
-                lamp_corr_l = lamp_arr - irf_bg_val_l
-                lamp_corr_l[lamp_corr_l < 0.0] = 0.0
-                if prior is None:
-                    prior_vec_l = np.ones_like(tau_arr, dtype=float)
-                    prior_vec_l /= float(np.sum(prior_vec_l))
-                else:
-                    prior_vec_l = np.asarray(prior, dtype=float).ravel()
-                    if prior_vec_l.size != tau_arr.size:
-                        raise ValueError("prior must have same length as tau grid")
-                    prior_vec_l[prior_vec_l <= 0.0] = MIN_PROB
-                    prior_vec_l /= float(np.sum(prior_vec_l))
-                cpp = _ttl.solve_tcspc_mem_lifetime(
-                    decay_arr.tolist(), lamp_corr_l.tolist(), float(dt),
-                    tau_arr.tolist(), float(ts0), float(bg_val_used), float(lamp_scatter),
-                    int(fitstart), int(fitstop), float(period_val),
-                    nu=float(nu), max_iter=int(max_iter), tol=float(tol),
-                    min_prob=MIN_PROB, prior=prior_vec_l.tolist(),
-                )
-                # The C++ engine returns only the MEM solution, but every
-                # consumer (the GUI plots, the sampler, the saved result) needs
-                # the design matrix and the fitted segment it was solved
-                # against. Rebuild them from the arguments the engine was given
-                # -- the same call the Python path makes -- so both paths return
-                # one contract.
-                Fi_l, y_l, sigma_l, fit_additive_l = _build_Fi_lifetimes(
-                    decay_arr,
-                    lamp_corr_l,
-                    float(dt),
-                    tau_arr,
-                    float(ts0),
-                    bg_val_used,
-                    float(lamp_scatter),
-                    int(fitstart),
-                    int(fitstop),
-                    period_val,
-                )
-                M_l = float(y_l.size)
-                y_w_l = (y_l - fit_additive_l) / sigma_l
-                p_cpp = np.asarray(cpp.p)
-                result = {
-                    "p": p_cpp,
-                    "chisq": float(cpp.chisq),
-                    "S": float(cpp.S),
-                    "Q": float(cpp.Q),
-                    "p_esm": np.asarray(cpp.p_esm),
-                    "chisq_esm": float(cpp.chisq_esm),
-                    "S_esm": float(cpp.S_esm),
-                    "Q_esm": float(cpp.Q_esm),
-                    "nu": float(nu),
-                    "niter": int(cpp.niter),
-                    "tau": tau_arr,
-                    "fitrange": (int(fitstart), int(fitstop)),
-                    "dt": float(dt),
-                    "timeshift": float(ts0),
-                    # what the engine was actually given, not the median bg0.
-                    "background": bg_val_used,
-                    "lamp_scatter": float(lamp_scatter),
-                    "fit_additive": fit_additive_l,
-                    "irf_background": float(irf_bg_val_l),
-                    "nu_input": float(nu),
-                    "H": (2.0 / M_l) * (Fi_l.T @ Fi_l),
-                    "g0": (2.0 / M_l) * (y_w_l @ Fi_l),
-                    "y": y_l,
-                    "sigma": sigma_l,
-                    "Fi": Fi_l,
-                    "prior": prior_vec_l,
-                    "nuisance_optimized": False,
-                }
-                return result
-        except Exception as exc:
-            # There is no second implementation to retry on, so a failure of the
-            # engine is the answer. Falling through to the general route would
-            # report success for a run whose one-shot solve had failed, which is
-            # the class of silent degradation this plugin no longer has.
-            raise RuntimeError(
-                "the MEM engine failed on the one-shot lifetime solve"
-            ) from exc
-
-        result = _eval_mem_lifetime_single(ts0, float(background), irf_bg0)
-        result["nuisance_optimized"] = False
-        return result
-
-    if nuisance_step_timeshift is None:
-        # timeshift is in channels (samples)
-        step_ts = 0.5
-    else:
-        step_ts = float(abs(nuisance_step_timeshift))
-
-    if nuisance_step_background is None:
-        step_bg = 0.5 * max(bg0, 1.0)
-    else:
-        step_bg = float(abs(nuisance_step_background))
-
-    if nuisance_step_irf_background is None:
-        step_irf = 0.5 * max(irf_bg0, 1.0)
-    else:
-        step_irf = float(abs(nuisance_step_irf_background))
-
-    steps = np.array([step_ts, step_bg, step_irf], dtype=float)
-
-    max_shift_channels = 20.0
-    ts_min = -max_shift_channels
-    ts_max = max_shift_channels
-    lower_bounds = np.array([ts_min, 0.0, 0.0], dtype=float)
-    upper_bounds = np.array([ts_max, np.inf, np.inf], dtype=float)
-
-    eval_history = []
-
-    def _objective(x_vec: np.ndarray) -> Tuple[float, Dict[str, Any]]:
-        x_clipped = np.minimum(np.maximum(x_vec, lower_bounds), upper_bounds)
-        res_loc = _eval_mem_lifetime_single(
-            float(x_clipped[0]), float(x_clipped[1]), float(x_clipped[2])
-        )
-        Q_loc = float(res_loc["Q"])
-        chisq_loc = float(res_loc["chisq"])
-        eval_history.append(
-            {
-                "params": x_clipped.copy(),
-                "Q": Q_loc,
-                "chisq": chisq_loc,
-            }
-        )
-        return Q_loc, res_loc
-
-    x_best = np.array([ts0, bg0, irf_bg0], dtype=float)
-    Q_best, res_best = _objective(x_best)
-    steps_cur = steps.copy()
-    param_tol = float(nuisance_param_tol)
-
-    for _ in _mem_trange(int(nuisance_max_iter)):
-        improved = False
-        for i in range(3):
-            for sign in (1.0, -1.0):
-                trial = x_best.copy()
-                trial[i] += sign * steps_cur[i]
-                Q_trial, res_trial = _objective(trial)
-                if Q_trial < Q_best:
-                    Q_best = Q_trial
-                    x_best = trial
-                    res_best = res_trial
-                    improved = True
-                    break
-            if improved:
-                continue
-        if not improved:
-            steps_cur *= 0.5
-            if np.all(steps_cur < param_tol):
-                break
-
-    res_best["nuisance_optimized"] = True
-    res_best["nuisance_result"] = {
-        "initial": np.array([ts0, bg0, irf_bg0], dtype=float),
-        "best": x_best,
-        "steps_final": steps_cur,
-        "eval_history": eval_history,
-    }
-    return res_best
+    tau_arr = np.arange(1.0, 4.0 + 1e-9, 0.01) if tau is None else np.asarray(tau, dtype=float).ravel()
+    problem, key, port, spectrum, basis, amplitudes, window, value = _solve(
+        "tcspc_maxent_lifetime", decay, lamp, dt, tau_arr, fitrange, fit_start_fraction, period, nu, max_iter,
+        prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance, {})
+    prepared = port("basis", "prepared_response")
+    result = _result(decay, basis, amplitudes, prepared, window, value, port, nu, prior, amplitudes.size, dt)
+    result.update({"tau": port("maxent", "distribution")[1::2], "lamp_scatter": float(lamp_scatter),
+                   "nuisance_optimized": bool(optimize_nuisance)})
+    return result
 
 
 def solve_fret_mem(
@@ -785,278 +371,32 @@ def solve_fret_mem(
 ) -> Dict[str, Any]:
     """Maximum-entropy inversion of a FRET decay to a distance distribution.
 
-    The me_vin4_E.m workflow: the design matrix is built by the photon library,
-    the entropy-regularised quadratic program is iterated here.
-
-    Parameters
-    ----------
-    decay : array_like
-        Measured decay counts vs time.
-    lamp : array_like
-        Instrument response function on the same time grid.
-    dt : float
-        Time step per channel (same units as ``tau0``).
-    R : array_like, optional
-        Distance grid. Default is 18:0.5:120 as in me_vin4_E.m.
-    tau0 : float, optional
-        Donor lifetime in the absence of FRET.
-    R0 : float, optional
-        Förster radius.
-    donly : array_like, optional
-        Donor-only decay as [c1, tau1, c2, tau2, ...]. Default [1, tau0].
-    timeshift : float, optional
-        IRF shift relative to the decay in detector channels (samples).
-    background : float, optional
-        Constant background added to the model.
-    lamp_scatter : float, optional
-        Lamp scatter coefficient multiplied by the IRF.
-    fitrange : (int, int), optional
-        0-based inclusive start/stop indices for the fit range. If None,
-        use :func:`autofitrange` on ``lamp`` and ``decay``.
-    nu : float, optional
-        Entropy Lagrange multiplier (regularization strength).
-    max_iter : int, optional
-        Maximum number of MEM iterations.
-    tol : float, optional
-        Stopping criterion on the gradient angle (dgrad).
-    period : float, optional
-        Excitation period. If None or <= 0, a single-shot convolution is used.
-
-    Returns
-    -------
-    result : dict
-        Dictionary with keys ``p`` (distance distribution), ``R``, ``chisq``,
-        ``S``, ``Q``, ``history`` and additional diagnostic information.
+    Each grid distance quenches the donor (``donly`` pairs ``[c1, tau1, ...]``,
+    default ``[1, tau0]``) at ``k = (1/tau0)(R0/R)^6``; ``x_donly`` of the sample
+    is donor only. The default grid is 18:0.5:120 Å, as in me_vin4_E.m.
     """
-
-    decay_arr = np.asarray(decay, dtype=float).ravel()
-    lamp_arr = np.asarray(lamp, dtype=float).ravel()
-
-    if R is None:
-        R_arr = np.arange(18.0, 120.0 + 1e-9, 0.5, dtype=float)
-    else:
-        R_arr = np.asarray(R, dtype=float).ravel()
-
-    if donly is None:
-        donly_arr = np.array([1.0, float(tau0)], dtype=float)
-    else:
-        donly_arr = np.asarray(donly, dtype=float).ravel()
-
-    # IRF background correction: subtract constant offset from lamp and clamp
-    if irf_background is None:
-        tail_len_lamp = min(500, lamp_arr.size)
-        if tail_len_lamp > 0:
-            irf_bg_val = float(np.median(lamp_arr[-tail_len_lamp:]))
-        else:
-            irf_bg_val = 0.0
-    else:
-        irf_bg_val = float(irf_background)
-
-    if fitrange is None:
-        fitstart, fitstop = auto_fit_range_tcspc(
-            decay_arr,
-            count_threshold=100.0,
-            area=0.999,
-            start_fraction=float(fit_start_fraction),
-            start_at_peak=True,
-        )
-    else:
-        fitstart, fitstop = int(fitrange[0]), int(fitrange[1])
-
-    if period is None:
-        period_val = 0.0
-    else:
-        period_val = float(period)
-
-    if prior is None:
-        prior_vec = np.ones_like(R_arr, dtype=float)
-        prior_vec /= float(np.sum(prior_vec))
-    else:
-        prior_vec = np.asarray(prior, dtype=float).ravel()
-        if prior_vec.size != R_arr.size:
-            raise ValueError("prior must have same length as R grid")
-        prior_vec[prior_vec <= 0.0] = MIN_PROB
-        prior_vec /= float(np.sum(prior_vec))
-
-    def _eval_mem_distance_single(
-        ts_val: float,
-        bg_val: float,
-        irf_bg_single: float,
-        x_donly_val: float,
-    ) -> Dict[str, Any]:
-        Fi, y, sigma, fit_additive = _build_Fi_distances(
-            decay_arr,
-            lamp_arr,
-            float(dt),
-            R_arr,
-            float(tau0),
-            float(R0),
-            donly_arr,
-            float(x_donly_val),
-            float(ts_val),
-            float(bg_val),
-            float(lamp_scatter),
-            int(fitstart),
-            int(fitstop),
-            period_val,
-            float(irf_bg_single),
-        )
-        y_eff = y - fit_additive
-
-        # Weighted data vector y/sigma for the least-squares terms.
-        y_w = y_eff / sigma
-
-        M = y.size
-        H = (2.0 / M) * (Fi.T @ Fi)
-        g0 = (2.0 / M) * (y_w @ Fi)
-        const_chi2 = float(np.sum(y_w * y_w) / M)
-
-        m = prior_vec
-
-        res_single = _run_mem(
-            H,
-            g0,
-            m,
-            const_chi2,
-            float(nu),
-            progress_cb=progress_cb,
-            max_iter=int(max_iter),
-            tol=float(tol),
-            min_prob=MIN_PROB,
-        )
-
-        res_single.update(
-            {
-                "R": R_arr,
-                "tau0": float(tau0),
-                "R0": float(R0),
-                "donly": donly_arr,
-                "x_donly": float(x_donly_val),
-                "fit_additive": fit_additive,
-                "fitrange": (int(fitstart), int(fitstop)),
-                "dt": float(dt),
-                "timeshift": float(ts_val),
-                "background": float(bg_val),
-                "lamp_scatter": float(lamp_scatter),
-                "irf_background": float(irf_bg_single),
-                "nu_input": float(nu),
-                "Fi": Fi,
-                "H": H,
-                "g0": g0,
-                "y": y,
-                "sigma": sigma,
-                "prior": prior_vec,
-            }
-        )
-        return res_single
-
-    if not optimize_nuisance:
-        result = _eval_mem_distance_single(float(timeshift), float(background), float(irf_bg_val), float(x_donly))
-        result["nuisance_optimized"] = False
-        return result
-
-    ts0 = float(timeshift)
-    bg0 = float(background)
-    if bg0 <= 0.0:
-        tail_len_decay = min(500, decay_arr.size)
-        if tail_len_decay > 0:
-            bg0 = float(np.median(decay_arr[-tail_len_decay:]))
-        else:
-            bg0 = 0.0
-    irf_bg0 = float(irf_bg_val)
-
-    x0 = float(x_donly)
-    if x0 < 0.0:
-        x0 = 0.0
-    if x0 > 1.0:
-        x0 = 1.0
-
-    if nuisance_step_timeshift is None:
-        # timeshift is in channels (samples)
-        step_ts = 0.5
-    else:
-        step_ts = float(abs(nuisance_step_timeshift))
-
-    if nuisance_step_background is None:
-        step_bg = 0.5 * max(bg0, 1.0)
-    else:
-        step_bg = float(abs(nuisance_step_background))
-
-    if nuisance_step_irf_background is None:
-        step_irf = 0.5 * max(irf_bg0, 1.0)
-    else:
-        step_irf = float(abs(nuisance_step_irf_background))
-
-    if nuisance_step_x_donly is None:
-        step_x = 0.05
-    else:
-        step_x = float(abs(nuisance_step_x_donly))
-
-    steps = np.array([step_ts, step_bg, step_irf, step_x], dtype=float)
-
-    max_shift_channels = 20.0
-    ts_min = -max_shift_channels
-    ts_max = max_shift_channels
-    lower_bounds = np.array([ts_min, 0.0, 0.0, 0.0], dtype=float)
-    upper_bounds = np.array([ts_max, np.inf, np.inf, 1.0], dtype=float)
-
-    eval_history = []
-
-    def _objective(x_vec: np.ndarray) -> Tuple[float, Dict[str, Any]]:
-        x_clipped = np.minimum(np.maximum(x_vec, lower_bounds), upper_bounds)
-        res_loc = _eval_mem_distance_single(
-            float(x_clipped[0]), float(x_clipped[1]), float(x_clipped[2]), float(x_clipped[3])
-        )
-        Q_loc = float(res_loc["Q"])
-        chisq_loc = float(res_loc["chisq"])
-        eval_history.append(
-            {
-                "params": x_clipped.copy(),
-                "Q": Q_loc,
-                "chisq": chisq_loc,
-            }
-        )
-        return Q_loc, res_loc
-
-    x_best = np.array([ts0, bg0, irf_bg0, x0], dtype=float)
-    Q_best, res_best = _objective(x_best)
-    steps_cur = steps.copy()
-    param_tol = float(nuisance_param_tol)
-
-    for _ in _mem_trange(int(nuisance_max_iter)):
-        improved = False
-        for i in range(4):
-            for sign in (1.0, -1.0):
-                trial = x_best.copy()
-                trial[i] += sign * steps_cur[i]
-                Q_trial, res_trial = _objective(trial)
-                if Q_trial < Q_best:
-                    Q_best = Q_trial
-                    x_best = trial
-                    res_best = res_trial
-                    improved = True
-                    break
-            if improved:
-                continue
-        if not improved:
-            steps_cur *= 0.5
-            if np.all(steps_cur < param_tol):
-                break
-
-    res_best["nuisance_optimized"] = True
-    res_best["nuisance_result"] = {
-        "initial": np.array([ts0, bg0, irf_bg0, x0], dtype=float),
-        "best": x_best,
-        "steps_final": steps_cur,
-        "eval_history": eval_history,
-    }
-    return res_best
-
-
-__all__ = [
-    "MIN_PROB",
-    "load_tcspc_two_column",
-    "auto_fit_range_tcspc",
-    "solve_lifetime_mem",
-    "solve_fret_mem",
-]
+    R_arr = np.arange(18.0, 120.0 + 1e-9, 0.5) if R is None else np.asarray(R, dtype=float).ravel()
+    donly_arr = np.array([1.0, float(tau0)]) if donly is None else np.asarray(donly, dtype=float).ravel()
+    extra = {"fret.tau0": (float(tau0), False, 1e-9, 1e9), "fret.forster_radius": (float(R0), False, 1e-9, 1e9),
+             "fret.kappa2": (2.0 / 3.0, False, 0.0, 4.0),
+             "fret.x_donly": (float(x_donly), bool(optimize_nuisance), 0.0, 1.0)}
+    for i in range(donly_arr.size // 2):
+        extra[f"donor.amplitude.{i}"] = (float(donly_arr[2 * i]), False, 0.0, 1e12)
+        extra[f"donor.tau.{i}"] = (float(donly_arr[2 * i + 1]), False, 1e-9, 1e9)
+    problem, key, port, spectrum, basis, amplitudes, window, value = _solve(
+        "tcspc_maxent_fret", decay, lamp, dt, R_arr, fitrange, fit_start_fraction, period, nu, max_iter,
+        prior, timeshift, background, lamp_scatter, irf_background, optimize_nuisance, extra,
+        scalars={"donor_lifetimes": donly_arr.size // 2})
+    # The design, per distance: the quenched donor species with their
+    # amplitudes, plus the donor-only part (FRETSpectrumNode's layout).
+    per = donly_arr.size // 2
+    distances = amplitudes.size
+    weights = spectrum[0::2]
+    quenched = (basis[:, :distances * per] * weights[:distances * per]).reshape(basis.shape[0], distances, per).sum(2)
+    design = quenched + (basis[:, distances * per:] @ weights[distances * per:])[:, None]
+    prepared = port("basis", "prepared_response")
+    result = _result(decay, design, amplitudes, prepared, window, value, port, nu, prior, distances, dt)
+    result.update({"R": port("maxent", "distribution")[1::2], "tau0": float(tau0), "R0": float(R0),
+                   "donly": donly_arr, "x_donly": value("fret.x_donly"), "lamp_scatter": float(lamp_scatter),
+                   "nuisance_optimized": bool(optimize_nuisance)})
+    return result

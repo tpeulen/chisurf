@@ -49,7 +49,8 @@ import numpy as np
 import tttrlib
 
 import chisurf as cs
-import chisurf.core.models.tcspc.fret
+import chisurf.core.fluorescence
+import chisurf.core.models.fret_parameters
 from chisurf.core.fitting.kinetics import RateMatrixMixin
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
@@ -200,9 +201,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         self.states = states or Pda2cDynamicNStates(
             name="pda_dynamic_n_states", fit=fit, **kwargs
         )
-        self.fret_parameters = chisurf.core.models.tcspc.fret.FRETParameters(
-            enable_fret_efficiency=False
-        )
+        self.fret_parameters = chisurf.core.models.fret_parameters.FRETParameters()
         self.n_hist = int(n_hist)
         #: How the time-averaged probability distribution is obtained.
         #: ``"szabo-gopich"`` matches a shape to its exact first two moments
@@ -295,7 +294,7 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
     def _update_model(self, verbose: bool | None = None, **kwargs):
         """Build the N-state probability spectrum and update the curve."""
         st = self.states
-        r = chisurf.core.models.tcspc.fret.rda_axis
+        r = chisurf.core.fluorescence.rda_axis
         R0 = self.fret_parameters.forster_radius
         E = distance_to_fret_efficiency(r, R0)
         pG = green_probability_from_efficiency(E, self.nuisance)

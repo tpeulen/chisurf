@@ -22,27 +22,8 @@ def dispatcher() -> ServiceDispatcher:
     return d
 
 
-@pytest.fixture(autouse=True)
-def _rda_axis():
-    """Pin the FRET distance axis, then put the module's own axis back.
-
-    ``rda_axis`` is a module global every distance distribution is built on, so
-    replacing it without restoring it silently changes the grid for every test
-    that runs afterwards — which is how ``test_pda_saw_nu`` came to see 50 points
-    where the settings say 96, but only when run as part of the suite.
-    """
-    import chisurf.core.models.tcspc.fret as fret_mod
-
-    original = fret_mod.rda_axis
-    fret_mod.rda_axis = np.logspace(np.log10(1), np.log10(500))
-    try:
-        yield
-    finally:
-        fret_mod.rda_axis = original
-
-
 _COMPONENTS = [{"model_name": "FRET: FD (Gaussian)", "n_components": 1, "params": {}}]
-_SWEEP = {"kind": "param", "component": 0, "name": "R(G,1)"}
+_SWEEP = {"kind": "param", "component": 0, "name": "distance.mean.0"}
 
 
 def test_overlays_method_registered(dispatcher):

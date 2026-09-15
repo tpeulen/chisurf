@@ -1298,7 +1298,7 @@ def get_pda3c_distance_distributions(fit) -> list:
     model = getattr(fit, "model", None)
     if model is None or not hasattr(model, "species"):
         return []
-    r = cs.core.models.tcspc.fret.rda_axis
+    r = cs.core.fluorescence.rda_axis
     curves = []
     for axis in range(3):
         density = np.zeros_like(r, dtype=float)
