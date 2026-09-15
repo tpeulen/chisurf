@@ -109,7 +109,7 @@ def test_split_chains_typed_into_the_console_splits_the_chains(console, tmp_path
     type_line(f"load {pdb}")
     type_line("split_chains")
 
-    names = [entry.name for entry in window.viewer._objects.values()]
+    names = [entry["name"] for entry in window.viewer.list_objects()]
     assert any(name.endswith("_E") for name in names), names
     assert any(name.endswith("_S") for name in names), names
 
@@ -138,8 +138,9 @@ def test_tab_leaves_python_completion_alone(console):
 
 def test_a_single_match_is_inserted(console, qapp):
     panel, _window, _qapp = console
-    panel.input_line.setText("spl")
-    panel.input_line.setCursorPosition(3)
+    # "spl" also matches chimol's ``splat``; "split" has one match.
+    panel.input_line.setText("split")
+    panel.input_line.setCursorPosition(5)
     panel.show_completions()
     for _ in range(3):
         _qapp.processEvents()
