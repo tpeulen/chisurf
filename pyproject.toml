@@ -49,8 +49,10 @@ dependencies = [
     "pyqtgraph",
     "numba",
     "numpy",
-    # Mandatory; see pixi.toml for why the floor is 2.25.
-    "imp>=2.25",
+    # Mandatory: structure I/O, AV backend and kappa-squared correction import
+    # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
+    # see pixi.toml and okf/references/imp-ecosystem.md.
+    "imp-bff",
     "scipy",
     # Imported at module scope in shipped code and previously left out of this
     # list: PyOpenGL by the molecular view.
@@ -180,8 +182,8 @@ include-package-data = true
 [tool.setuptools.packages.find]
 # Installed MMFDB has one owner: the standalone ``mmfdb`` distribution above.
 # Source checkouts remain convenient through ``chisurf._bundled_packages``.
-where = [".", "modules/chinet"]
-include = ["chisurf*", "chinet*"]
+where = ["."]
+include = ["chisurf*"]
 namespaces = true
 
 [tool.setuptools.package-data]
@@ -202,10 +204,6 @@ namespaces = true
     "*.md"
 ]
 "chisurf.settings.constants" = ["*.json"]
-# The world's ground tiles live in a plain directory beside the module that
-# reads them, not in a package, so the "*" globs above do not reach them and an
-# installed copy would silently fall back to the authored string art.
-"chisurf.plugins.misc.games.lumis_quest.gui" = ["art/*"]
 
 [tool.setuptools.dynamic]
 version = {attr = "chisurf.core.info.__version__"}

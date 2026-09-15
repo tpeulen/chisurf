@@ -25,12 +25,6 @@ python = "3.12.*"
 # must be present here and not only in the `build` feature.
 pip = ">=26.0.1,<27"
 numpy = "*"
-# IMP is a mandatory runtime dependency: the FRET modelling plugin's engine,
-# accessible-volume backend, structure I/O and kappa-squared correction all
-# import it unguarded. Pinned >=2.25 because 2.24's IMP.bff.restraints ships
-# empty, so AVNetworkRestraintWrapper -- which the docking engine calls -- is
-# absent there. See okf/references/imp-ecosystem.md.
-imp = ">=2.25"
 typing-extensions = ">=4.14"
 pyyaml = "*"
 markdown = "*"
@@ -41,7 +35,7 @@ markdown = "*"
 # HDF5"). It was declared for win-64 and linux-64 only, which is why the failure
 # looked platform-specific rather than like the missing dependency it is.
 hdf5 = "*"
-# click-didyoumean was dropped: chisurf.core.cli_support.DidYouMeanGroup is the
+# click-didyoumean was dropped: chisurf.core.cli.support.DidYouMeanGroup is the
 # in-tree replacement. pytools was dropped: nothing imports it.
 click = "*"
 qtpy = "<2.0"
@@ -56,7 +50,7 @@ matplotlib = "*"
 # tttrlib's bundled libtiff behind chisurf.core.fio.image. pillow is here for
 # pictures, not measurements: chimol's render export and the docs figure tooling.
 pillow = "*"
-# deprecation was dropped: chisurf.core.decorators.deprecated replaces it.
+# deprecation was dropped: chisurf.core.support.decorators.deprecated replaces it.
 # pandas was dropped: chisurf.core.datastore (tttrlib.DataStore) is the
 # storage model everywhere in the tree now, and nothing shipped imports
 # pandas any more (PRD-82).
@@ -116,6 +110,16 @@ llvm-openmp = ">=22.1.3,<23"
 # the single home for such deps — the former chisurf-env.yaml pip section is gone.
 [pypi-dependencies]
 latexify-py = "*"
+# imp-bff (PyPI name; imports as IMP.bff) is the structure/dye-simulation/
+# scoring engine: AV backend, structure I/O and kappa-squared correction all
+# import it unguarded. Bare `imp` (the full IMP suite) is no longer a chisurf
+# dependency -- nothing in this tree does `import IMP`/`IMP.atom`/`IMP.em`/
+# `IMP.rmf` anymore, only `IMP.bff` (structure reading, RMF writing, MRC
+# writing all moved onto bff doors, see okf/references/imp-ecosystem.md,
+# PRD-137). The FRET docking plugin still needs an imp-bff build linked
+# against IMP (`get_build() == "core+imp"`) for its workflow layer; that is a
+# build-time choice of the imp-bff wheel, not a separate chisurf dependency.
+imp-bff = "*"
 
 [pypi-options]
 dependency-overrides = { "numpy" = {} }
@@ -207,7 +211,6 @@ ninja = "*"
 # `modules/tttrlib` symlink (the same sibling-checkout pattern as modules/mmfdb).
 
  [tasks]
- test-chinet = { cmd = "python -m pytest modules/chinet/test -x -q" }
  # ndxplorer is now pure-Python (no CMake/Eigen); a plain editable install.
  build-ndxplorer = { cmd = "pip install -e modules/ndxplorer --no-deps", inputs = [
      "modules/ndxplorer/pyproject.toml",
@@ -217,11 +220,6 @@ ninja = "*"
      "modules/quest/pyproject.toml",
      "modules/quest/quest/**",
  ] }
- build-chinet = { cmd = "pip install -e modules/chinet --no-deps", inputs = [
-     "modules/chinet/setup.py",
-     "modules/chinet/pyproject.toml",
-     "modules/chinet/chinet/**",
-     ] }
  # tttrlib's only provider: there is no conda package dependency to fall back on,
  # so this builds the source under the modules/tttrlib symlink and fails loudly
  # when it is missing rather than leaving the environment without tttrlib.
@@ -242,8 +240,7 @@ ninja = "*"
      build-extensions = { depends-on = [
      "build-ndxplorer",
      "build-quest",
-     "build-chinet",
-     "build-tttrlib",
+      "build-tttrlib",
      "build-chimol",
  ] }
  chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }

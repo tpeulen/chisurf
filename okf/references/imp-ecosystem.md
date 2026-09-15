@@ -56,6 +56,18 @@ task remains separately owned and is not swept into the taxonomy commits;
 its isolated container integration also passes. See
 [bff completion evidence](../../../imp.bff/okf/validation/taxonomy-completion.md).
 
+## chisurf's recipes caught up to the code (2026-09-09)
+
+`pixi.toml`, `pyproject.toml` and `rattler-recipe/recipe.yaml` no longer
+declare `imp>=2.25`; they declare `imp-bff` (the PyPI/conda name the owner
+confirmed, not the earlier working-name `bff`). This was a pure recipe change
+— the code was already there (see below, items 1-3) and a repo-wide grep
+confirms nothing in chisurf imports bare `IMP`/`IMP.atom`/`IMP.core`/
+`IMP.em`/`IMP.rmf`/`IMP.pmi` any more, only `IMP.bff`. Not touched: the FRET
+docking plugin's dead forwarders (unaffected by which package name chisurf
+declares — they fail the same way under `imp-bff` as they did under `imp`)
+and the "workflow lives where" ruling below, which is still open.
+
 ## chisurf drops its direct IMP dependency (2026-09-09, owner's plan)
 
 **Three of the four done; the fourth is FRET docking and it needs a ruling.**

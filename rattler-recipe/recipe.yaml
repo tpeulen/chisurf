@@ -103,21 +103,22 @@ requirements:
   run:
     - python 3.12.*
     - numpy
-    # Mandatory: the FRET modelling plugin imports IMP unguarded (engine, AV
-    # backend, structure I/O, kappa-squared). >=2.25 because 2.24 ships an
-    # empty IMP.bff.restraints, so AVNetworkRestraintWrapper is missing there.
-    - imp >=2.25
+    # Mandatory: structure I/O, AV backend and kappa-squared correction import
+    # IMP.bff unguarded. Bare `imp` (the full IMP suite) is no longer needed --
+    # nothing in this tree imports IMP/IMP.atom/IMP.em/IMP.rmf, only IMP.bff.
+    # PyPI name is imp-bff. See okf/references/imp-ecosystem.md, PRD-137.
+    - imp-bff
     - typing-extensions >=4.14
     - pyyaml
     # msgpack-python provides `import msgpack` (the plain `msgpack` conda pkg is
     # the C lib); it backs the MMFDB payload codec / JSON-RPC service.
     - msgpack-python >=1.1.2
     - markdown
-    # click-didyoumean removed: chisurf.core.cli_support.DidYouMeanGroup is the
+    # click-didyoumean removed: chisurf.core.cli.support.DidYouMeanGroup is the
     # in-tree replacement (a difflib call over the group's own command names).
     - click
     # pytools, msgpack-numpy and jsonschema removed: nothing in the tree (or in
-    # MMFDB) imports them. tqdm removed: chisurf.core.progress draws the two
+    # MMFDB) imports them. tqdm removed: chisurf.core.runtime.progress draws the two
     # terminal progress bars the tree needs.
     - qtpy
     - pyqt
@@ -127,7 +128,7 @@ requirements:
     # the five segmentation primitives the imaging tools used (gaussian,
     # threshold_otsu, clear_border, peak_local_max, watershed) in
     # chisurf.core.roi.segmentation.
-    # deprecation removed: chisurf.core.decorators.deprecated is the in-tree
+    # deprecation removed: chisurf.core.support.decorators.deprecated is the in-tree
     # replacement for the decorator, warning classes and docstring note.
     # pandas removed: chisurf.core.datastore (tttrlib.DataStore) is the
     # storage model everywhere in the tree, and nothing shipped imports
