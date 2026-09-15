@@ -13,9 +13,29 @@ acceptor excitation, detector mixing — is a single linear-algebra problem that
 recurs across ChiSurf. Rather than a per-consumer reimplementation, it is
 centralised in a Qt-free core, `chisurf/core/fluorescence/crosstalk.py`.
 
+> **Placement, 2026-09-04.** The *definition and the algebra* moved to bff —
+> owner: "excitation and emission crosstalk matrix definition must be in bff
+> not in chisurf" (the compute/display line applied to calibration). They are
+> `IMP.bff.CrosstalkMatrix` and the `crosstalk_apply/invert/shuffle` kernels
+> (`imp.bff` `include/CrosstalkMatrix.h`; log entry 2026-09-04 (28) there,
+> including the ported Lawson–Hanson NNLS). The **scalar three-cube** is
+> tttrlib's (`SpectralCrosstalk`, its registered and A/B-validated owner):
+> `correct_three_cube` forwards to it — same-day check against tttrlib found
+> the numpy twin, parity was exact, the twin is gone (duplication register,
+> PRD-105 phase 4). tttrlib's `invert_mixing_ridge` is the superseded twin of
+> bff's ridge path, not the owner. `chisurf/core/fluorescence/crosstalk.py`
+> is the Qt-free numpy **adapter**: payload → labelled matrix → ndarray,
+> reshape, cast. The backend pin
+> `test/architecture/test_bff_is_the_backend.py::
+> test_the_crosstalk_matrix_definition_is_bffs` holds the line.
+
 Convention: a mixing matrix `M` has shape `(n_sources, n_detectors)` with
 `M[i, j]` = contribution of source `i` to detector `j`; the forward model is
-`measured = Mᵀ @ sources` and the inverse recovers the sources.
+`measured = Mᵀ @ sources` and the inverse recovers the sources. Rows and
+columns are labelled; labels are how a payload built against one instrument
+description is ordered for another consumer, and a requested label the matrix
+does not carry contributes zeros — a missing element of a light path is a
+dark element, not a broken one.
 
 ## What is there (implemented)
 
@@ -23,13 +43,15 @@ Convention: a mixing matrix `M` has shape `(n_sources, n_detectors)` with
   from a light-path-calculator crosstalk payload (`{rows, columns, values}` as
   returned by `lightpath_simulator…get_crosstalk_matrices()`), with optional
   label subsetting/reordering.
-- `apply_mixing(M, sources)` / `invert_mixing(M, measured, nonneg=, rcond=)` —
-  forward mixing and the (pseudo-inverse or NNLS) inverse correction, both
-  broadcasting over trailing pixel/burst axes.
+- `apply_mixing(M, sources)` / `invert_mixing(M, measured, nonneg=, ridge=)` —
+  forward mixing and the (least-squares or NNLS) inverse correction, both
+  broadcasting over trailing pixel/burst axes (the solves are bff's).
 - `correct_three_cube(IDD, IDA, IAA, donor_leak, direct_excitation, gamma)` —
-  Gordon/Nagy three-cube **ratiometric FRET** correction
-  (`Fc = IDA − d·IDD − a·IAA`) with `three_cube_fret_efficiency`
-  (`Fc/(Fc+γ·IDD)`); recovers a known `E` from synthesized channels.
+  forwards to `tttrlib.correct_three_cube_batch` (Gordon/Nagy three-cube
+  **ratiometric FRET** correction, `Fc = IDA − d·IDD − a·IAA`), broadcasting
+  over pixel/burst arrays like the rest; the engine's denominator guard is
+  adopted (efficiency 0 where `Fc + γ·IDD ≤ 0`). `three_cube_fret_efficiency`
+  stays the local elementwise helper (its `denom != 0` contract is its own).
 - Bug fix: `chisurf/core/fluorescence/intensity.py::nusiance` used the Python-2
   `func_globals` attribute, so the whole scalar FRET-correction API
   (`fret/__init__.py`: `fret_efficiency`, `fg_fr`, …) raised `AttributeError` at

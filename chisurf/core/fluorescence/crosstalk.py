@@ -1,4 +1,4 @@
-"""General spectral crosstalk / linear-mixing utilities.
+"""General spectral crosstalk / linear-mixing utilities — the numpy adapter.
 
 Crosstalk (spectral bleed-through, direct acceptor excitation, detector
 mixing) is a single linear-algebra problem shared across ChiSurf: the light-path
@@ -6,7 +6,17 @@ calculator *builds* a forward mixing matrix
 (:meth:`...lightpath_simulator...get_crosstalk_matrices`), ratiometric /
 sensitized-emission FRET needs to *invert* it to recover true fluorophore
 signals, and phasor-FLIM spectral unmixing solves the same constrained inverse.
-This module is the Qt-free, array-based core those consumers share.
+
+**The definition and the algebra live in bff** (``IMP.bff.PhotophysicsCrosstalkMatrix`` and
+the ``crosstalk_*`` kernels, from ``IMP/bff/CrosstalkMatrix.h``) — owner,
+2026-09-04: the excitation and emission crosstalk matrix definition must be in
+bff, not in chisurf, per the compute/display line. This module is the Qt-free
+numpy *adapter* those consumers share: it converts payloads and ``(n, ...)``
+arrays across the boundary and reshapes the results; it owns no arithmetic.
+The scalar three-cube correction (:func:`correct_three_cube`) is tttrlib's
+(``SpectralCrosstalk``, A/B-validated there against the Hellenkamp 2018
+formulas and FRETBursts); this module forwards to it — the duplication
+register's "one implementation per algorithm", PRD-105 phase 4.
 
 Conventions
 -----------
@@ -14,11 +24,34 @@ A mixing matrix ``M`` has shape ``(n_sources, n_detectors)`` with
 ``M[i, j]`` = contribution of source ``i`` to detector ``j``. The forward model
 is ``measured_j = sum_i source_i * M[i, j]`` (i.e. ``measured = Mᵀ @ sources``),
 and the inverse recovers the sources from the measured detector signals.
+Rows are *labelled* — sources for the excitation matrix (lasers), chromophores
+for the emission matrix — and columns likewise; labels are how a payload built
+against one instrument description is ordered for another consumer.
 """
 
 from __future__ import annotations
 
 import numpy as np
+
+# The parameter runtime made the same turn: the guard is import-time, the
+# error is call-time, so a chisurf that never fits still imports.
+try:
+    import IMP.bff as _bff
+
+    if not hasattr(_bff, 'PhotophysicsCrosstalkMatrix'):
+        raise ImportError("IMP.bff is present but carries no CrosstalkMatrix")
+except ImportError as _exc:
+    _bff = None
+    _bff_import_error = _exc
+
+try:
+    import tttrlib as _tttrlib
+
+    if not hasattr(_tttrlib, "correct_three_cube_batch"):
+        raise ImportError("tttrlib is present but carries no SpectralCrosstalk")
+except ImportError as _exc:
+    _tttrlib = None
+    _tttrlib_import_error = _exc
 
 __all__ = [
     "matrix_from_payload",
@@ -28,6 +61,15 @@ __all__ = [
     "correct_three_cube",
     "three_cube_fret_efficiency",
 ]
+
+
+def _require_bff():
+    if _bff is None:
+        raise ImportError(
+            "chisurf.core.fluorescence.crosstalk requires IMP.bff, the "
+            "library that owns the crosstalk-matrix definition; importing "
+            f"it failed: {_bff_import_error}"
+        )
 
 
 def matrix_from_payload(payload, rows=None, columns=None):
@@ -41,7 +83,8 @@ def matrix_from_payload(payload, rows=None, columns=None):
         dense row-major ``"values"`` list (``values[row][col]``).
     rows, columns : sequence of str, optional
         Label subset/ordering to select. Defaults to the payload's own order.
-        Requested labels missing from the payload contribute a zero row/column.
+        Requested labels missing from the payload contribute a zero row/column
+        (a missing element of a light path is a dark element, not a broken one).
 
     Returns
     -------
@@ -52,22 +95,25 @@ def matrix_from_payload(payload, rows=None, columns=None):
     columns : list of str
         The column (detector) labels, in the returned order.
     """
+    _require_bff()
     payload_rows = list(payload["rows"])
     payload_cols = list(payload["columns"])
     values = np.asarray(payload["values"], dtype=float)
-    row_index = {label: i for i, label in enumerate(payload_rows)}
-    col_index = {label: j for j, label in enumerate(payload_cols)}
-
+    if values.size != len(payload_rows) * len(payload_cols):
+        raise ValueError(
+            f"payload values {values.shape} do not tile "
+            f"{len(payload_rows)} x {len(payload_cols)}"
+        )
+    labelled = _bff.PhotophysicsCrosstalkMatrix(
+        payload_rows, payload_cols, [float(v) for v in values.ravel()]
+    )
     out_rows = list(rows) if rows is not None else payload_rows
     out_cols = list(columns) if columns is not None else payload_cols
-    matrix = np.zeros((len(out_rows), len(out_cols)), dtype=float)
-    for i, r in enumerate(out_rows):
-        if r not in row_index:
-            continue
-        for j, c in enumerate(out_cols):
-            if c in col_index:
-                matrix[i, j] = values[row_index[r], col_index[c]]
-    return matrix, out_rows, out_cols
+    selected = labelled.select(out_rows, out_cols)
+    matrix = np.asarray(selected.get_values(), dtype=float).reshape(
+        (selected.get_n_rows(), selected.get_n_columns())
+    )
+    return matrix, list(selected.get_rows()), list(selected.get_columns())
 
 
 def apply_mixing(matrix, sources):
@@ -86,14 +132,15 @@ def apply_mixing(matrix, sources):
     numpy.ndarray
         ``(n_detectors, ...)`` predicted detector signals.
     """
-    m = np.asarray(matrix, dtype=float)
-    s = np.asarray(sources, dtype=float)
-    flat = s.reshape(s.shape[0], -1)
-    out = m.T @ flat
-    return out.reshape((m.shape[1],) + s.shape[1:])
+    _require_bff()
+    m = np.ascontiguousarray(matrix, dtype=float)
+    s = np.ascontiguousarray(sources, dtype=float)
+    n_src, n_det = m.shape
+    out = _bff.crosstalk_apply_mixing(m, n_src, n_det, s)
+    return np.asarray(out).reshape((n_det,) + s.shape[1:])
 
 
-def invert_mixing(matrix, measured, *, nonneg: bool = False, rcond=None, ridge: float = 0.0):
+def invert_mixing(matrix, measured, *, nonneg: bool = False, ridge: float = 0.0):
     """Inverse mixing: recover source signals from measured detector signals.
 
     Parameters
@@ -103,53 +150,34 @@ def invert_mixing(matrix, measured, *, nonneg: bool = False, rcond=None, ridge: 
     measured : array_like
         ``(n_detectors,)`` or ``(n_detectors, ...)`` measured signals.
     nonneg : bool, optional
-        If True, solve a non-negative least squares per column
-        (``scipy.optimize.nnls``) — the physically-constrained unmixing (sources
-        cannot be negative) that stays stable when the mixing matrix is
-        ill-conditioned (strong spectral overlap). Otherwise a (pseudo-)inverse
-        least-squares solution, which is faster but can return negative sources
-        and amplifies noise for near-singular ``matrix``.
-    rcond : float, optional
-        Cut-off passed to :func:`numpy.linalg.pinv` for the unconstrained solve.
+        If True, solve a non-negative least squares per column (Lawson–Hanson,
+        in bff) — the physically-constrained unmixing (sources cannot be
+        negative) that stays stable when the mixing matrix is ill-conditioned
+        (strong spectral overlap). Otherwise a minimum-norm least-squares
+        solution, which is faster but can return negative sources and
+        amplifies noise for near-singular ``matrix``.
     ridge : float, optional
         Tikhonov (ridge) regularization strength ``λ``. When ``> 0`` the solve
         minimises ``||Mᵀx − y||² + λ||x||²``, which damps the noise amplification
         of an ill-conditioned ``matrix`` at the cost of a small bias. Applies to
-        both the unconstrained solve (closed form) and the non-negative solve (via
-        an augmented system). ``0`` (default) is the plain least-squares inverse.
+        both the unconstrained solve (closed form) and the non-negative solve
+        (via an augmented system). ``0`` (default) is the plain least-squares
+        inverse. (The former ``rcond`` cut-off of the pseudo-inverse is gone
+        with the numpy implementation; bff's complete-orthogonal-decomposition
+        threshold takes its place.)
 
     Returns
     -------
     numpy.ndarray
         ``(n_sources, ...)`` recovered source signals.
     """
-    m = np.asarray(matrix, dtype=float)
-    y = np.asarray(measured, dtype=float)
-    a = m.T  # detectors x sources
-    n_src = a.shape[1]
-    flat = y.reshape(y.shape[0], -1)
-    if nonneg:
-        from scipy.optimize import nnls
-
-        if ridge and ridge > 0:
-            # augmented rows sqrt(λ)·I with zero targets == ridge penalty
-            a_solve = np.vstack([a, np.sqrt(ridge) * np.eye(n_src)])
-            flat = np.vstack([flat, np.zeros((n_src, flat.shape[1]))])
-        else:
-            a_solve = a
-        out = np.empty((n_src, flat.shape[1]), dtype=float)
-        for k in range(flat.shape[1]):
-            out[:, k], _ = nnls(a_solve, flat[:, k])
-        return out.reshape((n_src,) + y.shape[1:])
-    if ridge and ridge > 0:
-        # Tikhonov closed form: x = (AᵀA + λI)⁻¹ Aᵀ y
-        gram = a.T @ a + ridge * np.eye(n_src)
-        solve = np.linalg.solve(gram, a.T)  # (n_src, n_det)
-        out = solve @ flat
-        return out.reshape((n_src,) + y.shape[1:])
-    pinv = np.linalg.pinv(a, rcond=rcond) if rcond is not None else np.linalg.pinv(a)
-    out = pinv @ flat
-    return out.reshape((pinv.shape[0],) + y.shape[1:])
+    _require_bff()
+    m = np.ascontiguousarray(matrix, dtype=float)
+    y = np.ascontiguousarray(measured, dtype=float)
+    n_src, n_det = m.shape
+    out = _bff.crosstalk_invert_mixing(m, n_src, n_det, y, bool(nonneg),
+                                       float(ridge))
+    return np.asarray(out).reshape((n_src,) + y.shape[1:])
 
 
 def photon_shuffle_unmix(counts, matrix, *, abundances=None, seed=None, rng=None):
@@ -160,26 +188,11 @@ def photon_shuffle_unmix(counts, matrix, *, abundances=None, seed=None, rng=None
     Poisson nature of photon-counting data. This instead **reassigns each detected
     photon to a source**: every one of the ``counts[m]`` photons in detector ``m``
     is attributed to exactly one source ``k`` by a multinomial draw, so the result
-    is a non-negative **integer** per-source photon stream.
-
-    The assignment probability that a photon detected in channel ``m`` originated
-    from source ``k`` is, by Bayes,
-
-        P(k | m) ∝ a_k · B[k, m],   B[k, m] = matrix[k, m] / Σ_m matrix[k, m],
-
-    where ``B`` is the row-normalised mixing matrix (each source's spectral shape,
-    a probability distribution over detectors) and ``a_k`` the source abundance
-    (from a non-negative least-squares fit if not supplied). The per-detector
-    photons are then split across sources by a multinomial draw with these
-    probabilities.
-
-    Properties. The total photon count is preserved exactly (every detected photon
-    is assigned once), the output is non-negative and integer, and — because a
-    multinomial thinning of a Poisson count yields independent Poisson counts per
-    bin — the shot-noise statistics are preserved, so downstream burst-variance /
-    BVA / maximum-likelihood analyses see genuine photon-counting data. The
-    expected assignment equals the soft (Richardson–Lucy / EM) unmixing, so the
-    method is unbiased on average; the draw is the stochastic realisation of it.
+    is a non-negative **integer** per-source photon stream. The draw lives in bff
+    (``crosstalk_shuffle_unmix``); the expected assignment equals the soft
+    (Richardson–Lucy / EM) unmixing, so the method is unbiased on average, and a
+    multinomial thinning of a Poisson count is Poisson, so the shot-noise
+    statistics downstream analyses see are genuine.
 
     Parameters
     ----------
@@ -190,12 +203,13 @@ def photon_shuffle_unmix(counts, matrix, *, abundances=None, seed=None, rng=None
         ``(n_sources, n_detectors)`` mixing matrix (as elsewhere in this module).
     abundances : array_like, optional
         ``(n_sources, ...)`` source abundances used as the assignment prior. If
-        omitted, they are estimated by ``invert_mixing(matrix, counts,
-        nonneg=True)``.
+        omitted, they are estimated by the non-negative inverse inside bff.
     seed : int, optional
-        Seed for a fresh ``numpy.random.default_rng`` when ``rng`` is not given.
+        Seed for bff's generator when ``rng`` is not given; identical seeds give
+        identical shuffles.
     rng : numpy.random.Generator, optional
-        Explicit random generator (takes precedence over ``seed``).
+        Explicit random generator (takes precedence over ``seed``); its next
+        draw seeds bff's generator, since the draw itself is C++.
 
     Returns
     -------
@@ -204,62 +218,49 @@ def photon_shuffle_unmix(counts, matrix, *, abundances=None, seed=None, rng=None
         the same trailing shape as ``counts`` and ``sum_k out[k] == sum_m counts[m]``
         elementwise.
     """
-    m = np.asarray(matrix, dtype=float)
-    y = np.asarray(counts)
+    _require_bff()
+    m = np.ascontiguousarray(matrix, dtype=float)
+    y = np.ascontiguousarray(counts)
     n_src, n_det = m.shape
-    generator = rng if rng is not None else np.random.default_rng(seed)
-
-    # spectral shape B[k, m] = P(detector m | photon from source k)
-    row = m.sum(axis=1, keepdims=True)
-    b = np.divide(m, row, out=np.zeros_like(m), where=row > 0)
-
-    yf = y.reshape(n_det, -1)  # (n_det, n_col)
-    n_col = yf.shape[1]
-
-    if abundances is None:
-        a = invert_mixing(m, y, nonneg=True).reshape(n_src, -1)
-    else:
-        a = np.asarray(abundances, dtype=float).reshape(n_src, -1)
-    a = np.clip(a, 0.0, None)
-
-    out = np.zeros((n_src, n_col), dtype=np.int64)
-    for det in range(n_det):
-        # posterior over sources for photons in this detector: p[k] ∝ a_k B[k,det]
-        w = a * b[:, det][:, None]  # (n_src, n_col)
-        tot = w.sum(axis=0)  # (n_col,)
-        # fall back to the spectral shape where no abundance mass is present
-        spectral = b[:, det]
-        sp_tot = spectral.sum()
-        for k in range(n_src):
-            p_k = np.where(tot > 0, w[k] / np.where(tot > 0, tot, 1.0),
-                           (spectral[k] / sp_tot) if sp_tot > 0 else 0.0)
-            w[k] = p_k
-        # split the integer detector counts across sources via a binomial chain
-        remaining = yf[det].astype(np.int64).copy()
-        cum = np.zeros(n_col)
-        for k in range(n_src):
-            if k == n_src - 1:
-                out[k] += remaining  # last source takes the rest -> exact preservation
-                break
-            denom = 1.0 - cum
-            cond = np.divide(w[k], denom, out=np.zeros(n_col), where=denom > 1e-12)
-            cond = np.clip(cond, 0.0, 1.0)
-            draw = generator.binomial(remaining, cond)
-            out[k] += draw
-            remaining = remaining - draw
-            cum = cum + w[k]
-    return out.reshape((n_src,) + y.shape[1:])
+    if rng is not None:
+        seed = int(rng.integers(0, 2**63 - 1))
+    flat_abundances = None
+    if abundances is not None:
+        a = np.ascontiguousarray(abundances, dtype=float)
+        if a.shape != (n_src,) + y.shape[1:]:
+            raise ValueError(
+                f"abundances {a.shape} do not match (n_sources,) + counts shape "
+                f"{(n_src,) + y.shape[1:]}"
+            )
+        flat_abundances = a
+    out = _bff.crosstalk_shuffle_unmix(m, n_src, n_det, y, flat_abundances,
+                                       0 if seed is None else int(seed))
+    # the kernel publishes a double view; the draw is integral by
+    # construction, and the contract here is an integer photon stream
+    return np.rint(np.asarray(out)).astype(np.int64).reshape(
+        (n_src,) + y.shape[1:])
 
 
 def correct_three_cube(idd, ida, iaa, *, donor_leak: float, direct_excitation: float,
                        gamma: float = 1.0):
-    """Three-cube ratiometric FRET correction (Gordon/Nagy).
+    """Three-cube ratiometric FRET correction (Gordon/Nagy/Lee).
 
-    Corrects the measured raw FRET (acceptor-under-donor-excitation) channel for
-    donor spectral bleed-through and direct acceptor excitation, using the
-    donor-only (IDD) and acceptor-only (IAA) reference channels:
+    Forwarded to tttrlib's ``SpectralCrosstalk`` — the engine owner of the
+    scalar correction, A/B-validated there against the Hellenkamp 2018
+    formulas (1e-12) and FRETBursts ``fretmath`` (1e-10). The correction is
 
-    ``Fc = IDA - donor_leak * IDD - direct_excitation * IAA``.
+    ``Fc = IDA - donor_leak * IDD - direct_excitation * IAA``
+
+    with the apparent efficiency ``Fc / (Fc + gamma * IDD)``. One guard
+    convention is adopted with the engine, stated plainly: where the
+    denominator ``Fc + gamma * IDD <= 0`` — over-subtraction, a pathological
+    channel — the efficiency is **0**, where this module's numpy twin divided
+    anyway and returned a *positive* value for a negative signal (a
+    negative-over-negative quotient). A negative efficiency with a positive
+    denominator is preserved, as before. ``ratio`` is a plain division and
+    keeps its own convention (0 where ``IDD`` is 0). Backgrounds stay the
+    caller's business, as before (:func:`...burst.es.corrected_es` subtracts
+    them first); tttrlib's own background parameters are passed as zero.
 
     Parameters
     ----------
@@ -282,16 +283,33 @@ def correct_three_cube(idd, ida, iaa, *, donor_leak: float, direct_excitation: f
     -------
     dict
         ``{"fc": ..., "efficiency": ..., "ratio": ...}`` — the corrected
-        sensitized emission ``Fc``, the apparent FRET efficiency
-        ``Fc / (Fc + gamma * IDD)`` and the acceptor/donor ratio ``Fc / IDD``.
+        sensitized emission ``Fc``, the apparent FRET efficiency and the
+        acceptor/donor ratio ``Fc / IDD``. Each carries the broadcast shape
+        of the inputs.
     """
-    idd = np.asarray(idd, dtype=float)
-    ida = np.asarray(ida, dtype=float)
-    iaa = np.asarray(iaa, dtype=float)
-    fc = ida - donor_leak * idd - direct_excitation * iaa
-    efficiency = three_cube_fret_efficiency(fc, idd, gamma=gamma)
+    if _tttrlib is None:
+        raise ImportError(
+            "chisurf.core.fluorescence.crosstalk requires tttrlib, the "
+            "photon library that owns the three-cube correction; importing "
+            f"it failed: {_tttrlib_import_error}"
+        )
+    idd_a = np.asarray(idd, dtype=float)
+    ida_a = np.asarray(ida, dtype=float)
+    iaa_a = np.asarray(iaa, dtype=float)
+    # the engine takes three equal-length vectors; numpy's broadcasting is
+    # part of this function's contract, so expand before flattening
+    idd_b, ida_b, iaa_b = np.broadcast_arrays(idd_a, ida_a, iaa_a)
+    flat = [np.ascontiguousarray(x).ravel() for x in (idd_b, ida_b, iaa_b)]
+    shape = idd_b.shape
+    out = _tttrlib.correct_three_cube_batch(
+        flat[0], flat[1], flat[2],
+        float(gamma), float(donor_leak), float(direct_excitation),
+    )
+    # flat [E, S, Fc] per element
+    fc = np.asarray(out[2::3]).reshape(shape)
+    efficiency = np.asarray(out[0::3]).reshape(shape)
     with np.errstate(divide="ignore", invalid="ignore"):
-        ratio = np.where(idd != 0, fc / idd, 0.0)
+        ratio = np.where(idd_a != 0, fc / idd_a, 0.0)
     return {"fc": fc, "efficiency": efficiency, "ratio": ratio}
 
 
