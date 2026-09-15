@@ -2,11 +2,110 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Every fixed-structure fit with a complete BFF graph can now declare the
+  same native fitting-decision search.**
+  `chisurf.core.fitting.mcts.fixed_structure` preserves the user's free/fixed
+  policy, accepts explicit complete parameter-group declarations, and exposes
+  initialization, native refinement, and termination states without a Python
+  score or evaluator. Parse, FCS, PCF, and stopped-flow equation models and all
+  four native General FCS diffusion modes use this one capability. Fits whose
+  full objective is not representable by BFF return a structured refusal and
+  remain unchanged. (`chisurf/core/fitting/mcts/fixed_structure.py`)
+
+- **Headless TCSPC lifetime fits can now declare a complete BFF-native model
+  search problem.** `chisurf.core.fitting.mcts.native` maps model-owned
+  parameter groups, structures, actions, and scoring settings onto
+  `IMP.bff.FittingModelSearchProblem` without Python evaluation callbacks or
+  fallback optimization. The first family capability covers component-count
+  search for plain lifetime models with a Poisson-deviance/BIC score, keeps
+  user-fixed parameters and links authoritative, uses only canonical native
+  owner ports, and returns machine-readable refusal reasons when the objective
+  or a requested structure cannot be represented. Winner application is an
+  explicit transactional headless operation; the GUI is not wired yet.
+  (`chisurf/core/fitting/mcts/native.py`,
+  `chisurf/core/fitting/mcts/tcspc_lifetime.py`)
+
+- **The fitting objective is now a setting, and is documented.** Which statistic
+  a fit minimises decides what the fitted parameters *are*, and it was hardcoded
+  as `noise_model="default"` in `Fit.__init__` and read from nowhere — so every
+  fit in the program used weighted least squares because a constructor default
+  said so, not because anyone chose it. Two keys now carry it:
+  `tcspc.noise_model` for photon-counting decays and `optimization.noise_model`
+  for everything else, resolved per fit by
+  `chisurf.core.fitting.default_noise_model` from the data's experiment and the
+  model's package (the model is consulted too, because a curve built in a script
+  has no experiment attached). A `noise_model=` argument to `Fit` still
+  overrides both.
+
+  Both ship as `default`, so **no fit changes**. The new
+  [fitting objectives](docs/concepts/fitting_objectives.md) concept page
+  explains the four statistics, what the least-squares weightings cost, and when
+  to switch:
+
+  - The `default` weighting is the **Neyman** chi-square when the error column is
+    `sqrt(N)`, and it is biased low at small counts, because a channel that
+    happens to fluctuate down is given more weight. Measured on 400 Poisson bins
+    over 4000 trials: **−31 % at 3 counts/bin, −11 % at 10, −1 % at 100** against
+    +0.1 % for model weighting. Nothing in a residual plot shows it.
+  - On a decay that matters more than the percentage suggests. The bias tracks
+    counts per bin, and a decay always has a low-count tail whatever its peak —
+    which is where the long lifetimes are — so it distorts the recovered
+    *shape*, not just the scale.
+  - `poisson` (the `2I*` deviance) carries no such bias and is the correct
+    estimator for counts. It is **not** the default, and the reason is the
+    optimiser rather than the statistics: on the repository's own convergence
+    fixture, started far from the answer, the `poisson` fit stops at `tau = 7.24`
+    against a true `4.0`. The objective prefers the truth by a wide margin
+    (1.47 there against 875 at 7.24) — the search does not reach it, because
+    `optimization.leastsq.epsfcn` was tuned against weighted least squares. A
+    silently wrong lifetime is worse than a slightly biased one, so the biased
+    but convergent estimator stays until the optimiser handles the deviance as
+    reliably.
+
+  Switching also moves confidence intervals, because the support-plane threshold
+  differs between a likelihood and a least-squares objective — correct, but it
+  means intervals from different settings are not comparable.
+
+### Removed
+
+- **Lumis Quest has left the repository.** The game now lives in its own repository (`~/dev/lumis_quest`), where it can be made good on its own before it is embedded again. It keeps the stack it had here: the `chigame` engine (WebGPU via `wgpu`, WGSL shaders, `rendercanvas` surfaces) is vendored into that repository unchanged, and three resolver shims mean that dropping the package back under `chisurf/plugins/misc/games/` rebinds every seam to the host's engine, review API and cmtk widgets without a rewrite. Removed with it: the Games-hub panel and manifest entry, the shared `characters.py` walker module only it used, the Konami-code easter egg that was its hidden entrance (`chisurf/gui/easter_egg.py` and its install hook in the main window), and the chigame audio test that borrowed the game as a fixture — the music-context coverage it carried moved into the game's own suite. The remaining games (Number Quest, Minesweeper, Tetris, Pong, Breakout, Ninja Adventure) are untouched.
+
 ### Fixed
+
+- **A `sqlite3.Connection` passed as a database path can no longer silently create a database named after the object's repr.** `MFDatabase.__init__` and `parse_database_target` stringified whatever they were handed, so a stray Connection as `db_path` made SQLite quietly create a file literally named `<sqlite3.Connection object at 0x…>` in the working directory and bootstrap the full schema into it — the real database untouched, nothing logged (the five such strays once found in the repository root are exactly this, four with a bootstrapped schema and one zero-byte from a bare `sqlite3.connect` read in `local_admin_status`). Both mmfdb entry points now raise a `TypeError` that says to pass the connection as `connection=`, `local_admin_status` validates its argument the same way, and a regression test pins that no file is created.
 
 - **κ² orientation-factor Monte-Carlo now runs in the compiled `IMP.bff` engine** instead of scalar Python loops, and two dependent bugs are fixed with it: `chisurf.core.fluorescence.general.kappa2_to_distance_ratio` and `convolve_distance_with_k2_ratio` imported a module path that never existed and raised on every call (nothing exercised them, so nothing said so); and the kappa² distribution calculator's "known δ" cone model (`rAD_known=True`) crashed with a shape-mismatch error the moment it was used, because its grid sweep returned a 2-D array that a downstream weighted-mean computed as a matrix product instead of a sum. Both are fixed and covered by new tests.
 
+- **2D-FLC: the log-axis quantization now follows the reference MATLAB, and
+  the method papers are cited.** The photon-pair kernels live in tttrlib
+  (PRD-036) and were proven against the original `TK_Create2DFDC_04.m` by
+  running the .m itself in Octave: its log bin edges are real-valued, so the
+  effective integer edge is the *floor*, while the kernels (and this plugin's
+  numba originals before them) quantized to nearest — ~0.5% of pairs landed
+  in the neighbouring bin. tttrlib now floors and pins the .m's own output as
+  a test fixture; this plugin's `flc_2d_fdc.npz` parity fixture was
+  re-recorded through the delegated path (call-site pin; correctness anchored
+  by the MATLAB fixture upstream). 2D-FDC matrices with more than ~16 log
+  bins can shift by ~0.5% of their pairs versus previously computed ones.
+  Docstrings in `flc_2d/{__init__,api,core}.py` now cite the method (Ishii &
+  Tahara, J. Phys. Chem. B 117(39), 11414–11422 and 11423–11432, 2013,
+  doi:10.1021/jp406861u, doi:10.1021/jp406864e) and the single-molecule
+  application the code was written for (Kondo et al., Proc. Natl. Acad. Sci.
+  USA 116(23), 11247–11252, 2019, doi:10.1073/pnas.1821207116).
+
+### Changed
+
+- **`chisurf/core`'s loose single-file modules are grouped into named subpackages**, because a flat top level mixing registries, GUI-seams, helpers and CLI made the core's shape unreadable. Four groups emerge: `core/runtime/` holds the execution seams (`presentation`, `progress`, `analysis_cache`, `compat`); `core/registry/` holds the machine-readable registries (`tttrlib`, `parameter_groups`, `file_formats` with its JSON); `core/support/` holds the cross-cutting helpers (`i18n`, `http`, `decorators`, `labels`, `units`, `expressions`, `common`); and `core/plotting/` holds model-side plot data (`transforms`, the old `plot_transforms`). `cli.py` + `cli_support.py` became the `core/cli/` package — the `csc` entry point is unchanged. The de-facto core API (`data`, `datastore`, `curve`, `base`, `parameter`, `nodes`, `info`) stays at the top level. Dead code left: `core/utils.py` (a vendored Python-2-era unittest backport with zero importers anywhere) is deleted, and `core/parameter_group_registry.py` remains only as a re-export shim because the ndxplorer submodule imports that path. The move also surfaced and fixed a latent bug: the CLI's plugin discovery derived `chisurf/plugins` from `__file__` and silently found nothing from the new location — the registration tests caught it, and the path is now derived correctly. Two import-time debug scripts that dumped PNGs into the working directory on every pytest run (`test/tcspc/test_irf.py`'s pasted tail and the assertion-free `test_irf_truncation.py`) are gone.
+
 ### Added
+
+- **Fifth Wikipedia mining tranche (structural alignment).** Kabsch 1976 and 1978
+  added to `docs/references/bibliography.yaml` and cited from the molecular
+  viewer guide's structural alignment section. The MD trajectory domain
+  confirmed the harvest saturation: 7 articles, 173 works, 2 landed.
+  (`docs/references/bibliography.yaml`, `docs/guides/44_molecular_viewer.md`)
 
 - **Lumis Quest left prototype stage.** The dark manifold's ruins are worth entering: every collapsed premises can be **salvaged** once for a crafting reagent, deterministic per cell so a reload cannot reroll the find (this also fixes a crash — the action key called salvage methods that did not exist). The battle screen is a **place** now instead of two flat rectangles: a banded sky, a silhouetted treeline and ground tiled with the land's own terrain art, all read off where Iris stands and which side of the manifold she is on. And with the model off, a page's keeper now speaks **from the page they keep** — its opening claim and a seeded "Did you know?" — instead of the shared greeting bank.
 

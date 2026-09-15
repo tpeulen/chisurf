@@ -190,3 +190,10 @@ Rough shape of where it goes, for when a file is touched:
 "chisurf owns no algorithms" is deliberately **not** a test: it cannot be
 written without defining *algorithm*, and a test that fails on 38k lines of
 existing debt is one that gets disabled within a week.
+
+# Note from imp.bff (2026-08-17, PRD-107)
+
+The cgdye externals item is closed on the imp.bff side: `Bio`, `MDAnalysis`
+and `numba` are gone; `click` is declared in `conda-recipe/meta.yaml` and is a
+CLI-only dependency — the library imports without it
+(`cgdye/utils.import_click`, proven by `test/cgdye/test_shipped_files_compile.py`).

@@ -204,3 +204,13 @@ Golden vectors are captured once from current ChiSurf, committed under `test/spe
 - Independent refactor targeting the [Core target](/specs/core.md) fluorescence layer.
 - Draws an explicit boundary: burst/PDA/raw-correlation stay with `tttrlib`, relevant to [PRD-50](prd-50.md) and [PRD-53](prd-53.md).
 - Touches the fitting-model/AutoForm seam described in [GUI & AutoForm](/subsystems/gui-autoform.md) without changing it.
+
+# Note from imp.bff (2026-08-17, PRD-107)
+
+R0-from-spectra and κ²-from-dipoles now live in `IMP.bff.fret`
+(`fret/forster.py::forster_radius_from_spectra`, `fret/kappa2.py::kappa2_from_dipoles`)
+— decided with the user: bff owns label-pair physics, tttrlib = photon data,
+chisurf = GUI. On the chisurf side `forster.py`/`kappa2.py` are the DUP copies
+to retire against these (imp.bff `spectroscopy/kappa2.py`, the κ² distribution
+toolkit of chisurf origin, is a separate module there; folding it into
+`fret/kappa2.py` is the remaining bff-side item). Details: `imp.bff/okf/cgdye.md`.

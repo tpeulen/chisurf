@@ -7,6 +7,19 @@ tags: [core, fitting, optimization, global-analysis]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+# Where to pick this up
+
+1. **The refresh of this concept is partial** (PRD-134): the fitting-flow
+   step, the update-verb contract and the transport-path table are current;
+   still missing are a section on the sampler's four-crossing contract
+   (`sampler_bff.py` — begin, per-state progress, intermediate saves, end)
+   and on `objective_type` (least-squares vs likelihood, the BUG-10
+   threshold work). Correct stale statements in place rather than appending.
+2. The GUI-facing contract (born-consistent fits, `Fit.update()` publishing
+   ``fit.updated``, the RPC facade as routing not capability) is documented
+   at the fitting-flow step below; the graph seam's own contract lives in
+   [graph objective](/subsystems/graph-objective.md).
+
 # What a Fit is
 
 A `Fit` (`chisurf/core/fitting/fit.py`) pairs one `DataCurve` with one

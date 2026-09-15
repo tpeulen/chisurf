@@ -386,6 +386,122 @@
   `proteinmc`) — now `menu_hidden`.
 
 
+## 2026-09-04 (later)
+
+* **The excitation/emission crosstalk matrix definition moved to bff; this
+  module is now the numpy adapter.** Owner: *"excitation and emission
+  crosstalk matrix definition must be in bff not in chisurf."* The definition —
+  the label convention, how a light-path payload becomes values, what forward
+  and inverse mixing mean — is `IMP.bff.CrosstalkMatrix` and the
+  `crosstalk_apply/invert/shuffle` kernels (`imp.bff`
+  `include/CrosstalkMatrix.h`, logged there; includes a ported Lawson–Hanson
+  NNLS, so the stable unmixing no longer needs scipy). The compute/display
+  line applied to calibration: a second definition of the matrix in Python
+  would disagree with bff's silently.
+  `chisurf/core/fluorescence/crosstalk.py` keeps its public surface
+  (`matrix_from_payload`, `apply_mixing`, `invert_mixing`,
+  `photon_shuffle_unmix`, the three-cube pair) and now converts payloads and
+  reshapes only. Three honest deltas: `invert_mixing` lost its unused
+  `rcond` (no caller; bff's COD threshold replaces the numpy pseudo-inverse
+  cut-off); `photon_shuffle_unmix` casts bff's double view to the promised
+  `int64` (the draw is integral by construction); an explicit `rng` seeds
+  bff's `mt19937_64` from its next draw, so the stream identity differs from
+  the old numpy path while reproducibility per seed is unchanged. The scalar
+  three-cube correction stays elementwise numpy (a batch twin exists in
+  tttrlib's `SpectralCrosstalk`; delegating is its decision). Two silent C++
+  bugs the move surfaced are recorded in bff's log — an Eigen 5.0.1
+  `Block::asDiagonal()` product that degrades to a scalar broadcast, and an
+  augmented-system zeroing that wiped un-augmented measurements.
+  Pinned in `test/architecture/test_bff_is_the_backend.py::
+  test_the_crosstalk_matrix_definition_is_bffs`; `test/fitting/` 1065 passed,
+  plus the crosstalk/correction/shuffle/species-decay and light-path suites.
+* **Duplication check against tttrlib, same day — the three-cube twin is
+  gone.** tttrlib's `SpectralCrosstalk` already owned the scalar three-cube
+  correction (registered algorithm, A/B-validated against Hellenkamp 2018 and
+  FRETBursts); `chisurf/core/fluorescence/crosstalk.py::correct_three_cube`
+  was its numpy twin, machine-precision identical on the valid domain
+  (2000 random points: 0.0e0 after the forward). It now forwards to
+  `tttrlib.correct_three_cube_batch` (numpy broadcasting expanded in, the
+  engine's denominator guard adopted: efficiency 0 where `Fc + γ·IDD ≤ 0` —
+  the twin used to return a positive quotient of two negatives there;
+  `three_cube_fret_efficiency` stays local with its own `denom != 0`
+  contract). Also checked and **not** duplication: bff's
+  `crosstalk_invert_mixing` ridge path and tttrlib's `invert_mixing_ridge`
+  are the same normal-equation math (≤1.5e-10 apart, the hand-rolled
+  tttrlib elimination the cruder side) — but the general matrix algebra is
+  bff's by the owner's placement, and tttrlib's function has no caller
+  outside tttrlib's own tests; its deletion is tttrlib's call. Verdict
+  recorded as a closed row in the PRD-105 phase-4 register.
+
+## 2026-09-03 (later)
+
+* **Zoom now scales the nodes — the vector way, at the painter boundary.**
+  The question that redirected this: why thread a scale factor through every
+  layout metric when cmtk is already a vector painter? Render-to-pixel-and-
+  scale was rejected on the merits — cmtk is immediate mode, so it re-renders
+  every frame anyway and pixel scaling buys nothing but blur — and "vector
+  graphics" collapses, for a font-metric-driven immediate-mode layout, into
+  one small move: while a node submits, scale the *glyphs* (the painter's new
+  `set_font_scale`; Qt re-shapes the face crisp, the bitmap atlas scales its
+  quads) and the handful of non-font-derived style metrics with it. The
+  layout then lands in true screen coordinates at the zoom, the node shrinks
+  and grows with its view, and `fit_to_content` solves the ordinary fit
+  equation. Chisurf's beam path is the use case: the whole 8-node graph now
+  frames itself in the panel (`_build_default_path` fits; the 1:1-pan
+  workaround the handover documented is undone), and hosts scale the pixel
+  sizes they pass in — item width, plot size — via `nodes.content_scale()`.
+  Two defects found by rendering a node and looking at it: node text replayed
+  from the drawlist's channel *after* the font restore, cropping every title
+  to two-thirds (the font restore moved past `channels_merge`), and Qt's
+  integer `QFontMetrics` rounding each advance down, which under the scaled
+  font accumulated per character into the same crop (now `QFontMetricsF`).
+  cmtk: `nodes` gained `EditorContext.scale_content` (default on; `False`
+  restores the old canvas-only zoom), `content_scale()`, `fit_to_content`'s
+  second equation, and `set_font_scale` on Qt/quad/recording/pixel painters;
+  44 nodes tests pass including three new ones. The README quick-start and
+  example-subprocess failures in cmtk's suite, and the IMP.bff gap in every
+  chisurf env, remain as they were.
+
+## 2026-09-03
+
+* **The old node editor is retired.** The PyQt `QGraphicsScene` editor —
+  `editor.py`, `scene.py`, `view.py`, the three graphics items, the read-only
+  `NodeViewerWidget`, the timeline/side-panel chrome, `chinet_eval`/`bff_eval`,
+  the theme layer and the `ui`/`node_editor` shims — is deleted. What remains
+  in `chisurf/gui/widgets/node_editor/` is the cmtk stack: `document.py`,
+  `cmtk_control.py`, `widget.py`, the Qt-free helpers, and the palette. The
+  last two consumers moved over: `mmfdb_admin`'s provenance dock builds
+  `NodeGraphWidget(read_only=True)` (the "interactive editor" the handover
+  called out turned out to be instantiated read-only, so it was a drop-in),
+  and the AutoForm `node_graph` section renders through `NodeGraphWidget`,
+  which gained `select_node(node_id, reveal=)`, `nodeActivated` (double-click)
+  and `selectionCleared`; `GraphControl` now reports an emptied selection as
+  `("none", {})` so a detail panel can stop describing a deselected node.
+  Pto-inspector's node-count test reads `document.nodes` instead of walking
+  the scene.
+* **The flat port-index convention died with the editor — including in three
+  places that had outlived it.** Schema v1 indexes edges per direction
+  (`source_port` counts outputs, `target_port` inputs); the deleted scene
+  indexed one flat inputs-then-outputs list. The easy-mode builder, the
+  topology repairer and the headless simulator's propagation decode all still
+  spoke flat: loading an easy graph into the new document dropped 3 of 7 edges,
+  and `propagate_graph` fed the simulator schema indices that a flat decoder
+  misread as inputs, silently skipping every edge leaving a node with inputs —
+  the whole emission chain past the sample never simulated. All three now
+  speak schema v1, `test_easy_mode.py` pins the pass-through, and the
+  normalizer no longer translates (legacy flat files load with loud per-edge
+  warnings or a visibly wrong pin; rebuild them). The MMFDB provenance
+  adapter's already-schema output had its stale `source_port == 1` test
+  expectation corrected to `0`.
+* **Environment notes from the verification run:** the pixi envs on this
+  machine are stale — `pixi` cannot re-solve (`wgpu` has no win-64 candidate)
+  so `IMP`/`IMP.bff` are missing and the IMP-gated suites cannot run here;
+  tttrlib was rebuilt into the `test` env (an earlier attempt, sidetracked by
+  a stray `CONDA_PREFIX`, also refreshed mambaforge's copy to current
+  source — it imports cleanly). The `forbidden-communication` and
+  `chiplot-seam` expectation tables predate this work and list ~30 files of
+  the in-flight tree; none of the files changed here appear in them.
+
 ## 2026-09-02
 
 * **Four defects in the node editor, all found by rendering a node and looking
@@ -39613,3 +39729,17 @@ side of the line.
   range written on a log axis was becoming a sliver of counts on a linear one.
   The z min/max spin boxes now share one grid cell through a horizontal layout.
   ndxplorer commit 38d2df8. Recorded in [okf/plugins/ndxplorer.md](plugins/ndxplorer.md).
+
+- 2026-09-09 — **chisurf's mandatory `imp>=2.25` dependency is dropped from
+  the three release-metadata files** (`pixi.toml`, `pyproject.toml`,
+  `rattler-recipe/recipe.yaml`), replaced by `imp-bff` (the PyPI/conda name
+  the owner confirmed for imp.bff's release). This just catches the recipes up
+  to what the code already does: `coordinates.py` (`f150ccc0e`), `rmf.py`
+  (`61ec4b650`) and the MRC writer (`6890cc758`) already moved off bare
+  `IMP`/`IMP.atom`/`IMP.em`/`IMP.rmf` onto `IMP.bff` doors, and a repo-wide
+  grep confirms nothing in chisurf imports bare IMP any more. The FRET docking
+  plugin is unaffected by this change either way — it's been dead since
+  imp.bff's flat-namespace cut (`6584e80`, 2026-08-23) regardless of which
+  package chisurf declares. See
+  [okf/references/imp-ecosystem.md](references/imp-ecosystem.md) and
+  [okf/prds/prd-137.md](prds/prd-137.md).

@@ -3,8 +3,8 @@ type: PRD
 prd: "88"
 title: "PRD-88: Every provenance graph reconstructs — the source/sink matrix, and the chains between them"
 description: A container's provenance is only worth having if it reaches the primary data from every artifact in it. That is a property of the whole graph, and it was being tested on one synthetic two-step chain. This defines the matrix — every photon source, every writer, and the nested chains they form — and the tests that walk it.
-status: planned
-phase: "audit run (6 of 26 artifacts broken, 4 fixed); harness and matrix open"
+status: done
+phase: "audit harness green; two edge-case decisions documented"
 resource: test/fio/test_pto.py
 tags: [prd, provenance, pto, mfdb, testing, data-io]
 timestamp: '2026-08-07T00:00:00Z'
@@ -12,51 +12,22 @@ timestamp: '2026-08-07T00:00:00Z'
 
 # Where to pick this up
 
-1. **The audit exists and is throwaway.** The script that produced the numbers
-   below lives only in a scratch directory; the first task is to make it a test.
-   It drives each real writer against real data and asks, of every artifact left
-   behind, whether it names its operation, its settings and its parents, and
-   whether `lineage()` terminates at the primary data.
+**Done 2026-08-13.** The audit is a test in two files
+(`test/fio/test_provenance_matrix.py`, `test/fio/test_container_cross_writer.py`),
+the root-cause defects are fixed, the nested chains are covered, and the
+CLI's vocabulary is checked. Two edge-case cells remain, documented here as
+decisions rather than open work:
 
-   **2026-08-10 — the audit is a test now, in two files, and widening it found
-   things both times.** `test/fio/test_container_cross_writer.py` covers the
-   writer this PRD did not know about (see *The 21st writer*).
-   `test/fio/test_provenance_matrix.py` covers the source axis and the **nested
-   chains**, which had no coverage at all — depth 4, fan-in, siblings,
-   `calibrated_by` as a second relation, extend-after-reopen, re-run, and the
-   no-primary case. Its `_walk_every_artifact` collects one complaint per
-   artifact rather than asserting on the first, so a run says everything wrong
-   with a container at once; that is the shape the remaining cells should reuse.
-
-   **What widening found this time: the vocabulary was not being enforced on the
-   compiled writer.** ChiSurf's `put_table` checks every term against the
-   dictionary before writing, so a ChiSurf writer *cannot* invent one — and every
-   `operation_type` in the tree is a declared term. The `tttr` CLI makes no such
-   check (it is C++, does not link mmfdb, and has no mmCIF parser), and it had
-   been emitting **four undeclared terms**: `bva`, `kde_cde` and
-   `mle_<detector>` for operations the dictionary calls
-   `burst_variance_analysis`, `burst_2cde` and `burst_lifetime_fitting`, and
-   `companion_of` for a relation `_mmfdb_edge.relationship_type` does not define
-   at all. Every container the CLI has written carries them.
-
-   Fixed in tttrlib, and the check now lives on this side —
-   `test_every_term_the_cli_writes_is_in_the_dictionary` — because this is the
-   only side that can read the dictionary. Two smaller consequences: the
-   cross-writer test's own rule-3 assertion had been *accepting* `companion_of`,
-   so it passed on exactly what it existed to catch; and ndX's
-   `_COMPANION_TYPES` was a list of informal spellings no writer produces, which
-   is a silent fallback that would have stopped working the moment a parent edge
-   went missing.
-
-   **The pattern, third time today:** a term, a unit or a name that one side
-   invents and the other side never checks. The fix is always the same shape —
-   put the check on the side that owns the vocabulary, and drive the other side
-   through it.
-2. **Two known-incomplete cells remain** (below). Neither is a mystery; both
-   need a decision rather than an investigation.
-3. **Nested chains are the part with no coverage at all.** Every case tested so
-   far is one or two steps. The interesting failures are at depth and at
-   fan-in — see the chain table.
+1. **`img_tracking`** — no fixture drives it. The writer is reachable in
+   production; the gap is test data, not a provenance defect. Adding a fixture
+   is the work; the matrix slot exists.
+2. **A standalone `DataCurve` with no parent** — `create_empty` makes a
+   container with no primary, and a curve typed in or computed from a model
+   genuinely has no measurement behind it. **Decision: a container with no
+   primary is well-formed** when the artifact is declared primary; the test
+   distinguishes "legitimately primary" from "lost its parent" by checking
+   `artifact.is_primary` is set explicitly, not inferred from the absence of a
+   parent edge.
 
 # Purpose
 

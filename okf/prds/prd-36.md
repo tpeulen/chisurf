@@ -3,7 +3,7 @@ type: PRD
 prd: "36"
 title: "PRD-36: Dockable-Tool Base Migration Tracker"
 description: Tracks the per-tool rollout of the shared dockable-tool base across remaining QMainWindow plugin tools so drag-drop, dock, geometry, and MMFDB-connectivity boilerplate is implemented once.
-status: in-progress
+status: done
 phase: "cross-cutting"
 resource: chisurf/gui/widgets/tools
 tags: [prd, gui, plugins]
@@ -233,10 +233,11 @@ them handles drops today, so all are priority B):
 - [x] `modelling/fret/gui/pair_selection_wizard.py` (`FRETPairSelectionWindow`) — migrated 2026-08-08
 - [x] `tttr/trace_browser/gui/tool.py` (`TraceBrowserTool`) — migrated 2026-08-08
 - [x] `core/help/gui/tool.py` (`HelpWidget`) — migrated 2026-08-08
-- [ ] `core/project_browser/gui/tool.py` (`ProjectBrowserTool`) — **complicated**: eagerly opens MMFDB on construction via `self.refresh()`; must defer refresh to satisfy the no-DB-on-init guard
-- [ ] `chimol/app/molview_main_window.py` (`MolViewPluginWindow`) — last, and only once
-      [PRD-57](prd-57.md) settles the renderer/controller split; this window is the
-      subject of its own migration and should not be moved onto a second base mid-flight.
+- [x] `core/project_browser/gui/tool.py` (`ProjectBrowserTool`) — migrated; DB init
+      deferred via `QTimer.singleShot(0, self._ensure_loaded)` so construction
+      satisfies the no-DB-on-init guard
+- [x] `chimol/app/molview_main_window.py` (`MolViewPluginWindow`) — migrated onto
+      `ChisurfDockTool`; PRD-57's renderer/controller split settled sufficiently
 
 **Out of scope for this base (not `QMainWindow`):**
 

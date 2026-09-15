@@ -122,3 +122,9 @@ fpsimp's reason to exist — predicting structures with ColabFold, running them
 through a pipeline, and serving the results — stays exactly where it is. This
 PRD is about the ~800 lines in the middle that are fluorescence-structure work
 imp.bff already does, not about the project around them.
+
+# Note from imp.bff (2026-08-17, PRD-107)
+
+`imp.bff/pyext/src/cgdye/sampling/segments.py` and `sampling/fp_lib.py` are
+left as they are (used only by `dye label-fusion`), with headers pointing here:
+they are fpsim copies and are not extended in imp.bff.
