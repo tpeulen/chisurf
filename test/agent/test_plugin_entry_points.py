@@ -26,6 +26,8 @@ def manifests():
     """Return ``(id, path, manifest)`` for every plugin manifest."""
     found = []
     for path in sorted(PLUGINS.rglob("manifest.json")):
+        if any(part in ("test", "tests") for part in path.relative_to(PLUGINS).parts):  # test data, e.g. render baselines
+            continue
         try:
             manifest = json.loads(path.read_text(encoding="utf-8"))
         except Exception as error:  # noqa: BLE001 - reported as a failure below
@@ -88,6 +90,11 @@ def test_every_entrypoint_names_a_module_that_exists():
         if "cookiecutter" in str(path):  # a template, not a plugin
             continue
         for kind, target in (manifest.get("entrypoints") or {}).items():
+            if kind == "script":
+                # A file inside the plugin directory the menu executes, not a module.
+                if target and not (path.parent / str(target)).is_file():
+                    missing.append(f"{name}.{kind} -> {target}")
+                continue
             module = entrypoint_module(target)
             if not module:
                 continue

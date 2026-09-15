@@ -176,7 +176,12 @@ def list_plugins(context: AgentContext, query: str = "") -> dict[str, Any]:
     base = repository_root()
     plugins: list[dict[str, Any]] = []
     wanted = str(query).strip().lower()
-    for manifest_path in sorted((base / "chisurf" / "plugins").rglob("manifest.json")):
+    plugins_root = base / "chisurf" / "plugins"
+    for manifest_path in sorted(plugins_root.rglob("manifest.json")):
+        # ``manifest.json`` is not reserved: chimol's render baselines use the
+        # name for another document, under a plugin's ``test`` directory.
+        if any(part in ("test", "tests") for part in manifest_path.relative_to(plugins_root).parts):
+            continue
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         except Exception:
