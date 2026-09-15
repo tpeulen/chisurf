@@ -58,6 +58,91 @@ def test_uses_core_generator_not_a_duplicate():
     assert algorithms.synthetic_decay is core.synthetic_decay
 
 
+# -- anisotropy (VV/VH) generation -------------------------------------------
+
+
+def test_compute_aniso_decay_pair_shapes_and_r():
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
+        compute_aniso_decay,
+    )
+
+    res = compute_aniso_decay(
+        n_bins=128, lifetimes=[2.0], rotation_rows=[{"b": 0.3, "rho": 2.0}],
+        bin_width=0.05,
+    )
+    assert set(res) >= {"x", "vv", "vh", "r", "n_bins", "bin_width"}
+    n = 128
+    assert len(res["vv"]) == n and len(res["vh"]) == n and len(res["r"]) == n
+    # r(t) decays from r0 = sum(b) with the requested correlation time
+    assert abs(res["r"][0] - 0.3) < 1e-12
+    assert res["r"][63] < res["r"][0]
+
+
+def test_compute_aniso_decay_roundtrip_through_schaffer_correction():
+    import numpy as np
+
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
+        compute_aniso_decay,
+    )
+
+    g, l1, l2 = 1.7, 0.05, 0.08
+    res = compute_aniso_decay(
+        n_bins=64, lifetimes=[4.0], rotation_rows=[{"b": 0.3, "rho": 2.0}],
+        g_factor=g, l1=l1, l2=l2, bin_width=0.2,
+    )
+    vv = np.asarray(res["vv"])
+    vh = np.asarray(res["vh"])
+    r_back = (vv - g * vh) / (vv * (1 - 3 * l2) + (2 - 3 * l1) * g * vh)
+    assert np.allclose(r_back, res["r"], atol=1e-12)
+
+
+def test_compute_aniso_decay_g_factor_scales_vh():
+    import numpy as np
+
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
+        compute_aniso_decay,
+    )
+
+    kwargs = dict(
+        n_bins=64, lifetimes=[2.0], rotation_rows=[{"b": 0.2, "rho": 1.0}],
+        bin_width=0.05, normalize=False,
+    )
+    a = compute_aniso_decay(**kwargs)
+    b = compute_aniso_decay(**kwargs, g_factor=2.0)
+    # The perpendicular channel records 1/G of an equally sensitive one.
+    # (Raw scale: with normalize=True the pair sums to one, so doubling g
+    # shifts *share* between the channels rather than scaling VH alone.)
+    assert np.allclose(b["vh"], 0.5 * np.asarray(a["vh"]), atol=1e-12)
+    # ... while VV is untouched
+    assert np.allclose(b["vv"], a["vv"], atol=1e-12)
+
+
+def test_compute_aniso_decay_empty_rotation_is_vm_pair():
+    import numpy as np
+
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
+        compute_aniso_decay,
+    )
+
+    res = compute_aniso_decay(n_bins=32, lifetimes=[2.0], rotation_rows=[], bin_width=0.1)
+    vv, vh = np.asarray(res["vv"]), np.asarray(res["vh"])
+    assert np.allclose(vv, vh)  # g = 1, r = 0
+    # shape matches the ideal exponential
+    t = np.arange(32) * 0.1
+    assert np.allclose(vv / vv.max(), np.exp(-t / 2.0), rtol=1e-6)
+
+
+def test_compute_rt_matches_aniso_r():
+    from chisurf.plugins.fluorescence_decay.synthetic_decay.core.algorithms import (
+        compute_aniso_decay,
+        compute_rt,
+    )
+
+    rows = [{"b": 0.3, "rho": 2.0}, {"b": 0.1, "rho": 10.0}]
+    pair = compute_aniso_decay(n_bins=32, lifetimes=[2.0], rotation_rows=rows, bin_width=0.1)
+    solo = compute_rt(n_bins=32, bin_width=0.1, rotation_rows=rows)
+    assert pair["r"] == solo["r"]
+
 def test_cli_generate(tmp_path):
     from click.testing import CliRunner
 

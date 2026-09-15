@@ -49,10 +49,64 @@
       ]
     },
     {
+      "type": "panel",
+      "title": "Anisotropy",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "polarization",
+          "label": "Mode",
+          "options": ["vm", "vv/vh"],
+          "labels": ["VM (magic angle)", "VV/VH (polarized)"],
+          "style": "radio",
+          "rebuild_on_change": true,
+          "description": "Detection mode. VM: magic angle — the decay carries no anisotropy. VV/VH: parallel and perpendicular channels generated with the rotation spectrum below; both share one photon budget when Noise is on."
+        },
+        {
+          "type": "panel",
+          "title": "VV/VH detection corrections",
+          "n_col": 3,
+          "collapsed": true,
+          "collapsed_when": {"attr": "polarization", "equals": "vm"},
+          "sections": [
+            {"type": "value", "attr": "g_factor", "label": "g", "kind": "float", "minimum": 0.001, "maximum": 100.0, "decimals": 4, "description": "Parallel/perpendicular detection sensitivity ratio G. The perpendicular channel records 1/G of what an equally sensitive one would."},
+            {"type": "value", "attr": "l1", "label": "l1", "kind": "float", "minimum": -10.0, "maximum": 10.0, "decimals": 4, "description": "Polarization mixing factor of the parallel (VV) channel."},
+            {"type": "value", "attr": "l2", "label": "l2", "kind": "float", "minimum": -10.0, "maximum": 10.0, "decimals": 4, "description": "Polarization mixing factor of the perpendicular (VH) channel."}
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Rotation spectrum r0 = Σb",
+      "sections": [
+        {
+          "type": "table",
+          "source": "rotation_source",
+          "selected_attr": "selected_rotation_row",
+          "editable": true,
+          "update_call": "update_rotation",
+          "height": 90,
+          "columns": [
+            {"key": "b", "label": "b", "description": "Amplitude of this rotational correlation component. The b amplitudes sum to the fundamental anisotropy r0."},
+            {"key": "rho", "label": "ρ", "description": "Rotational correlation time in nanoseconds. r(t) = Σ bᵢ exp(−t/ρᵢ)."}
+          ]
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {"label": "➕ Add", "action": "add_rotation_row", "description": "Add a rotational correlation component."},
+            {"label": "➖ Remove", "action": "remove_rotation_row", "description": "Remove the selected rotational correlation component."}
+          ]
+        }
+      ]
+    },
+    {
       "type": "button_row",
       "buttons": [
         {"label": "🧪 Generate", "action": "generate", "description": "Generate the decay and update the plot."},
-        {"label": "💾 Save", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON)."}
+        {"label": "💾 Save", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON). In VV/VH mode writes a VV/VH file whose footer carries g, l1, l2 and the mode."},
+        {"label": "🔗 Fit group", "action": "send_to_fit", "description": "Add the generated data as a dataset and create a fit group with the Lifetime model — same route as a VV/VH data load: VV and VH become group members with vv/vh polarizations and g, l1, l2 are carried over from the simulation."}
       ]
     },
     {"type": "info", "source": "status_text", "description": "Generator status."},
@@ -64,7 +118,16 @@
       "y_label": "Counts",
       "log_y": true,
       "legend": true,
-      "description": "The generated fluorescence-decay histogram."
+      "description": "The generated fluorescence-decay histogram. VV/VH mode shows both polarized channels."
+    },
+    {
+      "type": "plot",
+      "source": "aniso_series",
+      "title": "Anisotropy r(t)",
+      "x_label": "Micro-time (ns)",
+      "y_label": "r(t)",
+      "legend": true,
+      "description": "The anisotropy decay r(t) = Σ bᵢ exp(−t/ρᵢ) of the rotation spectrum, shown in both modes (the VM decay itself carries no anisotropy)."
     }
   ]
 }

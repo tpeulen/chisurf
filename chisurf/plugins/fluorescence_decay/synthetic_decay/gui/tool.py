@@ -37,8 +37,9 @@ class SyntheticDecayTool(QtWidgets.QWidget):
         toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
         # Generate and Save act on the whole tool, so they belong on the strip.
         # Add / Remove / Load stay put: they act on the lifetime-spectrum table
-        # and mean nothing away from it.
-        promote_to_toolbar(self.form, toolbar, ("generate", "save"))
+        # and mean nothing away from it. Fit group joins them: it commits the
+        # generated data to a dataset + fit group.
+        promote_to_toolbar(self.form, toolbar, ("generate", "save", "send_to_fit"))
         attach_help_and_guide(
             self, toolbar, title="Synthetic decay generator — help", model=self.model
         )

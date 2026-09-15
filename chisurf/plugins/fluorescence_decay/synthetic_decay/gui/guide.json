@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "Data whose answer you already know",
-      "text": "This builds a TCSPC histogram from a lifetime spectrum you specify — convolved with an IRF if you give one, with Poisson shot noise if you want it.<br/><br/>The point is not the decay. It is that a fitting routine, a starting-value strategy or a model comparison can be checked against data whose parameters <b>you set</b> — the only place a recovered lifetime can be called right or wrong.<br/><br/>Six steps.",
+      "text": "This builds a TCSPC histogram from a lifetime spectrum you specify — convolved with an IRF if you give one, with Poisson shot noise if you want it.<br/><br/>The point is not the decay. It is that a fitting routine, a starting-value strategy or a model comparison can be checked against data whose parameters <b>you set</b> — the only place a recovered lifetime can be called right or wrong.<br/><br/>Seven steps.",
       "target": {}
     },
     {
@@ -32,6 +32,13 @@
       "text": "Without an IRF the decay starts instantaneously — a convenience no instrument produces. With one, the rise is smeared, and <b>components shorter than the IRF width stop being recoverable</b>: below about a nanosecond most of the shape is the instrument rather than the sample.<br/><br/>If the point is to test a routine that <i>deconvolves</i>, it has to be given data that were convolved. Testing a deconvolving fit on IRF-free data proves it can do the easy case.",
       "target": {
         "attr": "irf_path"
+      }
+    },
+    {
+      "title": "Anisotropy: VM vs VV/VH, and what g, l1, l2 do",
+      "text": "The <b>Mode</b> choice picks the measurement. <b>VM</b> is the magic angle — the decay carries no anisotropy. <b>VV/VH</b> generates the parallel and perpendicular pair through the same forward model the fit uses:<br/><br/><b>f<sub>VV</sub> = f<sub>VM</sub> (1 + (2−3l₁) r)</b>, <b>f<sub>VH</sub> = f<sub>VM</sub> (1−(1−3l₂) r)/g</b><br/><br/><b>g</b> is the detection sensitivity ratio between the channels, <b>l₁/l₂</b> the polarization mixing factors. <b>r(t) = Σ bᵢ exp(−t/ρᵢ)</b> comes from the rotation table below — that is the extra anisotropy line in the plot.<br/><br/><b>Save</b> writes a VV/VH file with g, l₁, l₂ in the footer; <b>Fit group</b> sends the pair straight into a fit group the way a VV/VH data load does — polarizations and corrections included, so you can fit data whose r(t) you chose.",
+      "target": {
+        "title": "Anisotropy"
       }
     },
     {

@@ -80,6 +80,40 @@ If the point of the exercise is to test a fitting routine that deconvolves, it
 must be given data that were convolved. Testing a deconvolving fit on
 IRF-free data proves it can do the easy case.
 
+## Anisotropy: VM vs VV/VH
+
+The **Mode** choice picks the measurement. **VM (magic angle)** generates the
+ordinary polarisation-free decay above — it carries no anisotropy. **VV/VH
+(polarized)** generates the parallel and perpendicular pair the way the
+instrument would see it:
+
+**f_VV(t) = f_VM(t) · (1 + (2 − 3·l₁)·r(t))**
+**f_VH(t) = f_VM(t) · (1 − (1 − 3·l₂)·r(t)) / g**
+
+The corrections are the ones the fit stack uses: **g** is the
+parallel/perpendicular detection sensitivity ratio (the perpendicular channel
+records 1/g of what an equally sensitive one would), and **l₁**, **l₂** are the
+polarization mixing factors of the two channels.
+
+**r(t)** comes from the rotation-spectrum table — one row per correlation
+component, `b` amplitudes summing to the fundamental anisotropy r₀:
+
+**r(t) = Σᵢ bᵢ · exp(−t/ρᵢ)**
+
+The anisotropy is plotted in its own panel, in both modes (in VM mode the decay
+carries no anisotropy, but the sample's r(t) is still the sample's). With shot
+noise on, the Poisson budget is shared between the channels proportionally, so
+the *pair* is a realistic observation — including the cross-talk between the
+channels' noise.
+
+**Save** in VV/VH mode writes a VV/VH file whose footer carries g, l₁, l₂ and
+the mode, so reading it back through the VV/VH reader restores the corrections
+the data were generated with. **Fit group** skips the file entirely: it adds
+the generated curves as a dataset and creates a fit group with the Lifetime
+model exactly as a VV/VH data load does — VV and VH become group members with
+`vv`/`vh` polarisations, g/l₁/l₂ are carried into the model parameters, and the
+bin width comes in through the time axis.
+
 ## Before trusting a conclusion drawn here
 
 - **Does the window hold the decay?** See above; a truncated tail biases every

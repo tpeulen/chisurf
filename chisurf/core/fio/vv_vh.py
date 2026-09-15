@@ -25,7 +25,11 @@ def _parse_footer_metadata(footer_text: str) -> Dict[str, Any]:
         line = line.strip()
         if ':' in line:
             key, value = line.split(':', 1)
-            key = key.strip()
+            # savetxt writes each footer line as "# <line>" and write_vv_vh
+            # prefixes its own '#', so the key arrives as "# #name". Strip
+            # the comment markers or every lookup (g_factor, channels, ...)
+            # misses and the calibration silently falls back.
+            key = key.strip(' #\t')
             value = value.strip()
             try:
                 value = float(value)
@@ -270,13 +274,21 @@ def read_vv_vh(
         # Return dictionary of channels
         result = channel_data
     
-    # Backward compatibility: return tuple for VV/VH if in legacy format
-    if (not return_metadata and split and 
-        set(channel_list) == {'VV', 'VH'} and 
+    # Backward compatibility: return tuple for VV/VH if in legacy format.
+    # The version compares numerically: the footer parser converts "1.0" to
+    # the int 1, and a string compare against '1.0' would then misread a
+    # format-1.0 file as "2.0-ish" and hand back a dict instead of the
+    # legacy (vv, vh) tuple.
+    version = metadata.get('format_version', '1.0')
+    try:
+        is_legacy_version = float(version) == 1.0
+    except (TypeError, ValueError):
+        is_legacy_version = str(version).strip() == '1.0'
+    if (not return_metadata and split and
+        set(channel_list) == {'VV', 'VH'} and
         channels is None and
-        metadata.get('format_version', '1.0') == '1.0'):
-        return channel_data['VV'], channel_data['VH']
-    
+        is_legacy_version):
+        return channel_data['VV'], channel_data['VH']    
     if return_metadata:
         return result, metadata
     return result
@@ -332,12 +344,21 @@ def _read_vv_vh_legacy(
 
     # Build data and footer sections (separator line excluded from both)
     if sep_idx is None:
-        data_lines = lines
-        footer_lines: List[str] = []
+        data_lines = list(lines)
+        footer_lines = [] if isinstance(lines, list) else []
+        # No numeric separator (e.g. an all-positive decay): trailing comment
+        # lines are the metadata footer. Without this, a written VV/VH file
+        # whose channels never go negative loses its g_factor/l1/l2 footer on
+        # read, and the calibration silently falls back to the reader's.
+        while data_lines:
+            tail = data_lines[-1].strip()
+            if not tail or (comments and tail.startswith(comments)):
+                footer_lines.insert(0, data_lines.pop())
+            else:
+                break
     else:
         data_lines = lines[:sep_idx]
         footer_lines = lines[sep_idx + 1:]
-
     footer_text = "".join(footer_lines)
 
     # Parse numeric data section with numpy.loadtxt using an in-memory buffer

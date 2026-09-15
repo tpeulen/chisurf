@@ -170,6 +170,124 @@ def simulate_decay(
     return x, y
 
 
+def simulate_decay_channels(
+        lifetime_spectrum: typing.Any,
+        anisotropy_spectrum: typing.Any = None,
+        *,
+        n_tac: int = 4096,
+        dt: float = 0.0141,
+        p0: float = 10000.0,
+        g_factor: float = 1.0,
+        l1: float = 0.0,
+        l2: float = 0.0,
+        irf: typing.Any = None,
+        irf_mean: float = 5.0,
+        irf_sigma: float = 0.2,
+        add_noise: bool = True,
+        seed: int = None,
+) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Simulate the polarized VV/VH pair of a decay with anisotropy.
+
+    The channel twin of :func:`simulate_decay`: the same ideal (peak-scaled,
+    IRF-convolved) magic-angle decay is split into the parallel and
+    perpendicular channels with the fit stack's forward model
+    (:func:`~chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`)
+    before the IRF convolution, and a finite-count observation is Poisson
+    sampled per channel from one generator with the budget split
+    proportionally — so the pair keeps the anisotropy in its ratio.
+
+    Parameters
+    ----------
+    lifetime_spectrum : array-like
+        Interleaved (amplitude, lifetime, ...) spectrum; lenient like
+        :func:`simulate_decay` (rise terms allowed).
+    anisotropy_spectrum : array-like, optional
+        Interleaved rotation spectrum (b_1, rho_1, ...). Empty means no
+        anisotropy (VV = VM, VH = VM / g).
+    n_tac : int
+        Number of TAC bins.
+    dt : float
+        Time resolution per bin in nanoseconds.
+    p0 : float
+        Peak photon count of the magic-angle decay before channel split.
+    g_factor : float
+        Parallel/perpendicular detection sensitivity ratio.
+    l1, l2 : float
+        Polarization mixing factors of the two channels.
+    irf : DataCurve or array, optional
+        Measured IRF; falls back to the Gaussian defined by *irf_mean* /
+        *irf_sigma* (see :func:`resolve_irf`).
+    irf_mean, irf_sigma : float
+        Gaussian fallback IRF parameters (ns).
+    add_noise : bool
+        Poisson-sample both channels.
+    seed : int, optional
+        Seed for the shared Poisson generator.
+
+    Returns
+    -------
+    (numpy.ndarray, numpy.ndarray, numpy.ndarray)
+        ``(x, vv, vh)`` — the time axis (ns) and the two channel histograms.
+    """
+    from chisurf.core.fluorescence.anisotropy.decay import anisotropy_rt
+    from chisurf.core.fluorescence.decay import synthetic_decay
+    from chisurf.core.fluorescence.tcspc.convolve import convolve_decay
+
+    n = int(max(1, int(n_tac)))
+    x = np.arange(n, dtype=np.float64) * float(dt)
+    spectrum = np.atleast_1d(np.asarray(lifetime_spectrum, dtype=np.float64)).ravel()
+    if spectrum.size < 2:
+        return x, np.zeros(n, dtype=np.float64), np.zeros(n, dtype=np.float64)
+    # Ideal magic-angle decay (unscaled; the peak convention of
+    # :func:`simulate_decay` is applied after convolution). The interleaved
+    # spectrum is split exactly like :func:`simulate_decay` splits it.
+    vm = synthetic_decay(
+        n,
+        lifetimes=spectrum[1::2],
+        amplitudes=spectrum[0::2],
+        bin_width=float(dt),
+        normalize=False,
+        allow_rise_terms=True,
+    )
+    vm = np.clip(np.asarray(vm, dtype=np.float64), 0.0, None)
+
+    rot = np.atleast_1d(
+        np.asarray([] if anisotropy_spectrum is None else anisotropy_spectrum, dtype=np.float64)
+    ).ravel()
+    rt = anisotropy_rt(x, rot)
+    # The channel model of ``vm_rt_to_vv_vh`` applied to the already-computed
+    # r(t) (identical algebra; the helper would re-derive the same r(t)):
+    #     VV = vm (1 + (2 - 3 l1) r),    VH = vm (1 - (1 - 3 l2) r) / G
+    vv = vm * (1.0 + (2.0 - 3.0 * float(l1)) * rt)
+    vh = vm * (1.0 - (1.0 - 3.0 * float(l2)) * rt) / float(g_factor)
+
+    response = resolve_irf(x, irf, mean=irf_mean, sigma=irf_sigma)
+    vm_ref = vm
+    if response.size:
+        vm_ref = np.asarray(convolve_decay(vm, response, 0, n, float(dt)), dtype=float)
+        vv = np.maximum(
+            np.asarray(convolve_decay(vv, response, 0, n, float(dt)), dtype=float), 0.0
+        )
+        vh = np.maximum(
+            np.asarray(convolve_decay(vh, response, 0, n, float(dt)), dtype=float), 0.0
+        )
+
+    # Scale the magic-angle reference's peak to p0 and apply the same factor
+    # to both channels, so their ratio — the anisotropy — survives, and an
+    # empty rotation spectrum reproduces :func:`simulate_decay` exactly.
+    ref_max = float(np.max(vm_ref)) if vm_ref.size else 0.0
+    if ref_max > 0.0 and float(p0) > 0.0:
+        scale = float(p0) / ref_max
+        vv = vv * scale
+        vh = vh * scale
+
+    if add_noise and np.any(vv + vh > 0.0):
+        rng = np.random.default_rng(seed)
+        vv = chisurf.core.fluorescence.decay.sample_decay_shot_noise(vv, rng=rng)
+        vh = chisurf.core.fluorescence.decay.sample_decay_shot_noise(vh, rng=rng)
+    return x, vv, vh
+
+
 class TCSPCSimulatorSetup(TCSPCReader):
 
     name = "TCSPC-Simulator"
@@ -188,6 +306,8 @@ class TCSPCSimulatorSetup(TCSPCReader):
             add_noise: bool = True,
             seed: int = None,
             sample_name: str = 'TCSPC-Dummy',
+            polarization: str = 'vm',
+            rotation_spectrum: typing.List[float] = None,
             **kwargs
     ):
         """Initialize a TCSPC simulator.
@@ -239,9 +359,24 @@ class TCSPCSimulatorSetup(TCSPCReader):
         self.irf_sigma = irf_sigma
         self.add_noise = add_noise
         self.seed = seed
+        # -- anisotropy --------------------------------------------------
+        # Detection mode: 'vm' (magic angle) or 'vv/vh' (polarized pair).
+        # The rotation spectrum is interleaved (b_1, rho_1, b_2, rho_2, ...).
+        # g_factor / l1 / l2 are the TCSPCReader's own calibration attributes;
+        # when the polarization is a VV/VH pair they are what a fit reads from
+        # the dataset's reader, exactly as after a VV/VH file load.
+        self.polarization = str(polarization).lower()
+        if rotation_spectrum is None:
+            self.rotation_spectrum = np.array([], dtype=np.float64)
+        else:
+            self.rotation_spectrum = np.array(rotation_spectrum, dtype=np.float64)
+        # ``polarization`` is the TCSPCReader's own attribute; the reader's
+        # ``is_vv_vh`` flag mirrors it so anything that inspects the setup
+        # (e.g. context help) sees a consistent pair.
+        self.is_vv_vh = self.polarization != 'vm'
 
     def simulate(self) -> typing.Tuple[np.ndarray, np.ndarray]:
-        """Simulate a decay from the setup's current parameters.
+        """Simulate a magic-angle decay from the setup's current parameters.
 
         Returns
         -------
@@ -259,6 +394,49 @@ class TCSPCSimulatorSetup(TCSPCReader):
             add_noise=self.add_noise,
             seed=self.seed,
         )
+
+    def simulate_channels(
+            self,
+    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Simulate the polarized VV/VH pair for the current parameters.
+
+        Uses :func:`simulate_decay_channels` — the channel twin of
+        :func:`simulate_decay` — with the setup's rotation spectrum and the
+        anisotropy calibration (``g_factor``, ``l1``, ``l2``).
+
+        Returns
+        -------
+        (numpy.ndarray, numpy.ndarray, numpy.ndarray)
+            ``(x, vv, vh)`` — time axis (ns) and the two channel histograms.
+        """
+        return simulate_decay_channels(
+            self.lifetime_spectrum,
+            self.rotation_spectrum,
+            n_tac=self.n_tac,
+            dt=self.dt,
+            p0=self.p0,
+            g_factor=self.g_factor,
+            l1=self.l1,
+            l2=self.l2,
+            irf=self.instrument_response_function,
+            irf_mean=self.irf_mean,
+            irf_sigma=self.irf_sigma,
+            add_noise=self.add_noise,
+            seed=self.seed,
+        )
+
+    def simulate_aniso(
+            self,
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
+        """Return the ideal anisotropy decay r(t) of the rotation spectrum.
+
+        Returned on the simulation time axis; plotted next to the channels
+        (the VM decay itself carries no anisotropy, but r(t) is the sample's).
+        """
+        from chisurf.core.fluorescence.anisotropy.decay import anisotropy_rt
+
+        x = np.arange(int(max(1, self.n_tac)), dtype=float) * float(self.dt)
+        return x, anisotropy_rt(x, self.rotation_spectrum)
 
     def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.data.DataCurveGroup:
         """Generate a simulated TCSPC decay curve.
@@ -280,6 +458,32 @@ class TCSPCSimulatorSetup(TCSPCReader):
         if filename is None:
             filename = self.sample_name
         name = kwargs.get('name', filename)
+
+        if self.polarization != 'vm':
+            # Polarized simulation: two stacked curves (VV, VH) in one group —
+            # the same structure the VV/VH CSV reader produces, so a fit over
+            # it becomes a fit group with vv/vh polarizations by position, and
+            # the calibration arrives through this reader's g/l1/l2.
+            x, vv, vh = self.simulate_channels()
+            curves = []
+            for suffix, y in (("VV", vv), ("VH", vh)):
+                curves.append(
+                    chisurf.core.data.DataCurve(
+                        x=x,
+                        y=y,
+                        ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
+                        setup=self,
+                        data_reader=self,
+                        name=f"{name} {suffix}",
+                        experiment=self.experiment
+                    )
+                )
+            return chisurf.core.data.DataCurveGroup(
+                curves,
+                experiment=self.experiment,
+                data_reader=self
+            )
+
         x, y = self.simulate()
         # ``data_reader`` is the back-reference a new fit needs to auto-range
         # the curve (``data_reader.autofitrange(data)``). Without it the fit

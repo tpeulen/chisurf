@@ -96,3 +96,97 @@ def test_vv_vh_rebin_reshape_groups_are_stable():
             assert y_rebinned.shape == (2, new_channels)
     finally:
         os.unlink(filename)
+
+
+# --- footer metadata regressions (found via the synthetic-decay aniso round trip) ---
+
+
+def _load_vv_vh():
+    module_path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "fio" / "vv_vh.py"
+    spec = importlib.util.spec_from_file_location("vv_vh_local_footer", module_path)
+    vv_vh = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(vv_vh)
+    return vv_vh
+
+
+def test_vv_vh_footer_metadata_readable_for_positive_only_data():
+    """An all-positive VV/VH file keeps its footer metadata.
+
+    The legacy footer detector keyed off the first line containing a negative
+    number, so a decay that never goes negative lost its g_factor/l1/l2 footer
+    and the calibration silently fell back to the reader's defaults.
+    """
+    vv_vh = _load_vv_vh()
+
+    n_points = 64
+    x = np.linspace(0.0, 10.0, n_points)
+    vv = np.exp(-x / 3.0) * 1000.0  # strictly positive
+    vh = np.exp(-x / 3.0) * 600.0
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
+        filename = tmp.name
+
+    try:
+        vv_vh.write_vv_vh(
+            filename, vv=vv, vh=vh, g_factor=1.6,
+            metadata={"l1": 0.05, "l2": 0.08, "polarization": "vv/vh"},
+        )
+        data, meta = vv_vh.read_vv_vh(filename, split=True, return_metadata=True)
+        assert meta.get("g_factor") == 1.6
+        assert meta.get("l1") == 0.05
+        assert meta.get("l2") == 0.08
+        assert meta.get("polarization") == "vv/vh"
+        assert set(data.keys()) == {"VV", "VH"}
+    finally:
+        os.unlink(filename)
+
+
+def test_vv_vh_footer_metadata_keys_are_not_prefixed_with_comments():
+    """Footer keys must survive the '# ' comment markers savetxt writes.
+
+    _parse_footer_metadata used to keep the marker in the key ('# #g_factor'),
+    so every lookup (g_factor, channels, format_version) missed even when the
+    footer itself was found.
+    """
+    vv_vh = _load_vv_vh()
+
+    n_points = 16
+    rng = np.random.default_rng(2)
+    vv = rng.poisson(500, n_points).astype(float)
+    vh = rng.poisson(300, n_points).astype(float)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
+        filename = tmp.name
+
+    try:
+        vv_vh.write_vv_vh(filename, vv=vv, vh=vh, g_factor=1.2, metadata={"k": "v"})
+        _data, meta = vv_vh.read_vv_vh(filename, split=True, return_metadata=True)
+        assert "g_factor" in meta and meta["g_factor"] == 1.2
+        assert "channels" in meta and meta["channels"] == "VV, VH"
+        assert "format_version" in meta
+        assert meta.get("k") == "v"
+    finally:
+        os.unlink(filename)
+
+
+def test_vv_vh_negative_data_footer_detection_unchanged():
+    """Files with negative values still split at the negative separator."""
+    vv_vh = _load_vv_vh()
+
+    n_points = 32
+    rng = np.random.default_rng(3)
+    vv = rng.poisson(500, n_points).astype(float) - 50.0  # contains negatives
+    vh = rng.poisson(300, n_points).astype(float)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tmp:
+        filename = tmp.name
+
+    try:
+        vv_vh.write_vv_vh(filename, vv=vv, vh=vh, g_factor=0.9)
+        data, meta = vv_vh.read_vv_vh(filename, split=True, return_metadata=True)
+        assert meta.get("g_factor") == 0.9
+        assert np.allclose(data["VV"], vv)
+        assert np.allclose(data["VH"], vh)
+    finally:
+        os.unlink(filename)

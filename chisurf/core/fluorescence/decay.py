@@ -283,6 +283,222 @@ def synthetic_decay(
     return decay
 
 
+def _aniso_validate_spectrum(spectrum: Any | None) -> np.ndarray:
+    """Validate an optional interleaved rotation spectrum ``(b, rho, ...)``."""
+    if spectrum is None:
+        return np.zeros(0, dtype=float)
+    values = np.atleast_1d(np.asarray(spectrum, dtype=float)).ravel()
+    if values.size % 2 or np.any(~np.isfinite(values)):
+        raise ValueError("anisotropy_spectrum must contain finite amplitude/rho pairs")
+    if values.size and np.any(values[1::2] <= 0.0):
+        raise ValueError("rotational correlation times must be positive")
+    return values
+
+
+def synthetic_aniso_decay(
+    n_bins: int,
+    lifetimes: Any,
+    *,
+    amplitudes: Any | None = None,
+    anisotropy_spectrum: Any | None = None,
+    g_factor: float = 1.0,
+    l1: float = 0.0,
+    l2: float = 0.0,
+    bin_width: float = 1.0,
+    start_bin: int = 0,
+    irf: Any | None = None,
+    time_shift: float = 0.0,
+    normalize: bool = True,
+    photon_count: float | None = None,
+    seed: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Generate parallel (VV) and perpendicular (VH) TCSPC decay histograms.
+
+    The polarized twin of :func:`synthetic_decay`: the same ideal multi-exponential
+    magic-angle decay is split into the two detection channels with the same
+    forward model the fit stack uses
+    (:func:`~chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`,
+    Schaffer/Eggeling parameterisation):
+
+        r(t)    = sum_i b_i exp(-t / rho_i)
+        f_VV(t) = f_VM(t) * (1 + (2 - 3 l1) r(t))
+        f_VH(t) = f_VM(t) * (1 - (1 - 3 l2) r(t)) / G
+
+    ``G`` is the parallel/perpendicular sensitivity ratio (so the perpendicular
+    channel records ``1/G`` of what an equally sensitive one would) and
+    ``l1``/``l2`` are the polarization mixing factors. Each channel is convolved
+    with the same shared TCSPC kernel as :func:`synthetic_decay`, and a finite
+    ``photon_count`` is Poisson-sampled **per channel** from one generator with
+    the budget split proportionally to the channels' intensities — a noisy
+    VV/VH pair whose ratio still carries the anisotropy. With ``normalize=True``
+    (and no photon budget) the two channels together sum to one, preserving
+    their relative scale.
+
+    An empty or ``None`` ``anisotropy_spectrum`` gives r(t) = 0: VV = VM and
+    VH = VM / G. The ideal r(t) itself can be re-derived with
+    :func:`~chisurf.core.fluorescence.anisotropy.decay.anisotropy_rt`, and the
+    channels invert back through the Schaffer correction
+
+        r(t) = (f_VV - G f_VH) / (f_VV (1 - 3 l2) + (2 - 3 l1) G f_VH).
+
+    No finite repetition ``period``: wrapping earlier pulses into the window is
+    only implemented for the magic-angle generator (:func:`synthetic_decay`),
+    because the channel scaling multiplies the ideal decay *before* convolution
+    and the periodic kernel convolves a lifetime spectrum directly.
+
+    Parameters
+    ----------
+    n_bins : int
+        Number of micro-time bins (> 0).
+    lifetimes : array-like
+        Fluorescence lifetimes (positive, same unit as ``bin_width``).
+    amplitudes : array-like, optional
+        Pre-exponential amplitudes matching ``lifetimes`` (default: all ones).
+    anisotropy_spectrum : array-like, optional
+        Interleaved rotation spectrum ``(b_1, rho_1, b_2, rho_2, ...)``.
+        The amplitudes sum to the fundamental anisotropy r0. Empty/None means
+        no anisotropy.
+    g_factor : float, optional
+        Parallel/perpendicular detection sensitivity ratio G (> 0).
+    l1, l2 : float, optional
+        Polarization mixing factors of the VV and VH channels.
+    bin_width : float, optional
+        Micro-time bin width (> 0).
+    start_bin : int, optional
+        Bin index where the ideal decay begins (prompt offset).
+    irf : array-like, optional
+        Instrument response to convolve with each channel (normalized,
+        cropped/padded to the window).
+    time_shift : float, optional
+        Sub-bin IRF shift applied before convolution (same meaning as in
+        :func:`synthetic_decay`).
+    normalize : bool, optional
+        Scale the pair so the two channels sum to one (ignored when
+        ``photon_count`` is given).
+    photon_count : float, optional
+        Total photon budget Poisson-sampled across both channels.
+    seed : int, optional
+        Seed for the shared Poisson generator (reproducible pair).
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(vv, vh)`` — the two channel histograms, each of length ``n_bins``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from chisurf.core.fluorescence.decay import synthetic_aniso_decay
+    >>> vv, vh = synthetic_aniso_decay(
+    ...     4, [4.0], anisotropy_spectrum=[0.3, 2.0], bin_width=1.0,
+    ... )
+    >>> np.round(vv / (vv + vh).sum(), 6).tolist()
+    [0.255768, 0.169801, 0.118358, 0.085619]
+
+    With no anisotropy the pair is proportional to the magic-angle decay,
+    VV = VM and VH = VM / G (here G = 1, so both channels are equal):
+
+    >>> vv0, vh0 = synthetic_aniso_decay(4, [4.0], bin_width=1.0)
+    >>> vm = np.exp(-np.arange(4) / 4.0)
+    >>> np.allclose(vv0, vh0) and np.allclose(vv0 / vm, vv0[0] / vm[0])
+    True
+
+    The round trip through the Schaffer correction recovers r(t) exactly for
+    any G and mixing factors:
+
+    >>> g, l1, l2 = 1.7, 0.05, 0.08
+    >>> vv, vh = synthetic_aniso_decay(
+    ...     8, [4.0], anisotropy_spectrum=[0.3, 2.0], bin_width=1.0,
+    ...     g_factor=g, l1=l1, l2=l2,
+    ... )
+    >>> t = np.arange(8, dtype=float)
+    >>> r_true = 0.3 * np.exp(-t / 2.0)
+    >>> r_back = (vv - g * vh) / (vv * (1 - 3 * l2) + (2 - 3 * l1) * g * vh)
+    >>> float(np.max(np.abs(r_back - r_true))) < 1e-12
+    True
+    """
+    from chisurf.core.fluorescence.anisotropy.decay import anisotropy_rt
+    from chisurf.core.fluorescence.general import calculate_fluorescence_decay
+    from chisurf.core.fluorescence.tcspc.convolve import (
+        convolve_decay,
+        periodic_shift,
+    )
+
+    n = int(n_bins)
+    if n <= 0:
+        raise ValueError("n_bins must be positive")
+    if bin_width <= 0.0:
+        raise ValueError("bin_width must be positive")
+    if not 0 <= int(start_bin) < n:
+        raise ValueError("start_bin must lie inside the decay histogram")
+    g = float(g_factor)
+    if not np.isfinite(g) or g <= 0.0:
+        raise ValueError("g_factor must be positive and finite")
+    l1 = float(l1)
+    l2 = float(l2)
+
+    taus = np.atleast_1d(np.asarray(lifetimes, dtype=float))
+    if taus.ndim != 1 or taus.size == 0 or np.any(~np.isfinite(taus)):
+        raise ValueError("lifetimes must contain finite values")
+    if np.any(taus <= 0.0):
+        raise ValueError("lifetimes must contain positive finite values")
+    if amplitudes is None:
+        amps = np.ones(taus.size, dtype=float)
+    else:
+        amps = np.atleast_1d(np.asarray(amplitudes, dtype=float))
+        if amps.size == 1 and taus.size > 1:
+            amps = np.repeat(amps, taus.size)
+        if amps.shape != taus.shape:
+            raise ValueError("amplitudes must match lifetimes")
+        if np.any(~np.isfinite(amps)) or np.any(amps < 0.0) or not np.any(amps > 0.0):
+            raise ValueError("amplitudes must be finite, non-negative, and not all zero")
+
+    rotation = _aniso_validate_spectrum(anisotropy_spectrum)
+
+    spectrum = np.empty(taus.size * 2, dtype=float)
+    spectrum[0::2] = amps
+    spectrum[1::2] = taus
+
+    time = (np.arange(n, dtype=float) - int(start_bin)) * float(bin_width)
+    causal_time = np.maximum(time, 0.0)
+    _, vm = calculate_fluorescence_decay(spectrum, causal_time, normalize=False)
+    vm = np.asarray(vm, dtype=float)
+    vm[time < 0.0] = 0.0
+
+    rt = anisotropy_rt(time, rotation)
+    vv = vm * (1.0 + (2.0 - 3.0 * l1) * rt)
+    vh = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g
+
+    if irf is not None:
+        response = scattered_light_decay_pattern(irf, n)  # normalized, length n
+        if time_shift:
+            response = periodic_shift(response, float(time_shift) / float(bin_width))
+        vv = np.maximum(
+            np.asarray(convolve_decay(vv, response, 0, n, float(bin_width)), dtype=float),
+            0.0,
+        )
+        vh = np.maximum(
+            np.asarray(convolve_decay(vh, response, 0, n, float(bin_width)), dtype=float),
+            0.0,
+        )
+
+    total = vv.sum() + vh.sum()
+    if total <= 0.0:
+        raise ValueError("synthetic aniso decay has zero integral")
+    if photon_count is not None:
+        count = float(photon_count)
+        if not np.isfinite(count) or count <= 0.0:
+            raise ValueError("photon_count must be positive and finite")
+        rng = np.random.default_rng(seed)
+        vv = sample_decay_shot_noise(vv / total * count, rng=rng)
+        vh = sample_decay_shot_noise(vh / total * count, rng=rng)
+    elif normalize:
+        scale = 1.0 / total
+        vv = vv * scale
+        vh = vh * scale
+    return vv, vh
+
+
 def _gaussian_grid(mean: float, sigma: float, n_samples: int) -> tuple[np.ndarray, np.ndarray]:
     """Return a positive, normalized discretization of a normal distribution."""
     if not np.isfinite(mean) or mean <= 0.0:
@@ -526,6 +742,7 @@ __all__ = [
     "optimize_synthetic_scatter_pattern",
     "sample_decay_shot_noise",
     "scattered_light_decay_pattern",
+    "synthetic_aniso_decay",
     "synthetic_component_decay",
     "synthetic_decay",
     "validate_lifetime_spectrum",

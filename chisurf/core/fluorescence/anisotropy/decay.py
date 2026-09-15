@@ -6,6 +6,59 @@ import chisurf.core.math
 from chisurf import typing
 
 
+def anisotropy_rt(
+        times: np.ndarray,
+        anisotropy_spectrum: np.ndarray
+) -> np.ndarray:
+    """Rotational anisotropy decay r(t) from an interleaved rotation spectrum.
+
+    Computes
+
+        r(t) = sum_i b_i * exp(-t / rho_i)
+
+    from the interleaved ``(b_1, rho_1, b_2, rho_2, ...)`` rotation spectrum.
+    This is the same r(t) that :func:`vm_rt_to_vv_vh` builds internally to
+    construct the polarized VV/VH decays; exposing it separately lets the
+    simulator and plotting code show the underlying anisotropy without
+    duplicating the sum.
+
+    Parameters
+    ----------
+    times : numpy.ndarray
+        Time axis (same unit as the correlation times).
+    anisotropy_spectrum : numpy.ndarray
+        Interleaved amplitudes and rotational correlation times
+        ``(b_1, rho_1, b_2, rho_2, ...)``. May be empty, in which case a
+        zero array (no anisotropy) is returned.
+
+    Returns
+    -------
+    numpy.ndarray
+        r(t) evaluated on ``times``.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from chisurf.core.fluorescence.anisotropy.decay import anisotropy_rt
+    >>> t = np.array([0.0, 2.0, 4.0])
+    >>> np.round(anisotropy_rt(t, np.array([0.3, 2.0])), 6).tolist()
+    [0.3, 0.110364, 0.040601]
+
+    Two rotation components add up (b = 0.3 + 0.1, fast and slow):
+
+    >>> np.round(anisotropy_rt(t, np.array([0.3, 2.0, 0.1, 10.0])), 6).tolist()
+    [0.4, 0.192237, 0.107633]
+    """
+    t = np.asarray(times, dtype=np.float64)
+    spectrum = np.asarray(anisotropy_spectrum, dtype=np.float64).ravel()
+    amplitudes = spectrum[0::2]
+    correlation_times = spectrum[1::2]
+    n = min(amplitudes.size, correlation_times.size)
+    if n == 0:
+        return np.zeros_like(t)
+    return np.exp(-np.outer(t, 1.0 / correlation_times[:n])) @ amplitudes[:n]
+
+
 def vm_rt_to_vv_vh(
         times: np.array,
         vm: np.array,
