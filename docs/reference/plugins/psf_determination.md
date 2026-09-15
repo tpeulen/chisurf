@@ -58,6 +58,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `psf_determination.fit.run` | yes | Fit 3D Gaussian PSF to a bead stack. |
 | `psf_determination.contract.describe` | no | Return the RPC contract. |
 
+## Theory and workflow
+
+- **Theory** — [Deconvolution](/concepts/deconvolution.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/psf_determination/`

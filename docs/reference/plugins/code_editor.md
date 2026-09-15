@@ -41,7 +41,7 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 ## Theory and workflow
 
-- **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md)
+- **Workflow** — [Driving ChiSurf from its console](/guides/59_console.md), [Notebooks that run inside ChiSurf](/guides/64_notebooks.md)
 
 ## Source
 

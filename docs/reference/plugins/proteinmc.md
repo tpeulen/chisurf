@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Protein Monte Carlo
-description: Protein Monte Carlo CLI plugin.
+description: Protein Monte Carlo CLI plugin. Expose the ProteinMC cmd tool via the unified ChiSurf CLI.
 resource: chisurf/plugins/modelling/proteinmc/
-tags: [reference, plugins, proteinmc]
+tags: [reference, plugins, proteinmc, structure, computation]
 anchor: plugin-proteinmc
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,11 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-proteinmc)=
 # Protein Monte Carlo
 
-Protein Monte Carlo CLI plugin.
-
-:::{note}
-This plugin declares itself in code rather than in a `manifest.json`, so the identity below is what the plugin loader reads from the module and there is no declared RPC surface to list.
-:::
+Protein Monte Carlo CLI plugin.  Expose the ProteinMC cmd tool via the unified ChiSurf CLI.
 
 ## Identity
 
@@ -23,6 +19,9 @@ This plugin declares itself in code rather than in a `manifest.json`, so the ide
 | --- | --- |
 | Plugin id | `proteinmc` |
 | Menu path | Structure → Computation → **Protein Monte Carlo** |
+| Categories | Structure, Computation |
+| Version | 1.0.0 |
+| Surfaces | cli |
 
 ## Parameters
 
@@ -31,3 +30,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/proteinmc/`
+- Manifest: {src}`chisurf/plugins/modelling/proteinmc/manifest.json`

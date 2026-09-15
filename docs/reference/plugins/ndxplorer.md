@@ -30,7 +30,7 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 ## Theory and workflow
 
-- **Theory** — [Interactive multidimensional exploration](/concepts/multidimensional_exploration.md)
+- **Theory** — [Density-based clustering](/concepts/density_clustering.md), [Interactive multidimensional exploration](/concepts/multidimensional_exploration.md)
 - **Workflow** — [Exploring & fitting multidimensional data (ndX)](/guides/46_ndxplorer.md), [From a selection to a fit: the ndX analysis bridges](/guides/47_ndxplorer_bridges.md)
 
 ## Source

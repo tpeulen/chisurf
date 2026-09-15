@@ -31,7 +31,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Provider | `provider` | choice |  | choices: openai, mistral, local, custom | Configure one endpoint per provider. Switching reloads that provider's saved values. |
+| Provider | `provider` | choice |  | choices: `available_providers` | Which AI provider to use. The list comes from the provider table in chisurf.core.settings.ai_settings, so it always matches what the rest of the app supports. |
 | Base URL | `base_url` | str |  |  | OpenAI-compatible API base URL for the selected provider. |
 | API Key | `api_key` | secret |  |  | Bearer token for the endpoint. Pasting a key auto-saves it and tests the connection. Not needed for most local servers. |
 

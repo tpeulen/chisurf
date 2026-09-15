@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: File tools
-description: 'Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a.pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor.'
+description: 'Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor.'
 resource: chisurf/plugins/tttr/filetools/
 tags: [reference, plugins, filetools, tools]
 anchor: plugin-filetools

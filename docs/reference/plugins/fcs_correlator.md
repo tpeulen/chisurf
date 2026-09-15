@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Correlator
-description: 'This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:'
+description: 'FCS Correlator This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include: - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export The tool replaces the legacy QWizard with a modern navigation panel layout (left step list, right view/display), built using the AutoForm declarative UI framework for the correlator settings panel. The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified FCS tool (fcs_toolbox), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (FcsCorrelatorTool + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.'
 resource: chisurf/plugins/fcs/fcs_correlator/
-tags: [reference, plugins, fcs-correlator]
+tags: [reference, plugins, fcs-correlator, spectroscopy, fluorescence-correlation-spectroscopy]
 anchor: plugin-fcs_correlator
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,11 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_correlator)=
 # Correlator
 
-This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:
-
-:::{note}
-This plugin declares itself in code rather than in a `manifest.json`, so the identity below is what the plugin loader reads from the module and there is no declared RPC surface to list.
-:::
+FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The tool replaces the legacy QWizard with a modern navigation panel layout (left step list, right view/display), built using the AutoForm declarative UI framework for the correlator settings panel.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu.
 
 ## Identity
 
@@ -23,6 +19,9 @@ This plugin declares itself in code rather than in a `manifest.json`, so the ide
 | --- | --- |
 | Plugin id | `fcs_correlator` |
 | Menu path | Spectroscopy → Fluorescence Correlation Spectroscopy → **Correlator** |
+| Categories | Spectroscopy, Fluorescence Correlation Spectroscopy |
+| Version | 1.0.0 |
+| Surfaces | script |
 
 ## Parameters
 
@@ -115,6 +114,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_correlator/`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_correlator/manifest.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/correlator.view.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/filter.view.json`
 - UI spec: {src}`chisurf/plugins/fcs/fcs_correlator/merger.view.json`

@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: FCS
-description: Unified FCS plugin — a meta tool hosting the FCS workflow behind a rail.
+description: Unified FCS plugin — a meta tool hosting the FCS workflow behind a rail. Merges the FCS Correlator workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable NavigationPanelTool shell. The ribbon execs this file with __name__ == "plugin".
 resource: chisurf/plugins/fcs/fcs_toolbox/
-tags: [reference, plugins, fcs-toolbox]
+tags: [reference, plugins, fcs-toolbox, spectroscopy]
 anchor: plugin-fcs_toolbox
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,11 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_toolbox)=
 # FCS
 
-Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.
-
-:::{note}
-This plugin declares itself in code rather than in a `manifest.json`, so the identity below is what the plugin loader reads from the module and there is no declared RPC surface to list.
-:::
+Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``.
 
 ## Identity
 
@@ -23,6 +19,9 @@ This plugin declares itself in code rather than in a `manifest.json`, so the ide
 | --- | --- |
 | Plugin id | `fcs_toolbox` |
 | Menu path | Spectroscopy → **FCS** |
+| Categories | Spectroscopy |
+| Version | 1.0.0 |
+| Surfaces | script |
 
 ## Parameters
 
@@ -31,3 +30,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/fcs/fcs_toolbox/`
+- Manifest: {src}`chisurf/plugins/fcs/fcs_toolbox/manifest.json`

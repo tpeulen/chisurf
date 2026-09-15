@@ -1,9 +1,9 @@
 ---
 type: Plugin Reference
 title: Screenshot
-description: A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.
+description: 'Screenshot A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard. Behavior: - It captures the current main window and copies the image to the clipboard. - It displays a temporary message box confirming the action.'
 resource: chisurf/plugins/core/screenshot/
-tags: [reference, plugins, screenshot]
+tags: [reference, plugins, screenshot, main, tools]
 anchor: plugin-screenshot
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -11,11 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-screenshot)=
 # Screenshot
 
-A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.
-
-:::{note}
-This plugin declares itself in code rather than in a `manifest.json`, so the identity below is what the plugin loader reads from the module and there is no declared RPC surface to list.
-:::
+Screenshot  A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.  Behavior: - It captures the current main window and copies the image to the clipboard. - It displays a temporary message box confirming the action.
 
 ## Identity
 
@@ -23,6 +19,9 @@ This plugin declares itself in code rather than in a `manifest.json`, so the ide
 | --- | --- |
 | Plugin id | `screenshot` |
 | Menu path | Main → Tools → **Screenshot** |
+| Categories | Main, Tools |
+| Version | 1.0.0 |
+| Surfaces | script |
 
 ## Parameters
 
@@ -31,3 +30,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 ## Source
 
 - Plugin package: `chisurf/plugins/core/screenshot/`
+- Manifest: {src}`chisurf/plugins/core/screenshot/manifest.json`

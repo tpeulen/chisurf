@@ -25,9 +25,22 @@ Model Manager for ChiSurf
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+### Registered models
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Show disabled models | `show_disabled` | bool |  |  | Include switched-off models in the table. |
+
+### Selected model
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Disabled | `selected_disabled` | bool |  |  | Keep this model out of the model drop-down. It is not removed; nothing else changes. |
 
 ## Source
 
 - Plugin package: `chisurf/plugins/core/model_manager/`
 - Manifest: {src}`chisurf/plugins/core/model_manager/manifest.json`
+- UI spec: {src}`chisurf/plugins/core/model_manager/gui/models.view.json`

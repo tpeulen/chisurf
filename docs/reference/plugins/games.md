@@ -27,6 +27,10 @@ A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Bre
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Workflow** — [Reviewing the documentation as a game (Lumis Quest)](/guides/71_lumis_quest.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/`

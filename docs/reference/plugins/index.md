@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **127 plugins**, **56** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **134 plugins**, **63** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 *
 ```
 
-**127 plugins** across 27 categories.
+**134 plugins** across 29 categories.
 
 ## Analysis → Kinetics
 
@@ -31,13 +31,13 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Database Connector](database_connector.md) | Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export. |
+| [Database Connector](database_connector.md) *(hidden)* | Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export. |
 
 ## Help
 
 | Plugin | Summary |
 | --- | --- |
-| [About ChiSurf](about.md) | ChiSurf About Plugin |
+| [About ChiSurf](about.md) | ChiSurf About Plugin  This plugin provides information about ChiSurf, including version, developer, and contact information.  Features: - Display ChiSurf logo - Show version information - Display developer contact details |
 | [Boarding Wizard](boarding.md) *(hidden)* | Startup onboarding wizard for first-run ChiSurf configuration. |
 | [Documentation](help.md) | Documentation browser and help resource viewer for ChiSurf. |
 
@@ -57,13 +57,14 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
 | [Particle Tracking](img_tracking.md) | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
 | [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
+| [Spot Finder](spot_finder.md) *(hidden)* | Detect spots and regions in imaging data and persist them, with their pixels, into the measurement's container. |
 
 ## Imaging → Lifetime
 
 | Plugin | Summary |
 | --- | --- |
-| [Molecule-wise MLE](sm_image_mle.md) *(hidden)* | Molecule-wise MLE lifetime analysis from TTTR imaging data (PTU). |
 | [Pixel-wise MLE](img_pixel_mle.md) *(hidden)* | Pixel-wise MLE lifetime analysis for TTTR imaging data. |
+| [Region MLE](region_mle.md) *(hidden)* | Region MLE lifetime analysis from TTTR imaging data (PTU). |
 
 ## Imaging → Simulate
 
@@ -89,7 +90,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view. |
 | [RICS-Precision](rics_precision.md) | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
-| [Screenshot](screenshot.md) | A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard. |
+| [Screenshot](screenshot.md) | Screenshot  A minimal plugin that captures a screenshot of the ChiSurf main window and copies it to the clipboard.  Behavior: - It captures the current main window and copies the image to the clipboard. - It displays a temporary message box confirming the action. |
 | [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 | [ndX](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
 
@@ -105,8 +106,9 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | --- | --- |
 | [Channel Definition](setup_channel_definition.md) *(hidden)* | Detector Channel and PIE-window definition wizard |
 | [FCS Definitions](fcs_channel_preset.md) *(hidden)* | FCS channel definition plugin per detector setup |
-| [Menu Switch](menu_switch.md) | This plugin provides a simple toggle to switch between the traditional menu bar and the modern ribbon interface in ChiSurf. |
+| [Menu Switch](menu_switch.md) | Menu Switch  This plugin provides a simple toggle to switch between the traditional menu bar  and the modern ribbon interface in ChiSurf.  Features: - One-click switching between menu and ribbon interfaces - Automatic state detection and switching - Persistent preference saving - Seamless transition without requiring restart  The Menu Switch plugin allows users to easily toggle between the traditional menu bar interface and the modern ribbon interface based on their preference or workflow requirements. The current interface state is automatically saved and restored on application startup.  This plugin is particularly useful for users who want to quickly switch between interfaces for different tasks or for those who are evaluating which interface works best for their workflow. |
 | [Models](model_manager.md) *(hidden)* | Model Manager for ChiSurf |
+| [Plots](plot_settings.md) *(hidden)* | Configure plot appearance, colors, and rendering backend |
 | [Plugins](plugin_manager.md) *(hidden)* | Plugin Manager for ChiSurf |
 | [Settings](setup.md) | Unified Settings for ChiSurf |
 | [Styles](style_manager.md) *(hidden)* | Style Manager Plugin for ChiSurf |
@@ -120,7 +122,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | --- | --- |
 | [Burst Analysis](burst_analysis.md) | Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation. |
 | [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration. |
-| [FCS](fcs_toolbox.md) | Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail. |
+| [FCS](fcs_toolbox.md) | Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``. |
 | [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination. |
 | [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
 | [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
@@ -138,9 +140,9 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | --- | --- |
 | [2D-FLCS](flc-2d.md) *(hidden)* | Two-dimensional fluorescence lifetime correlation spectroscopy (2D-FLCS): build 2D fluorescence-decay correlation maps from TTTR photon streams and resolve lifetime species and exchange dynamics. |
 | [Burst-wise FCS](burst_fcs_correlator.md) *(hidden)* | Compute fluorescence correlation functions on a per-burst basis from Burst-ID (.bst) / BUR files. |
-| [Correlator](fcs_correlator.md) *(hidden)* | This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include: |
+| [Correlator](fcs_correlator.md) *(hidden)* | FCS Correlator  This plugin provides a two-pane navigation-based correlator tool for computing and merging fluorescence correlation spectroscopy (FCS) data. Features include:  - Detector and PIE window definition - TTTR file selection with drag-and-drop - Optional photon/burst filtering - Multi-tau correlation with configurable parameters (bins, cascades, fine grid) - FCS curve merging and export  The tool replaces the legacy QWizard with a modern navigation panel layout (left step list, right view/display), built using the AutoForm declarative UI framework for the correlator settings panel.  The correlator workflow is no longer a standalone menu entry: it is hosted as the first section of the unified **FCS** tool (``fcs_toolbox``), which merges the correlator workflow with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, calculators). This module remains the reusable building block (``FcsCorrelatorTool`` + the correlator/filter/merger AutoForm panels) and is therefore hidden from the plugin menu. |
 | [Diffusion/Volume Calculator](fcs_calculator.md) *(hidden)* | FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration). |
-| [FCS Converter](fcs_convert.md) | FCS conversion plugin. |
+| [FCS Converter](fcs_convert.md) *(hidden)* | FCS conversion plugin.  Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI. |
 | [FCS Filter Calculator](fcs_filter_calculator.md) *(hidden)* | Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns. |
 | [FCS Saturation](fcs_saturation.md) | FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5). |
 | [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
@@ -173,7 +175,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | [Burst MLE](burst_mle_analysis.md) *(hidden)* | Maximum likelihood lifetime analysis for single-molecule burst data. |
 | [Burst Selection](burst_selection.md) *(hidden)* | Burst selection and FRET analysis for single-molecule fluorescence data. |
 | [H2MM](burst_h2mm.md) *(hidden)* | Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET burst data, with BIC/ICL state selection and Viterbi dwell/transition analysis. |
-| [Intensity trace](intensity_trace.md) | Intensity Trace Analysis for Single-Molecule Data |
+| [Intensity trace](intensity_trace.md) | Intensity Trace Analysis for Single-Molecule Data  This plugin provides tools for analyzing fluorescence intensity time traces from  single-molecule experiments. It enables researchers to extract dynamic information  from photon counting data, particularly for studying conformational changes,  molecular interactions, and reaction kinetics at the single-molecule level.  Features: - Loading and displaying Time-Tagged Time-Resolved (TTTR) data as intensity traces - Histogram analysis of photon counts with customizable binning - Hidden Markov Model (HMM) analysis for state detection and classification - Bayesian Information Criterion (BIC) calculation for optimal state number determination - Dwell time analysis for extracting kinetic information and rate constants - FRET efficiency calculation and state-specific distribution analysis - Transition probability matrix visualization and analysis - Exponential fitting of dwell time distributions - Interactive visualization with adjustable parameters - Support for multi-channel data analysis (donor/acceptor channels)  The plugin implements a comprehensive workflow for single-molecule state analysis: 1. Load TTTR data and convert to binned intensity traces 2. Visualize traces and photon count distributions 3. Apply HMM to identify discrete states in noisy data 4. Analyze state transitions and dwell times to extract kinetic information 5. For FRET data, calculate efficiency distributions for each state  Ideal for analyzing single-molecule FRET, protein folding/unfolding, enzyme dynamics, ligand binding, blinking behavior, or any other dynamic processes that can be  observed in fluorescence intensity traces. The HMM approach is particularly powerful for detecting states in noisy data with overlapping distributions. |
 | [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
 | [Photon-by-photon kinetics](burst_gs.md) | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
 | [Trace Browser](trace_browser.md) | Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces. |
@@ -184,7 +186,7 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [HydroPro](hydropro.md) *(hidden)* | Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures. |
-| [Protein Monte Carlo](proteinmc.md) | Protein Monte Carlo CLI plugin. |
+| [Protein Monte Carlo](proteinmc.md) *(hidden)* | Protein Monte Carlo CLI plugin.  Expose the ProteinMC cmd tool via the unified ChiSurf CLI. |
 | [QuEst](quenching_estimator.md) *(hidden)* | Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers. The science lives in the `quest` package; this plugin is the ChiSurf-side shell. |
 
 ## Structure → FRET
@@ -221,8 +223,8 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Correlate](tttr_correlate.md) | This plugin provides a graphical interface for calculating correlation functions from Time-Tagged Time-Resolved (TTTR) data. |
-| [Generate Decay](tttr_histogram.md) | TTTR Histogram (Generate Decay) |
+| [Correlate](tttr_correlate.md) | TTTR Correlate  This plugin provides a graphical interface for calculating correlation functions from Time-Tagged Time-Resolved (TTTR) data.  Features: - Support for various correlation types (auto, cross) - Configurable correlation parameters - Interactive visualization of correlation curves - Export of correlation results  The correlator is essential for analyzing dynamic processes in fluorescence correlation spectroscopy (FCS) and related techniques. |
+| [Generate Decay](tttr_histogram.md) | TTTR Histogram (Generate Decay)  This plugin provides a graphical interface for generating fluorescence decay histograms from Time-Tagged Time-Resolved (TTTR) data.  Features: - Configurable histogram parameters (binning, time range) - Channel selection for multi-channel TTTR data - Interactive visualization of decay curves - Export of histogram data for further analysis  The histogram generator is useful for time-resolved fluorescence spectroscopy and lifetime analysis. |
 | [PTO Inspector](pto_inspector.md) *(hidden)* | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
 | [⇄ .pto](tttr_to_pto.md) *(hidden)* | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
 
@@ -230,8 +232,8 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [Split/Convert](tttr_splitter.md) *(hidden)* | TTTR Split / Convert plugin. |
-| [TTTR Header editor](tttr_header_edit.md) *(hidden)* | TTTR Header Editor plugin. |
+| [Split/Convert](tttr_splitter.md) *(hidden)* | TTTR Split / Convert plugin.  This plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved) files, particularly those in the PicoQuant PTU format, into smaller segments. This is useful for:  1. Breaking down large datasets into manageable chunks 2. Extracting specific time segments from long measurements 3. Creating subsets of data for parallel processing 4. Reducing memory requirements for analysis  The plugin features: - Support for various TTTR file formats - Configurable splitting parameters (photons per file, time segments) - Options for micro-time binning to reduce file size - Ability to reset macro-times in the output files - Selection of output container formats (file format conversion)  This tool is particularly valuable for handling large datasets from long-duration single-molecule or imaging experiments, making them more manageable for subsequent analysis. |
+| [TTTR Header editor](tttr_header_edit.md) *(hidden)* | TTTR Header Editor plugin.  This plugin provides a tool for viewing and editing header tags of any time-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant PTU and HT3, Becker&Hickl SPC, and Photon-HDF5. ``tttrlib`` normalises every container into the same tag list, so the editor is format-agnostic on read. It allows users to: 1. Open and inspect any supported TTTR file (auto-detected container) 2. View all header tags and their values in a tabular format 3. Edit existing tag values 4. Add new custom tags to the header 5. Remove unwanted tags 6. Save the edited header to a new PTU file  The plugin features an intuitive table-based interface that displays tag names, types, values, and indices. Users can modify any field and see the changes in real-time. A JSON view is also available to see the complete header structure.  This tool is particularly useful for: - Correcting metadata in experimental TTTR files - Adding missing information to headers - Preparing files for specialized analysis - Troubleshooting issues with file metadata - Educational purposes to understand TTTR file structure  The photon events of the source file are copied verbatim into the saved file. Output is always a PTU container, because it is the only ``tttrlib`` container that persists arbitrary edited header tags without loss. |
 
 ## Tools
 
@@ -243,12 +245,18 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | [Open Project](project_browser.md) | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
 | [TTTR Tools](tttr_toolbox.md) | Unified TTTR toolbox: ALEX Creator, Micro-time Shifter, TTTR Header Editor and Split/Convert. |
 
+## Tools → Burst
+
+| Plugin | Summary |
+| --- | --- |
+| [MFD Prepare](mfd_prepare.md) *(hidden)* | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
+
 ## Tools → Converter
 
 | Plugin | Summary |
 | --- | --- |
 | [ALEX Creator](ptu_alex_creator.md) *(hidden)* | Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files. |
-| [BID→Analysis](bid_to_analysis.md) *(hidden)* | BID → Analysis Converter |
+| [BID→Analysis](bid_to_analysis.md) *(hidden)* | BID → Analysis Converter  This plugin reads burst ID (BID) files containing start/stop photon indices and generates a burstwise analysis folder next to the corresponding TTTR data.  Workflow per BID file: - Infer the TTTR file from the BID file name (same stem, common TTTR extensions) - Load TTTR via tttrlib - Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe - Write a BUR file to analysis/bi4_bur/<stem>.bur - Update/create analysis/Info/*.mti with total measurement time  The plugin exposes a simple GUI file dialog when launched from the Plugins menu. It can also be called programmatically via convert_bid_file(pathlike). |
 | [TTTR→Time-Window BIDs](tttr_time_windows.md) *(hidden)* | Split TTTR files into fixed-duration time-window BID (.bst) files. |
 
 ## Tools → Miscellaneous
@@ -277,6 +285,14 @@ Of the **127 plugins**, **56** build their interface from declarative AutoForm s
 | [Count Rate Analysis](tttr_count_rate_analysis.md) *(hidden)* | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [LUT Tools](tttr_lut_tools.md) *(hidden)* | Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace. |
 | [Microtime Shifter](microtime_shifter.md) *(hidden)* | Apply global and per-channel micro-time shifts to TTTR files. |
+
+## Uncategorized
+
+| Plugin | Summary |
+| --- | --- |
+| [Imaging Common](imaging_common.md) *(hidden)* | Shared base classes for the per-pixel imaging tools: the common tool shell, the image/frame plumbing and the MMFDB bridge they all reuse. |
+| [Mle Common](mle_common.md) *(hidden)* | Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the estimator contract, the fitting base class and its tool shell. |
+| [Ninja Adventure](ninja_adventure.md) *(hidden)* | The CC0 Ninja Adventure reference map, playable on the chigame engine: explore the village, break the crates, cross the teleporter, fight the swamp samurai. |
 
 ## {{ cookiecutter.plugin_category }}
 

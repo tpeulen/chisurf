@@ -32,7 +32,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| Image stack | `filename` | path |  |  | TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise. |
+| Image stack | `filename` | file |  |  | TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise. |
 | Channel | `channel` | int |  | 0 … 63 | Which channel to track in. |
 | Max frames | `max_frames` | int |  | 0 … 1000000 | Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition. |
 

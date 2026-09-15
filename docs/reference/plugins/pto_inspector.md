@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: PTO Inspector
-description: 'Inspect a.pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it.'
+description: 'Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it.'
 resource: chisurf/plugins/core/pto_inspector/
 tags: [reference, plugins, pto-inspector, tttr]
 anchor: plugin-pto_inspector
