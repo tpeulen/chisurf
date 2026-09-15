@@ -7,7 +7,8 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
-from .archive import PROJECT_JSON, SESSION_FILENAME, PROJECT_ARCHIVE_SUFFIX, ProjectArchive
+from .archive import ProjectArchive
+from .pto import PROJECT_SUFFIX, ProjectPtoError
 
 PathLike = Union[str, pathlib.Path]
 
@@ -16,9 +17,9 @@ PathLike = Union[str, pathlib.Path]
 class Project:
     """Minimal, GUI-independent representation of a ChiSurf project.
 
-    This class provides JSON-based save/load to a single ``.csp`` project
-    archive. The archive stores ``project.json`` plus optional supporting files
-    such as history, chinet session data, and embedded external data files.
+    This class persists one ``.cs.pto`` project through ptolib. The portable
+    JSON project state and optional BFF graph session are distinct typed PTO
+    objects so a generic reader can inspect the file without ZIP conventions.
     """
 
     name: str = "untitled"
@@ -113,95 +114,106 @@ class Project:
         uids = [fit.get("uid") for fit in self.fits if fit.get("uid")]
         return sorted(uids)
 
-    def save_to_archive(self, archive: ProjectArchive) -> None:
-        """Write ``project.json`` to an existing project archive.
+    def save_to_archive(self, archive) -> None:
+        """Add the portable project record to an assembled PTO project.
 
-        Parameters
-        ----------
-        archive : ProjectArchive
-            Archive to write into.
+        Macro/server callers may add history, BFF state and embedded data to
+        the same container before it is published.  The method keeps that
+        assembly path aligned with :meth:`save` without reintroducing ZIP.
         """
-        archive.write_text(PROJECT_JSON, json.dumps(self.to_dict(), indent=2, sort_keys=True))
+        archive.write_text("project.json", json.dumps(self.to_dict(), indent=2, sort_keys=True))
 
     def save(self, target_path: PathLike) -> pathlib.Path:
-        """Save this project as a ``.csp`` archive.
+        """Save this project as a validated ``.cs.pto`` container.
 
         Parameters
         ----------
         target_path : str or pathlib.Path
             Destination archive path. If a directory is provided, the project is
-            saved as ``project.csp`` inside that directory.
+            saved as ``project.cs.pto`` inside that directory.
 
         Returns
         -------
         pathlib.Path
-            Path to the saved ``.csp`` archive.
+        Path to the saved ``.cs.pto`` project.
         """
-        archive_path = _archive_output_path(target_path)
-        archive = ProjectArchive()
-        self.save_to_archive(archive)
-
+        project_path = _project_output_path(target_path)
+        session_bytes = None
         try:
-            import chinet
+            import IMP.bff as bff
 
             with tempfile.TemporaryDirectory() as tmpdir:
-                session_path = pathlib.Path(tmpdir) / SESSION_FILENAME
-                chinet.session.save(str(session_path))
-                archive.write_bytes(SESSION_FILENAME, session_path.read_bytes())
-        except (ImportError, AttributeError):
+                session_path = pathlib.Path(tmpdir) / "session.jsonl"
+                bff.get_session().save(str(session_path))
+                session_bytes = session_path.read_bytes()
+        except ImportError:
+            # A headless portable project remains useful without the optional
+            # native graph backend. A project that needs it will say so via its
+            # own records when opened.
             pass
-
-        return archive.save(archive_path)
-
+        archive = ProjectArchive()
+        self.save_to_archive(archive)
+        if session_bytes is not None:
+            archive.write_bytes("session.jsonl", session_bytes)
+        return archive.save(project_path)
     @classmethod
     def load(cls, target_path: PathLike) -> "Project":
-        """Load a project from a ``.csp`` archive.
+        """Load a project from a validated ``.cs.pto`` container.
 
         Parameters
         ----------
         target_path : str or pathlib.Path
-            Archive path, or a directory containing ``project.csp``.
+            Project path, or a directory containing ``project.cs.pto``.
 
         Returns
         -------
         Project
             Loaded project instance.
         """
-        archive_path = _archive_input_path(target_path)
-        archive = ProjectArchive.open(archive_path)
-        data = json.loads(archive.read_text(PROJECT_JSON))
+        project_path = _project_input_path(target_path)
+        archive = ProjectArchive.open(project_path)
+        data = json.loads(archive.read_text("project.json"))
+        session_bytes = archive.read_bytes("session.jsonl") if archive.has_entry("session.jsonl") else None
+        archive.close()
         project = cls.from_dict(data)
-        project._archive = archive
-        project._archive_path = archive_path
+        project._archive_path = project_path
 
-        try:
-            import chinet
+        if session_bytes is not None:
+            try:
+                import IMP.bff as bff
 
-            with tempfile.TemporaryDirectory() as tmpdir:
-                session_path = archive.extract_entry_to(SESSION_FILENAME, tmpdir)
-                _restore_chinet_session(chinet, session_path)
-        except (ImportError, AttributeError, KeyError):
-            pass
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    session_path = pathlib.Path(tmpdir) / "session.jsonl"
+                    session_path.write_bytes(session_bytes)
+                    _restore_bff_session(bff, session_path)
+            except ImportError as exc:
+                raise ProjectPtoError(
+                    "This project contains a BFF graph session but IMP.bff is unavailable"
+                ) from exc
 
         return project
 
 
-def _restore_chinet_session(chinet, session_path) -> bool:
-    """Load a saved node graph into the process-level chinet session.
+def _restore_bff_session(bff, session_path) -> bool:
+    """Load a saved node graph into the process-level bff session.
 
-    ``Session.load`` is a *classmethod*: it builds and returns a new session.
-    Calling it as ``chinet.session.load(path)`` therefore restored the graph into
-    an object that was immediately discarded, so opening a project silently
-    brought back no nodes at all.
+    ``Session.load`` is a *staticmethod* here too: it builds and returns a
+    new session. Calling it and letting the result go would restore the
+    graph into an object that was immediately discarded, so opening a
+    project silently brought back no nodes at all.
 
-    The restored nodes are moved into the existing ``chinet.session`` instead of
-    rebinding the module attribute, so references held elsewhere keep pointing at
-    the live session.
+    The restored nodes -- and the free ports, which is what chisurf's fit
+    parameters are -- are moved into the existing ``bff.get_session()``
+    instead of rebinding anything, so references held elsewhere keep
+    pointing at the live session. The archive entry is unchanged: the same
+    ``session.jsonl``, chinet's format, which bff's Session reads and
+    writes field for field, so archives written by chinet-era chisurf open
+    as they are.
 
     Parameters
     ----------
-    chinet : module
-        The imported ``chinet`` module.
+    bff : module
+        The imported ``IMP.bff`` module.
     session_path : str or pathlib.Path
         The extracted ``session.jsonl``.
 
@@ -210,13 +222,15 @@ def _restore_chinet_session(chinet, session_path) -> bool:
     bool
         Whether a session was restored.
     """
-    restored = chinet.Session.load(str(session_path))
+    restored = bff.GraphSession.load(str(session_path))
     if restored is None:
         return False
-    session = chinet.session
+    session = bff.get_session()
     session.clear()
     for name, node in restored.get_nodes().items():
         session.add_node(name, node)
+    for port in restored.get_ports():
+        session.add_port(port)
     return True
 
 
@@ -226,27 +240,25 @@ def save_project(project: Project, target_path: PathLike) -> pathlib.Path:
 
 
 def load_project(target_path: PathLike) -> Project:
-    """Convenience wrapper to load a :class:`Project` from a ``.csp`` archive."""
+    """Convenience wrapper to load a :class:`Project` from a ``.cs.pto`` project."""
     return Project.load(target_path)
 
 
-def _archive_output_path(target_path: PathLike) -> pathlib.Path:
+def _project_output_path(target_path: PathLike) -> pathlib.Path:
     path = pathlib.Path(target_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_SUFFIX):
         return path
     if path.exists() and path.is_dir():
-        return path / f"project{PROJECT_ARCHIVE_SUFFIX}"
+        return path / f"project{PROJECT_SUFFIX}"
     if path.suffix:
-        return path.with_suffix(PROJECT_ARCHIVE_SUFFIX)
-    return pathlib.Path(f"{path}{PROJECT_ARCHIVE_SUFFIX}")
+        return pathlib.Path(f"{path}{PROJECT_SUFFIX}")
+    return pathlib.Path(f"{path}{PROJECT_SUFFIX}")
 
 
-def _archive_input_path(target_path: PathLike) -> pathlib.Path:
+def _project_input_path(target_path: PathLike) -> pathlib.Path:
     path = pathlib.Path(target_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_SUFFIX):
         return path
     if path.is_dir():
-        return path / f"project{PROJECT_ARCHIVE_SUFFIX}"
-    if path.suffix:
-        return path
-    return pathlib.Path(f"{path}{PROJECT_ARCHIVE_SUFFIX}")
+        return path / f"project{PROJECT_SUFFIX}"
+    return pathlib.Path(f"{path}{PROJECT_SUFFIX}")

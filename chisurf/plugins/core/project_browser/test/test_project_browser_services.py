@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -98,7 +99,7 @@ def test_save_list_restore_and_export_sample_project(project_db, sample_project_
     assert restored["ok"] is True
     restored_payload = restored["project_payload"]
     assert "ds_sample" in restored_payload["datasets"]
-    assert restored_payload["datasets"]["ds_sample"]["curves"][0]["name"] == "Sample Curve"
+    assert restored_payload["datasets"]["ds_sample"]["name"] == "Sample Curve"
 
     exported = export_csp_handler(auth=auth, version_id=saved["version_id"])
     assert exported["ok"] is True
@@ -315,6 +316,67 @@ def test_import_collision_preview_requires_and_applies_remap(
     assert listed["ok"] is True
     projects = [project for project in listed["projects"] if project["project_id"] == saved["project_id"]]
     assert projects[0]["version_count"] == 2
+
+
+def test_import_and_restore_a_regular_chisurf_pto_project(project_db, sample_project_payload, tmp_path):
+    from chisurf.core.project import ProjectArchive
+    from chisurf.core.project.archive import PROJECT_JSON
+    from chisurf.plugins.core.project_browser.backend.services import (
+        import_csp_handler,
+        import_preview_handler,
+        restore_project_handler,
+    )
+
+    archive = ProjectArchive()
+    archive.write_text(PROJECT_JSON, json.dumps(sample_project_payload, sort_keys=True))
+    project_path = archive.save(tmp_path / "standalone.cs.pto")
+
+    preview = import_preview_handler(auth=project_db["auth"], file_path=str(project_path))
+    assert preview["ok"] is True
+    assert preview["archive_kind"] == "chisurf_project"
+    assert preview["has_collisions"] is False
+
+    imported = import_csp_handler(auth=project_db["auth"], file_path=str(project_path))
+    assert imported["ok"] is True
+    assert imported["archive_kind"] == "chisurf_project"
+
+    restored = restore_project_handler(auth=project_db["auth"], version_id=imported["version_id"])
+    assert restored["ok"] is True
+    restored_payload = restored["project_payload"]
+    assert restored_payload["meta"]["name"] == sample_project_payload["meta"]["name"]
+    assert set(restored_payload["datasets"]) == set(sample_project_payload["datasets"])
+    assert restored_payload["fits"] == sample_project_payload["fits"]
+
+
+def test_restore_preserves_global_fit_and_window_state(project_db, sample_project_payload):
+    from chisurf.plugins.core.project_browser.backend.services import (
+        restore_project_handler,
+        save_project_handler,
+    )
+
+    payload = copy.deepcopy(sample_project_payload)
+    payload["ui"] = {
+        "current_fit_index": 2,
+        "fit_windows": {"global-fit": {"geometry": "serialized-window-state"}},
+    }
+    payload["fits"] = [{
+        "id": "global-fit",
+        "name": "global fit",
+        "local_fits": [{"id": "local-a"}, {"id": "local-b"}],
+        "global_parameters": [{"uid": "tau-global", "name": "tau", "value": 4.1}],
+        "links": [{"source": "local-a:tau", "target": "tau-global"}],
+    }]
+
+    saved = save_project_handler(
+        auth=project_db["auth"],
+        project_name="Global Project",
+        project_payload=payload,
+    )
+    assert saved["ok"] is True
+
+    restored = restore_project_handler(auth=project_db["auth"], version_id=saved["version_id"])
+    assert restored["ok"] is True
+    assert restored["project_payload"] == payload
 
 
 def test_delete_version_requires_manage_permission(project_db, sample_project_payload):

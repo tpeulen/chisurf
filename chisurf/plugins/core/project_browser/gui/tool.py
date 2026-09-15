@@ -195,13 +195,13 @@ class ProjectBrowserTool(ChisurfDockTool):
             self._on_save,
         )
         self._export_btn = self._add_toolbar_button(
-            f"{Glyphs.EXPORT} Export .csp",
-            "Export the selected version to a .csp archive file",
+            f"{Glyphs.EXPORT} Export .cs.pto",
+            "Export the selected version to a .cs.pto project file",
             self._on_export,
         )
         self._import_btn = self._add_toolbar_button(
             f"{Glyphs.IMPORT} Import Project",
-            "Import a .csp archive into the database",
+            "Import a .cs.pto project into the database",
             self._on_import,
         )
         self._delete_btn = self._add_toolbar_button(
@@ -462,9 +462,9 @@ class ProjectBrowserTool(ChisurfDockTool):
             dialogs.information(self, "Select Version", "Please select a project version to export.")
             return
         version_id = ver.get("version_id", "")
-        default_name = f"{ver.get('project_name', 'project')}_v{ver.get('version_number', 1)}.csp"
+        default_name = f"{ver.get('project_name', 'project')}_v{ver.get('version_number', 1)}.cs.pto"
         target_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export Project as .csp", default_name, "Chisurf Project (*.csp)",
+            self, "Export Project as .cs.pto", default_name, "Chisurf Project (*.cs.pto)",
         )
         if not target_path:
             return
@@ -483,7 +483,7 @@ class ProjectBrowserTool(ChisurfDockTool):
 
     def _on_import(self) -> None:
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Import Project", "", "Chisurf Project (*.csp)",
+            self, "Import Project", "", "Chisurf Project (*.cs.pto)",
         )
         if not file_path:
             return

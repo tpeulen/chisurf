@@ -21,27 +21,35 @@ if typing.TYPE_CHECKING:
 
 class ProjectMixin:
     def _load_recent_projects(self: Main) -> list[str]:
+        from chisurf.gui import project_helpers
         return project_helpers.load_recent_projects()
 
     def _store_recent_projects(self: Main, projects: list[str]) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.store_recent_projects(projects)
 
     def _set_recent_projects(self: Main, projects: list[str]) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.set_recent_projects(self, projects)
 
     def add_recent_project(self: Main, project_path) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.add_recent_project(self, project_path)
 
     def _clear_recent_projects(self: Main) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.clear_recent_projects(self)
 
     def _open_recent_project(self: Main, project_path: str) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.open_recent_project(self, project_path)
 
     def _refresh_recent_projects_menu(self: Main) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.refresh_recent_projects_menu(self)
 
     def _init_recent_projects_menu(self: Main) -> None:
+        from chisurf.gui import project_helpers
         project_helpers.init_recent_projects_menu(self)
 
     def onOpenProject(self: Main, event: QtCore.QEvent = None):
@@ -50,7 +58,7 @@ class ProjectMixin:
 
         working_path = pathlib.Path(cs.working_path) if getattr(cs, "working_path", None) else pathlib.Path.home()
         path_str, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Open Project", working_path.as_posix(), "ChiSurf Project (*.csp)"
+            self, "Open Project", working_path.as_posix(), "ChiSurf Project (*.cs.pto)"
         )
         if not path_str:
             return
@@ -128,12 +136,12 @@ class ProjectMixin:
             dialogs.warning(self, "Save Failed", str(exc))
 
     def onExportProject(self: Main, event: QtCore.QEvent = None):
-        """Export the current project as a .csp archive file."""
+        """Export the current project as a .cs.pto file."""
         version_id = getattr(self, "_current_project_version_id", None)
         if version_id:
             result = dialogs.question(
                 self, "Export Project",
-                "Export the current project version as .csp?\n\n"
+                "Export the current project version as .cs.pto?\n\n"
                 "This creates a portable archive file that can be imported on another system.",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 QtWidgets.QMessageBox.Yes,
@@ -141,34 +149,37 @@ class ProjectMixin:
             if result != QtWidgets.QMessageBox.Yes:
                 return
             working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
-            default_name = f"{getattr(self, '_current_project_name', 'project')}_v{getattr(self, '_current_project_version', 1)}.csp"
+            default_name = f"{getattr(self, '_current_project_name', 'project')}_v{getattr(self, '_current_project_version', 1)}.cs.pto"
             path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, "Export Project as .csp",
+                self, "Export Project as .cs.pto",
                 (working / default_name).as_posix(),
-                "ChiSurf Project (*.csp)",
+                "ChiSurf Project (*.cs.pto)",
             )
             if not path_str:
                 return
+            project_path = pathlib.Path(path_str)
+            if not str(project_path).lower().endswith(".cs.pto"):
+                project_path = pathlib.Path(f"{project_path}.cs.pto")
             try:
                 from chisurf.plugins.core.project_browser.gui.client import ProjectBrowserClient
                 client = ProjectBrowserClient(inprocess=True)
-                client.export_csp(version_id=version_id, target_path=path_str)
-                self.add_recent_project(pathlib.Path(path_str))
+                client.export_csp(version_id=version_id, target_path=str(project_path))
+                self.add_recent_project(project_path)
             except Exception as exc:
                 cs.logging.exception("Export failed")
                 dialogs.warning(self, "Export Failed", str(exc))
             return
 
         working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
-        default_path = working / "chisurf_project.csp"
+        default_path = working / "chisurf_project.cs.pto"
         path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export Project", default_path.as_posix(), "ChiSurf Project (*.csp)",
+            self, "Export Project", default_path.as_posix(), "ChiSurf Project (*.cs.pto)",
         )
         if not path_str:
             return
         project_path = pathlib.Path(path_str)
-        if project_path.suffix.lower() != ".csp":
-            project_path = project_path.with_suffix(".csp")
+        if not str(project_path).lower().endswith(".cs.pto"):
+            project_path = pathlib.Path(f"{project_path}.cs.pto")
         if project_path.exists():
             result = dialogs.question(
                 self, "Overwrite?",
@@ -208,7 +219,7 @@ class ProjectMixin:
     def onImportProject(self: Main, event: QtCore.QEvent = None):
         """Import a project archive file into the MMFDB database."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Import Project", "", "ChiSurf Project (*.csp)",
+            self, "Import Project", "", "ChiSurf Project (*.cs.pto)",
         )
         if not file_path:
             return

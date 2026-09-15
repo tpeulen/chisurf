@@ -18,7 +18,7 @@ def add_fit(dataset_indices: typing.List[int], model_name: typing.Optional[str] 
 
 @action("fit.load")
 def load_fit(filename: str):
-    """Load a ChiSurf project from a ``.csp`` file."""
+    """Load a ChiSurf project from a ``.cs.pto`` file."""
     from chisurf.macros import core_fit
     return core_fit.load_fit_project(filename)
 

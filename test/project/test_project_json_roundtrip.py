@@ -24,12 +24,13 @@ def test_project_json_roundtrip(tmp_path):
 
     # Ensure the archive was created where we expect it
     assert archive_path.is_file()
-    assert archive_path.suffix == ".csp"
+    assert archive_path.name.endswith(".cs.pto")
 
-    # Sanity-check the raw JSON structure
-    import zipfile
-    with zipfile.ZipFile(archive_path, "r") as zf:
-        raw = json.loads(zf.read("project.json"))
+    # Sanity-check the raw project object through the ptolib-backed reader.
+    from chisurf.core.project import ProjectArchive
+    archive = ProjectArchive.open(archive_path)
+    raw = json.loads(archive.read_text("project.json"))
+    archive.close()
 
     assert raw["meta"]["name"] == "unit_test_project"
     assert raw["project_format_version"] == 4

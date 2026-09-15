@@ -71,6 +71,46 @@ class TestHistoryPersistence(unittest.TestCase):
         self.assertEqual(len(report["invalid_events"]), 1)
         self.assertTrue(report["corruption_detected"])
 
+    def test_load_validates_the_file_not_the_current_history(self):
+        """A corrupt saved log cannot repair unrelated live events."""
+        import tempfile
+
+        live = OperationHistory()
+        live.record("live_action", "live event", {"value": 1})
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as handle:
+            handle.write('{"event_id":"valid","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"ok","payload":{}}\n')
+            handle.write('{"broken":true}\n')
+            filename = handle.name
+        try:
+            result = live.load_jsonl(filename, replace=True)
+        finally:
+            pathlib.Path(filename).unlink(missing_ok=True)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["loaded_events"], 1)
+        self.assertTrue(any("Automatically repaired" in message for message in result["errors"]))
+        self.assertEqual([event["event_id"] for event in live.list_events()], ["valid"])
+
+    def test_append_load_keeps_valid_live_events_and_drops_invalid_file_rows(self):
+        import tempfile
+
+        history = OperationHistory()
+        existing = history.record("existing", "existing event", {})
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as handle:
+            handle.write('{"event_id":"loaded","timestamp":"2026-09-12T00:00:00Z","action_type":"fit.run","summary":"loaded","payload":{}}\n')
+            handle.write('{"invalid":true}\n')
+            filename = handle.name
+        try:
+            result = history.load_jsonl(filename, replace=False)
+        finally:
+            pathlib.Path(filename).unlink(missing_ok=True)
+
+        self.assertEqual(result["loaded_events"], 1)
+        self.assertEqual(
+            [event["event_id"] for event in history.list_events()],
+            [existing["event_id"], "loaded"],
+        )
+
     def test_history_repair(self):
         """Test history repair functionality."""
         # Add some invalid events
@@ -175,8 +215,9 @@ class TestHistoryPersistence(unittest.TestCase):
             # Should succeed but report errors
             self.assertTrue(load_result["success"])
             self.assertGreater(len(load_result["errors"]), 0)
-            # Should have loaded events (including invalid ones) and then repaired
-            self.assertEqual(load_result["loaded_events"], 4)  # 3 valid + 1 malformed event loaded before repair
+            # Only valid events enter the live history; malformed rows remain
+            # in the load report rather than becoming replayable state.
+            self.assertEqual(load_result["loaded_events"], 3)
 
     def test_backup_and_restore(self):
         """Test backup and restore functionality."""

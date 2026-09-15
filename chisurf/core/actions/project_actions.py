@@ -118,14 +118,17 @@ def save_project(target_path: str, project_name: str):
 
 @action("project.load", schema={"project_path": str})
 def load_project(project_path: str):
-    """Load a project from a ``.csp`` archive."""
-    from qtpy import QtCore
-
+    """Load a project from a ``.cs.pto`` file."""
+    from chisurf.core.runtime import presentation
     from chisurf.macros.core_fit import load_project_data, restore_gui_from_fits
+
     fit_uids = load_project_data(project_path)
-    # Schedule GUI rebuild on the Qt main thread so widget creation
-    # happens safely even when called from a non-GUI context.
-    QtCore.QTimer.singleShot(0, lambda: restore_gui_from_fits(fit_uids))
+    # Deferred, not immediate: the view rebuilds itself from the fits this
+    # action has just created, and doing that inside the action would hand it
+    # a half-loaded project. The Qt deferrer is a zero-delay single-shot
+    # timer, which also puts the widget creation on the GUI thread; headless
+    # there is no deferrer and the rebuild is a no-op with no fits to show.
+    presentation.defer(restore_gui_from_fits, fit_uids)
 
 
 @action(

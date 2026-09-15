@@ -125,12 +125,12 @@ def open_recent_project(window, project_path: str) -> None:
 
     try:
         if path.is_dir():
-            csp_path = path / "project.csp"
-            if not csp_path.is_file():
+            project_file = path / "project.cs.pto"
+            if not project_file.is_file():
                 dialogs.warning(
                     window,
                     "Invalid Project",
-                    "The selected folder does not contain a project archive (project.csp).",
+                    "The selected folder does not contain a project file (project.cs.pto).",
                 )
                 try:
                     current = list(getattr(window, "_recent_projects", []) or [])
@@ -141,12 +141,12 @@ def open_recent_project(window, project_path: str) -> None:
                 except Exception:
                     pass
                 return
-            path = csp_path
-        elif path.suffix.lower() != ".csp":
+            path = project_file
+        elif not str(path).lower().endswith(".cs.pto"):
             dialogs.warning(
                 window,
                 "Invalid Project",
-                "Please select a ChiSurf project archive (*.csp).",
+                "Please select a ChiSurf project file (*.cs.pto).",
             )
             try:
                 current = list(getattr(window, "_recent_projects", []) or [])

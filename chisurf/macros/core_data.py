@@ -753,8 +753,13 @@ def reinitialize_application(
 
     def _close_subwindows() -> None:
         if main_window and hasattr(main_window, 'mdiarea'):
+            close_all = getattr(main_window, '_close_all_fit_subwindows', None)
+            if callable(close_all):
+                close_all()
+                return
             for sw in list(main_window.mdiarea.subWindowList()):
                 try:
+                    main_window.mdiarea.removeSubWindow(sw)
                     sw.close()
                 except Exception:
                     pass

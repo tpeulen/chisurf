@@ -3,7 +3,7 @@ import os
 import tempfile
 import unittest
 
-from chisurf.core.project import Project, save_project, load_project
+from chisurf.core.project import Project, ProjectArchive, save_project, load_project
 
 
 class TestProjectFormat(unittest.TestCase):
@@ -36,9 +36,9 @@ class TestProjectFormat(unittest.TestCase):
             archive_path = save_project(p, project_dir)
             assert archive_path.is_file()
 
-            import zipfile
-            with zipfile.ZipFile(archive_path, "r") as zf:
-                raw = json.loads(zf.read("project.json"))
+            archive = ProjectArchive.open(archive_path)
+            raw = json.loads(archive.read_text("project.json"))
+            archive.close()
 
             self.assertEqual(raw["project_format_version"], 4)
             self.assertIn("meta", raw)
@@ -67,9 +67,9 @@ class TestProjectFormat(unittest.TestCase):
 
             archive_path = save_project(p, project_dir)
 
-            import zipfile
-            with zipfile.ZipFile(archive_path, "r") as zf:
-                raw = json.loads(zf.read("project.json"))
+            archive = ProjectArchive.open(archive_path)
+            raw = json.loads(archive.read_text("project.json"))
+            archive.close()
 
             dataset_keys = list(raw["datasets"].keys())
             self.assertEqual(dataset_keys, sorted(dataset_keys))
@@ -87,9 +87,9 @@ class TestProjectFormat(unittest.TestCase):
 
             archive_path = save_project(p, project_dir)
 
-            import zipfile
-            with zipfile.ZipFile(archive_path, "r") as zf:
-                raw = json.loads(zf.read("project.json"))
+            archive = ProjectArchive.open(archive_path)
+            raw = json.loads(archive.read_text("project.json"))
+            archive.close()
 
             self.assertEqual(raw["project_format_version"], 4)
             self.assertIn("meta", raw)

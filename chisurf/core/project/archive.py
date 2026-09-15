@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import io
 import pathlib
-import shutil
 import tempfile
-import time
-import zipfile
 from pathlib import PurePosixPath
+from types import SimpleNamespace
 from typing import Any
+
+from .pto import PROJECT_SUFFIX, ProjectPtoError, read_entries, write_entries
 
 PathLike = str | pathlib.Path
 
@@ -15,7 +14,7 @@ PROJECT_JSON = "project.json"
 HISTORY_FILENAME = "history.jsonl"
 SESSION_FILENAME = "session.jsonl"
 DATA_DIR = "data"
-PROJECT_ARCHIVE_SUFFIX = ".csp"
+PROJECT_ARCHIVE_SUFFIX = PROJECT_SUFFIX
 
 # V5 MMFDB artifact layer
 MMFDB_DIR = "mmfdb"
@@ -26,35 +25,24 @@ EXPORT_JSON = "export.json"
 
 
 class ProjectArchive:
-    """In-memory ZIP archive for ChiSurf project files.
+    """In-memory view of a ptolib-backed ChiSurf project.
 
     Parameters
     ----------
-    compression : int, optional
-        Compression method used for new entries.
-
-    Notes
-    -----
-    The archive is backed by an in-memory ``BytesIO`` buffer. This lets the
-    application read ``project.json`` from a ``.csp`` file without extracting
-    the whole project to disk.
+    Entries are stored as individual PTO objects when saved.  The in-memory
+    mapping keeps existing project assembly call sites independent from the
+    container implementation while avoiding a ZIP-inside-PTO compatibility
+    layer.
     """
 
-    def __init__(self, compression: int = zipfile.ZIP_DEFLATED) -> None:
-        self._buffer = io.BytesIO()
-        self._compression = compression
-        self._zip = zipfile.ZipFile(
-            self._buffer,
-            "w",
-            compression=compression,
-            allowZip64=True,
-        )
+    def __init__(self, compression: int | None = None) -> None:
+        del compression
+        self._entries: dict[str, bytes] = {}
         self._path: pathlib.Path | None = None
-        self._written: set[str] = set()
 
     @classmethod
     def open_bytes(cls, data: bytes) -> ProjectArchive:
-        """Open an existing ``.csp`` archive from raw bytes.
+        """Open an existing ``.cs.pto`` project from raw bytes.
 
         Parameters
         ----------
@@ -72,20 +60,16 @@ class ProjectArchive:
             If the data is not a valid ZIP archive or does not contain
             ``project.json``.
         """
-        archive = cls.__new__(cls)
-        archive._buffer = io.BytesIO(data)
-        archive._compression = zipfile.ZIP_DEFLATED
-        archive._zip = zipfile.ZipFile(archive._buffer, "r")
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / f"project{PROJECT_ARCHIVE_SUFFIX}"
+            path.write_bytes(data)
+            archive = cls.open(path)
         archive._path = None
-        archive._written = set()
-        if not archive.has_entry(PROJECT_JSON):
-            archive.close()
-            raise ValueError(f"Project archive does not contain {PROJECT_JSON!r}")
         return archive
 
     @classmethod
     def open(cls, path: PathLike) -> ProjectArchive:
-        """Open an existing ``.csp`` archive into memory.
+        """Open an existing ``.cs.pto`` project into memory.
 
         Parameters
         ----------
@@ -100,22 +84,16 @@ class ProjectArchive:
         Raises
         ------
         ValueError
-            If the file is not a valid ZIP archive or does not contain
-            ``project.json``.
+            If the file is not a valid ChiSurf PTO project.
         """
         archive_path = pathlib.Path(path)
-        if not zipfile.is_zipfile(archive_path):
-            raise ValueError(f"Project archive is not a valid ZIP file: {archive_path}")
-
-        archive = cls.__new__(cls)
-        archive._buffer = io.BytesIO(archive_path.read_bytes())
-        archive._compression = zipfile.ZIP_DEFLATED
-        archive._zip = zipfile.ZipFile(archive._buffer, "r")
+        try:
+            entries = read_entries(archive_path)
+        except ProjectPtoError as exc:
+            raise ValueError(str(exc)) from exc
+        archive = cls()
+        archive._entries = entries
         archive._path = archive_path
-        archive._written = set()
-        if not archive.has_entry(PROJECT_JSON):
-            archive.close()
-            raise ValueError(f"Project archive does not contain {PROJECT_JSON!r}: {archive_path}")
         return archive
 
     @classmethod
@@ -130,7 +108,7 @@ class ProjectArchive:
         Returns
         -------
         bool
-            True if the path is a readable ``.csp`` archive with
+            True if the path is a readable ``.cs.pto`` project with
             ``project.json``.
         """
         try:
@@ -177,13 +155,10 @@ class ProjectArchive:
             If the entry already exists (and *overwrite* is False) or the name is unsafe.
         """
         archive_name = self._normalize_name(name)
-        if archive_name in self._written:
+        if archive_name in self._entries:
             if not overwrite:
                 raise ValueError(f"Archive entry already exists: {archive_name}")
-            self._zip.writestr(archive_name, bytes(data))
-        else:
-            self._zip.writestr(archive_name, bytes(data))
-            self._written.add(archive_name)
+        self._entries[archive_name] = bytes(data)
 
     def write_file(self, name: str, path: PathLike, overwrite: bool = False) -> None:
         """Write a file from disk into the archive.
@@ -208,19 +183,7 @@ class ProjectArchive:
         if not source_path.is_file():
             raise FileNotFoundError(str(source_path))
 
-        archive_name = self._normalize_name(name)
-        if archive_name in self._written:
-            if not overwrite:
-                raise ValueError(f"Archive entry already exists: {archive_name}")
-        else:
-            self._written.add(archive_name)
-
-        stat = source_path.stat()
-        info = zipfile.ZipInfo(archive_name, date_time=time.localtime(stat.st_mtime)[:6])
-        info.compress_type = self._compression
-        info.external_attr = 0o644 << 16
-        with self._zip.open(info, "w") as dst, source_path.open("rb") as src:
-            shutil.copyfileobj(src, dst, length=1024 * 1024)
+        self.write_bytes(name, source_path.read_bytes(), overwrite=overwrite)
 
     def save(self, path: PathLike) -> pathlib.Path:
         """Finalize the archive and write it to disk.
@@ -228,17 +191,14 @@ class ProjectArchive:
         Parameters
         ----------
         path : str or pathlib.Path
-            Destination ``.csp`` path.
+        Destination ``.cs.pto`` path.
 
         Returns
         -------
         pathlib.Path
             Destination path.
         """
-        archive_path = pathlib.Path(path)
-        archive_path.parent.mkdir(parents=True, exist_ok=True)
-        self._zip.close()
-        archive_path.write_bytes(self._buffer.getvalue())
+        archive_path = write_entries(path, self._entries)
         self._path = archive_path
         return archive_path
 
@@ -248,10 +208,12 @@ class ProjectArchive:
         Returns
         -------
         bytes
-            Complete ``.csp`` archive bytes.
+        Complete ``.cs.pto`` project bytes.
         """
-        self._zip.close()
-        return self._buffer.getvalue()
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / f"project{PROJECT_ARCHIVE_SUFFIX}"
+            self.save(path)
+            return path.read_bytes()
 
     def read_text(self, name: str) -> str:
         """Read a UTF-8 text entry from the archive.
@@ -281,7 +243,7 @@ class ProjectArchive:
         bytes
             Entry bytes.
         """
-        return self._zip.read(self._normalize_name(name))
+        return self._entries[self._normalize_name(name)]
 
     def has_entry(self, name: str) -> bool:
         """Return whether an entry exists in the archive.
@@ -296,13 +258,9 @@ class ProjectArchive:
         bool
             True if the entry exists.
         """
-        try:
-            self._zip.getinfo(self._normalize_name(name))
-        except KeyError:
-            return False
-        return True
+        return self._normalize_name(name) in self._entries
 
-    def getinfo(self, name: str) -> zipfile.ZipInfo:
+    def getinfo(self, name: str) -> Any:
         """Return metadata for an archive entry.
 
         Parameters
@@ -312,10 +270,13 @@ class ProjectArchive:
 
         Returns
         -------
-        zipfile.ZipInfo
-            Entry metadata.
+        object
+            Entry metadata with ``filename`` and ``file_size`` attributes.
         """
-        return self._zip.getinfo(self._normalize_name(name))
+        entry = self._normalize_name(name)
+        if entry not in self._entries:
+            raise KeyError(entry)
+        return SimpleNamespace(filename=entry, file_size=len(self._entries[entry]))
 
     def list_entries(self) -> list[str]:
         """Return archive entry names.
@@ -325,7 +286,7 @@ class ProjectArchive:
         list of str
             Entry names in archive order.
         """
-        return list(self._zip.namelist())
+        return list(self._entries)
 
     def extract_to(self, target_dir: PathLike) -> pathlib.Path:
         """Extract all entries to a directory.
@@ -380,8 +341,7 @@ class ProjectArchive:
         return destination
 
     def close(self) -> None:
-        """Close the underlying ZIP file."""
-        self._zip.close()
+        """Release in-memory entries retained by this archive view."""
 
     def write_mmfdb_layer(
         self,

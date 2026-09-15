@@ -76,8 +76,8 @@ def test_e2e_with_real_file_headless(tmp_path):
         saved_path = macro_save_project(str(tmp_path), "e2e_headless")
         assert saved_path is not None, "save_project returned None"
         assert saved_path.is_file()
-        assert saved_path.suffix == ".csp"
-        # The archive is at tmp_path/e2e_headless.csp (not inside a directory)
+        assert saved_path.name.endswith(".cs.pto")
+        # The project is at tmp_path/e2e_headless.cs.pto (not inside a directory)
         
         print("--- Phase 5: Reload ---")
         # Restart simulation
@@ -85,7 +85,7 @@ def test_e2e_with_real_file_headless(tmp_path):
         cs.fits = []
         cs.cs = None
         
-        # Reload from the .csp archive path returned by save
+        # Reload from the .cs.pto project path returned by save
         macro_load_project(str(saved_path))
         
         print("--- Phase 6: Verify ---")

@@ -39,14 +39,14 @@ def save_project(
     target_path: str,
     project_name: Optional[str] = None,
 ) -> ServiceResult:
-    """Save the current session as a ``.csp`` project archive.
+    """Save the current session as a ``.cs.pto`` project.
 
     Parameters
     ----------
     state : SessionState
         Server-side session state.
     target_path : str
-        Destination ``.csp`` path, or a directory for ``project.csp``.
+        Destination ``.cs.pto`` path, or a directory for ``project.cs.pto``.
     project_name : str, optional
         Project display name (defaults to destination stem).
 
@@ -99,7 +99,7 @@ def load_project(
     state: SessionState,
     project_path: str,
 ) -> ServiceResult:
-    """Load a ``.csp`` project from disk and return metadata.
+    """Load a ``.cs.pto`` project from disk and return metadata.
 
     Parameters
     ----------
@@ -132,7 +132,7 @@ def load_project(
 
 def _project_archive_path(target_path: str, project_name: Optional[str]) -> tuple[pathlib.Path, str]:
     path = pathlib.Path(target_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX):
         return path, path.stem or (project_name or "chisurf_project")
     name = project_name or path.name or "chisurf_project"
     return path / f"{name}{PROJECT_ARCHIVE_SUFFIX}", name
@@ -140,7 +140,7 @@ def _project_archive_path(target_path: str, project_name: Optional[str]) -> tupl
 
 def _project_archive_input_path(project_path: str) -> pathlib.Path:
     path = pathlib.Path(project_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX):
         return path
     if path.is_dir():
         return path / f"project{PROJECT_ARCHIVE_SUFFIX}"

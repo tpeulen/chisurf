@@ -355,21 +355,21 @@ def _history_event_count() -> int:
 
 
 def _project_archive_path(target_path: str, project_name: str) -> tuple[pathlib.Path, str]:
-    """Return the ``.csp`` save path and canonical project name."""
+    """Return the ``.cs.pto`` save path and canonical project name."""
     path = pathlib.Path(target_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX):
         return path, path.stem or project_name
     return path / f"{project_name}{PROJECT_ARCHIVE_SUFFIX}", project_name
 
 
 def _project_archive_input_path(project_path: str) -> pathlib.Path:
-    """Return a ``.csp`` archive path from a user-selected project path."""
+    """Return a ``.cs.pto`` project path from a user-selected path."""
     path = pathlib.Path(project_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX:
+    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX):
         return path
     if path.is_dir():
         return path / f"project{PROJECT_ARCHIVE_SUFFIX}"
-    # If no suffix, treat the path as a stem and append .csp
+    # If no suffix, treat the path as a stem and append .cs.pto.
     return pathlib.Path(f"{path}{PROJECT_ARCHIVE_SUFFIX}")
 
 
@@ -883,6 +883,10 @@ def add_fit(
     dataset_indices: typing.List[int] = None,
     model_name: str = None,
     model_kw: typing.Dict = None,
+    model_module: str = None,
+    model_class_name: str = None,
+    group_datasets: bool = False,
+    data_group_name: str = None,
     _defer_cs_update: bool = False,
     _ui_updates_frozen: bool = False,
     _force_local: bool = False,
@@ -956,7 +960,7 @@ def add_fit(
 
     # If multiple datasets were requested, build each fit independently
     # using the already-stable single-dataset code path.
-    if len(dataset_indices) > 1:
+    if len(dataset_indices) > 1 and not group_datasets:
         batched_frozen = bool(_ui_updates_frozen)
         mdl_parent = None
         plo_parent = None
@@ -1011,6 +1015,31 @@ def add_fit(
         cs.logging.error("add_fit: dataset indices out of bounds of cs.imported_datasets")
         return {"ok": False, "error": "dataset indices out of bounds"}
 
+    # Dataset selection and fit grouping are different operations. Interactive
+    # multi-selection historically means one fit group per selected dataset;
+    # project restoration explicitly asks for the saved group to be rebuilt as
+    # one heterogeneous collection of member curves.
+    if group_datasets and len(data_sets) > 1:
+        members = []
+        for selected in data_sets:
+            if isinstance(selected, cs.core.data.DataGroup):
+                members.extend(list(selected))
+            else:
+                members.append(selected)
+        combined = cs.core.data.ExperimentDataCurveGroup(
+            members,
+            name=str(data_group_name or getattr(data_sets[0], "name", "")),
+        )
+        try:
+            combined.experiment = getattr(data_sets[0], "experiment", None)
+        except Exception:
+            pass
+        try:
+            combined.data_reader = getattr(data_sets[0], "data_reader", None)
+        except Exception:
+            pass
+        data_sets = [combined]
+
     # Prefer the experiment attached to the dataset; fall back to the
     # globally selected experiment if necessary (e.g. after project load).
     exp = getattr(data_sets[0], "experiment", None)
@@ -1030,6 +1059,23 @@ def add_fit(
 
     model_names = exp.model_names
     model_class = None
+
+    # A project records the exact Python type that produced the fit.  Resolve
+    # it before consulting experiment display names: registration is optional
+    # in headless sessions and user-facing labels are not stable identity.
+    if model_module and model_class_name:
+        try:
+            import importlib
+            from chisurf.core.models.model import Model
+
+            candidate = getattr(importlib.import_module(str(model_module)), str(model_class_name))
+            if isinstance(candidate, type) and issubclass(candidate, Model):
+                model_class = candidate
+        except Exception as exc:
+            cs.logging.warning(
+                "add_fit: could not import saved model %s.%s: %s",
+                model_module, model_class_name, exc,
+            )
 
     # Try to find the model by name in the experiment type. Compared stripped:
     # a model whose ``name`` carries stray whitespace ("Lifetime ") would
@@ -1249,6 +1295,7 @@ def add_fit(
                             plo_parent.setUpdatesEnabled(True)
                     try:
                         fit_window.show()
+                        fit_window.refresh_current_plot()
                     except Exception:
                         pass
 
@@ -2046,6 +2093,7 @@ def get_project_payload(project_name: str = "chisurf_project") -> CSProject:
             "id": fg_id,
             "name": getattr(fit_group, "name", fg_id),
             "model_name": model_name,
+            "data_group_name": str(getattr(getattr(fit_group, "_data", None), "name", "")),
             "local_fits": local_fits_state,
         }
         plot_state = _fitgroup_plot_state(fit_group)
@@ -2109,7 +2157,7 @@ def build_project_archive(
     include_save_history_event: bool = False,
     target_path: pathlib.Path | None = None,
 ) -> typing.Tuple[CSProject, bytes]:
-    """Build a complete project payload and finalized ``.csp`` archive bytes.
+    """Build a complete project payload and finalized ``.cs.pto`` bytes.
 
     Parameters
     ----------
@@ -2147,7 +2195,7 @@ def build_project_archive(
 
 
 def save_project(target_path: str, project_name: str = "chisurf_project"):
-    """Save the current state of the application as a ``.csp`` project archive.
+    """Save the current state of the application as a ``.cs.pto`` project.
 
     Works in headless mode (without GUI).
     """
@@ -2162,8 +2210,7 @@ def save_project(target_path: str, project_name: str = "chisurf_project"):
             include_save_history_event=True,
             target_path=project_path,
         )
-        project_path.parent.mkdir(parents=True, exist_ok=True)
-        project_path.write_bytes(archive_bytes)
+        ProjectArchive.open_bytes(archive_bytes).save(project_path)
     except Exception as exc:
         log.error(f"save_project: could not save project archive {project_path}: {exc}")
         return None
@@ -2286,6 +2333,8 @@ def _build_fitgroup_payload(
 
     local_fits_state = []
     model_name = None
+    model_module = None
+    model_class_name = None
 
     grouped = getattr(fit_group, "grouped_fits", [])
     for local_fit in grouped:
@@ -2322,6 +2371,21 @@ def _build_fitgroup_payload(
             log.warning(f"save_fit: could not serialize fit group #{group_index}: {exc}")
             fit_state = {}
 
+        if model_module is None:
+            model_module = str(
+                fit_state.get("model_module")
+                or type(local_fit.model).__module__
+            )
+            model_class_name = str(
+                fit_state.get("model_class")
+                or type(local_fit.model).__name__
+            )
+            if model_name is None:
+                model_name = str(
+                    getattr(type(local_fit.model), "name", "")
+                    or model_class_name
+                ).strip()
+
         try:
             fr = getattr(local_fit, "fit_range", None)
             if isinstance(fr, tuple) and len(fr) == 2:
@@ -2345,6 +2409,9 @@ def _build_fitgroup_payload(
         "type": "fit_group",
         "name": getattr(fit_group, "name", fg_key),
         "model_name": model_name,
+        "model_module": model_module,
+        "model_class": model_class_name,
+        "data_group_name": str(getattr(getattr(fit_group, "_data", None), "name", "")),
         "local_fits": local_fits_state,
     }
 
@@ -2490,7 +2557,7 @@ def _apply_pending_plot_state(fit_group: typing.Any, fit_record: typing.Dict[str
 
 
 def save_fit_project(target_path: str, fit_window=None, fit_name: str = "chisurf_project"):
-    """Save a single fit (data + model state + window) as a ``.csp`` archive.
+    """Save a single fit (data + model state + window) as a ``.cs.pto`` project.
 
     The output can be reloaded with :func:`load_fit_project` similarly to full
     projects, but without touching other open fits.
@@ -2620,7 +2687,7 @@ def load_fit_project(project_path: str):
     history_base_dir = None
     archive_handle = None
     path = pathlib.Path(project_path)
-    if path.suffix.lower() == PROJECT_ARCHIVE_SUFFIX or path.is_dir():
+    if str(path).lower().endswith(PROJECT_ARCHIVE_SUFFIX) or path.is_dir():
         archive_path = _project_archive_input_path(project_path)
         try:
             archive = ProjectArchive.open(archive_path)
@@ -2753,11 +2820,22 @@ def load_fit_project(project_path: str):
             continue
 
         model_name = rec.get("model_name")
+        first_state = (local_fits[0].get("fit_state") or {}) if local_fits else {}
+        model_module = rec.get("model_module") or first_state.get("model_module")
+        model_class_name = rec.get("model_class") or first_state.get("model_class")
         if gui is None and model_name == "ProteinMC":
             log.info("load_project: skipping GUI ProteinMC fit restore without QApplication")
             continue
         try:
-            add_fit(dataset_indices=group_indices, model_name=model_name)
+            add_fit(
+                dataset_indices=group_indices,
+                model_name=model_name,
+                model_module=model_module,
+                model_class_name=model_class_name,
+                group_datasets=len(local_fits) > 1,
+                data_group_name=rec.get("data_group_name"),
+                _force_local=True,
+            )
         except Exception as exc:
             log.warning(f"load_fit_project: add_fit failed for record {key}: {exc}")
             continue
@@ -2838,7 +2916,31 @@ def load_fit_project(project_path: str):
     )
 
 
-def load_project_payload(proj: CSProject, project_path: typing.Optional[str] = None, _skip_gui_creation: bool = False):
+def load_project_payload(
+    proj: CSProject,
+    project_path: typing.Optional[str] = None,
+    _skip_gui_creation: bool = False,
+    _history_transaction: bool = True,
+):
+    """Restore one canonical project payload as a single state transaction.
+
+    History projection is an observer of accepted state.  Letting intermediate
+    dataset/model construction emit history while a project is being restored
+    caused the observer to recreate per-dataset fits before the saved global
+    group was committed.  Suppress those intermediate events and expose only
+    the completed state.
+    """
+    if _history_transaction:
+        history_obj = getattr(cs, "history", None)
+        suppress = getattr(history_obj, "suppress_recording", None)
+        if callable(suppress):
+            with suppress():
+                return load_project_payload(
+                    proj,
+                    project_path,
+                    _skip_gui_creation=_skip_gui_creation,
+                    _history_transaction=False,
+                )
     """Restore a project state from a Project dataclass instance.
 
     Parameters
@@ -3128,11 +3230,23 @@ def load_project_payload(proj: CSProject, project_path: typing.Optional[str] = N
             continue
 
         model_name = rec.get("model_name")
+        first_state = (local_fits[0].get("fit_state") or {}) if local_fits else {}
+        model_module = rec.get("model_module") or first_state.get("model_module")
+        model_class_name = rec.get("model_class") or first_state.get("model_class")
         if gui is None and model_name == "ProteinMC":
             log.info("load_project: skipping GUI ProteinMC fit restore without QApplication")
             continue
         try:
-            add_fit(dataset_indices=group_indices, model_name=model_name, _skip_gui_creation=_skip_gui_creation)
+            add_fit(
+                dataset_indices=group_indices,
+                model_name=model_name,
+                model_module=model_module,
+                model_class_name=model_class_name,
+                group_datasets=len(local_fits) > 1,
+                data_group_name=rec.get("data_group_name"),
+                _force_local=True,
+                _skip_gui_creation=_skip_gui_creation,
+            )
         except Exception as exc:
             log.warning(f"load_project: add_fit failed for record {key}: {exc}")
             continue
@@ -3228,7 +3342,7 @@ def load_project_payload(proj: CSProject, project_path: typing.Optional[str] = N
 
 
 def _load_project_archive(project_path: str) -> CSProject:
-    """Load a full project from a ``.csp`` archive."""
+    """Load a full project from a ``.cs.pto`` container."""
     archive_path = _project_archive_input_path(project_path)
     archive = ProjectArchive.open(archive_path)
     data = json.loads(archive.read_text(PROJECT_JSON))
@@ -3255,7 +3369,7 @@ def load_project_data(project_path: str) -> list:
     Parameters
     ----------
     project_path : str
-        Path to the ``.csp`` project archive.
+        Path to the ``.cs.pto`` project.
 
     Returns
     -------
@@ -3299,7 +3413,7 @@ def restore_gui_from_fits(fit_uids: list) -> None:
 
 
 def load_project(project_path: str):
-    """Load a project from a ``.csp`` archive.
+    """Load a project from a ``.cs.pto`` container.
 
     Datasets are reconstructed from the stored x/y/ex/ey arrays,
     :func:`add_fit` is used to rebuild each :class:`FitGroup`, and per-fit
@@ -3309,7 +3423,7 @@ def load_project(project_path: str):
     Parameters
     ----------
     project_path : str
-        Path to the ``.csp`` project archive.
+        Path to the ``.cs.pto`` project.
     """
     log = cs.logging
     archive_path = _project_archive_input_path(project_path)

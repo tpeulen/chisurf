@@ -288,7 +288,7 @@ def test_project_browser_gui_imports_archive_with_collision_remap(
         notes="headless import GUI test",
     )
     assert saved["ok"] is True
-    archive_path = tmp_path / "import-project.csp"
+    archive_path = tmp_path / "import-project.cs.pto"
     exported = export_csp_handler(
         auth=auth,
         version_id=saved["version_id"],
@@ -303,7 +303,7 @@ def test_project_browser_gui_imports_archive_with_collision_remap(
             mock.patch.object(
                 QtWidgets.QFileDialog,
                 "getOpenFileName",
-                return_value=(str(archive_path), "Chisurf Project (*.csp)"),
+                return_value=(str(archive_path), "Chisurf Project (*.cs.pto)"),
             ),
             mock.patch.object(
                 CollisionDialog,

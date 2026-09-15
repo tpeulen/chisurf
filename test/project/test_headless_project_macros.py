@@ -88,11 +88,12 @@ def test_headless_project_save_load(tmp_path):
     archive_path = save_project(str(tmp_path), "test_macro_save")
 
     assert archive_path.is_file()
-    assert archive_path.suffix == ".csp"
+    assert archive_path.name.endswith(".cs.pto")
 
-    import zipfile
-    with zipfile.ZipFile(archive_path, "r") as zf:
-        raw = json.loads(zf.read("project.json"))
+    from chisurf.core.project import ProjectArchive
+    archive = ProjectArchive.open(archive_path)
+    raw = json.loads(archive.read_text("project.json"))
+    archive.close()
     ds = raw["datasets"]["ds000"]
     assert isinstance(ds["x"], dict)
     assert ds["x"]["encoding"] == "base64"

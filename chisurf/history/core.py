@@ -293,19 +293,19 @@ class OperationHistory:
                         except json.JSONDecodeError as e:
                             result["errors"].append(f"Invalid JSON at line: {str(e)}")
             
-            # Validate all loaded events
-            integrity_report = self.validate_history_integrity()
-            if integrity_report["corruption_detected"]:
-                result["errors"].append(f"History corruption detected: {len(integrity_report['invalid_events'])} invalid events")
-                
-                # Attempt automatic repair
-                if integrity_report["invalid_events"]:
-                    repair_report = self.repair_history()
-                    if repair_report["repair_successful"]:
-                        result["errors"].append(f"Automatically repaired: removed {repair_report['events_removed']} invalid events")
-                        rows = list(self._events)  # Use repaired events
-                    else:
-                        result["errors"].append("Automatic repair failed")
+            # Validate the parsed file before it can replace or extend the
+            # live history.  The previous code validated ``self._events``
+            # here, so a malformed project log was accepted while an unrelated
+            # current-session event could be removed as the supposed repair.
+            invalid_rows = [index for index, event in enumerate(rows) if not self.validate_event(event)]
+            if invalid_rows:
+                result["errors"].append(
+                    f"History corruption detected: {len(invalid_rows)} invalid events"
+                )
+                rows = [event for index, event in enumerate(rows) if index not in set(invalid_rows)]
+                result["errors"].append(
+                    f"Automatically repaired: removed {len(invalid_rows)} invalid events"
+                )
             
             # Load events into history
             with self._lock:

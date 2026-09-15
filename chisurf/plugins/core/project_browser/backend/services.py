@@ -363,7 +363,17 @@ def _reconstruct_payload(
     version_id: str,
     meta: dict[str, Any],
 ) -> dict[str, Any]:
-    """Reconstruct a project payload from artifacts, or build empty default."""
+    """Return the complete saved project state, then fall back to artifacts.
+
+    Artifacts are an indexed/provenance representation.  They intentionally
+    split a project into datasets, local-fit results and parameter rows, which
+    cannot faithfully recreate global-fit envelopes or a window layout.  A
+    project operation therefore stores one JSON-safe canonical payload for
+    restore, while artifacts remain available for queries and exports.
+    """
+    stored_payload = meta.get("fit_structure")
+    if isinstance(stored_payload, dict):
+        return stored_payload
     from mmfdb.project.project_archiver import restore_project_from_artifacts
     artifact_payload = restore_project_from_artifacts(db, version_id)
     if artifact_payload:
@@ -892,7 +902,35 @@ def import_preview_handler(
 
         archive = ProjectArchive.open_bytes(data)
         if not archive.has_entry(MMFDB_EXPORT_JSON):
-            return service_error("Not a valid MMFDB export archive (missing mmfdb_export.json)", error_code=INVALID_INPUT)
+            if not archive.has_entry(PROJECT_JSON):
+                return service_error(
+                    "Not a valid ChiSurf project (missing project.json)",
+                    error_code=INVALID_INPUT,
+                )
+            try:
+                payload = json.loads(archive.read_text(PROJECT_JSON))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                return service_error(
+                    f"Invalid project.json: {exc}", error_code=INVALID_INPUT,
+                )
+            if not isinstance(payload, dict):
+                return service_error("project.json must contain an object", error_code=INVALID_INPUT)
+            meta = payload.get("meta") or {}
+            return {
+                "ok": True,
+                "archive_kind": "chisurf_project",
+                "has_collisions": False,
+                "collisions": {},
+                "origin": {
+                    "project_id": meta.get("project_id", ""),
+                    "project_name": meta.get("name", ""),
+                },
+                "entity_counts": {
+                    "operations": 0,
+                    "artifacts": 0,
+                    "objects": 0,
+                },
+            }
 
         export_text = archive.read_text(MMFDB_EXPORT_JSON)
         export_meta = json.loads(export_text)
@@ -907,6 +945,7 @@ def import_preview_handler(
         origin = export_meta.get("origin", {})
         return {
             "ok": True,
+            "archive_kind": "mmfdb_export",
             "has_collisions": has_collisions,
             "collisions": collisions,
             "origin": origin,
@@ -939,7 +978,32 @@ def import_csp_handler(
 
         archive = ProjectArchive.open_bytes(data)
         if not archive.has_entry(MMFDB_EXPORT_JSON):
-            return service_error("Not a valid MMFDB export archive (missing mmfdb_export.json)", error_code=INVALID_INPUT)
+            if not archive.has_entry(PROJECT_JSON):
+                return service_error(
+                    "Not a valid ChiSurf project (missing project.json)",
+                    error_code=INVALID_INPUT,
+                )
+            try:
+                payload = json.loads(archive.read_text(PROJECT_JSON))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                return service_error(
+                    f"Invalid project.json: {exc}", error_code=INVALID_INPUT,
+                )
+            if not isinstance(payload, dict):
+                return service_error("project.json must contain an object", error_code=INVALID_INPUT)
+            meta = payload.get("meta") or {}
+            result = save_project_handler(
+                auth=auth,
+                project_name=str(meta.get("name") or "Imported ChiSurf Project"),
+                project_payload=payload,
+                notes=str(meta.get("description") or "Imported from .cs.pto"),
+                visibility="private",
+            )
+            if result.get("ok"):
+                result["archive_kind"] = "chisurf_project"
+                result["id_remap"] = {}
+                result["collisions_resolved"] = {}
+            return result
 
         export_text = archive.read_text(MMFDB_EXPORT_JSON)
         export_meta = json.loads(export_text)

@@ -24,7 +24,7 @@ def refresh_gui() -> None:
     # Through the presentation seam, not `import chisurf.gui`: the model must
     # not need a widget toolkit to be importable. Headless there is no
     # presenter and this is a no-op on a `gui` that is already None.
-    from chisurf.core import presentation
+        from chisurf.core.runtime import presentation
 
     presentation.notify(gui.update)
 
@@ -581,7 +581,7 @@ def set_fit_range(
         "properties": {
             "path": {
                 "type": "string",
-                "description": "Target path for the project file (.csp).",
+                "description": "Target path for the project file (.cs.pto).",
             }
         },
         "required": ["path"],
@@ -597,8 +597,8 @@ def save_project(context: AgentContext, path: str) -> dict[str, Any]:
     a GUI.
     """
     target = context.resolve_path(path)
-    if target.suffix.lower() != ".csp":
-        target = target.with_suffix(".csp")
+    if not str(target).lower().endswith(".cs.pto"):
+        target = target.with_name(f"{target.name}.cs.pto")
     target.parent.mkdir(parents=True, exist_ok=True)
 
     cs.core.actions.dispatch(
@@ -609,7 +609,7 @@ def save_project(context: AgentContext, path: str) -> dict[str, Any]:
         # The macro derives its own file name from the project name when the
         # target names a directory; find what it actually wrote.
         candidates = sorted(
-            target.parent.glob("*.csp"), key=lambda p: p.stat().st_mtime, reverse=True
+            target.parent.glob("*.cs.pto"), key=lambda p: p.stat().st_mtime, reverse=True
         )
         if not candidates:
             raise ToolError(f"the project was not written to {target}")
