@@ -66,12 +66,14 @@ def _state(fit):
     )
 
 
-def test_a_classic_lifetime_model_is_refined_not_searched_structurally():
+def test_a_classic_lifetime_model_has_no_model_search():
+    """The classic class has no BFF graph any more (its description does), and
+    a search is BFF's or it does not exist: refused, the fit untouched."""
     fit = _two_lifetime_fit()
     before = _state(fit)
 
     prepared = prepare_model_search(fit)
 
-    assert prepared.supported, prepared.reasons
+    assert not prepared.supported
+    assert any(r.code == "native_objective_unrepresentable" for r in prepared.reasons)
     assert _state(fit) == before
-    assert not isinstance(prepared.problem, __import__("IMP.bff", fromlist=["x"]).MultiStructureModelSearchProblem)

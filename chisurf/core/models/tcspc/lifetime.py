@@ -407,7 +407,7 @@ class Lifetime(FittingParameterGroup):
 
 class LifetimeModel(ModelCurve):
 
-    name = "Lifetime"
+    name = "Lifetime (classic)"
 
     #: Quantities computed from the fitted parameters that the model reports but
     #: does not fit, and which therefore have no error bar of their own. Listing

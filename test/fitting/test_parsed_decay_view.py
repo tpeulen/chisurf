@@ -19,6 +19,7 @@ bff = pytest.importorskip("IMP.bff")
 import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.fitting.fit as F
+from chisurf.core.fluorescence.tcspc.instrument import set_absolute_instrument
 from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
 
 REFERENCE = json.loads((pathlib.Path(__file__).parent / "data" / "parsed_decay_reference.json").read_text())
@@ -60,16 +61,29 @@ def test_every_equation_under_every_instrument_setting_reproduces_the_classic_cu
     assert problem is not None, model.missing
     model.structure = record["entry"]
     _set(problem, record["values"])
-    _set(problem, {
-        "instrument.timeshift": settings["ts"],
-        "instrument.scatter": settings["sc"],
-        "instrument.background": settings["bg"],
-        "instrument.n0": settings["n0"],
-    })
+    _set(problem, {"instrument.timeshift": settings["ts"]})
+    # The classic model took scatter and background as counts; BFF's instrument
+    # takes fractions of the fluorescence total, converted here at this curve.
+    # Classic autoscaling subtracted an absolute background before scaling;
+    # with a fraction the background scales too, so the two autoscalers are
+    # different models: the classic curve is checked at the scale it chose.
+    model.set_scalar("autoscale", 0.0)
+    set_absolute_instrument(model, record["n0_after"] if settings["autoscale"] else settings["n0"],
+                            settings["sc"], settings["bg"])
     model.update()
     np.testing.assert_allclose(model.y, record["y"], rtol=1e-9, atol=1e-9)
     if settings["autoscale"]:
-        assert problem.get_parameter("instrument.n0").value == pytest.approx(record["n0_after"], rel=1e-9)
+        def chi2():
+            # Over the channels the scale is fitted to: counts above zero.
+            y = np.asarray(REFERENCE["data"]); ey = np.asarray(REFERENCE["ey"])
+            used = y > 0
+            return float(np.sum(((np.asarray(model.y)[used] - y[used]) / ey[used]) ** 2))
+        at_classic = chi2()
+        model.set_scalar("autoscale", 1.0)
+        model.update()
+        # The scale is least squares on the unclamped curve, and an equation
+        # with negative terms is clamped at zero after it: a part in 1e5.
+        assert chi2() <= at_classic * (1 + 1e-5), "autoscaling is the weighted least-squares scale"
 
 
 def test_a_fit_recovers_the_equation_that_made_the_decay():
@@ -79,7 +93,7 @@ def test_a_fit_recovers_the_equation_that_made_the_decay():
     model.structure = record["entry"]
     truth = dict(record["values"])
     _set(problem, truth)
-    _set(problem, {"instrument.background": 4.0, "instrument.n0": 2.5})
+    set_absolute_instrument(model, 2.5, 0.0, 4.0)
     model.update()
     clean = np.array(model.y)
 

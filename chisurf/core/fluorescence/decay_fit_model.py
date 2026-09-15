@@ -88,8 +88,18 @@ def _described_fit(family, decay, *, bin_width, irf, start_bin, stop_bin, period
 
 def _hold_instrument(model, problem, *, irf, background, fit_background, fit_scatter, fit_irf,
                      irf_width, irf_skew, extra=None):
-    """The instrument's starting values and which of its parameters are fitted."""
-    _set_port(problem, "instrument.background", float(background))
+    """The instrument's starting values and which of its parameters are fitted.
+
+    ``background`` is counts per channel, as the caller measures it; the
+    instrument takes it as a fraction of the fluorescence total, converted at
+    the starting curve with the scale the data imply.
+    """
+    from chisurf.core.fluorescence.tcspc.instrument import fluorescence_total, set_absolute_instrument
+
+    data = np.asarray(model.fit.data.y, dtype=float)
+    total = fluorescence_total(model)
+    n0 = max(float(data.sum()) - float(background) * data.size, 1.0) / total if total > 0 else 1.0
+    set_absolute_instrument(model, n0, 0.0, float(background))
     if irf is None:
         _set_port(problem, "instrument.irf_width", abs(float(irf_width)))
         _set_port(problem, "instrument.irf_shape", float(irf_skew))
@@ -110,7 +120,10 @@ def _hold_instrument(model, problem, *, irf, background, fit_background, fit_sca
 
 
 def _irf_report(model, *, irf, bin_width) -> dict:
+    from chisurf.core.fluorescence.tcspc.instrument import absolute_instrument
+
     value = {k: float(p.value) for k, p in _parameters(model).items()}
+    counts = absolute_instrument(model)
     shift = value["instrument.timeshift"]
     irf_peak = None
     if irf is None:
@@ -119,8 +132,10 @@ def _irf_report(model, *, irf, bin_width) -> dict:
         prompt = np.asarray(problem.get_structure_output(active, f"{active}.generated_response"), dtype=float)
         irf_peak = (float(np.argmax(prompt)) + shift) * float(bin_width)
     return {
-        "background": value["instrument.background"],
-        "scatter": value["instrument.scatter"],
+        # Counts, as the scipy fitter this stands in for reports them: the
+        # instrument's fractions at the fitted curve.
+        "background": counts["background"],
+        "scatter": counts["scatter"],
         # Width is magnitude-only, so report it as such.
         "irf_width": abs(value["instrument.irf_width"]),
         "irf_skew": value["instrument.irf_shape"],

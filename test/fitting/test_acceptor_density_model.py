@@ -51,7 +51,7 @@ def _view(y, dimension):
     model.structure = f"tcspc_fret_acceptor_density.dimensions.{dimension}"
     problem = model.problem
     for canonical, value in (("donor.amplitude.0", 1.0), ("donor.tau.0", TAU_D0), ("fret.tau0", TAU_D0),
-                             ("instrument.n0", 50000.0), ("instrument.background", 1.0)):
+                             ("instrument.n0", 50000.0), ("instrument.background", 0.001)):
         _set(problem, canonical, value)
     return fit, model
 
