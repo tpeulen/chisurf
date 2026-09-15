@@ -90,6 +90,11 @@ class TCSPCReader(ExperimentReader):
             'source': 'tcspc_reader'
         }
 
+    def _excitation_period_ns(self) -> typing.Optional[float]:
+        """The excitation period in ns from the repetition rate in MHz, or None."""
+        rate = self._safe_float(getattr(self, 'rep_rate', None), 0.0)
+        return 1000.0 / rate if rate > 0.0 else None
+
     def _annotate_anisotropy_calibration(self, data_group) -> None:
         """Attach anisotropy calibration metadata to a data group.
 
@@ -108,6 +113,12 @@ class TCSPCReader(ExperimentReader):
         group_meta.setdefault('l1', calibration['l1'])
         group_meta.setdefault('l2', calibration['l2'])
         group_meta.setdefault('anisotropy_calibration_source', calibration['source'])
+        # The excitation period the reader knows (its repetition rate), in ns:
+        # a periodic decay model needs it, and a default of some other laser's
+        # is a systematically wrong fit.
+        period = self._excitation_period_ns()
+        if period is not None:
+            group_meta.setdefault('excitation_period_ns', period)
 
         try:
             for curve in data_group:
@@ -127,6 +138,8 @@ class TCSPCReader(ExperimentReader):
                     'anisotropy_calibration_source',
                     group_meta.get('anisotropy_calibration_source', calibration['source'])
                 )
+                if 'excitation_period_ns' in group_meta:
+                    curve_meta.setdefault('excitation_period_ns', group_meta['excitation_period_ns'])
         except Exception:
             pass
 

@@ -314,6 +314,10 @@ class DescriptionModel(ModelCurve):
         self._spec.set_dataset(slot, _measurement(_coordinates_of(curve), curve.y))
         self._forget_discovery()
 
+    def has_dataset(self, slot: str) -> bool:
+        """Whether a curve is bound to the measurement slot."""
+        return slot in self._sources
+
     def unset_dataset(self, slot: str) -> None:
         """Forget a bound curve. The model rebuilds without it, or not at all."""
         self._sources.pop(slot, None)
@@ -397,6 +401,17 @@ class DescriptionModel(ModelCurve):
             except (KeyError, TypeError, ValueError):
                 continue
         self.__dict__["_pending_starts"] = starts
+        # Instrument settings a reader records on the data (the excitation
+        # period of its laser) set the description's scalars until the user
+        # sets them.
+        automatic = self.__dict__.setdefault("_automatic_scalars", {})
+        for key, scalar in self.presentation.get("meta_scalars", {}).items():
+            if key.startswith("_") or scalar in self._scalars:
+                continue
+            try:
+                automatic[str(scalar)] = float(meta[key])
+            except (KeyError, TypeError, ValueError):
+                continue
 
     @property
     def problem(self):

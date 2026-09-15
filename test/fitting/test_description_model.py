@@ -140,10 +140,10 @@ def test_fixing_holds_for_every_topology_and_freeing_releases_the_instrument():
     by_id["instrument.n0"].fixed = True
     model.structure = "lifetime.components.3"
     assert by_id["instrument.n0"].fixed
-    assert by_id["instrument.timeshift"].fixed
-    by_id["instrument.timeshift"].fixed = False
-    assert not by_id["instrument.timeshift"].fixed
-    assert model.problem.get_parameter_released("instrument.timeshift")
+    assert by_id["instrument.response_background"].fixed
+    by_id["instrument.response_background"].fixed = False
+    assert not by_id["instrument.response_background"].fixed
+    assert model.problem.get_parameter_released("instrument.response_background")
 
 
 def test_new_data_keeps_every_port_the_view_holds():
