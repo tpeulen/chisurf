@@ -82,7 +82,7 @@ or seed it from the donor-only value.** τ_D(A) has to come out of its own
 data, freely.
 
 A real model, given this procedure, fitted the donor-only decay to 1.85 ns and
-then called `set_parameter` to **fix** the FRET population's `tL1` at 1.85 ns
+then called `set_parameter` to **fix** the FRET population's `t0` at 1.85 ns
 before fitting it. The fit was excellent (reduced chi-square 0.93) and the
 conclusion was that the donor is unquenched, E ≈ 0 and the distance is
 infinite. Every number was consistent and the answer was manufactured: freed,

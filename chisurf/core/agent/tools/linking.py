@@ -72,7 +72,7 @@ def _free_count(fit: Any) -> int | None:
             "parameters": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Exact parameter names to share, e.g. ['tL1', 'tL2'].",
+                "description": "Exact parameter names to share, e.g. ['t0', 't1'].",
             },
             "source_fit": {
                 "type": ["integer", "string"],

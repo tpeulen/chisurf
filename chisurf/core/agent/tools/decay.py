@@ -43,12 +43,50 @@ def looks_like_irf(dataset: Any) -> bool:
     return any(hint in name for hint in IRF_NAME_HINTS)
 
 
+def _structure_axes(model: Any) -> dict[str, tuple[int, list[int], int]]:
+    """The model's variable topology axes, read off its structure keys.
+
+    A described model names its topology as ``name.count`` pairs --
+    ``lifetime.components.2.rotations.1``, ``tcspc_fret_gaussian.components.3``,
+    ``mixture.models.2``. An axis is a component group when other structures
+    differ from the active one only in its count.
+
+    Returns
+    -------
+    dict
+        ``{group name: (current count, available counts, token position)}``;
+        the lifetime axis is called ``lifetimes``.
+    """
+    options_of = getattr(model, "structure_options", None)
+    if not callable(options_of):
+        return {}
+    key = str(getattr(model, "structure", "") or "")
+    if not key:
+        return {}
+    keys = [str(k) for k, _label in options_of()]
+    tokens = key.split(".")
+    axes: dict[str, tuple[int, list[int], int]] = {}
+    for i in range(len(tokens) - 1):
+        if not tokens[i + 1].isdigit() or tokens[i].isdigit():
+            continue
+        counts = set()
+        for other in keys:
+            parts = other.split(".")
+            if len(parts) == len(tokens) and all(
+                    parts[j] == tokens[j] for j in range(len(tokens)) if j != i + 1):
+                if parts[i + 1].isdigit():
+                    counts.add(int(parts[i + 1]))
+        if len(counts) < 2:
+            continue
+        name = tokens[i]
+        if name == "components" and i > 0 and tokens[i - 1] == "lifetime":
+            name = "lifetimes"
+        axes[name] = (int(tokens[i + 1]), sorted(counts), i + 1)
+    return axes
+
+
 def component_groups(model: Any) -> dict[str, int]:
     """Return the model's component groups and their current sizes.
-
-    A component group is an attribute that behaves like a list of repeated
-    model components -- the lifetimes of a decay, the distance distributions
-    of a FRET model -- i.e. it supports ``append``, ``pop`` and ``len``.
 
     Parameters
     ----------
@@ -58,8 +96,16 @@ def component_groups(model: Any) -> dict[str, int]:
     Returns
     -------
     dict
-        ``{attribute name: number of components}``.
+        ``{group name: number of components}``.
     """
+    if callable(getattr(model, "structure_options", None)):
+        return {name: current for name, (current, _counts, _i) in _structure_axes(model).items()}
+    return _list_groups(model)
+
+
+def _list_groups(model: Any) -> dict[str, int]:
+    """Component groups of an equation model: attributes that behave like a
+    list of repeated components (``append``, ``pop``, ``len``)."""
     groups: dict[str, int] = {}
     seen: dict[int, str] = {}
     for name in dir(model):
@@ -80,8 +126,7 @@ def component_groups(model: Any) -> dict[str, int]:
             except Exception:
                 continue
             # A parameter group is reachable both as its attribute and under
-            # its own ``name``, so one group would otherwise be reported twice
-            # and look like an ambiguous choice to :func:`_default_group`.
+            # its own ``name``, so one group would otherwise be reported twice.
             previous = seen.get(id(candidate))
             if previous is not None:
                 if len(name) < len(previous):
@@ -92,6 +137,16 @@ def component_groups(model: Any) -> dict[str, int]:
             seen[id(candidate)] = name
             groups[name] = size
     return groups
+
+
+def _is_decay_model(model: Any) -> bool:
+    """Whether *model* convolves with an instrument response (a TCSPC view)."""
+    slots = getattr(model, "dataset_slots", None)
+    return callable(slots) and "response" in slots()
+
+
+def _irf_attached(model: Any) -> bool:
+    return bool(getattr(model, "has_dataset", lambda slot: False)("response"))
 
 
 def _default_group(model: Any) -> str:
@@ -234,8 +289,8 @@ def _assess_one(fit: Any) -> dict[str, Any]:
         return {"quality": "unknown", "reason": "no reduced chi2 could be computed"}
 
     model = getattr(fit, "model", None)
-    convolve = getattr(model, "convolve", None)
-    has_irf = getattr(convolve, "_irf", None) is not None if convolve is not None else None
+    decay = _is_decay_model(model)
+    has_irf = _irf_attached(model) if decay else None
     groups = component_groups(model) if model is not None else {}
     n_components = groups.get("lifetimes") or (max(groups.values()) if groups else 0)
 
@@ -253,7 +308,7 @@ def _assess_one(fit: Any) -> dict[str, Any]:
         verdict["reason"] = (
             f"reduced chi2 is {reduced:.2f}, far above 1 — the model does not describe the data"
         )
-        if convolve is not None and has_irf is False:
+        if decay and has_irf is False:
             verdict["next_step"] = (
                 "No IRF is attached. Load the instrument-response file (its "
                 "name usually contains 'irf') and attach it with set_irf, "
@@ -335,7 +390,7 @@ def set_irf(
     """Attach or detach the IRF of a decay fit."""
     fit_object, fit_index = context.resolve_fit(fit)
     model = getattr(fit_object, "model", None)
-    if model is None or not hasattr(model, "convolve"):
+    if model is None or not _is_decay_model(model):
         raise ToolError(
             f"fit {fit_index} uses model "
             f"{getattr(model, 'name', '?')!r}, which does not convolve with an "
@@ -344,7 +399,8 @@ def set_irf(
 
     before = chi2r(fit_object)
     if remove:
-        cs.core.actions.dispatch(name="model.unload_irf", payload={"fit_index": fit_index})
+        cs.core.actions.dispatch(name="model.unset_dataset",
+                                 payload={"slot": "response", "fit_index": fit_index})
         return {"ok": True, "fit": fit_index, "irf": None, "chi2r_before": _round(before, 4)}
 
     if irf is None:
@@ -367,20 +423,15 @@ def set_irf(
         raise ToolError("the IRF cannot be the same dataset as the decay being fitted")
 
     cs.core.actions.dispatch(
-        name="model.change_irf",
+        name="model.set_dataset",
         payload={
-            "irf_idx": int(irf_index),
-            "irf_name": str(getattr(irf_object, "name", "")),
+            "slot": "response",
+            "idx": int(irf_index),
+            "name": str(getattr(irf_object, "name", "")),
             "fit_index": int(fit_index),
         },
     )
-    try:
-        fit_object.update()
-    except Exception:
-        logger.debug("fit.update after IRF change failed", exc_info=True)
-
-    attached = getattr(getattr(model, "convolve", None), "_irf", None)
-    if attached is None:
+    if not _irf_attached(model):
         raise ToolError("the IRF could not be attached to this model")
 
     from chisurf.core.agent.tools.fitting import refresh_gui
@@ -446,18 +497,27 @@ def set_components(
             f"their current sizes: {groups}"
         )
 
-    current = groups[name]
-    for _ in range(max(0, wanted - current)):
-        cs.core.actions.dispatch(
-            name="model.add_component",
-            payload={"component_name": name, "fit_index": fit_index},
-        )
-    for _ in range(max(0, current - wanted)):
-        cs.core.actions.dispatch(
-            name="model.remove_component",
-            payload={"component_name": name, "fit_index": fit_index},
-        )
-
+    axes = _structure_axes(model)
+    if name in axes:
+        current, counts, position = axes[name]
+        reachable = [c for c in counts if c <= wanted] or counts[:1]
+        target = max(reachable)
+        if target != current:
+            tokens = str(model.structure).split(".")
+            tokens[position] = str(target)
+            model.structure = ".".join(tokens)
+    else:
+        current = groups[name]
+        for _ in range(max(0, wanted - current)):
+            cs.core.actions.dispatch(
+                name="model.add_component",
+                payload={"component_name": name, "fit_index": fit_index},
+            )
+        for _ in range(max(0, current - wanted)):
+            cs.core.actions.dispatch(
+                name="model.remove_component",
+                payload={"component_name": name, "fit_index": fit_index},
+            )
     try:
         fit_object.update()
     except Exception:
@@ -477,7 +537,7 @@ def set_components(
     if reached != wanted:
         result["warning"] = (
             f"asked for {wanted} but the model settled on {reached} "
-            f"(a model keeps at least one component)"
+            f"(the model's structures allow {_structure_axes(model).get(name, (0, [wanted], 0))[1]})"
         )
     return result
 
@@ -561,14 +621,13 @@ def auto_fit_decay(
     fit_object, fit_index = context.resolve_fit(fit)
 
     model = getattr(fit_object, "model", None)
-    convolve = getattr(model, "convolve", None)
-    if convolve is None:
+    if not _is_decay_model(model):
         raise ToolError(
             f"fit {fit_index} does not use a convolution model — "
             f"auto_fit_decay only applies to time-resolved decays"
         )
 
-    if irf is None and getattr(convolve, "_irf", None) is None:
+    if irf is None and not _irf_attached(model):
         candidates = [
             index for index, dataset in enumerate(context.datasets) if looks_like_irf(dataset)
         ]
@@ -700,11 +759,9 @@ def fit_report(context: AgentContext, fit: Any = None) -> dict[str, Any]:
     except Exception:
         logger.debug("weighted residuals unavailable", exc_info=True)
 
-    convolve = getattr(model, "convolve", None)
-    if convolve is not None:
-        attached = getattr(convolve, "_irf", None)
-        report["irf_attached"] = attached is not None
-        if attached is None:
+    if _is_decay_model(model):
+        report["irf_attached"] = _irf_attached(model)
+        if not report["irf_attached"]:
             report["warning"] = (
                 "no IRF is attached — a decay fit without one is "
                 "systematically wrong; attach it with set_irf"

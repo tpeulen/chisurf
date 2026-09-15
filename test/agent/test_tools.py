@@ -165,7 +165,7 @@ def test_an_ambiguous_model_name_asks_for_the_full_one(monkeypatch):
     monkeypatch.setattr(
         fitting_tools,
         "_model_names",
-        lambda: {"TCSPC": ["Lifetime", "Lifetime mixer"]},
+        lambda: {"TCSPC": ["Lifetime decay", "Lifetime mixer"]},
     )
     with pytest.raises(ToolError, match="ambiguous"):
         fitting_tools.resolve_model_name("Lifetime")
@@ -238,7 +238,7 @@ def test_set_parameter_changes_value_fixed_and_bounds(loaded):
 def test_set_parameter_needs_something_to_change(loaded):
     fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
     with pytest.raises(ToolError, match="at least one"):
-        fitting_tools.set_parameter(loaded, parameter="tL1", fit=0)
+        fitting_tools.set_parameter(loaded, parameter="t0", fit=0)
 
 
 def test_set_parameter_lists_the_real_names_when_the_name_is_wrong(loaded):

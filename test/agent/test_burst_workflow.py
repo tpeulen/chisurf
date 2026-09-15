@@ -161,8 +161,8 @@ def analysis(bursts, tmp_path_factory):
         decay_tools.set_components(context, fit=position, n=2)
         outcome = fit_tools.run_fit(context, fit=position)["results"][0]
         values = {p["name"]: p["value"] for p in fit_tools.get_fit(context, fit=position)["parameters"]}
-        x1, x2 = values.get("xL1", 0.0), values.get("xL2", 0.0)
-        t1, t2 = values.get("tL1", 0.0), values.get("tL2", 0.0)
+        x1, x2 = values.get("a0", 0.0), values.get("a1", 0.0)
+        t1, t2 = values.get("t0", 0.0), values.get("t1", 0.0)
         results[label] = {
             "chi2r": outcome["chi2r"],
             "tau_x": (x1 * t1 + x2 * t2) / ((x1 + x2) or 1.0),

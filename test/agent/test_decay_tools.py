@@ -40,8 +40,7 @@ def test_set_irf_attaches_the_measured_response(decay_fit):
     result = decay_tools.set_irf(decay_fit, irf=1, fit=0)
     assert result["ok"]
     assert result["irf"]["index"] == 1
-    convolve = decay_fit.fits[0].model.convolve
-    assert convolve._irf is not None
+    assert decay_fit.fits[0].model.has_dataset("response")
     assert "Run the fit again" in result["next_step"]
 
 
@@ -137,7 +136,7 @@ def test_fit_report_carries_the_quality_numbers(decay_fit):
     assert report["degrees_of_freedom"] > 0
     assert report["durbin_watson"] is not None
     assert report["residuals"]["rms"] > 0
-    assert any(parameter["name"].startswith("tL") for parameter in report["parameters"])
+    assert any(parameter["name"] in ("t0", "t1") for parameter in report["parameters"])
 
 
 # ── plotting ──────────────────────────────────────────────────────────

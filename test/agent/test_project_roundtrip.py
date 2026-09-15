@@ -75,7 +75,7 @@ def test_the_sanitiser_survives_a_cycle():
 
 def test_a_session_with_loaded_data_can_be_saved(fitted_session, tmp_path):
     """A live reader in the history used to make this impossible."""
-    result = fitting_tools.save_project(fitted_session, path="session.csp")
+    result = fitting_tools.save_project(fitted_session, path="session.cs.pto")
 
     assert result["ok"]
     saved = pathlib.Path(result["path"])
@@ -85,11 +85,11 @@ def test_a_session_with_loaded_data_can_be_saved(fitted_session, tmp_path):
 
 def test_the_archive_extension_is_added_when_missing(fitted_session):
     result = fitting_tools.save_project(fitted_session, path="no_extension")
-    assert pathlib.Path(result["path"]).suffix == ".csp"
+    assert str(result["path"]).endswith(".cs.pto")
 
 
 def test_saving_into_a_new_directory_works(fitted_session):
-    result = fitting_tools.save_project(fitted_session, path="output/run1.csp")
+    result = fitting_tools.save_project(fitted_session, path="output/run1.cs.pto")
     assert pathlib.Path(result["path"]).is_file()
 
 
@@ -112,7 +112,7 @@ def test_a_saved_session_reloads_with_its_data_and_fit(fitted_session):
 
     before_chi2r = round(float(cs.fits[0].chi2r), 4)
     before_datasets = len(cs.imported_datasets)
-    saved = fitting_tools.save_project(fitted_session, path="session.csp")["path"]
+    saved = fitting_tools.save_project(fitted_session, path="session.cs.pto")["path"]
 
     cs.imported_datasets[:] = []
     cs.fits[:] = []
@@ -127,11 +127,11 @@ def test_saving_an_empty_session_still_produces_an_archive(clean_session, tmp_pa
     from chisurf.core.agent import AgentContext
 
     context = AgentContext(working_directory=str(tmp_path))
-    result = fitting_tools.save_project(context, path="empty.csp")
+    result = fitting_tools.save_project(context, path="empty.cs.pto")
     assert pathlib.Path(result["path"]).is_file()
     assert result["n_fits"] == 0
 
 
 def test_an_unwritable_target_is_reported(fitted_session):
     with pytest.raises((ToolError, OSError)):
-        fitting_tools.save_project(fitted_session, path="/proc/nope/session.csp")
+        fitting_tools.save_project(fitted_session, path="/proc/nope/session.cs.pto")

@@ -120,7 +120,7 @@ def test_no_numpy_aliases_removed_in_numpy_2_remain():
     root = pathlib.Path(chisurf.__file__).parent
     # The compatibility shim exists to restore these names, so its prose names
     # them; scanning it would flag the fix rather than a use of the alias.
-    exempt = {root / "core" / "compat.py"}
+    exempt = {root / "core" / "runtime" / "compat.py"}
     for path in root.rglob("*.py"):
         if "__pycache__" in path.parts or "build" in path.parts or path in exempt:
             continue

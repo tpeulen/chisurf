@@ -46,7 +46,7 @@ session, with the recipes below.
 
 ```python
 fit = fits[0]                       # or the index the user means
-name = "tL2"                        # exact name, from get_fit
+name = "t1"                         # exact name, from get_fit
 
 covariance = fit.model.parameters_all_dict[name].error_estimate
 result = fit.adaptive_chi2_scan(name, p_value=0.95, max_points_per_side=25)
