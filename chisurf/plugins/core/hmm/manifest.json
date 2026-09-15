@@ -23,7 +23,7 @@
     {
       "name": "hmm.fit",
       "summary": "Fit a Gaussian hidden Markov model to binned trace(s) and return states, dwell times and transitions.",
-      "params": {
+      "params_schema": {
         "type": "object",
         "properties": {
           "traces": {
@@ -50,7 +50,7 @@
     {
       "name": "hmm.scan",
       "summary": "Fit a range of state counts and score each by AIC and BIC.",
-      "params": {
+      "params_schema": {
         "type": "object",
         "properties": {
           "traces": {"type": "array", "description": "Binned trace(s), as for hmm.fit."},

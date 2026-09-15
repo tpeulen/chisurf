@@ -7,7 +7,10 @@ faithful maximum-entropy), and read out their interconversion as a lifetime-filt
 
 The Qt-free pipeline lives in :mod:`chisurf.plugins.fcs.flc_2d.api`; the GUI is the
 declarative AutoForm tool :class:`chisurf.plugins.fcs.flc_2d.gui.tool.FlcTwoDTool`.
-Based on the MATLAB code by T. Kondo (Schlau-Cohen Lab): ``TK_Create2DFDC_04``,
+Method: Ishii & Tahara, J. Phys. Chem. B 117(39), 11414ff (2013),
+doi:10.1021/jp406861u, doi:10.1021/jp406864e; application: Kondo et al., PNAS
+116(23), 11247-11252 (2019), doi:10.1073/pnas.1821207116. Based on the MATLAB
+code by T. Kondo (Schlau-Cohen Lab): ``TK_Create2DFDC_04``,
 ``TK_FitF_2DMEM_07`` et al.
 """
 

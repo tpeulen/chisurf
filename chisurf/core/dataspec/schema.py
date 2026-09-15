@@ -49,6 +49,7 @@ __all__ = [
     "VIEW_SCHEMA_PATH",
     "build_guide_schema",
     "build_view_schema",
+    "generate_starter_view_spec",
     "validate_guide",
     "validate_view_spec",
 ]
@@ -61,12 +62,19 @@ GUIDE_SCHEMA_PATH = SCHEMA_DIR / "guide.schema.json"
 #: Top-level keys a view spec may carry that are not sections.
 #:
 #: ``title`` and ``model`` are read by chimol, which builds painted forms from
-#: the same files (`chimol.renderer.ui.view_spec`); the Qt loader ignores both.
+#: the same files (`cmtk.view_spec`); the Qt loader ignores both.
 #: They are in the scheme because a key that one reader honours and another
 #: ignores is still part of the format -- leaving it out would make chimol's
 #: own specs invalid.
 _VIEW_TOP_LEVEL = {
     "_comment": {"type": "string", "description": "What this file is and what reads it."},
+    "$schema": {
+        "type": "string",
+        "description": (
+            "JSON Schema URI for editor validation. Map the pattern in "
+            ".vscode/settings.json or set this to the schema's $id."
+        ),
+    },
     "sections": {"type": "array", "items": {"$ref": "#/$defs/section"}},
     "plots": {"type": "array", "items": {"$ref": "#/$defs/plot"}},
     "title": {"type": "string", "description": "Window title; read by chimol's painted forms."},
@@ -92,6 +100,37 @@ VALUE_KINDS = (
 _OPAQUE = {
     ("custom", "options"),
     ("plot", "options"),
+}
+
+#: Documented option shapes for the eight core custom-section keys whose
+#: factories accept a bounded set of named options (rather than forwarding
+#: ``**options`` to an arbitrary widget).  An option key not in this mapping
+#: stays opaque — the right default for a plugin-specific factory.
+_CUSTOM_OPTION_KEYS: dict[str, set[str]] = {
+    "help": {"text", "resource", "title", "label", "align"},
+    "embed": {"widget", "attr", "kwargs", "pass_model", "expanding"},
+    "scalar_table": {"rows", "call", "title"},
+    "background_run": {
+        "start_action", "stop_action", "running_attr", "progress_attr",
+        "status_attr", "start_label", "start_description",
+        "stop_label", "stop_description", "interval_ms",
+    },
+    "rate_matrix": {
+        "attr", "size_attr", "labels_attr", "minimum", "maximum",
+        "decimals", "diagonal", "unit_attr", "unit", "title",
+        "popup", "disable_row0",
+    },
+    "path_list": {
+        "extensions", "path_filter", "add_folders", "dialog_filter",
+        "mmfdb", "mmfdb_kinds", "mmfdb_scope", "select_first",
+        "checkable", "allow_duplicates", "replace_on_drop",
+        "folder_expander", "guards", "max_height", "title",
+    },
+    "lcurve": {
+        "compute_action", "select_action", "log10_min", "log10_max",
+        "n_points", "x_label", "y_label",
+    },
+    "fitting_parameter": {"prior", "label"},
 }
 
 
@@ -150,6 +189,31 @@ def build_view_schema() -> dict:
             "properties": properties,
             "additionalProperties": False,
         }
+
+    # Per-key option validation for documented custom-section factories.
+    # The eight core keys above have bounded option sets; a typo in one of
+    # their option names is caught here. Unknown keys stay opaque.
+    if "custom" in branches:
+        conditions = []
+        for key, allowed in sorted(_CUSTOM_OPTION_KEYS.items()):
+            conditions.append({
+                "if": {
+                    "properties": {"key": {"const": key}},
+                    "required": ["key"],
+                },
+                "then": {
+                    "properties": {
+                        "options": {
+                            "type": "object",
+                            "properties": {k: {} for k in sorted(allowed)},
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+            })
+        if conditions:
+            existing = branches["custom"].get("allOf", [])
+            branches["custom"]["allOf"] = existing + conditions
 
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -249,6 +313,14 @@ def build_guide_schema() -> dict:
             },
             "movie": {"type": "boolean", "description": "The playback transport (chimol)."},
             "sequence": {"type": "boolean", "description": "The sequence strip (chimol)."},
+            "wizard": {
+                "type": "boolean",
+                "description": (
+                    "The running wizard's panel (chimol). Resolves only "
+                    "while a wizard is running, so the step should start it "
+                    "first."
+                ),
+            },
         },
         "additionalProperties": False,
     }
@@ -340,6 +412,12 @@ def build_guide_schema() -> dict:
                     "type": "object",
                     "properties": {
                         "_comment": {"type": "string"},
+                        "$schema": {
+                            "type": "string",
+                            "description": (
+                                "JSON Schema URI for editor validation."
+                            ),
+                        },
                         "title": {"type": "string"},
                         "steps": {"type": "array", "items": step},
                     },
@@ -408,6 +486,79 @@ def write_schemas() -> list[pathlib.Path]:
     return written
 
 
+def generate_starter_view_spec(model) -> dict:
+    """Generate a starter ``view.json`` from a model's parameter groups.
+
+    Walks *model*'s attributes for :class:`~chisurf.core.fitting.parameter.FittingParameterGroup`
+    instances and emits one ``parameter_group_table`` section per group, plus
+    the standard plots.  The result is a plain dict that serialises to valid
+    JSON — a developer edits it into the final spec rather than spelling every
+    section from memory.
+
+    Parameters
+    ----------
+    model : Model
+        A model instance (already constructed with its parameter groups).
+
+    Returns
+    -------
+    dict
+        A view-spec dict.  Pass through :func:`json.dumps` to write a file.
+
+    Examples
+    --------
+    >>> from chisurf.core.dataspec.schema import generate_starter_view_spec
+    >>> spec = generate_starter_view_spec(my_model)
+    >>> print(json.dumps(spec, indent=2))
+
+    """
+    sections = []
+    seen: set[int] = set()
+    for attr_name, value in vars(model).items():
+        if attr_name.startswith("_") or value is model:
+            continue
+        # Duck-typed: anything that looks like a parameter group (has
+        # ``parameters_all``) is treated as one, avoiding a heavy import.
+        if hasattr(value, "parameters_all"):
+            if id(value) in seen:
+                continue
+            seen.add(id(value))
+            title = getattr(value, "name", None) or attr_name.replace("_", " ").title()
+            sections.append({
+                "type": "parameter_group_table",
+                "target": attr_name,
+                "title": title,
+                "collapsible": True,
+            })
+
+    return {
+        "_comment": (
+            "Auto-generated starter view spec — edit as needed. "
+            "Validate with the view spec schema."
+        ),
+        "sections": sections,
+        "plots": [
+            {"key": "line", "options": {"x_label": "x", "y_label": "y"}},
+            {"key": "fit_info"},
+            {"key": "residual"},
+        ],
+    }
+
+
 if __name__ == "__main__":  # pragma: no cover - a maintenance entry point
-    for written in write_schemas():
-        print(f"wrote {written}")
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--generate":
+        # ``python -m chisurf.core.dataspec.schema --generate <dotted.path>``
+        # imports a model class, instantiates it with dummy arguments, and
+        # writes a starter view spec to stdout.
+        import importlib
+
+        parts = sys.argv[2].rsplit(".", 1)
+        module = importlib.import_module(parts[0])
+        cls = getattr(module, parts[1])
+        spec = generate_starter_view_spec(cls.__new__(cls))
+        print(json.dumps(spec, indent=2))
+    else:
+        for written in write_schemas():
+            print(f"wrote {written}")

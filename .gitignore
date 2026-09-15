@@ -104,8 +104,23 @@ chisurf/plugins/core/acq/tcspc_devices/simulation/*.dll
 # scripts in notes/ or scratch/ instead of the repo root so they stay ignored
 # without adding a line here per file.
 /notes/
-# stray generated test images
+# stray generated test images (tests must write to tmp_path, not the cwd)
+/*.png
 /irf_*.png
+# debug dumps & throwaway scripts that land in the repo root
+MARK.txt
+/_smoke_*.py
+/*.csp
+/*.cs.pto
+/*.npz
+# local editor tasks, training logs and generated demo data
+/.zed/
+/logs/
+/demo/
+# databases silently created by sqlite3.connect(<object repr>) — a TypeError
+# in mmfdb's MFDatabase/parse_database_target now prevents these; the pattern
+# catches strays (with their -wal/-shm sidecars) from older runs
+<sqlite3.Connection object at 0x*
 /modules/imp-tricks
 
 # Fluorophore staging database (relocated from _dev/fluorophore_db) — operational data, not tracked

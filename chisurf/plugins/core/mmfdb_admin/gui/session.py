@@ -65,8 +65,15 @@ def local_admin_status(db_path: str, user: str | None = None) -> tuple[bool, boo
     ``True`` so the first import can proceed, mirroring the server's bootstrap
     rule.
     """
+    import os
     import sqlite3
 
+    if not isinstance(db_path, (str, os.PathLike)):
+        # sqlite3.connect() stringifies its argument, so a stray object here
+        # would silently create a database named after its repr.
+        raise TypeError(
+            f"local_admin_status db_path must be a str or Path, got {type(db_path).__name__}"
+        )
     user = user or active_user_id()
     try:
         conn = sqlite3.connect(db_path)

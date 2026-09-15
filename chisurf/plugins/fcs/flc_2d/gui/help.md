@@ -4,7 +4,11 @@ Ordinary FCS correlates the *total* intensity, so two species that diffuse at th
 same rate are one curve. Filtered FCS separates them — but only if you already
 know their decay patterns.
 
-**2D-FLCS** (Ishii & Tahara 2013) drops that requirement. At a chosen macro-time
+**2D-FLCS** (Ishii & Tahara 2013, [doi:10.1021/jp406861u](https://doi.org/10.1021/jp406861u)
+and [doi:10.1021/jp406864e](https://doi.org/10.1021/jp406864e); the original MATLAB this
+tool ports was written for Kondo et al. 2019,
+[doi:10.1073/pnas.1821207116](https://doi.org/10.1073/pnas.1821207116)) drops that
+requirement. At a chosen macro-time
 lag it measures the **joint distribution of the micro-time of the first photon
 and the micro-time of the second**, then inverts that 2-D decay-correlation
 matrix into a map over *pairs* of lifetimes. Nothing has to be known in advance,

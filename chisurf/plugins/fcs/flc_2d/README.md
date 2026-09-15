@@ -4,6 +4,14 @@
 TTTR photon streams and estimates exchange dynamics from lifetime-filtered
 species correlations.
 
+The method is due to Ishii & Tahara (J. Phys. Chem. B 117(39), 11414–11422 and
+11423–11432, 2013; doi:10.1021/jp406861u, doi:10.1021/jp406864e); the original
+MATLAB implementation this plugin ports (`TK_Create2DFDC_04.m` and the fit
+family, by T. Kondo, Schlau-Cohen lab, MIT) was written for the single-molecule
+application in Kondo et al. (Proc. Natl. Acad. Sci. USA 116(23), 11247–11252,
+2019; doi:10.1073/pnas.1821207116). The photon-pair kernels now live in tttrlib
+(`fdc_scan_log` et al.), verified against the original `.m` tick for tick.
+
 The plugin is now split into the migrated plugin layout:
 
 - `api.py` - Qt-free analysis API for notebooks, tests, CLI, and services.
