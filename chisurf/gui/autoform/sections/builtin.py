@@ -1416,6 +1416,24 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
 
 
 # --- custom sections -------------------------------------------------------
+#: Sharp-cornered, minimal-padding toggle for the lifetime header's Abs./Norm.
+#: switches -- boxy to match the add/del buttons above it, and compact enough
+#: that the whole header strip stays on one line in a narrow dock.
+_TOGGLE_BUTTON_STYLE = (
+    "QToolButton { background-color: #3a3a3a; color: #cfcfcf; border: 1px solid #555555; "
+    "border-radius: 0px; padding: 1px 4px; }"
+    "QToolButton:hover { background-color: #454545; }"
+    "QToolButton:checked { background-color: #3d5266; color: #e6eef5; border-color: #4d6b85; }"
+)
+#: Same boxy treatment for the read/link menu buttons.
+_MENU_BUTTON_STYLE = (
+    "QToolButton { background-color: #3a3a3a; color: #cfcfcf; border: 1px solid #555555; "
+    "border-radius: 0px; padding: 1px 4px; }"
+    "QToolButton:hover { background-color: #454545; }"
+    "QToolButton::menu-indicator { width: 0px; }"
+)
+
+
 @register_section("lifetime_amplitude_options")
 class LifetimeAmplitudeOptions(QtWidgets.QWidget):
     """Header controls for a lifetime group: normalize / absolute amplitudes.
@@ -1432,14 +1450,20 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setSpacing(2)
 
-        self.absolute = QtWidgets.QCheckBox("Abs.")
+        self.absolute = QtWidgets.QToolButton()
+        self.absolute.setText("Abs.")
+        self.absolute.setCheckable(True)
+        self.absolute.setStyleSheet(_TOGGLE_BUTTON_STYLE)
         self.absolute.setToolTip("Take absolute value of amplitudes (no negative amplitudes).")
         self.absolute.setChecked(bool(getattr(self._group, "absolute_amplitudes", True)))
         self.absolute.clicked.connect(self._on_changed)
 
-        self.normalize = QtWidgets.QCheckBox("Norm.")
+        self.normalize = QtWidgets.QToolButton()
+        self.normalize.setText("Norm.")
+        self.normalize.setCheckable(True)
+        self.normalize.setStyleSheet(_TOGGLE_BUTTON_STYLE)
         self.normalize.setToolTip("Normalize amplitudes so they sum to one.")
         self.normalize.setChecked(bool(getattr(self._group, "normalize_amplitudes", True)))
         self.normalize.clicked.connect(self._on_changed)
@@ -1447,6 +1471,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         # read/link menus (port of the legacy LifetimeWidget header controls).
         self.read_btn = QtWidgets.QToolButton()
         self.read_btn.setText("read")
+        self.read_btn.setStyleSheet(_MENU_BUTTON_STYLE)
         self.read_btn.setToolTip("Copy parameter values from another lifetime group.")
         self.read_menu = QtWidgets.QMenu(self.read_btn)
         self.read_menu.aboutToShow.connect(
@@ -1457,6 +1482,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
 
         self.link_btn = QtWidgets.QToolButton()
         self.link_btn.setText("link")
+        self.link_btn.setStyleSheet(_MENU_BUTTON_STYLE)
         self.link_btn.setToolTip("Link this lifetime group to another (shared spectrum).")
         self.link_menu = QtWidgets.QMenu(self.link_btn)
         self.link_menu.aboutToShow.connect(
@@ -1464,6 +1490,9 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         )
         self.link_btn.setMenu(self.link_menu)
         self.link_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+
+        for btn in (self.absolute, self.normalize, self.read_btn, self.link_btn):
+            btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         layout.addWidget(self.absolute)
         layout.addWidget(self.normalize)

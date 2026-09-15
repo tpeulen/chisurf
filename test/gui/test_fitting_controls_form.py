@@ -113,6 +113,30 @@ def test_the_values_the_fit_reads_round_trip(controller):
     assert controller.local_first is False
 
 
+def test_initial_fit_range_is_loaded_before_the_first_plot(controller):
+    """The controls must start from the fit, not from zero-valued placeholders."""
+    assert (controller.xmin, controller.xmax) == controller.fit.fit_range
+    assert controller.xmax > controller.xmin
+
+
+def test_action_buttons_have_one_height_and_mcts_is_baby_blue(controller):
+    buttons = [
+        controller._button(action)
+        for action in ("fit", "mcts", "sample", "settings", "auto_range",
+                       "select_dataset")
+    ]
+    assert all(button is not None for button in buttons)
+    assert len({button.minimumHeight() for button in buttons}) == 1
+    assert buttons[1].objectName() == "button_mcts"
+
+    import pathlib
+    qss = pathlib.Path(
+        "chisurf/gui/styles/widgets/fitting_buttons.qss"
+    ).read_text()
+    assert "QToolButton#button_mcts" in qss
+    assert "#89cff0" in qss.lower()
+
+
 def test_the_settings_offer_every_sampler_and_format_that_exists(controller):
     """The selectors are populated by the samplers, not by a list in a file.
 

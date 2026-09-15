@@ -387,6 +387,17 @@ class FittingClient:
 
     # ── Fit actions ──────────────────────────────────────────────────
 
+    @property
+    def is_remote(self) -> bool:
+        """Whether fits run in another process with its own object registry.
+
+        The embedded dispatcher shares this process's objects (fits, models,
+        parameter UUIDs); a remote transport does not — anything that changes
+        a model's *structure* client-side (adding lifetime pairs) is invisible
+        server-side, and parameter writes addressed by the new UUIDs fail.
+        """
+        return self._embedded_dispatcher() is None
+
     def _embedded_dispatcher(self):
         """Return this process's own service dispatcher, if the server is in it.
 

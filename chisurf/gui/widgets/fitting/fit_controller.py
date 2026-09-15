@@ -14,7 +14,7 @@ import chisurf as cs
 import chisurf.logging
 import chisurf.core.data
 import chisurf.core.fitting
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.core.settings
 
@@ -191,6 +191,13 @@ class FittingControllerWidget(Controller):
         self.button_settings = self._button('settings')
         self._emphasise(self.button_fit)
         self._emphasise(self.button_sample)
+        for button in (
+            self.button_fit, self.button_mcts, self.button_sample,
+            self.button_settings, self.button_auto_fit_range,
+            self.button_dataset_select,
+        ):
+            if button is not None:
+                button.setMinimumHeight(28)
         self._move_toggle_into_action_row('local_first')
 
         # The actions the designer file carried. Nothing outside this widget
@@ -572,6 +579,19 @@ class FittingControllerWidget(Controller):
                 labels.append((self._format_dataset_label(base_name), base_name))
         self._build_controls(labels)
 
+        # The view-model starts numeric fields at zero. Load the fit's actual
+        # range before a plot can be constructed; an empty [0, 0] range makes
+        # the first plot blank and leaves subsequent redraws with no data.
+        if fit is not None:
+            try:
+                xmin, xmax = fit.fit_range
+                for editor, value in ((self.spinBox_2, xmin), (self.spinBox, xmax)):
+                    blocked = editor.blockSignals(True)
+                    editor.setValue(int(value))
+                    editor.blockSignals(blocked)
+            except Exception:
+                cs.logging.exception("could not initialise the fit-range controls")
+
         self.curve_select.hide()
         for idx, (_display, base_name) in enumerate(labels):
             try:
@@ -591,7 +611,8 @@ class FittingControllerWidget(Controller):
 
             def update_new(*args, **kwargs):
                 f(*args, **kwargs)
-                self.update(*args)
+                if kwargs.get("notify", True):
+                    self.update()
             return update_new
 
         self.fit.run = wrapper(self.fit.run)

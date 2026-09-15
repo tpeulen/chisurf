@@ -140,6 +140,10 @@ class FittingControlsModel:
         """Run the optimiser."""
         self._trigger("actionFit")
 
+    def mcts(self) -> None:
+        """Search the model structure with MCTS and apply the winner."""
+        self._trigger("actionMCTS")
+
     def settings(self) -> None:
         """Open the sampling and fitting settings."""
         handler = getattr(self._controller, "show_optimization_settings", None)
