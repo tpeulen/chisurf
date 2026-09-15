@@ -462,11 +462,6 @@
         <translation>показать тушитель</translation>
     </message>
     <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="342" />
-        <source>Parameter</source>
-        <translation>Параметр</translation>
-    </message>
-    <message>
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="33" />
         <source>Scan range</source>
         <translation>Диапазон скана</translation>
@@ -485,11 +480,6 @@
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="72" />
         <source>Number of steps between lower and upper bound</source>
         <translation>Число шагов между нижней и верхней границей</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="126" />
-        <source>update</source>
-        <translation>обновить</translation>
     </message>
     <message>
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="108" />
@@ -547,21 +537,6 @@
         <translation>Выделение</translation>
     </message>
     <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="107" />
-        <source>x</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="114" />
-        <source>y</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="270" />
-        <source>norm/log</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="83" />
         <source>add</source>
         <translation>добавить</translation>
@@ -575,26 +550,6 @@
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="456" />
         <source>load</source>
         <translation>загрузить</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="347" />
-        <source>Min</source>
-        <translation>Мин</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="352" />
-        <source>Max</source>
-        <translation>Макс</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="357" />
-        <source>Enable</source>
-        <translation>Включить</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="362" />
-        <source>Invert</source>
-        <translation>Инвертировать</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/modelling/proteinMCLoad.ui" line="35" />
@@ -622,43 +577,8 @@
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="47" />
-        <source>Micro time</source>
-        <translation>Микровремя</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="73" />
-        <source>TW [ms]</source>
-        <translation>ВО [мс]</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="80" />
-        <source>+</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="93" />
-        <source>Microtime ranges for Ch0: use start:end or start-end; separate multiple ranges with ';' or ','; negative values allowed. New syntax: use ':' or '-' to separate start and end values, e.g. '1:16000' or '1-16000'. Range separators also support negatives, e.g. '-1:16000' or '-1-16000'.</source>
-        <translation>Диапазоны микровремени для Ch0: используйте start:end или start-end; несколько диапазонов разделяйте «;» или «,»; отрицательные значения допустимы. Новый синтаксис: разделяйте начало и конец знаком «:» или «-», напр. «1:16000» или «1-16000». Разделители диапазонов поддерживают и отрицательные значения, напр. «-1:16000» или «-1-16000».</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="247" />
-        <source>1-16000</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="108" />
-        <source>Routine</source>
-        <translation>Процедура</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="167" />
         <source>PTU</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="127" />
-        <source>HT3</source>
         <translation type="unfinished" />
     </message>
     <message>
@@ -667,64 +587,9 @@
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="137" />
-        <source>SPC-600_256</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="153" />
-        <source>nPh max</source>
-        <translation>макс. nФот</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="166" />
-        <source>0,3</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="205" />
-        <source>1,2</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="218" />
-        <source>Ch0</source>
-        <translation>Кан0</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="225" />
-        <source>Detector</source>
-        <translation>Детектор</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="244" />
-        <source>Microtime ranges for Ch1: use start:end or start-end; separate multiple ranges with ';' or ','; negative values allowed.</source>
-        <translation>Диапазоны микровремени для Ch1: используйте start:end или start-end; несколько диапазонов разделяйте «;» или «,»; отрицательные значения допустимы.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="260" />
-        <source>nPh min</source>
-        <translation>мин. nФот</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="292" />
-        <source>Routing channels</source>
-        <translation>Каналы маршрутизации</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="299" />
-        <source>Setup</source>
-        <translation>Установка</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="43" />
         <source>Ch1</source>
         <translation>Кан1</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="338" />
-        <source>Auto load</source>
-        <translation>Автозагрузка</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_simulator.ui" line="165" />
@@ -1062,169 +927,14 @@
         <translation>макс</translation>
     </message>
     <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="26" />
-        <source>Phasor</source>
-        <translation>Фазор</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="44" />
-        <source>w [MHz]</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="51" />
-        <source>si(w,D0)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="77" />
-        <source>n</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="84" />
-        <source>gi(w,D0)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="128" />
-        <source>si(w,DA)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="142" />
-        <source>gi(w,DA)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="149" />
-        <source>gi(w,E)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="156" />
-        <source>si(w,E)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="214" />
-        <source>edit</source>
-        <translation>правка</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="118" />
-        <source>Parse parameters</source>
-        <translation>Разобрать параметры</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="142" />
-        <source>FCS parameters</source>
-        <translation>Параметры FCS</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="166" />
-        <source>Display equation help/description.</source>
-        <translation>Показать справку/описание уравнения.</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="209" />
         <source>help</source>
         <translation>справка</translation>
     </message>
     <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="211" />
-        <source>Display equation</source>
-        <translation>Показать уравнение</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="227" />
-        <source>FormulaChanged</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="238" />
-        <source>ModelChanged</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="243" />
-        <source>LoadModelFile</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="248" />
-        <source>Edit model file</source>
-        <translation>Править файл модели</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="42" />
-        <source>Reactions</source>
-        <translation>Реакции</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="55" />
-        <source>Load</source>
-        <translation>Загрузить</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="113" />
-        <source>autoscale</source>
-        <translation>автомасштаб</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="123" />
-        <source>After clicking on update the model will be updated. The fitting results and the linked variables will be lost.</source>
-        <translation>После нажатия «Обновить» модель будет обновлена. Результаты подгонки и связанные переменные будут потеряны.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="139" />
-        <source>plot</source>
-        <translation>график</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="26" />
         <source>Parameters</source>
         <translation>Параметры</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="178" />
-        <source>Species</source>
-        <translation>Компоненты</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="215" />
-        <source>Toogle checkbox to hide parameters</source>
-        <translation>Переключите флажок, чтобы скрыть параметры</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="218" />
-        <source>Rates</source>
-        <translation>Скорости</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="255" />
-        <source>Plot</source>
-        <translation>График</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="260" />
-        <source>Integrate</source>
-        <translation>Интегрировать</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="265" />
-        <source>Load reaction</source>
-        <translation>Загрузить реакцию</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="270" />
-        <source>Save reaction</source>
-        <translation>Сохранить реакцию</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="275" />
-        <source>Update reaction</source>
-        <translation>Обновить реакцию</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="44" />

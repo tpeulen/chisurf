@@ -222,139 +222,14 @@
         <translation>Formular</translation>
     </message>
     <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="44"/>
-        <source>Used fits</source>
-        <translation>Verwendete Fits</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="101"/>
-        <source>Fit</source>
-        <translation>Anpassung</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="108"/>
-        <source>add</source>
-        <translation>hinzufügen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="143"/>
-        <source>If checked, add all available local fits to the used-fits list. If unchecked, only the selected fit is added.</source>
-        <translation>Wenn aktiviert, werden alle verfügbaren lokalen Fits zur Liste der verwendeten Fits hinzugefügt. Wenn deaktiviert, wird nur der ausgewählte Fit hinzugefügt.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="126"/>
-        <source>update</source>
-        <translation>aktualisieren</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="449"/>
         <source>clear</source>
         <translation>leeren</translation>
     </message>
     <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="182"/>
-        <source>Double-click in fit to remove it from the list.</source>
-        <translation>Doppelklick auf einen Fit, um ihn aus der Liste zu entfernen.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="198"/>
-        <source>Fit-name</source>
-        <translation>Fit-Name</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="212"/>
-        <source>Update widgets</source>
-        <translation>Widgets aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="217"/>
-        <source>onAddToLocalFitList</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="222"/>
-        <source>on_clear_local_fits</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="227"/>
-        <source>onAddGlobalVariable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/global_model/globalfit.ui" line="232"/>
-        <source>onClearVariables</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="214"/>
-        <source>edit</source>
-        <translation>bearbeiten</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parameter_transform/parameter_transform.ui" line="118"/>
-        <source>FunctionUpdate</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parameter_transform/parameter_transform.ui" line="123"/>
-        <source>Code Changes</source>
-        <translation>Code-Änderungen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="118"/>
-        <source>Parse parameters</source>
-        <translation>Parameter einlesen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="142"/>
-        <source>FCS parameters</source>
-        <translation>FCS-Parameter</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="166"/>
-        <source>Display equation help/description.</source>
-        <translation>Hilfe/Beschreibung zur Gleichung anzeigen.</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="209"/>
         <source>help</source>
         <translation>Hilfe</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="211"/>
-        <source>Display equation</source>
-        <translation>Gleichung anzeigen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="227"/>
-        <source>FormulaChanged</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="238"/>
-        <source>ModelChanged</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="243"/>
-        <source>LoadModelFile</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="248"/>
-        <source>Edit model file</source>
-        <translation>Modelldatei bearbeiten</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="42"/>
-        <source>Reactions</source>
-        <translation>Reaktionen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="55"/>
-        <source>Load</source>
-        <translation>Laden</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tttr_histogram.ui" line="106"/>
@@ -372,84 +247,9 @@
         <translation>laden</translation>
     </message>
     <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="113"/>
-        <source>autoscale</source>
-        <translation>automatisch skalieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="123"/>
-        <source>After clicking on update the model will be updated. The fitting results and the linked variables will be lost.</source>
-        <translation>Nach Klick auf Aktualisieren wird das Modell aktualisiert. Die Fit-Ergebnisse und die verknüpften Variablen gehen dabei verloren.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="139"/>
-        <source>plot</source>
-        <translation>darstellen</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="26"/>
         <source>Parameters</source>
         <translation>Parameter</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="178"/>
-        <source>Species</source>
-        <translation>Spezies</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="215"/>
-        <source>Toogle checkbox to hide parameters</source>
-        <translation>Kontrollkästchen umschalten, um Parameter auszublenden</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="218"/>
-        <source>Rates</source>
-        <translation>Raten</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="255"/>
-        <source>Plot</source>
-        <translation>Diagramm</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="260"/>
-        <source>Integrate</source>
-        <translation>Integrieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="265"/>
-        <source>Load reaction</source>
-        <translation>Reaktion laden</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="270"/>
-        <source>Save reaction</source>
-        <translation>Reaktion speichern</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/stopped_flow/reaction.ui" line="275"/>
-        <source>Update reaction</source>
-        <translation>Reaktion aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../../core/models/tcspc/load_distance_distibution.ui" line="39"/>
-        <source>Distribution</source>
-        <translation>Verteilung</translation>
-    </message>
-    <message>
-        <location filename="../../core/models/tcspc/load_distance_distibution.ui" line="46"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The distirbution file shoudl be a two-column file. Here the first column is the distance in Ang. The second column is the frequency value. &lt;/p&gt;&lt;p&gt;The second column does not have to be normalized. The distributions are normalized internally.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Die Verteilungsdatei sollte eine Datei mit zwei Spalten sein. Die erste Spalte ist der Abstand in Å. Die zweite Spalte ist der Häufigkeitswert.&lt;/p&gt;&lt;p&gt;Die zweite Spalte muss nicht normiert sein. Die Verteilungen werden intern normiert.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="218"/>
-        <source>...</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../core/models/tcspc/load_distance_distibution.ui" line="63"/>
-        <source>Open distirbution</source>
-        <translation>Verteilung öffnen</translation>
     </message>
     <message>
         <location filename="../plots/lineplot/linePlotWidget.ui" line="64"/>
@@ -617,11 +417,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="473"/>
-        <source>Start/Stop</source>
-        <translation>Start/Stopp</translation>
-    </message>
-    <message>
         <location filename="../plots/molview/molViewControlWidget.ui" line="192"/>
         <source>Current frame</source>
         <translation>Aktuelles Bild</translation>
@@ -685,11 +480,6 @@
         <location filename="../plots/molview/molViewControlWidget.ui" line="346"/>
         <source>show quencher</source>
         <translation>Quencher anzeigen</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="342"/>
-        <source>Parameter</source>
-        <translation>Parameter</translation>
     </message>
     <message>
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="33"/>
@@ -767,41 +557,6 @@
         <translation>Auswahl</translation>
     </message>
     <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="204"/>
-        <source>x</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="114"/>
-        <source>y</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="270"/>
-        <source>norm/log</source>
-        <translation>norm/log</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="347"/>
-        <source>Min</source>
-        <translation>Min</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="352"/>
-        <source>Max</source>
-        <translation>Max</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="357"/>
-        <source>Enable</source>
-        <translation>Aktivieren</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="362"/>
-        <source>Invert</source>
-        <translation>Invertieren</translation>
-    </message>
-    <message>
         <location filename="../widgets/experiments/modelling/proteinMCLoad.ui" line="35"/>
         <source>Structure</source>
         <translation>Struktur</translation>
@@ -827,43 +582,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="47"/>
-        <source>Micro time</source>
-        <translation>Mikrozeit</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="73"/>
-        <source>TW [ms]</source>
-        <translation>ZF [ms]</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="80"/>
-        <source>+</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="93"/>
-        <source>Microtime ranges for Ch0: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed. New syntax: use &apos;:&apos; or &apos;-&apos; to separate start and end values, e.g. &apos;1:16000&apos; or &apos;1-16000&apos;. Range separators also support negatives, e.g. &apos;-1:16000&apos; or &apos;-1-16000&apos;.</source>
-        <translation>Mikrozeit-Bereiche für Kanal0: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt. Neue Syntax: ':' oder '-' zum Trennen von Start- und Endwerten verwenden, z. B. '1:16000' oder '1-16000'. Bereichstrenner unterstützen auch negative Werte, z. B. '-1:16000' oder '-1-16000'.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="247"/>
-        <source>1-16000</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="108"/>
-        <source>Routine</source>
-        <translation>Routine</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="167"/>
         <source>PTU</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="127"/>
-        <source>HT3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -872,64 +592,9 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="137"/>
-        <source>SPC-600_256</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="153"/>
-        <source>nPh max</source>
-        <translation>nPh max</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="166"/>
-        <source>0,3</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="205"/>
-        <source>1,2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="218"/>
-        <source>Ch0</source>
-        <translation>Kanal0</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="225"/>
-        <source>Detector</source>
-        <translation>Detektor</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="244"/>
-        <source>Microtime ranges for Ch1: use start:end or start-end; separate multiple ranges with &apos;;&apos; or &apos;,&apos;; negative values allowed.</source>
-        <translation>Mikrozeit-Bereiche für Kanal1: start:end oder start-end verwenden; mehrere Bereiche mit ';' oder ',' trennen; negative Werte erlaubt.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="260"/>
-        <source>nPh min</source>
-        <translation>nPh min</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="292"/>
-        <source>Routing channels</source>
-        <translation>Routing-Kanäle</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="299"/>
-        <source>Setup</source>
-        <translation>Aufbau</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="43"/>
         <source>Ch1</source>
         <translation>Kanal1</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="338"/>
-        <source>Auto load</source>
-        <translation>Automatisch laden</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_simulator.ui" line="165"/>
@@ -1212,71 +877,6 @@
         <translation>Dt geändert</translation>
     </message>
     <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="47"/>
-        <source>Dataset selection</source>
-        <translation type="obsolete">Datensatzauswahl</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="103"/>
-        <source>Sampling</source>
-        <translation type="obsolete">Abtastung</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="127"/>
-        <source>Stps</source>
-        <translation type="obsolete">Schritte</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="134"/>
-        <source>#Run</source>
-        <translation type="obsolete">#Lauf</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="188"/>
-        <source>Sample</source>
-        <translation type="obsolete">Probe</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="217"/>
-        <source>Fitting</source>
-        <translation type="obsolete">Anpassung</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="241"/>
-        <source>local first</source>
-        <translation type="obsolete">zuerst lokal</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="292"/>
-        <source>Range selection</source>
-        <translation type="obsolete">Bereichsauswahl</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="377"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Fitting-Range&lt;/p&gt;&lt;p&gt;Try to determine the optimal fitting range &lt;br/&gt;automatically.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="obsolete">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Fit-Bereich&lt;/p&gt;&lt;p&gt;Den optimalen Fit-Bereich automatisch &lt;br/&gt;bestimmen lassen.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="380"/>
-        <source>auto</source>
-        <translation type="obsolete">auto</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="390"/>
-        <source>fit</source>
-        <translation type="obsolete">Fit</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="398"/>
-        <source>Fit range changed</source>
-        <translation type="obsolete">Fit-Bereich geändert</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fitting/fittingWidget.ui" line="403"/>
-        <source>Change dataset</source>
-        <translation type="obsolete">Datensatz wechseln</translation>
-    </message>
-    <message>
         <location filename="../widgets/fluorescence/av/av_property.ui" line="26"/>
         <source>Linker-length</source>
         <translation>Linkerlänge</translation>
@@ -1320,271 +920,6 @@
         <location filename="../widgets/fluorescence/av/av_property.ui" line="207"/>
         <source>max</source>
         <translation>max</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="509"/>
-        <source>Phasor</source>
-        <translation>Phasor</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="527"/>
-        <source>w [MHz]</source>
-        <translation>w [MHz]</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="534"/>
-        <source>si(w,D0)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="560"/>
-        <source>n</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="567"/>
-        <source>gi(w,D0)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="611"/>
-        <source>si(w,DA)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="625"/>
-        <source>gi(w,DA)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="632"/>
-        <source>gi(w,E)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="639"/>
-        <source>si(w,E)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="20"/>
-        <source>Decay-selection</source>
-        <translation>Zerfallsauswahl</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="38"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Please click me!!!!!&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;/(&amp;amp;%$$$!&amp;quot;§$%$§%&amp;amp;$§&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;)&amp;amp;$§§&amp;quot;&amp;quot;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Bitte klicken Sie mich!!!!!&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;/(&amp;amp;%$$$!&amp;quot;§$%$§%&amp;amp;$§&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;)&amp;amp;$§§&amp;quot;&amp;quot;&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="66"/>
-        <source>FD0</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="83"/>
-        <source>FDA</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="98"/>
-        <source>E(t)-calc</source>
-        <translation>E(t)-Berechnung</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="147"/>
-        <source>tau0</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="185"/>
-        <source>Lin</source>
-        <translation>Lin</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="192"/>
-        <source>Log</source>
-        <translation>Protokoll</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="204"/>
-        <source>Time-axis</source>
-        <translation>Zeitachse</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="228"/>
-        <source>kappa2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="235"/>
-        <source>range</source>
-        <translation>Bereich</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="242"/>
-        <source>R0</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="273"/>
-        <source>Regularization</source>
-        <translation>Regularisierung</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="280"/>
-        <source>chi2r</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="327"/>
-        <source>MEM</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="337"/>
-        <source>NNLS</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="347"/>
-        <source>TSVD</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="359"/>
-        <source>Range [Ang.]</source>
-        <translation>Bereich [Å]</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="418"/>
-        <source>Points</source>
-        <translation>Punkte</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="425"/>
-        <source>9999999</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="438"/>
-        <source>L-Curve</source>
-        <translation>L-Kurve</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="496"/>
-        <source>calc</source>
-        <translation>berechnen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="663"/>
-        <source>update decay list</source>
-        <translation>Zerfallsliste aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="668"/>
-        <source>update plots</source>
-        <translation>Diagramme aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="673"/>
-        <source>update regularization</source>
-        <translation>Regularisierung aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="678"/>
-        <source>Optimize</source>
-        <translation>Optimieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="683"/>
-        <source>Update phasor</source>
-        <translation>Phasor aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/et_model_free.ui" line="688"/>
-        <source>Update L-Curve</source>
-        <translation>L-Kurve aktualisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="29"/>
-        <source>Corrections</source>
-        <translation>Korrekturen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="69"/>
-        <source>Window</source>
-        <translation>Fenster</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="82"/>
-        <source>reverse</source>
-        <translation>umkehren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="95"/>
-        <source>Pileup</source>
-        <translation>Pile-up</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="108"/>
-        <source>Linearize</source>
-        <translation>Linearisieren</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="130"/>
-        <source>Lintable</source>
-        <translation>Lin.-Tabelle</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspcCorrections.ui" line="167"/>
-        <source>Select lintable</source>
-        <translation>Lin.-Tabelle auswählen</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="35"/>
-        <source>Convolve</source>
-        <translation>Falten</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="71"/>
-        <source>NA</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="94"/>
-        <source>Click on button to load IRF ---&gt;</source>
-        <translation>Auf die Schaltfläche klicken, um die IRF zu laden ---&gt;</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="146"/>
-        <source>curve</source>
-        <translation>Kurve</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="159"/>
-        <source>exp</source>
-        <translation>exp</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="175"/>
-        <source>per</source>
-        <translation>per</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="197"/>
-        <source>IRF</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="211"/>
-        <source>FWHM</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/tcspc/tcspc_convolve.ui" line="233"/>
-        <source>Select IRF</source>
-        <translation>IRF auswählen</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="44"/>
@@ -2039,21 +1374,6 @@ p, li { white-space: pre-wrap; }
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="226"/>
         <source>Type</source>
         <translation>Typ</translation>
-    </message>
-    <message>
-        <location filename="../../plugins/tttr/tttr_correlate/cr_filter.ui" line="38"/>
-        <source>Countrate-Filter</source>
-        <translation>Zählraten-Filter</translation>
-    </message>
-    <message>
-        <location filename="../../plugins/tttr/tttr_correlate/cr_filter.ui" line="101"/>
-        <source>time window [ms]</source>
-        <translation>Zeitfenster [ms]</translation>
-    </message>
-    <message>
-        <location filename="../../plugins/tttr/tttr_correlate/cr_filter.ui" line="108"/>
-        <source>max count rate [kHz]</source>
-        <translation>max. Zählrate [kHz]</translation>
     </message>
     <message>
         <location filename="../../plugins/tttr/tttr_histogram/tttr_histogram.ui" line="14"/>

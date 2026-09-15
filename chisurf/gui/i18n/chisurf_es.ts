@@ -462,11 +462,6 @@
         <translation>mostrar extintor</translation>
     </message>
     <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="342" />
-        <source>Parameter</source>
-        <translation>Parámetro</translation>
-    </message>
-    <message>
         <location filename="../plots/parameter_scan/parameter_scan.ui" line="33" />
         <source>Scan range</source>
         <translation>Rango de barrido</translation>
@@ -547,21 +542,6 @@
         <translation>Selección</translation>
     </message>
     <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="107" />
-        <source>x</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="114" />
-        <source>y</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="270" />
-        <source>norm/log</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
         <location filename="../widgets/experiments/tcspc/tcspc_sdt.ui" line="83" />
         <source>add</source>
         <translation>añadir</translation>
@@ -575,26 +555,6 @@
         <location filename="../../plugins/tttr/microtime_histogram/wizard.ui" line="456" />
         <source>load</source>
         <translation>cargar</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="347" />
-        <source>Min</source>
-        <translation>Mín</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="352" />
-        <source>Max</source>
-        <translation>Máx</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="357" />
-        <source>Enable</source>
-        <translation>Activar</translation>
-    </message>
-    <message>
-        <location filename="../resources/fitting/chi2Hist.ui" line="362" />
-        <source>Invert</source>
-        <translation>Invertir</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/modelling/proteinMCLoad.ui" line="35" />
@@ -622,43 +582,8 @@
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="47" />
-        <source>Micro time</source>
-        <translation>Microtiempo</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="73" />
-        <source>TW [ms]</source>
-        <translation>VT [ms]</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="80" />
-        <source>+</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="93" />
-        <source>Microtime ranges for Ch0: use start:end or start-end; separate multiple ranges with ';' or ','; negative values allowed. New syntax: use ':' or '-' to separate start and end values, e.g. '1:16000' or '1-16000'. Range separators also support negatives, e.g. '-1:16000' or '-1-16000'.</source>
-        <translation>Rangos de microtiempo del canal 0: use inicio:fin o inicio-fin; separe varios con «;» o «,»; se admiten negativos. Sintaxis nueva: use «:» o «-», p. ej. «1:16000» o «1-16000», también con negativos.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="247" />
-        <source>1-16000</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="108" />
-        <source>Routine</source>
-        <translation>Rutina</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="167" />
         <source>PTU</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="127" />
-        <source>HT3</source>
         <translation type="unfinished" />
     </message>
     <message>
@@ -667,64 +592,9 @@
         <translation type="unfinished" />
     </message>
     <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="137" />
-        <source>SPC-600_256</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="153" />
-        <source>nPh max</source>
-        <translation>nFot máx</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="166" />
-        <source>0,3</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="205" />
-        <source>1,2</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="218" />
-        <source>Ch0</source>
-        <translation>Can0</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="225" />
-        <source>Detector</source>
-        <translation>Detector</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="244" />
-        <source>Microtime ranges for Ch1: use start:end or start-end; separate multiple ranges with ';' or ','; negative values allowed.</source>
-        <translation>Rangos de microtiempo del canal 1: use inicio:fin o inicio-fin; separe varios con «;» o «,»; se admiten negativos.</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="260" />
-        <source>nPh min</source>
-        <translation>nFot mín</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="292" />
-        <source>Routing channels</source>
-        <translation>Canales de enrutado</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="299" />
-        <source>Setup</source>
-        <translation>Montaje</translation>
-    </message>
-    <message>
         <location filename="../../plugins/tttr/tttr_correlate/correlatorWidget.ui" line="43" />
         <source>Ch1</source>
         <translation>Can1</translation>
-    </message>
-    <message>
-        <location filename="../widgets/experiments/pda2c/pda_tttr.ui" line="338" />
-        <source>Auto load</source>
-        <translation>Carga automática</translation>
     </message>
     <message>
         <location filename="../widgets/experiments/tcspc/tcspc_simulator.ui" line="165" />
@@ -1062,99 +932,9 @@
         <translation>máx</translation>
     </message>
     <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="26" />
-        <source>Phasor</source>
-        <translation>Fasor</translation>
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="44" />
-        <source>w [MHz]</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="51" />
-        <source>si(w,D0)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="77" />
-        <source>n</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="84" />
-        <source>gi(w,D0)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="128" />
-        <source>si(w,DA)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="142" />
-        <source>gi(w,DA)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="149" />
-        <source>gi(w,E)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/fluorescence/phasor_widget.ui" line="156" />
-        <source>si(w,E)</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="214" />
-        <source>edit</source>
-        <translation>editar</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="118" />
-        <source>Parse parameters</source>
-        <translation>Analizar parámetros</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="142" />
-        <source>FCS parameters</source>
-        <translation>Parámetros FCS</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="166" />
-        <source>Display equation help/description.</source>
-        <translation>Mostrar la ayuda/descripción de la ecuación.</translation>
-    </message>
-    <message>
         <location filename="../widgets/wizard/tttr_fileformat/tttr_file_format.ui" line="209" />
         <source>help</source>
         <translation>ayuda</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="211" />
-        <source>Display equation</source>
-        <translation>Mostrar la ecuación</translation>
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="227" />
-        <source>FormulaChanged</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="238" />
-        <source>ModelChanged</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="243" />
-        <source>LoadModelFile</source>
-        <translation type="unfinished" />
-    </message>
-    <message>
-        <location filename="../widgets/models/parse/parseWidget.ui" line="248" />
-        <source>Edit model file</source>
-        <translation>Editar archivo del modelo</translation>
     </message>
     <message>
         <location filename="../widgets/pdb/pdb_widget.ui" line="44" />
