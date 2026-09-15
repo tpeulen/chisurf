@@ -1,5 +1,21 @@
 # Update Log
 
+## 2026-09-15
+
+* **The classic TCSPC models are gone; lifetime, FRET, PDDEM and MaxEnt are
+  views on BFF.** ChiSurf `61803a747` (with `8358c23c8`), bff `fda8d76`,
+  `19aa53f`, `cc7a612`, `a49062d`. `chisurf.core.models.tcspc.{lifetime,fret,
+  pddem,maxent}` are alias modules over `for_family`. MaxEnt runs in BFF's
+  `MaxEntSpectrum` node, not tttrlib. Parity is frozen in
+  `test/fitting/data/classic_tcspc_reference.json` (1e-9) and the Numba MEM
+  designs (single excitation 1e-12, periodic 2e-3, documented). Autoscale now
+  holds `n0` in the description (a free entry `{parameter, when}`), which
+  classic ChiSurf did via `n0.fixed`. Left open: tttrlib's MEM TCSPC model
+  layer (blocked on uncommitted `MaxEntTcspc`/`MaxEntQp.h` edits) and stale
+  classic entries in `parameter_registry.json`. Hazard found: temp-index
+  commits had left 43 stale entries in the shared `.git/index`; after such a
+  commit, `git reset -q HEAD -- <paths>`.
+
 ## 2026-09-12
 
 * **Complete bff taxonomy and downstream migration.** Bff `54b36b4`,
