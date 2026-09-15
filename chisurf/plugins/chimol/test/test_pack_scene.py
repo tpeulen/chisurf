@@ -17,7 +17,14 @@ import pytest
 
 os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_pack_"))
 
-_PDB = Path("test/data/atomic_coordinates/pdb_files/148l.pdb")
+_PDB = (
+    Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
+)
 REPRESENTATIONS = ("cartoon", "sticks", "spheres", "surface", "lines")
 
 

@@ -50,7 +50,7 @@ from chimol_pkg.core.viewer import Viewer
 from chimol_pkg.render.wgpu_backend import WgpuMeshRenderer
 from chimol_pkg.commands import Cmd
 from chimol_pkg.hosts.base import ViewerHost
-from chimol_pkg.cmtk.events import LEFT_BUTTON
+from cmtk.events import LEFT_BUTTON  # cmtk is its own package, not chimol's
 from chimol_pkg.hosts.toolkit import HAS_QT
 
 assert not HAS_QT, "the toolkit was not stripped; this is not the page's configuration"
@@ -254,7 +254,12 @@ def test_the_browser_delivers_the_same_gestures_as_the_desktop():
     from chimol.hosts.native.canvas import CanvasView
     from chimol.hosts.web.page import Page
 
-    assert Page.supported_features == CanvasView.supported_features
+    # A *windowed* toolkit-free canvas is the comparison. `file_drop` is
+    # answered by the canvas rather than declared on the class -- an offscreen
+    # canvas has no window to drop on -- so the reference is the base set plus
+    # the drop a real window delivers, which is what the page delivers too.
+    windowed = CanvasView._BASE_FEATURES | {"file_drop"}
+    assert Page.supported_features == windowed
 
 
 def test_the_browser_takes_its_scene_rectangle_from_the_renderer():

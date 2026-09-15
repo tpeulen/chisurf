@@ -28,8 +28,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.cmtk import quad_painter as qp
-from chimol.cmtk.quad_painter import QuadPainter
+from cmtk import quad_painter as qp
+from cmtk.quad_painter import QuadPainter
 
 
 # --------------------------------------------------------------------------
@@ -226,6 +226,15 @@ class _Backend:
     def _flush_glyph_cache(self, texture) -> bool:
         """No new glyphs."""
         return False
+
+    def _chrome_image_atlas_texture(self):
+        """The image atlas texture, the same one every frame.
+
+        ``_draw_ui`` reads this before every chrome draw (the image atlas is
+        flushed incrementally, the way the glyph cache is), so the stub has
+        to carry one or every frame dies before it draws.
+        """
+        return self._texture
 
 
 @pytest.fixture()

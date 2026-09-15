@@ -27,7 +27,7 @@ from chimol.core.colors import (
     _build_chain_color_array,
     get_pymol_color,
 )
-from chimol.commands.builtin.presets import PresetMixin
+from chimol.plugins.presets.commands import PresetCommands
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -126,7 +126,7 @@ def _state(win):
     return win.viewer.objects[win.viewer.get_active_object_id()].state
 
 
-@pytest.mark.parametrize("name", sorted(PresetMixin.PRESETS))
+@pytest.mark.parametrize("name", sorted(PresetCommands.PRESETS))
 def test_every_preset_runs(session, name):
     """A preset that raises is worse than no preset: the menu entry is dead."""
     _win, do, messages, errors = session
@@ -240,10 +240,10 @@ def test_the_menu_offers_pymols_presets_and_runs_the_real_ones():
     commands = _menu_commands(entry)
     assert all(c.startswith("preset ") for c in commands), commands
     names = {c.split()[1].rstrip(",") for c in commands}
-    assert names <= set(PresetMixin.PRESETS), names - set(PresetMixin.PRESETS)
+    assert names <= set(PresetCommands.PRESETS), names - set(PresetCommands.PRESETS)
     # Everything the command offers is reachable from the menu, or it is a
     # feature nobody can find.
-    assert names == set(PresetMixin.PRESETS), set(PresetMixin.PRESETS) - names
+    assert names == set(PresetCommands.PRESETS), set(PresetCommands.PRESETS) - names
 
 
 def test_every_disabled_ligand_site_variant_says_why():

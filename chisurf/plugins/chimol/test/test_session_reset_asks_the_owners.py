@@ -83,6 +83,29 @@ def reset():
         viewer.reset_session()
         emit("direct_windows", windows())
         emit("direct_objects", len(list(viewer.objects.items())))
+
+        # The representations are the same argument one level down: what a
+        # reset puts back is read from the registry, over every object.
+        from chimol.core.services.representations import REPRESENTATIONS
+        cmd.do("load 148l.pdb"); cmd.do("load 148l.pdb")
+        keys = list(viewer.objects)
+        emit("objects_for_reps", str(len(keys)))
+        for name in ("lines", "nonbonded", "labels", "sticks", "spheres"):
+            cmd.do("show %s" % name)
+        viewer.update_view()
+
+        def shown(object_id):
+            st = viewer.objects[object_id].state
+            return sorted(spec.name for spec in REPRESENTATIONS.specs()
+                          if spec.flag_field and getattr(st, spec.flag_field, False))
+
+        emit("reps_before", ",".join(shown(keys[0])))
+        viewer.reset_session(keep_objects=True)
+        viewer.update_view()
+        emit("reps_after_first", ",".join(shown(keys[0])))
+        emit("reps_after_second", ",".join(shown(keys[1])))
+        emit("reps_default", ",".join(sorted(
+            spec.name for spec in REPRESENTATIONS.specs() if spec.default_visible)))
     ''')
 
 
@@ -114,6 +137,25 @@ def test_anything_else_hears_it_on_the_bus(reset):
 def test_the_viewer_resets_itself_without_the_command(reset):
     assert reset["direct_windows"] == "mouse,objects"
     assert int(reset["direct_objects"]) == 0
+
+
+def test_the_representations_a_reset_puts_back_are_the_registry_s(reset):
+    """Not a table beside it, and not on one object out of two.
+
+    The same inventory habit, one level down: eight setter names and their
+    startup values were written out here, and `lines`, `nonbonded` and
+    `labels` were registered afterwards without anybody adding them -- so a
+    reset left those three exactly as the last session had them. The list that
+    cannot disagree with the registry is the registry.
+
+    And it reached one object: ten of the eleven setters wrote to the *active*
+    object, while spheres alone had a `set_atoms_visible_all`, so a reset with
+    two molecules loaded put the cartoon back on one of them.
+    """
+    assert int(reset["objects_for_reps"]) == 2
+    assert "lines" in reset["reps_before"] and "labels" in reset["reps_before"]
+    assert reset["reps_after_first"] == reset["reps_default"]
+    assert reset["reps_after_second"] == reset["reps_default"]
 
 
 def test_the_command_does_not_enumerate_what_to_reset():

@@ -143,6 +143,19 @@ def test_chimol_cmd_delete_all_reinitialize_copy(editing_context):
 
 
 def test_chimol_cmd_png_and_ray(editing_context, tmp_path: Path):
+    """`png` reaches the renderer, and `ray` reports what it did.
+
+    The file assertion was `assert out.with_suffix(".png").is_file()` and it
+    passed for the wrong reason: the command tried `viewer.save_png(...)`
+    first, the double implemented it by writing four bytes, and the real
+    branch -- reading the framebuffer through the renderer -- was never taken
+    on any host. The double's `save_png` is gone with the product's probe, so
+    what is checked here is what a viewer with no renderer can honestly
+    report: an error naming the failure, never a message claiming success.
+
+    A PNG that is actually written is proved where there is something to draw
+    with -- `test_export.py` and the browser suite's screenshots.
+    """
     viewer, cmd = editing_context
     messages = []
     errors = []
@@ -151,8 +164,12 @@ def test_chimol_cmd_png_and_ray(editing_context, tmp_path: Path):
 
     out = tmp_path / "view_export"
     cmd.do(f"png {out}")
-    assert out.with_suffix(".png").is_file()
+    assert not any("Wrote PNG" in m for m in messages), (
+        "a viewer with no renderer reported that it had written one"
+    )
+    assert any(str(out.with_suffix(".png")) in e for e in errors), errors
 
+    errors.clear()
     cmd.do("ray 800 600")
     assert any("ray:" in msg for msg in messages)
     assert errors == []

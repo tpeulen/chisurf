@@ -336,7 +336,7 @@ def test_a_real_protein_has_networks_and_almost_no_clashes():
 # --------------------------------------------------------------------------- #
 def test_every_standard_residue_has_a_fragment_and_its_rotamers():
     """Twenty fragments, eighteen libraries -- ALA and GLY have no chi angle."""
-    from chimol.analysis.residue_library import (
+    from chimol.plugins.mutagenesis.library import (
         FRAGMENTS,
         ROTAMERS,
     )
@@ -351,7 +351,7 @@ def test_every_standard_residue_has_a_fragment_and_its_rotamers():
 
 def test_a_built_rotamer_has_the_chi_angles_it_says():
     """The whole point of the library: the built side chain *is* that rotamer."""
-    from chimol.analysis.mutate import (
+    from chimol.plugins.mutagenesis.rotamers import (
         _dihedral,
         build_rotamers,
     )
@@ -372,7 +372,7 @@ def test_a_built_rotamer_has_the_chi_angles_it_says():
 
 def test_the_backbone_is_kept_exactly():
     """The side chain grows out of the existing backbone; the chain does not move."""
-    from chimol.analysis.mutate import build_rotamers
+    from chimol.plugins.mutagenesis.rotamers import build_rotamers
 
     backbone = {
         "N": np.array([3.1, -1.2, 0.7]),
@@ -394,7 +394,7 @@ def test_the_backbone_is_kept_exactly():
 
 def test_a_residue_without_a_backbone_is_refused():
     """PyMOL's wizard requires N, C and O before it offers anything."""
-    from chimol.analysis.mutate import build_rotamers
+    from chimol.plugins.mutagenesis.rotamers import build_rotamers
 
     with pytest.raises(ValueError):
         build_rotamers("LEU", {"CA": np.zeros(3)})
@@ -406,7 +406,7 @@ def test_hydrogens_follow_the_structure():
     One residue drawn with hydrogens and 164 without reads as a rendering
     fault, and the fragments all carry them.
     """
-    from chimol.analysis.mutate import build_rotamers
+    from chimol.plugins.mutagenesis.rotamers import build_rotamers
 
     backbone = {
         "N": np.zeros(3), "CA": np.array([1.458, 0.0, 0.0]),
@@ -430,7 +430,7 @@ def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
     crystallographic one, and PyMOL has exactly the same property, which is why
     its wizard shows the list.
     """
-    from chimol.analysis.mutate import mutate_residue
+    from chimol.plugins.mutagenesis.rotamers import mutate_residue
 
     atoms, _bonds = _read("148l.pdb")
     resid = np.asarray(atoms["res_id"], dtype=int)

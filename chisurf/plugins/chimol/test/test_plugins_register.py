@@ -29,12 +29,25 @@ from chimol.testing.mock_viewer import MockViewer, MockWindow
 
 ONE_COMMAND_PER_PLUGIN = {
     "labelling": "add_dye",
+    "mutagenesis": "mutate",
+    "interactions": "clashes",
+    "exporting": "png",
+    "presets": "preset",
+    "inspect": "editor",
     "symmetry": "symexp",
     "density": "density_panel",
     "hierarchy": "hierarchy_panel",
     "history": "history_panel",
     "dbg": "dbg",
     "scores": "scores",
+    "annotations": "annotations_load",
+}
+
+#: Plugins that register no command at all -- what each contributes is named
+#: beside it, and asserted through the registry it feeds.
+PLUGIN_WITHOUT_COMMAND = {
+    "representations": ("representation", "sticks"),
+    "neurons": ("format", "swc"),
 }
 
 
@@ -44,7 +57,8 @@ def _cmd(**kw) -> Cmd:
 
 def test_a_fresh_cmd_carries_every_builtin_plugin():
     cmd = _cmd()
-    assert set(cmd.plugins.names()) == set(ONE_COMMAND_PER_PLUGIN)
+    expected = set(ONE_COMMAND_PER_PLUGIN) | set(PLUGIN_WITHOUT_COMMAND)
+    assert set(cmd.plugins.names()) == expected
     assert cmd.plugins.failed == {}
     for plugin, name in ONE_COMMAND_PER_PLUGIN.items():
         spec = cmd._registry.resolve(name)
@@ -52,6 +66,19 @@ def test_a_fresh_cmd_carries_every_builtin_plugin():
         # the command reaches the plugin's group, and is callable as an attribute
         assert isinstance(spec.func.__self__, CommandGroup)
         assert getattr(cmd, name) is spec.func
+    for plugin, (kind, thing) in PLUGIN_WITHOUT_COMMAND.items():
+        if kind == "representation":
+            from chimol.core.services.representations import REPRESENTATIONS
+
+            assert REPRESENTATIONS.get(thing) is not None, (
+                f"{plugin}: {thing} did not register"
+            )
+        elif kind == "format":
+            from chimol.io.registry import FORMATS
+
+            assert any(spec.name == thing for spec in FORMATS.specs()), (
+                f"{plugin}: {thing} did not register"
+            )
 
 
 def test_builtin_names_match_the_packages():
@@ -68,9 +95,17 @@ def test_a_bare_cmd_has_no_plugin_commands():
         assert cmd._registry.resolve(name) is None
     with pytest.raises(AttributeError):
         cmd.add_dye  # noqa: B018
-    # the core groups are still all there
+    # the core groups are still all there -- asked of the groups rather than of
+    # their number, which was the assertion here and said nothing about whether
+    # any of them worked. A count also has to be edited by anyone who splits a
+    # group, which is how it read `14` while there were fifteen.
     assert cmd._registry.resolve("load") is not None
-    assert len(DEFAULT_GROUPS) == 14
+    for group in DEFAULT_GROUPS:
+        registered = [
+            name for name in dir(group)
+            if getattr(getattr(group, name, None), "_command_info", None)
+        ]
+        assert registered, f"{group.__name__} registered no command"
 
 
 class _Greeting(CommandGroup):
@@ -225,6 +260,39 @@ def test_the_browser_zip_ships_the_builtin_plugins_and_no_qt(tmp_path):
     assert not [n for n in names if n.startswith("chimol/hosts/qt/")]
     assert not [n for n in names if n.startswith("chimol/hosts/native/")]
     assert "chimol/plugins/api.py" in names
+
+
+def test_the_browser_zip_ships_its_dependencies_data_and_not_only_their_code(tmp_path):
+    """A dependency is not only its modules.
+
+    cmtk is packed from wherever it is installed, and for a while that meant
+    ``*.py`` and nothing else -- so the page imported the whole interface
+    cleanly and then died measuring the first menu label, because the baked
+    glyph atlas had been left behind. Every string in the chrome is measured
+    with that file; a zip without it is a zip that cannot draw.
+    """
+    from chimol.hosts.web import serve
+
+    names = zipfile.ZipFile(serve.pack(tmp_path / "chimol.zip")).namelist()
+    assert "cmtk/im.py" in names, "the toolkit itself is missing"
+    assert "cmtk/atlas/chrome.json" in names, "the glyph metrics are missing"
+    assert "cmtk/atlas/chrome.png" in names, "the glyph image is missing"
+
+
+def test_the_zip_knows_which_build_it_is(tmp_path):
+    """A page has no installed metadata to ask, so the packer writes it down.
+
+    `diagnose` in the browser answered "chimol (source checkout)" for every
+    build ever served -- and "which build is this?" is the first question asked
+    of a bug reported from a web page.
+    """
+    import chimol
+    from chimol.hosts.web import serve
+
+    archive = zipfile.ZipFile(serve.pack(tmp_path / "chimol.zip"))
+    assert "chimol/_version.py" in archive.namelist()
+    baked = archive.read("chimol/_version.py").decode()
+    assert repr(chimol.__version__) in baked, baked
 
 
 class _KeysAndSettingsPlugin:

@@ -26,7 +26,14 @@ os.environ.setdefault(
     "CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_headless_test_")
 )
 
-_PDB = Path("test/data/atomic_coordinates/pdb_files/148l.pdb")
+_PDB = (
+    Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
+)
 
 #: Command scripts to compare. Each exercises a different scene builder, because
 #: they are separate code paths and a shared one passing proves little.

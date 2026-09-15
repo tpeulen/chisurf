@@ -55,15 +55,30 @@ def _verbs(entries, verb):
         if command.startswith(f"{verb} ")
     }
 
+from chimol.core.services.representations import REPRESENTATIONS
+
 
 # --------------------------------------------------------------------------- #
 # Menu coverage
 # --------------------------------------------------------------------------- #
+def _scopable() -> list[str]:
+    """Representations the S and H menus are *for*.
+
+    Those menus act on a selection, so they cover the representations that can
+    be scoped to one -- which the registry answers. The reference plane is a
+    scene aid with no per-row state: `show plane` is a viewer setting, not
+    something you do to a selection, and listing it beside `sticks` would say
+    otherwise.
+    """
+    return [name for name in REPRESENTATIONS.names()
+            if REPRESENTATIONS.scoped(name) is not None]
+
+
 def test_every_representation_can_be_shown_from_the_menu():
     """Including the ones ChiMOL has and PyMOL does not."""
     shown = _verbs(om.SHOW_MENU, "show")
     missing = [
-        rep for rep in Cmd._ALL_REPRESENTATIONS
+        rep for rep in _scopable()
         if rep not in shown and _SPELLED_DIFFERENTLY.get(rep) not in shown
     ]
     assert not missing, f"not reachable from the S menu: {missing}"
@@ -72,7 +87,7 @@ def test_every_representation_can_be_shown_from_the_menu():
 def test_every_representation_can_be_hidden_from_the_menu():
     hidden = _verbs(om.HIDE_MENU, "hide")
     missing = [
-        rep for rep in Cmd._ALL_REPRESENTATIONS
+        rep for rep in _scopable()
         if rep not in hidden and _SPELLED_DIFFERENTLY.get(rep) not in hidden
     ]
     assert not missing, f"not reachable from the H menu: {missing}"

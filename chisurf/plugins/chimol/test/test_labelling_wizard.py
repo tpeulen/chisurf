@@ -75,7 +75,7 @@ def test_the_panel_walks_pick_mutate_dye_attach(session):
     shared.do("wizard labelling")
     viewer = win.viewer
     state = viewer.wizard
-    from chimol.ui.wizards.base import LabellingWizard
+    from chimol.plugins.labelling.wizard import LabellingWizard
 
     assert isinstance(state, LabellingWizard)
     labels = [row.label for row in state.panel()]

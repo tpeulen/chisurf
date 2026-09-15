@@ -119,7 +119,7 @@ def test_a_plugin_can_register_a_dye_model():
     assert register_model(DyeModel("SPHERE", ("radius",), compute, owner="test"))
     try:
         assert parse_dye_spec("sphere 4.0") == {"simulation_type": "SPHERE", "radius": 4.0}
-        from chimol.ui.wizards.base import LabellingWizard
+        from chimol.plugins.labelling.wizard import LabellingWizard
 
         labels = [e.label for e in LabellingWizard().menu("dye")]
         assert any("sphere" in label for label in labels)

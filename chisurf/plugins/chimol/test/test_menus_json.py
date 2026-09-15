@@ -111,15 +111,46 @@ def test_a_broken_config_fails_loudly(tmp_path, monkeypatch):
         menus._load_config()
 
 
-def test_an_unknown_include_or_generator_is_named(tmp_path, monkeypatch):
-    """The error says which row and what it asked for."""
+def test_an_unknown_include_is_named_and_an_unknown_section_is_empty():
+    """Two different mistakes, and only one of them can be the config's.
+
+    An ``include`` names another menu *in this file*: naming one that is not
+    there is a typo, nothing can supply it later, and it raises.
+
+    A ``generate`` names a section some feature provides -- the Preset menu is
+    the presets plugin's, the Demo menu the demos plugin's -- so "nobody
+    provides it" is what a switched-off or absent plugin looks like, and it
+    yields an **empty section**. A viewer that will not draw its menu bar
+    because one feature is missing is worse than one that draws it without
+    that feature's section. The name is recorded so a test (and `doctor`) can
+    still tell the difference between "absent" and "misspelt".
+    """
     config = _config()
     config["menus"]["Edit"] = [{"include": "Nope"}]
     with pytest.raises(RuntimeError, match="Nope"):
         menus._menu("Edit", config["menus"])
+
     config["menus"]["Edit"] = [{"generate": "nope"}]
-    with pytest.raises(RuntimeError, match="nope"):
-        menus._menu("Edit", config["menus"])
+    menus._MISSING_GENERATORS.discard("nope")
+    assert menus._menu("Edit", config["menus"]) == ()
+    assert "nope" in menus._MISSING_GENERATORS
+
+
+def test_every_section_the_shipped_menus_ask_for_has_a_provider():
+    """With every built-in plugin loaded, no section is left unprovided.
+
+    The other half of the rule above: an empty section is fine when a feature
+    is switched off, and is a defect when the feature ships. Asked of a booted
+    command layer, because that is what registers them.
+    """
+    from chimol.commands import Cmd
+
+    menus._MISSING_GENERATORS.clear()
+    Cmd(None)                      # boots: core groups, then every plugin
+    menus.menu_bar()
+    assert menus._MISSING_GENERATORS == set(), (
+        "the shipped menus ask for sections no built-in plugin provides"
+    )
 
 
 def test_the_dye_labelling_wizard_is_reachable_from_the_tools_menu():

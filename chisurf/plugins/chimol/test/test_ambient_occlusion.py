@@ -456,3 +456,120 @@ def test_shadowing_reaches_the_mesh_colours(view):
     assert shadowed.shape == unshadowed.shape
     assert (shadowed[:, :3] <= unshadowed[:, :3] + 1e-9).all()
     assert shadowed[:, :3].min() < unshadowed[:, :3].min()
+
+
+def test_no_occlusion_is_computed_while_frames_are_flying():
+    """A playing trajectory must not pay for shading nobody can see.
+
+    Occlusion is a *bake*: it does not depend on the camera, so it is computed
+    once per rebuild rather than per view. A trajectory rebuilds every frame,
+    which turned that into a per-frame cost -- measured at 6.5 ms of a 46 ms
+    frame on a 464-frame trajectory, spent on shading that is replaced thirty
+    times a second. Playback ran at **16.6 fps**; with this it runs at 57.
+
+    The rule already existed: `_note_frame_change` sets `_draft_quality` when
+    frames arrive faster than 0.35 s apart, a settle timer bakes the good
+    version 220 ms after they stop, and `_shade_by_occlusion` returns early.
+    Two *other* call sites -- the cartoon's per-CA estimate and the sphere
+    shading -- called `_estimate_ambient_occlusion` directly and never asked.
+    Asked here of all three, by counting the calls a frame change makes.
+    """
+    from toolkit_free import probe
+
+    written = probe('''
+        import pathlib
+        app = open_app(size=(900, 600))
+        base = pathlib.Path("test/data/atomic_coordinates/trajectory/hgbp1")
+        app.cmd.do("load " + str(base / "topol.pdb"))
+        app.cmd.do("load_traj " + str(base / "hgbp1_transition.dcd"))
+        app.cmd.do("as cartoon")
+        app.renderer._draw()
+
+        import chimol.core.viewer.scene as scene
+        calls = []
+        # Both entry points, because there are two: the per-CA estimate the
+        # cartoon uses when it has no mesh normals, and the sphere bake every
+        # mesh goes through. Counting only the first measured nothing at all
+        # on a cartoon, which is the representation this is about.
+        for name in ("_estimate_ambient_occlusion", "occlusion_from_spheres"):
+            original = getattr(scene, name)
+            setattr(scene, name, (lambda fn: lambda *a, **k: (
+                calls.append(1), fn(*a, **k))[1])(original))
+
+        app.viewer.end_scrub()           # "nobody is scrubbing": the full bake
+        # A frame it is not already on: `frame 1` after a load is a no-op, so
+        # it rebuilds nothing and bakes nothing, which measures the wrong zero.
+        app.cmd.do("frame 40")
+        emit("first_frame", str(len(calls)))
+        calls.clear()
+        for i in range(2, 12):           # ten in a row: a movie
+            app.cmd.do("frame %d" % i)
+        emit("while_playing", str(len(calls)))
+        emit("draft", str(getattr(app.viewer, "_draft_quality", None)))
+
+        app.viewer.end_scrub()           # what the settle timer does
+        calls.clear()
+        app.cmd.do("frame 20")
+        emit("after_settling", str(len(calls)))
+
+        # And the setting that buys the shading back: a fly-through being
+        # recorded wants it in motion, so `occlusion.during_playback` overrides
+        # the draft rule. Off by default -- the default has to be the one that
+        # keeps playback smooth -- which is what every count above measured.
+        app.cmd.do("set occlusion.during_playback, 1")
+        app.viewer.begin_scrub()
+        calls.clear()
+        for i in range(21, 26):
+            app.cmd.do("frame %d" % i)
+        emit("playing_with_the_setting_on", str(len(calls)))
+    ''', timeout=900)
+
+    assert int(written["first_frame"]) >= 1, "an unhurried frame is not baked"
+    assert written["draft"] == "True", "ten frames in a row is not draft quality"
+    assert int(written["while_playing"]) == 0, (
+        f"{written['while_playing']} occlusion estimates during playback"
+    )
+    assert int(written["after_settling"]) >= 1, "settling did not restore the bake"
+    assert int(written["playing_with_the_setting_on"]) >= 1, (
+        "`occlusion.during_playback` did not buy the shading back"
+    )
+
+
+def test_beads_are_not_crowd_shaded_when_occlusion_is_off():
+    """The switch means the switch, for spheres as much as for meshes.
+
+    Bead models darken crowded spheres through their own estimator rather than
+    the mesh bake, and that path asked only whether a scrub was in progress --
+    never whether occlusion was switched on at all. So `set occlusion.enabled,
+    off` left every coarse-grained model shaded, which is the failure mode the
+    one-reader rule (`_occlusion_enabled`) exists to prevent, in the one place
+    that had not been converted to it.
+    """
+    import numpy as np
+
+    import chimol.core.services.occlusion as occlusion
+    from chimol.core.viewer.scene import SceneMixin
+
+    class _Bare(SceneMixin):
+        _draft_quality = False
+        _scale_factor = 1.0
+
+        def __init__(self):
+            pass
+
+    pts = np.random.default_rng(0).normal(size=(200, 3)).astype(np.float32) * 5.0
+    rgb = np.full((200, 3), 0.5, dtype=np.float32)
+    cfg = {"ao_strength": 0.9, "ao_radius": 4.0}
+    viewer = _Bare()
+
+    section = occlusion._DISPLAY_CONFIG.setdefault("occlusion", {})
+    was = section.get("enabled", True)
+    try:
+        section["enabled"] = True
+        shaded = viewer._shade_beads_by_crowding(pts, rgb, cfg)
+        assert not np.allclose(shaded, rgb), "occlusion on and nothing was shaded"
+
+        section["enabled"] = False
+        assert np.allclose(viewer._shade_beads_by_crowding(pts, rgb, cfg), rgb)
+    finally:
+        section["enabled"] = was

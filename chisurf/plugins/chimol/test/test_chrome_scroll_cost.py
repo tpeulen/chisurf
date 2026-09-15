@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.cmtk.quad_painter import QuadPainter
+from cmtk.quad_painter import QuadPainter
 from chimol.ui.gui import GuiRow, GuiWindow, InternalGui
 
 
@@ -79,13 +79,21 @@ def test_a_windows_own_repaint_does_not_touch_the_furniture():
 
 
 def test_the_furniture_key_ignores_the_windows():
-    """Or a scroll invalidates the menu bar with it, which is the old cost."""
+    """Or a scroll invalidates the menu bar with it, which is the old cost.
+
+    Asserted against the furniture key *and* the block keys, because those are
+    the two halves of the claim: the windows are absent from the first and
+    present in the second. `chrome_fingerprint` used to take a `with_windows`
+    flag for the comparison, which no caller in the product ever passed -- so
+    the assertion was made against a shape only the tests could produce.
+    """
     gui = _gui()
-    before = gui.chrome_fingerprint(with_windows=False)
+    before = gui.chrome_fingerprint()
+    keys_before = _keys(gui)
     gui.window("panel").body_revision += 1
     gui.scroll_objects(-30.0)
-    assert gui.chrome_fingerprint(with_windows=False) == before
-    assert gui.chrome_fingerprint() != gui.chrome_fingerprint(with_windows=False)
+    assert gui.chrome_fingerprint() == before, "a window moved the furniture"
+    assert _keys(gui) != keys_before, "a window moved nothing at all"
 
 
 def test_the_blocks_still_draw_the_whole_chrome():
@@ -124,7 +132,7 @@ def test_the_object_list_draws_only_the_rows_it_can_see():
 
 def test_a_band_of_triangles_is_one_painter_call():
     """A circle's rings and ribbons: emitted per triangle, they are the frame."""
-    from chimol.cmtk.widgets.circle import CirclePlot
+    from cmtk.widgets.circle import CirclePlot
 
     calls = {"n": 0}
 
@@ -146,8 +154,8 @@ def test_a_band_of_triangles_is_one_painter_call():
 
 def test_every_painter_gets_the_triangles_even_without_a_fast_path():
     """The recording painter has six operations and must still see them all."""
-    from chimol.cmtk.painter import fill_triangles
-    from chimol.cmtk.testing import RecordingPainter
+    from cmtk.painter import fill_triangles
+    from cmtk.testing import RecordingPainter
 
     painter = RecordingPainter()
     block = np.array([[[0, 0], [1, 0], [0, 1]], [[1, 0], [1, 1], [0, 1]]], dtype=float)

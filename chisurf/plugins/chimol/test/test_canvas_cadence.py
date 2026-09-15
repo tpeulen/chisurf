@@ -54,6 +54,156 @@ class _FakeHost:
         return self._surface_obj
 
 
+#: Refresh rates a screen the viewer runs on can have. The ceiling has to sit
+#: above all of them -- see the test below for why "above" and not "at".
+REFRESH_RATES = (60, 75, 90, 120, 144, 165, 240)
+
+
+def test_the_frame_ceiling_is_above_every_refresh_rate_a_screen_has():
+    """A ceiling under the refresh rate does not cap the rate -- it halves it.
+
+    The display paces the frames: the canvas presents with vsync, so a 60 Hz
+    screen draws 60 and a 120 Hz screen draws 120, which is exactly what
+    `requestAnimationFrame` does for the page. That is the whole reason the two
+    hosts can be said to behave the same.
+
+    Put the ceiling *below* the refresh rate and the scheduler sleeps its own
+    period first; the frame then misses the vsync boundary it was aiming at and
+    presentation waits for the next one, so the rate lands on a *fraction* of
+    the refresh rate. It has happened twice, and both times the number was half:
+
+    * rendercanvas' own default of 30 gave a hard 15 fps on every model;
+    * a ceiling of 60 gave a hard 30 on a 120 Hz display, measured at 59.7 fps
+      before and 119.9 after -- while the same machine's browser ran at 120.
+
+    A ceiling *at* the refresh rate is not enough either: 60 on a 60 Hz screen
+    leaves no slack for a frame that runs a little long, which is what the
+    halving is. So it is set above the fastest screen anyone has.
+    """
+    from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
+
+    assert DEFAULT_MAX_FPS >= max(REFRESH_RATES), (
+        f"a {DEFAULT_MAX_FPS} fps ceiling halves the rate on a "
+        f"{max(REFRESH_RATES)} Hz screen"
+    )
+
+
+def test_the_shipped_configuration_agrees_with_the_default():
+    """Three places say the ceiling; a window reads the config, so it must match."""
+    import json
+    import pathlib
+
+    import chimol
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.core.settings import registry
+    from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
+
+    shipped = json.loads(
+        (pathlib.Path(chimol.__file__).resolve().parent
+         / "core" / "settings" / "chimol_display.json").read_text()
+    )
+    assert shipped["renderer"]["max_fps"] == DEFAULT_MAX_FPS
+    assert _DISPLAY_CONFIG["renderer"]["max_fps"] == DEFAULT_MAX_FPS
+    spec = registry.resolve("max_fps")
+    assert spec.default == DEFAULT_MAX_FPS
+
+
+def test_an_existing_configuration_is_lifted_off_the_old_ceiling():
+    """A default written into a user's file reaches nobody without a migration.
+
+    Every existing copy of `chimol_display.json` carries `max_fps: 60`, which
+    was the shipped default and not a choice anybody made -- so it is migrated,
+    and a value the user *did* choose is left alone.
+    """
+    from chimol.core.settings.config import (
+        DISPLAY_CONFIG_MIGRATIONS,
+        DISPLAY_CONFIG_VERSION,
+    )
+    from chimol.hosts.native.canvas import DEFAULT_MAX_FPS
+
+    changed = DISPLAY_CONFIG_MIGRATIONS[20]["renderer"]["max_fps"]
+    assert changed == (60, DEFAULT_MAX_FPS)
+
+
+def test_a_window_is_never_asked_to_present_to_the_screen_by_default(monkeypatch):
+    """Because a window that is *occluded* then does not draw at all.
+
+    Presenting the surface directly skips a framebuffer copy per frame, and
+    that is the whole of its appeal. What comes with it: when anything covers
+    the window, the surface reports ``Occluded``, wgpu raises
+    ``DrawCancelled``, and rendercanvas answers by making its scheduler wait a
+    tenth of a second before trying again. A chimol behind a terminal is then
+    a chimol at **10 fps whose chrome has stopped repainting** -- which reads
+    as "the sliders and the buttons do not work", because nothing on screen
+    changes when they are pressed.
+
+    A viewer is normally not the frontmost window; it sits beside the thing
+    you are writing. So the default is the toolkit's compositor, which has no
+    such state, and `screen` is an explicit choice for a session where the
+    readback is genuinely the bottleneck.
+
+    (The frame-rate *ceiling* was the real cap, and that is fixed separately:
+    the same Qt window measures 128 fps through the compositor once the
+    ceiling is above the refresh rate.)
+    """
+    import pytest
+
+    pytest.importorskip("qtpy")
+    from chimol.hosts.qt import wgpu_view
+
+    monkeypatch.setenv("QT_QPA_PLATFORM", "cocoa")
+    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance",
+                        staticmethod(lambda: None))
+    for platform in ("darwin", "linux", "win32"):
+        monkeypatch.setattr(wgpu_view.sys, "platform", platform, raising=False)
+        assert wgpu_view.resolve_present_method() is None, (
+            f"{platform}: the library's own choice is the default"
+        )
+
+
+def test_a_platform_with_no_display_is_never_asked_to_present_to_one(monkeypatch):
+    """Because the answer is not an exception -- it is a segfault.
+
+    Asking for `screen` under Qt's `offscreen` platform sets
+    `WA_PaintOnScreen`, which wants a native surface that platform has none of,
+    and the process dies where no `except` can see it. A suite of 3,800 tests
+    ended at the first Qt view built that way, which is how this rule was
+    found. It holds however the setting is spelled: an explicit `screen` from
+    a configuration file is still refused here.
+    """
+    import pytest
+
+    pytest.importorskip("qtpy")
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.hosts.qt import wgpu_view
+
+    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance",
+                        staticmethod(lambda: None))
+    section = dict(_DISPLAY_CONFIG.get("renderer") or {})
+    for platform in ("offscreen", "minimal", "vnc"):
+        monkeypatch.setenv("QT_QPA_PLATFORM", platform)
+        for asked in ("auto", "screen"):
+            monkeypatch.setitem(
+                _DISPLAY_CONFIG, "renderer", {**section, "present_method": asked}
+            )
+            assert wgpu_view.resolve_present_method() != "screen", (
+                f"{platform} was asked to present to a screen it has none of"
+            )
+
+
+def test_the_present_method_can_be_pinned_by_hand(monkeypatch):
+    """Both desktop windows read one setting, so a workaround applies to both."""
+    from chimol.core.settings.config import _DISPLAY_CONFIG
+    from chimol.hosts.native import canvas as native
+
+    section = dict(_DISPLAY_CONFIG.get("renderer") or {})
+    for choice in ("screen", "bitmap"):
+        monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {**section, "present_method": choice})
+        assert native._present_method() == choice
+    monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {**section, "present_method": "nonsense"})
+    assert native._present_method() == "auto", "a typo must not break the window"
+
+
 def test_set_max_fps_calls_rendercanvas_set_update_mode():
     """The real live-reconfigure API, not a home-grown throttle beside it."""
     surface = _FakeSurface()

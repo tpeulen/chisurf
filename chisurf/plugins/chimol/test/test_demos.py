@@ -87,14 +87,20 @@ def test_the_structures_the_demos_name_can_be_found():
     for key, _t, _d in DEMOS:
         for line in read_demo(key).splitlines():
             stripped = line.strip()
-            if stripped.startswith("load ") and "," not in stripped:
-                name = stripped[5:].strip()
+            # `stream` names a container the same way `load` names a structure,
+            # and its material is generated too -- so it resolves through the
+            # same path and is checked by the same rule.
+            verb = "load " if stripped.startswith("load ") else (
+                "stream " if stripped.startswith("stream ") else ""
+            )
+            if verb and "," not in stripped:
+                name = stripped[len(verb):].strip().split()[0]
                 try:
                     resolved = resolve_structure(name)
                 except DemoDataUnavailable as exc:
                     pytest.skip(f"{key}: {exc}")
                 assert pathlib.Path(resolved).exists(), (
-                    f"{key} loads {name}, which cannot be found"
+                    f"{key} {verb.strip()}s {name}, which cannot be found"
                 )
 
 
@@ -143,8 +149,9 @@ def test_a_demo_runs_and_draws_something(window, key):
     from chimol.plugins.demos.material import DemoDataUnavailable, GENERATED_DEMO_DATA
     from chimol.hosts.qt.demos import resolve_structure
 
+    script = read_demo(key)
     for name in GENERATED_DEMO_DATA:
-        if f"load {name}" in read_demo(key):
+        if f"load {name}" in script or f"stream {name}" in script:
             try:
                 resolve_structure(name)
             except DemoDataUnavailable as exc:
@@ -155,7 +162,15 @@ def test_a_demo_runs_and_draws_something(window, key):
     for _ in range(30):
         qapp.processEvents()
     assert errors == [], f"{key}: {errors[:2]}"
-    assert _vertices(win.viewer) > 0, f"{key} drew nothing"
+    # "Drew something" has two shapes now. A container demo puts no objects in
+    # the scene at all -- its atoms live on disk and the frame streams the ones
+    # it needs (see `chimol/core/viewer/container.py`) -- so counting scene
+    # vertices would call a working gigastructure demo empty.
+    streamed = getattr(win.viewer, "container", None)
+    if streamed is not None:
+        assert int(streamed.index.meta["n_atoms"]) > 0, f"{key} streamed nothing"
+    else:
+        assert _vertices(win.viewer) > 0, f"{key} drew nothing"
 
 
 def test_each_demo_starts_from_a_clean_viewer(window):

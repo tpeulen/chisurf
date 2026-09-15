@@ -42,25 +42,26 @@ def test_reset_runs_before_every_scene():
 class TestLightRig:
     """One rig, resolved from the config, shared by both backends."""
 
-    def test_the_default_key_light_is_head_on_and_the_fill_is_shared(self):
-        """One head-on key, and a fill that both backends read from here.
+    def test_the_default_key_light_is_chimerax_rig_and_the_fill_is_shared(self):
+        """ChimeraX's `lighting soft` rig, and one place the numbers live.
 
         The WebGPU backend once hardcoded ``fill=0.45`` and an *off-axis* key,
         described in its own comment as "matching the OpenGL backend's
         defaults" while matching none of them. What matters is not the value --
-        that is a judgement, and it has changed: `3ef65bc37` raised the fill
-        from 0.0 to 0.35 because a scene lit by a head-on key alone falls to
-        ambient everywhere it turns away, and read dark. What matters is that
-        the key points **down the camera** and that there is exactly one place
-        the numbers live.
+        that is a judgement, and it has changed twice: `3ef65bc37` raised the
+        fill from 0.0 to 0.35, and the ChimeraX parity work moved the whole rig
+        to the numbers measured on the 1.11 app bundle (off-axis key, fill 0.5,
+        no rim). What matters is that there is exactly one place the numbers
+        live and that both backends read them from there.
 
         This test asserted ``fill == 0.0`` and has been red since that commit,
         which is the failure mode a value assertion has: it pins a decision that
         was allowed to change, and then it is the test that is wrong.
         """
         rig = LightRig()
-        assert rig.light_dir == (0.0, 0.0, 1.0)
-        assert rig.fill == pytest.approx(0.35)
+        assert rig.light_dir == pytest.approx((-0.577, 0.577, 0.577))
+        assert rig.fill == pytest.approx(0.5)
+        assert rig.ambient == pytest.approx(0.41)
         assert resolve_light_rig({}).fill == pytest.approx(rig.fill), (
             "the dataclass default and the resolved default must be one number"
         )
@@ -81,7 +82,9 @@ class TestLightRig:
         ).ambient == pytest.approx(0.2)
 
     def test_a_short_direction_falls_back_rather_than_raising(self):
-        assert resolve_light_rig({"light_direction": [1.0]}).light_dir == (0.0, 0.0, 1.0)
+        assert resolve_light_rig({"light_direction": [1.0]}).light_dir == pytest.approx(
+            LightRig().light_dir
+        )
 
     def test_replace_rejects_an_unknown_name(self):
         with pytest.raises(ValueError, match="unknown lighting parameter"):
@@ -225,6 +228,17 @@ class TestWgslSource:
         "silhouette.wgsl": "render",
         "gauss_splat.wgsl": "render",
         "gauss_resolve.wgsl": "render",
+        # The `.chm.pto` streaming row: the same sphere impostor, reading the
+        # container's 16-byte rows straight off the mapping and decoding them
+        # against the chunk's anchor/scale. Render prelude, same shade().
+        "chunk_impostor.wgsl": "render",
+        # Impostor clones from a storage buffer of transforms + animation
+        # phases -- the instancing seam again, on the sphere path.
+        "impostor_instanced.wgsl": "render",
+        # A container's parent levels: one anisotropic Gaussian per eight
+        # children, splatted. Render prelude, same shade() -- a level change
+        # must not also be a change of material.
+        "chunk_gauss.wgsl": "render",
         "shade_atoms.wgsl": "compute",
         "occlusion.wgsl": "compute",
         "shadow_rays.wgsl": "compute",
@@ -429,12 +443,13 @@ class TestRemovedSettingsAreMigratedAway:
     def test_the_dead_occlusion_switch_is_removed_from_an_old_config(self):
         from chimol.core.settings.config import apply_display_config_migrations
 
-        cfg = {"sticks": {"radius": 0.15, "ambient_occlusion": True}}
+        cfg = {"sticks": {"radius": 0.25, "ambient_occlusion": True}}
         changed = apply_display_config_migrations(cfg, from_version=10)
         assert "ambient_occlusion" not in cfg["sticks"]
         assert "sticks.ambient_occlusion (removed)" in changed
-        # Untouched neighbours stay, values and all.
-        assert cfg["sticks"]["radius"] == 0.15
+        # Untouched neighbours stay, values and all. (0.25 is a chosen radius:
+        # 0.15 was the default these migrations carry forward to 0.2.)
+        assert cfg["sticks"]["radius"] == 0.25
 
     def test_a_chosen_value_does_not_save_a_removed_key(self):
         """Unlike a default change, there is no choice to protect.

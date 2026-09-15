@@ -73,8 +73,21 @@ def _state(view):
 
 
 def _spheres(view) -> int:
-    mask = _state(view).ball_mask
-    return 0 if mask is None else int(np.count_nonzero(mask))
+    """How many atoms are actually drawn as spheres.
+
+    The flag *and* the mask, because that is what the builder reads: `hide
+    spheres` leaves the scope behind on purpose -- it is what `show spheres`
+    brings back -- so counting set bits in `ball_mask` alone says "spheres" for
+    a representation that is switched off.
+    """
+    state = _state(view)
+    if not getattr(state, "show_atoms", False):
+        return 0
+    mask = state.ball_mask
+    n_atoms = int(np.asarray(state.all_atom_coords).shape[0])
+    if mask is None or len(np.asarray(mask)) != n_atoms:
+        return n_atoms
+    return int(np.count_nonzero(mask))
 
 
 # --------------------------------------------------------------------------- #

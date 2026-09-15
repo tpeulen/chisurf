@@ -144,10 +144,12 @@ def test_the_bar_is_seven_menus():
 
 def test_the_presets_are_the_first_thing_under_display():
     """A preset is a display choice, so Display is where it is looked for."""
-    from chimol.hosts.qt.menu_bar import DISPLAY_MENU
-    from chimol.commands.builtin.presets import load_reference_presets
+    from chimol.commands import Cmd
+    from chimol.plugins.presets.commands import load_reference_presets
+    from chimol.ui.menus import bar
 
-    first = DISPLAY_MENU[0]
+    Cmd(None)                     # the Preset section is the presets plugin's
+    first = bar.DISPLAY_MENU[0]
     assert str(getattr(first, "label", "")) == "Preset"
     children = {
         str(getattr(child, "command", "") or "")

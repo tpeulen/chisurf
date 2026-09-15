@@ -39,6 +39,34 @@ def _qt_app():
     return app
 
 
+class _PluginHostStub:
+    """Just enough of a command object for a plugin that only registers reps."""
+
+    def unregister(self, owner):  # noqa: D401 - plugin API contract
+        pass
+
+    class panels:
+        @staticmethod
+        def unregister_owner(owner):
+            pass
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _bond_family_registered():
+    """A bare ``Viewer()`` has no ``Cmd``, and plugins load with the ``Cmd``.
+
+    The bond family (sticks/lines/nonbonded) is built by the representations
+    plugin, so a test that assembles the viewer the way a notebook would --
+    no host, no command object -- must load that plugin itself, exactly the
+    way a host's ``Cmd.__init__`` would have.
+    """
+    from chimol.plugins import load_plugins
+    from chimol.plugins.representations import plugin as _bond_plugin
+
+    load_plugins(_PluginHostStub(), [_bond_plugin])
+    yield
+
+
 def _load_fallback(view: Viewer) -> int:
     """Load the fixture through the fallback path; return the atom count."""
     backbone = _parse_pdb_backbone(str(_PDB))
@@ -83,9 +111,12 @@ def test_fallback_computes_bonds_and_renders_sticks(_qt_app) -> None:
     assert view._bond_pairs.shape[0] > 0
 
     view.set_sticks_visible(True)
-    sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
-    objs = view._update_sticks(sticks_cfg, view._colors_per_ca) or []
-    assert any(o.id == "sticks" for o in objs), "sticks did not render in fallback"
+    view.update_view()
+    scene = view.get_current_scene()
+    objs = scene.objects if scene is not None else []
+    # The sticks geometry is built by the representations plugin through the
+    # registered builder, so the scene object carries the registry's id.
+    assert any(o.id.endswith("sticks") for o in objs), "sticks did not render in fallback"
 
 
 def test_fallback_dots_render_every_atom(_qt_app) -> None:

@@ -1,0 +1,2049 @@
+{
+ "backend": "native",
+ "commands": [
+  "?",
+  "activate",
+  "add_dye",
+  "align",
+  "alter",
+  "alter_state",
+  "angle",
+  "as",
+  "bg_color",
+  "bg_colour",
+  "bg_image",
+  "bg_picture",
+  "bond",
+  "bump_check",
+  "buried_area",
+  "cartoon",
+  "cba",
+  "cbac",
+  "cbag",
+  "cbay",
+  "cbc",
+  "cbh",
+  "cell",
+  "center",
+  "centroid",
+  "chainbow",
+  "clashes",
+  "clear",
+  "clip",
+  "cnc",
+  "color",
+  "config",
+  "copy",
+  "count_atoms",
+  "count_frames",
+  "count_states",
+  "create",
+  "cxpreset",
+  "dbg",
+  "dbg_panel",
+  "debug",
+  "debug_mode",
+  "debug_window",
+  "del",
+  "delete",
+  "demo",
+  "demo_edit",
+  "density_panel",
+  "deprotect",
+  "deselect",
+  "diagnose",
+  "dihedral",
+  "disable",
+  "dist",
+  "distance",
+  "doctor",
+  "dss",
+  "dye",
+  "edit_file",
+  "edit_fps",
+  "editor",
+  "enable",
+  "exit",
+  "extract",
+  "features",
+  "fetch",
+  "fetch_emdb",
+  "fetch_ihm",
+  "field_of_view",
+  "fitmap",
+  "form",
+  "fov",
+  "fps_circle",
+  "fps_edit",
+  "fps_load",
+  "fps_plot",
+  "fps_save",
+  "frame",
+  "frame_next",
+  "frame_prev",
+  "full_screen",
+  "fullscreen",
+  "get",
+  "get_area",
+  "get_bond_list",
+  "get_bonds",
+  "get_chains",
+  "get_color_index",
+  "get_extent",
+  "get_names",
+  "get_state",
+  "get_symmetry",
+  "get_title",
+  "get_view",
+  "group",
+  "gyrate",
+  "h_add",
+  "h_fill",
+  "hbnet",
+  "hbond_network",
+  "help",
+  "help_setting",
+  "help_settings",
+  "hide",
+  "hide_dust",
+  "hierarchy_panel",
+  "history",
+  "history_panel",
+  "inertia",
+  "info_panel",
+  "instances",
+  "interchain_distances",
+  "intra_fit",
+  "intra_rms",
+  "isomesh",
+  "isosurface",
+  "iterate",
+  "iterate_state",
+  "keybindings",
+  "keys",
+  "label",
+  "labelling_network",
+  "lighting",
+  "load",
+  "load_map",
+  "load_mrc",
+  "load_session",
+  "load_traj",
+  "log",
+  "logs",
+  "map_info",
+  "map_level",
+  "mask",
+  "mclear",
+  "mdo",
+  "measure_buriedarea",
+  "measure_center",
+  "measure_inertia",
+  "measure_rgyr",
+  "measure_weight",
+  "measurement",
+  "mem",
+  "memory",
+  "minterpolate",
+  "molecular_weight",
+  "molmap",
+  "mouse_panel",
+  "move",
+  "mpause",
+  "mplay",
+  "mset",
+  "mstop",
+  "mutate",
+  "mview",
+  "nerd",
+  "nerd_mode",
+  "object_panel",
+  "objects",
+  "open",
+  "open_all_panels",
+  "order",
+  "orient",
+  "origin",
+  "pair_fit",
+  "panels_all",
+  "pbc",
+  "pi_interactions",
+  "plugins",
+  "png",
+  "preset",
+  "preset_cx",
+  "protect",
+  "pseudoatom",
+  "push_undo",
+  "quit",
+  "radius_of_gyration",
+  "ray",
+  "redo",
+  "reinit",
+  "reinitialize",
+  "remove",
+  "reset",
+  "reset_windows",
+  "resolution",
+  "rm",
+  "rmf",
+  "rmf_viewer",
+  "rms",
+  "rms_cur",
+  "rock",
+  "rotate",
+  "save",
+  "save_session",
+  "scene",
+  "scores",
+  "scores_panel",
+  "select",
+  "session_info",
+  "session_load",
+  "session_save",
+  "set",
+  "set_color",
+  "set_name",
+  "set_symmetry",
+  "set_view",
+  "settings_panel",
+  "show",
+  "show_as",
+  "show_dust",
+  "smooth",
+  "sort",
+  "spectrum",
+  "split_chains",
+  "super",
+  "symexp",
+  "symmetry",
+  "toggle",
+  "toggle_rep",
+  "tour",
+  "translate",
+  "turn",
+  "unbond",
+  "undo",
+  "ungroup",
+  "unmask",
+  "unset",
+  "util.cbac",
+  "util.cbag",
+  "util.cbay",
+  "util.cbc",
+  "util.chainbow",
+  "util.cnc",
+  "volume",
+  "volume_gaussian",
+  "volume_level",
+  "volume_quality",
+  "window_reset",
+  "wizard",
+  "zoom"
+ ],
+ "chrome": {
+  "size": [
+   1280,
+   860
+  ],
+  "rows": [
+   {
+    "name": "all",
+    "enabled": true,
+    "is_header": true,
+    "is_group": false,
+    "is_selection": false
+   },
+   {
+    "name": "148l",
+    "enabled": true,
+    "is_header": false,
+    "is_group": false,
+    "is_selection": false
+   },
+   {
+    "name": "sele",
+    "enabled": true,
+    "is_header": false,
+    "is_group": false,
+    "is_selection": true
+   }
+  ],
+  "sequences": [
+   {
+    "name": "148l",
+    "columns": 163
+   }
+  ],
+  "menus": [
+   {
+    "title": "File",
+    "entries": [
+     "Open...",
+     "Fetch PDB...",
+     "",
+     "Save Molecule As...",
+     "Save Image As...",
+     "Export",
+     "Save Movie As...",
+     "",
+     "Log File",
+     "Working Directory",
+     "",
+     "Reinitialize",
+     "",
+     "Quit"
+    ]
+   },
+   {
+    "title": "Edit",
+    "entries": [
+     "History\u2026",
+     "",
+     "Undo",
+     "Redo"
+    ]
+   },
+   {
+    "title": "Display",
+    "entries": [
+     "Preset",
+     "",
+     "Sequence",
+     "Hierarchy",
+     "Density controls",
+     "Object List",
+     "Mouse Settings",
+     "Settings",
+     "",
+     "Stereo",
+     "",
+     "Zoom",
+     "Clip",
+     "",
+     "Background",
+     "",
+     "Perspective",
+     "Quality",
+     "",
+     "Grid"
+    ]
+   },
+   {
+    "title": "Setting",
+    "entries": [
+     "Edit All...",
+     "",
+     "Label",
+     "Lines & Sticks",
+     "Cartoon",
+     "Ambient Occlusion",
+     "Surface",
+     "Transparency",
+     "Rendering",
+     "",
+     "PDB File Loading"
+    ]
+   },
+   {
+    "title": "Demo",
+    "entries": [
+     "Cartoon and colour",
+     "Selections",
+     "Every representation",
+     "Lighting presets",
+     "Publication figure",
+     "Trajectory + intra_fit",
+     "Measuring",
+     "Dye labelling",
+     "T4L FRET network",
+     "EMDB density map",
+     "NPC (integrative, PDB-IHM)",
+     "Biofilm growth (simulated)",
+     "",
+     "List them at the prompt",
+     "Edit a demo script\u2026",
+     "New script\u2026"
+    ]
+   },
+   {
+    "title": "Tools",
+    "entries": [
+     "Build",
+     "Wizard",
+     "Map",
+     "Measure",
+     "Panels",
+     "Labelling",
+     "RMF viewer",
+     "Scores (per frame)\u2026"
+    ]
+   },
+   {
+    "title": "Help",
+    "entries": [
+     "Commands",
+     "Settings",
+     "Keyboard bindings",
+     "",
+     "Tours",
+     "",
+     "Reset GUI",
+     "dbg"
+    ]
+   }
+  ],
+  "windows": [
+   "mouse",
+   "objects"
+  ],
+  "bands": {
+   "menubar": 20.0,
+   "toolbar": 22.0,
+   "top_band": 93.0,
+   "sequence": 51.0,
+   "column": 0.0,
+   "command": 40.0
+  },
+  "reachable": [
+   "average:",
+   "block:",
+   "button:A",
+   "button:C",
+   "button:H",
+   "button:L",
+   "button:S",
+   "command:",
+   "eye:",
+   "info:",
+   "menubar:",
+   "mode:",
+   "name:",
+   "panel:",
+   "playback_slider:average",
+   "playback_slider:stride",
+   "residue:0",
+   "residue:1",
+   "residue:10",
+   "residue:100",
+   "residue:101",
+   "residue:102",
+   "residue:103",
+   "residue:104",
+   "residue:105",
+   "residue:106",
+   "residue:107",
+   "residue:108",
+   "residue:109",
+   "residue:11",
+   "residue:110",
+   "residue:111",
+   "residue:112",
+   "residue:113",
+   "residue:114",
+   "residue:115",
+   "residue:116",
+   "residue:117",
+   "residue:118",
+   "residue:119",
+   "residue:12",
+   "residue:120",
+   "residue:121",
+   "residue:122",
+   "residue:123",
+   "residue:124",
+   "residue:125",
+   "residue:126",
+   "residue:127",
+   "residue:128",
+   "residue:129",
+   "residue:13",
+   "residue:130",
+   "residue:131",
+   "residue:132",
+   "residue:133",
+   "residue:134",
+   "residue:135",
+   "residue:136",
+   "residue:137",
+   "residue:138",
+   "residue:139",
+   "residue:14",
+   "residue:140",
+   "residue:141",
+   "residue:142",
+   "residue:143",
+   "residue:144",
+   "residue:145",
+   "residue:146",
+   "residue:147",
+   "residue:148",
+   "residue:149",
+   "residue:15",
+   "residue:150",
+   "residue:151",
+   "residue:152",
+   "residue:153",
+   "residue:154",
+   "residue:155",
+   "residue:156",
+   "residue:157",
+   "residue:158",
+   "residue:159",
+   "residue:16",
+   "residue:160",
+   "residue:161",
+   "residue:162",
+   "residue:17",
+   "residue:18",
+   "residue:19",
+   "residue:2",
+   "residue:20",
+   "residue:21",
+   "residue:22",
+   "residue:23",
+   "residue:24",
+   "residue:25",
+   "residue:26",
+   "residue:27",
+   "residue:28",
+   "residue:29",
+   "residue:3",
+   "residue:30",
+   "residue:31",
+   "residue:32",
+   "residue:33",
+   "residue:34",
+   "residue:35",
+   "residue:36",
+   "residue:37",
+   "residue:38",
+   "residue:39",
+   "residue:4",
+   "residue:40",
+   "residue:41",
+   "residue:42",
+   "residue:43",
+   "residue:44",
+   "residue:45",
+   "residue:46",
+   "residue:47",
+   "residue:48",
+   "residue:49",
+   "residue:5",
+   "residue:50",
+   "residue:51",
+   "residue:52",
+   "residue:53",
+   "residue:54",
+   "residue:55",
+   "residue:56",
+   "residue:57",
+   "residue:58",
+   "residue:59",
+   "residue:6",
+   "residue:60",
+   "residue:61",
+   "residue:62",
+   "residue:63",
+   "residue:64",
+   "residue:65",
+   "residue:66",
+   "residue:67",
+   "residue:68",
+   "residue:69",
+   "residue:7",
+   "residue:70",
+   "residue:71",
+   "residue:72",
+   "residue:73",
+   "residue:74",
+   "residue:75",
+   "residue:76",
+   "residue:77",
+   "residue:78",
+   "residue:79",
+   "residue:8",
+   "residue:80",
+   "residue:81",
+   "residue:82",
+   "residue:83",
+   "residue:84",
+   "residue:85",
+   "residue:86",
+   "residue:87",
+   "residue:88",
+   "residue:89",
+   "residue:9",
+   "residue:90",
+   "residue:91",
+   "residue:92",
+   "residue:93",
+   "residue:94",
+   "residue:95",
+   "residue:96",
+   "residue:97",
+   "residue:98",
+   "residue:99",
+   "scrollbar:",
+   "selecting:",
+   "sequence:",
+   "stride:",
+   "toolbar:",
+   "window:mouse",
+   "window:objects"
+  ]
+ },
+ "host": {
+  "press": true,
+  "double_click": true,
+  "move": true,
+  "release": true,
+  "wheel": true,
+  "wheel_modifiers": true,
+  "key": true,
+  "resize": true,
+  "context_menu": true,
+  "picking": true,
+  "box_select": true,
+  "labels": false,
+  "ray_image": false
+ },
+ "probes": [
+  {
+   "name": "?",
+   "line": "?",
+   "outcome": "ok",
+   "said": "Commands (239)"
+  },
+  {
+   "name": "activate",
+   "line": "activate",
+   "outcome": "error",
+   "said": "Usage: activate <object>"
+  },
+  {
+   "name": "add_dye",
+   "line": "add_dye",
+   "outcome": "error",
+   "said": "Usage: add_dye <selection>, <dye spec> [, name]"
+  },
+  {
+   "name": "align",
+   "line": "align 148l, 148l",
+   "outcome": "ok",
+   "said": "Align: aligned 148l onto 148l using 163<path> atoms (RMSD: 0.000 \u00c5)"
+  },
+  {
+   "name": "alter",
+   "line": "alter resi 20, b=1.0",
+   "outcome": "ok",
+   "said": "Altered 8 atoms (bfactor)"
+  },
+  {
+   "name": "alter_state",
+   "line": "alter_state 1, resi 20, x=x",
+   "outcome": "ok",
+   "said": "Altered 8 atoms (nothing changed)"
+  },
+  {
+   "name": "angle",
+   "line": "angle ang1, resi 20 and name CA, resi 21 and name CA, resi 22 and name CA",
+   "outcome": "ok",
+   "said": "angle ang1 148l res 20 and name CA - 148l res 21 and name CA - 148l res 22 and name CA: 88.380"
+  },
+  {
+   "name": "as",
+   "line": "as cartoon",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "bg_color",
+   "line": "bg_color white",
+   "outcome": "ok",
+   "said": "bg_color: background set to white"
+  },
+  {
+   "name": "bg_colour",
+   "line": "bg_colour black",
+   "outcome": "ok",
+   "said": "bg_color: background set to black"
+  },
+  {
+   "name": "bg_image",
+   "line": "bg_image",
+   "outcome": "ok",
+   "said": "bg_image: off  (named: nebula, space, stars, a file path, or off)"
+  },
+  {
+   "name": "bg_picture",
+   "line": "bg_picture",
+   "outcome": "ok",
+   "said": "bg_image: off  (named: nebula, space, stars, a file path, or off)"
+  },
+  {
+   "name": "bond",
+   "line": "bond resi 20 and name CA, resi 21 and name CA",
+   "outcome": "ok",
+   "said": "bond: 148l atoms 166 and 174 bonded"
+  },
+  {
+   "name": "bump_check",
+   "line": "bump_check",
+   "outcome": "ok",
+   "said": "clashes: 287 overlapping of 451 contacts, strain 96.51 |   LEU`99<path> -- ILE`100<path>: 2.76 A (0.46 A overlap) |   LYS`65<path> -- GLN`69<path>: 2.79 A (0.46 A overlap) |   ASP`20<path> -- ASP`20<path>: 2.77 A (0.45 A overlap) |   ARG`145<path> -- ALA`146<path>: 2.77 A (0.45 A overlap) |   TYR`88<path> -- ASP`89<path>: 2.78 A (0.44 A overlap) |   ASN`2<path> -- ASN`2<path>: 2.78 A (0.44 A overl"
+  },
+  {
+   "name": "buried_area",
+   "line": "buried_area 148l, 148l",
+   "outcome": "error",
+   "said": "measure_buriedarea: the two selections share 1363 atoms; they must be disjoint or the area is counted twice"
+  },
+  {
+   "name": "cartoon",
+   "line": "cartoon loop",
+   "outcome": "ok",
+   "said": "Cartoon type set to loop"
+  },
+  {
+   "name": "cba",
+   "line": "cba 148l",
+   "outcome": "error",
+   "said": "Usage: color <single|by_residue|by_ss|by_sequence>[, selection] or color <color>, selection"
+  },
+  {
+   "name": "cbac",
+   "line": "cbac",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "cbag",
+   "line": "cbag",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "cbay",
+   "line": "cbay",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "cbc",
+   "line": "cbc",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "cbh",
+   "line": "cbh 148l",
+   "outcome": "error",
+   "said": "cbh: unknown color '148l'"
+  },
+  {
+   "name": "cell",
+   "line": "cell",
+   "outcome": "error",
+   "said": "cell: 148l carries no unit cell (no CRYST1 record); set one with set_symmetry"
+  },
+  {
+   "name": "center",
+   "line": "center resi 20-40",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "centroid",
+   "line": "centroid resi 20-40",
+   "outcome": "ok",
+   "said": "measure_center: 162 atoms centred at [7.206, 56.592, 42.928]"
+  },
+  {
+   "name": "chainbow",
+   "line": "chainbow",
+   "outcome": "ok",
+   "said": "spectrum: 1299 atoms by count over 0 to 1298 | spectrum: 64 atoms by count over 0 to 63"
+  },
+  {
+   "name": "clashes",
+   "line": "clashes 148l",
+   "outcome": "ok",
+   "said": "clashes: 287 overlapping of 451 contacts, strain 96.51 |   LEU`99<path> -- ILE`100<path>: 2.76 A (0.46 A overlap) |   LYS`65<path> -- GLN`69<path>: 2.79 A (0.46 A overlap) |   ASP`20<path> -- ASP`20<path>: 2.77 A (0.45 A overlap) |   ARG`145<path> -- ALA`146<path>: 2.77 A (0.45 A overlap) |   TYR`88<path> -- ASP`89<path>: 2.78 A (0.44 A overlap) |   ASN`2<path> -- ASN`2<path>: 2.78 A (0.44 A overl"
+  },
+  {
+   "name": "clear",
+   "line": "clear",
+   "outcome": "ok",
+   "said": "Deselected residues on active object | Cleared current selection"
+  },
+  {
+   "name": "clip",
+   "line": "clip slab, 100",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "cnc",
+   "line": "cnc 148l",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "color",
+   "line": "color red, resi 20-40",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "config",
+   "line": "config",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "copy",
+   "line": "copy copy1, 148l",
+   "outcome": "ok",
+   "said": "Copied 148l to copy1"
+  },
+  {
+   "name": "count_atoms",
+   "line": "count_atoms",
+   "outcome": "ok",
+   "said": "count_atoms: 4089 atoms in (all) | 4089"
+  },
+  {
+   "name": "count_frames",
+   "line": "count_frames",
+   "outcome": "ok",
+   "said": "1"
+  },
+  {
+   "name": "count_states",
+   "line": "count_states",
+   "outcome": "ok",
+   "said": "1"
+  },
+  {
+   "name": "create",
+   "line": "create frag1, resi 20-40",
+   "outcome": "ok",
+   "said": "create: copied 162 atoms into 'frag1'"
+  },
+  {
+   "name": "cxpreset",
+   "line": "cxpreset",
+   "outcome": "ok",
+   "said": "ribbons                  Cartoon with flat arrows on strands and rounded loops -- the default reading view. |   cylinders                Helices as plain tubes: says a helix is here and nothing about its face, which is what shows packing. |   licorice                 One constant round section throughout, no arrows -- for a model whose secondary structure is not the point. |   ghostly_white       "
+  },
+  {
+   "name": "dbg",
+   "line": "dbg",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "dbg_panel",
+   "line": "dbg_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "debug",
+   "line": "debug",
+   "outcome": "ok",
+   "said": "debug: developer instruments on (frame rate, chrome-size slider)"
+  },
+  {
+   "name": "debug_mode",
+   "line": "debug_mode",
+   "outcome": "ok",
+   "said": "debug: developer instruments off"
+  },
+  {
+   "name": "debug_window",
+   "line": "debug_window",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "del",
+   "line": "del sele",
+   "outcome": "error",
+   "said": "Not found or failed: sele"
+  },
+  {
+   "name": "delete",
+   "line": "delete sele",
+   "outcome": "error",
+   "said": "Not found or failed: sele"
+  },
+  {
+   "name": "demo",
+   "line": "",
+   "outcome": "skipped",
+   "said": "builds a large scene; the demo suite covers it"
+  },
+  {
+   "name": "demo_edit",
+   "line": "",
+   "outcome": "skipped",
+   "said": "builds a large scene"
+  },
+  {
+   "name": "density_panel",
+   "line": "density_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "deprotect",
+   "line": "deprotect",
+   "outcome": "ok",
+   "said": "deprotect: 6977 atoms; 0 now protected"
+  },
+  {
+   "name": "deselect",
+   "line": "deselect",
+   "outcome": "ok",
+   "said": "Deselected residues on active object"
+  },
+  {
+   "name": "diagnose",
+   "line": "diagnose",
+   "outcome": "ok",
+   "said": "chimol <version> from <path> | python <version> on <platform> | host: <host>; viewer: Viewer; chrome: yes | settings: <path> | plugins: 7 loaded -- dbg(5), density(5), hierarchy(5), history(5), labelling(5), scores(5), symmetry(5) | panels: dbg, density, fps_circle, hierarchy, history, scores, settings | commands: 239; plugin representations: 11; formats: 20; fetch: 4 | menus: File(14), Edit(4), D"
+  },
+  {
+   "name": "dihedral",
+   "line": "dihedral dih1, resi 20 and name CA, resi 21 and name CA, resi 22 and name CA, resi 23 and name CA",
+   "outcome": "ok",
+   "said": "dihedral dih1 148l_4 res 20 and name CA - 148l_4 res 21 and name CA - 148l_4 res 22 and name CA - 148l_4 res 23 and name CA: -52.772"
+  },
+  {
+   "name": "disable",
+   "line": "disable 148l",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "dist",
+   "line": "dist d1, resi 20 and name CA, resi 40 and name CA",
+   "outcome": "ok",
+   "said": "distance d1: 0 distances"
+  },
+  {
+   "name": "distance",
+   "line": "distance d2, resi 20 and name CA, resi 40 and name CA",
+   "outcome": "ok",
+   "said": "distance d2: 0 distances"
+  },
+  {
+   "name": "doctor",
+   "line": "doctor",
+   "outcome": "ok",
+   "said": "chimol <version> from <path> | python <version> on <platform> | host: <host>; viewer: Viewer; chrome: yes | settings: <path> | plugins: 7 loaded -- dbg(5), density(5), hierarchy(5), history(5), labelling(5), scores(5), symmetry(5) | panels: dbg, density, fps_circle, hierarchy, history, scores, settings | commands: 239; plugin representations: 11; formats: 20; fetch: 4 | menus: File(14), Edit(4), D"
+  },
+  {
+   "name": "dss",
+   "line": "dss 148l",
+   "outcome": "error",
+   "said": "dss: too many positional arguments"
+  },
+  {
+   "name": "dye",
+   "line": "dye",
+   "outcome": "error",
+   "said": "Usage: add_dye <selection>, <dye spec> [, name]"
+  },
+  {
+   "name": "edit_file",
+   "line": "edit_file",
+   "outcome": "ok",
+   "said": "<cmtk.widgets.text_editor.TextEditor object at <addr>>"
+  },
+  {
+   "name": "edit_fps",
+   "line": "edit_fps",
+   "outcome": "ok",
+   "said": "fps_circle: 0 positions from the scene"
+  },
+  {
+   "name": "editor",
+   "line": "editor",
+   "outcome": "ok",
+   "said": "<cmtk.widgets.text_editor.TextEditor object at <addr>>"
+  },
+  {
+   "name": "enable",
+   "line": "enable 148l",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "exit",
+   "line": "",
+   "outcome": "skipped",
+   "said": "ends the session"
+  },
+  {
+   "name": "extract",
+   "line": "extract part1, resi 50-60",
+   "outcome": "ok",
+   "said": "extract: moved 81 atoms into 'part1'"
+  },
+  {
+   "name": "features",
+   "line": "features",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "fetch",
+   "line": "",
+   "outcome": "skipped",
+   "said": "network; the browser and the desktop reach it differently by design"
+  },
+  {
+   "name": "fetch_emdb",
+   "line": "",
+   "outcome": "skipped",
+   "said": "network"
+  },
+  {
+   "name": "fetch_ihm",
+   "line": "",
+   "outcome": "skipped",
+   "said": "network"
+  },
+  {
+   "name": "field_of_view",
+   "line": "field_of_view",
+   "outcome": "ok",
+   "said": "field_of_view = 20 deg"
+  },
+  {
+   "name": "fitmap",
+   "line": "fitmap",
+   "outcome": "error",
+   "said": "fitmap: no map is loaded; use load_map or molmap first"
+  },
+  {
+   "name": "form",
+   "line": "form",
+   "outcome": "error",
+   "said": "Usage: form <file.view.json> [, title]"
+  },
+  {
+   "name": "fov",
+   "line": "fov",
+   "outcome": "ok",
+   "said": "field_of_view = 20 deg"
+  },
+  {
+   "name": "fps_circle",
+   "line": "fps_circle",
+   "outcome": "ok",
+   "said": "fps_circle: 0 positions from the scene"
+  },
+  {
+   "name": "fps_edit",
+   "line": "fps_edit",
+   "outcome": "ok",
+   "said": "fps_circle: 0 positions from the scene"
+  },
+  {
+   "name": "fps_load",
+   "line": "fps_load",
+   "outcome": "error",
+   "said": "Usage: fps_load <fps.json> [, structure.pdb]"
+  },
+  {
+   "name": "fps_plot",
+   "line": "fps_plot",
+   "outcome": "ok",
+   "said": "fps_circle: 0 positions from the scene"
+  },
+  {
+   "name": "fps_save",
+   "line": "fps_save",
+   "outcome": "error",
+   "said": "Usage: fps_save <fps.json>"
+  },
+  {
+   "name": "frame",
+   "line": "frame 1",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "frame_next",
+   "line": "frame_next",
+   "outcome": "error",
+   "said": "Active object has no frames"
+  },
+  {
+   "name": "frame_prev",
+   "line": "frame_prev",
+   "outcome": "error",
+   "said": "Active object has no frames"
+  },
+  {
+   "name": "full_screen",
+   "line": "",
+   "outcome": "skipped",
+   "said": "changes the window, and a page has none to change"
+  },
+  {
+   "name": "fullscreen",
+   "line": "",
+   "outcome": "skipped",
+   "said": "changes the window, and a page has none to change"
+  },
+  {
+   "name": "get",
+   "line": "get bg_color",
+   "outcome": "error",
+   "said": "'Unknown setting: bg_color'"
+  },
+  {
+   "name": "get_area",
+   "line": "get_area 148l",
+   "outcome": "ok",
+   "said": "get_area: 17583.334 A^2 (van der Waals, 1363 atoms)"
+  },
+  {
+   "name": "get_bond_list",
+   "line": "get_bond_list 148l",
+   "outcome": "ok",
+   "said": "list of 1385 items"
+  },
+  {
+   "name": "get_bonds",
+   "line": "get_bonds 148l",
+   "outcome": "ok",
+   "said": "list of 1385 items"
+  },
+  {
+   "name": "get_chains",
+   "line": "get_chains",
+   "outcome": "ok",
+   "said": "[E, S]"
+  },
+  {
+   "name": "get_color_index",
+   "line": "get_color_index red",
+   "outcome": "ok",
+   "said": "Color index for 'red': 0 | 0"
+  },
+  {
+   "name": "get_extent",
+   "line": "get_extent 148l",
+   "outcome": "ok",
+   "said": "[[-11.598, 26.750, 10.279], [25.623, 67.338, 57.811]]"
+  },
+  {
+   "name": "get_names",
+   "line": "get_names",
+   "outcome": "ok",
+   "said": "[148l, 148l_2, copy1, frag1, 148l_3, 148l_4, part1, 148l_5]"
+  },
+  {
+   "name": "get_state",
+   "line": "get_state",
+   "outcome": "ok",
+   "said": "1"
+  },
+  {
+   "name": "get_symmetry",
+   "line": "get_symmetry",
+   "outcome": "error",
+   "said": "get_symmetry: 148l_5 carries no unit cell (no CRYST1 record, and none set)"
+  },
+  {
+   "name": "get_title",
+   "line": "get_title 148l",
+   "outcome": "ok",
+   "said": "<path>"
+  },
+  {
+   "name": "get_view",
+   "line": "get_view",
+   "outcome": "ok",
+   "said": "set_view (1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1729.64993, -10.9070797, 114.188404, 82.9888828, 3.0498395, 4476.19453, -20)"
+  },
+  {
+   "name": "group",
+   "line": "group grp1, 148l",
+   "outcome": "ok",
+   "said": "1 objects added to group grp1"
+  },
+  {
+   "name": "gyrate",
+   "line": "gyrate",
+   "outcome": "ok",
+   "said": "gyrate: 16.197 A over 1363 atoms (mass-weighted) | 16.1974479220601"
+  },
+  {
+   "name": "h_add",
+   "line": "h_add resi 20",
+   "outcome": "ok",
+   "said": "h_add: added 4 hydrogens to 148l_5 | h_add: histidine is treated as ND1-protonated (HID); NE2 tautomers and the charged form need the hydrogen placed by hand"
+  },
+  {
+   "name": "h_fill",
+   "line": "h_fill",
+   "outcome": "ok",
+   "said": "h_fill: added 1325 hydrogens to 148l_5 | h_fill: no template for API (12 atoms), BME (4 atoms), DAL (6 atoms), FGA (9 atoms), MUB (18 atoms), NAG (14 atoms) -- these need bond orders, which PDB files do not carry | h_fill: histidine is treated as ND1-protonated (HID); NE2 tautomers and the charged form need the hydrogen placed by hand"
+  },
+  {
+   "name": "hbnet",
+   "line": "hbnet",
+   "outcome": "ok",
+   "said": "hbond_network: 110 networks over 8771 contacts |   hbnet_1 (yellow): 384 bonds, 9 residues, chains E+S |   hbnet_2 (marine): 240 bonds, 6 residues |   hbnet_3 (salmon): 216 bonds, 6 residues |   hbnet_4 (palegreen): 210 bonds, 6 residues |   hbnet_5 (violet): 203 bonds, 5 residues |   hbnet_6 (lightorange): 197 bonds, 4 residues |   hbnet_7 (palecyan): 196 bonds, 4 residues |   hbnet_8 (wheat): 18"
+  },
+  {
+   "name": "hbond_network",
+   "line": "hbond_network 148l",
+   "outcome": "ok",
+   "said": "hbond_network: 113 networks over 234 contacts |   hbnet_1 (yellow): 7 bonds, 6 residues |   hbnet_2 (marine): 6 bonds, 6 residues |   hbnet_3 (salmon): 6 bonds, 6 residues, chains E+S |   hbnet_4 (palegreen): 6 bonds, 6 residues |   hbnet_5 (violet): 5 bonds, 6 residues |   hbnet_6 (lightorange): 5 bonds, 4 residues, chains E+S |   hbnet_7 (palecyan): 5 bonds, 5 residues |   hbnet_8 (wheat): 5 bon"
+  },
+  {
+   "name": "help",
+   "line": "help load",
+   "outcome": "ok",
+   "said": "Help for 'load':\n--------------------\nLoad one or more structure files (PyMOL ``load path[, ...]``)."
+  },
+  {
+   "name": "help_setting",
+   "line": "help_setting bg_color",
+   "outcome": "ok",
+   "said": "'Unknown setting: bg_color'"
+  },
+  {
+   "name": "help_settings",
+   "line": "help_settings",
+   "outcome": "ok",
+   "said": "Settings (103):\n\n  ambient                        antialias                      auto_rename_duplicate_objects  \n  bg_rgb                         cartoon_col..."
+  },
+  {
+   "name": "hide",
+   "line": "hide spheres",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "hide_dust",
+   "line": "hide_dust",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "hierarchy_panel",
+   "line": "hierarchy_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "history",
+   "line": "history",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "history_panel",
+   "line": "history_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "inertia",
+   "line": "inertia",
+   "outcome": "ok",
+   "said": "measure_inertia: mass-weighted (19348.5 Da); centre of mass [8.294, 45.146, 34.618], moments 96.22, 210.6, 219.8; extents along the axes 59.7 A, 33.2 A, 35.6 A"
+  },
+  {
+   "name": "info_panel",
+   "line": "info_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "instances",
+   "line": "instances",
+   "outcome": "ok",
+   "said": "instances: obj9 drawn once"
+  },
+  {
+   "name": "interchain_distances",
+   "line": "interchain_distances",
+   "outcome": "error",
+   "said": "Usage: interchain_distances name, selection [, cutoff [, mode]]"
+  },
+  {
+   "name": "intra_fit",
+   "line": "intra_fit 148l",
+   "outcome": "error",
+   "said": "intra_fit: 148l has a single state; there is nothing to fit"
+  },
+  {
+   "name": "intra_rms",
+   "line": "intra_rms 148l",
+   "outcome": "error",
+   "said": "intra_rms: 148l has a single state; there is nothing to fit"
+  },
+  {
+   "name": "isomesh",
+   "line": "isomesh",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "isosurface",
+   "line": "isosurface",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "iterate",
+   "line": "iterate resi 20, print(resi)",
+   "outcome": "ok",
+   "said": "Iterated over 60 atoms"
+  },
+  {
+   "name": "iterate_state",
+   "line": "iterate_state 1, resi 20, print(x)",
+   "outcome": "ok",
+   "said": "Iterated over 60 atoms"
+  },
+  {
+   "name": "keybindings",
+   "line": "keybindings",
+   "outcome": "ok",
+   "said": "Keyboard bindings:\n--------------------\n    r   cartoon      Show the cartoon / ribbon representation\n    c   ca_trace     Show the C-alpha trace\n    b   ato..."
+  },
+  {
+   "name": "keys",
+   "line": "keys",
+   "outcome": "ok",
+   "said": "Keyboard bindings:\n--------------------\n    r   cartoon      Show the cartoon / ribbon representation\n    c   ca_trace     Show the C-alpha trace\n    b   ato..."
+  },
+  {
+   "name": "label",
+   "line": "label resi 20 and name CA, 'CA'",
+   "outcome": "ok",
+   "said": "Labelled 7 atoms (1 in total)"
+  },
+  {
+   "name": "labelling_network",
+   "line": "labelling_network",
+   "outcome": "ok",
+   "said": "fps_circle: 0 positions from the scene"
+  },
+  {
+   "name": "lighting",
+   "line": "lighting ambient, 0.2",
+   "outcome": "error",
+   "said": "lighting: too many positional arguments"
+  },
+  {
+   "name": "load",
+   "line": "",
+   "outcome": "skipped",
+   "said": "run explicitly as the session's first command, not as a probe"
+  },
+  {
+   "name": "load_map",
+   "line": "",
+   "outcome": "skipped",
+   "said": "needs a map file that neither host bundles"
+  },
+  {
+   "name": "load_mrc",
+   "line": "",
+   "outcome": "skipped",
+   "said": "needs a map file that neither host bundles"
+  },
+  {
+   "name": "load_session",
+   "line": "",
+   "outcome": "skipped",
+   "said": "needs a session file"
+  },
+  {
+   "name": "load_traj",
+   "line": "",
+   "outcome": "skipped",
+   "said": "needs a trajectory that neither host bundles"
+  },
+  {
+   "name": "log",
+   "line": "log",
+   "outcome": "ok",
+   "said": "chimol log (last 5 lines):\n--------------------\n  <time> WARNING chimol.io.structure: No structure factory available for <path>"
+  },
+  {
+   "name": "logs",
+   "line": "logs",
+   "outcome": "ok",
+   "said": "chimol log (last 5 lines):\n--------------------\n  <time> WARNING chimol.io.structure: No structure factory available for <path>"
+  },
+  {
+   "name": "map_info",
+   "line": "map_info",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "map_level",
+   "line": "map_level 1.0",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "mask",
+   "line": "mask resi 20-40",
+   "outcome": "ok",
+   "said": "mask: 1289 atoms; 1289 now unpickable"
+  },
+  {
+   "name": "mclear",
+   "line": "mclear",
+   "outcome": "ok",
+   "said": "Animation cleared."
+  },
+  {
+   "name": "mdo",
+   "line": "mdo",
+   "outcome": "error",
+   "said": "mdo is not yet implemented (deferred to Phase 5.2)"
+  },
+  {
+   "name": "measure_buriedarea",
+   "line": "measure_buriedarea 148l, 148l",
+   "outcome": "error",
+   "said": "measure_buriedarea: the two selections share 1363 atoms; they must be disjoint or the area is counted twice"
+  },
+  {
+   "name": "measure_center",
+   "line": "measure_center resi 20-40",
+   "outcome": "ok",
+   "said": "measure_center: 162 atoms centred at [7.206, 56.592, 42.928]"
+  },
+  {
+   "name": "measure_inertia",
+   "line": "measure_inertia 148l",
+   "outcome": "ok",
+   "said": "measure_inertia: mass-weighted (18013.0 Da); centre of mass [8.313, 45.164, 34.600], moments 95.93, 209.7, 219.1; extents along the axes 57.9 A, 32.4 A, 34.7 A"
+  },
+  {
+   "name": "measure_rgyr",
+   "line": "measure_rgyr",
+   "outcome": "ok",
+   "said": "gyrate: 16.197 A over 1363 atoms (mass-weighted) | 16.1974479220601"
+  },
+  {
+   "name": "measure_weight",
+   "line": "measure_weight 148l",
+   "outcome": "ok",
+   "said": "measure_weight: 1363 atoms weigh 18013.0 Da"
+  },
+  {
+   "name": "measurement",
+   "line": "measurement",
+   "outcome": "ok",
+   "said": "no measurements"
+  },
+  {
+   "name": "mem",
+   "line": "",
+   "outcome": "skipped",
+   "said": "lists this process's own arrays; the hosts hold different ones"
+  },
+  {
+   "name": "memory",
+   "line": "",
+   "outcome": "skipped",
+   "said": "lists this process's own arrays; the hosts hold different ones"
+  },
+  {
+   "name": "minterpolate",
+   "line": "minterpolate",
+   "outcome": "ok",
+   "said": "minterpolate: 1"
+  },
+  {
+   "name": "molecular_weight",
+   "line": "molecular_weight 148l",
+   "outcome": "ok",
+   "said": "measure_weight: 1363 atoms weigh 18013.0 Da"
+  },
+  {
+   "name": "molmap",
+   "line": "molmap",
+   "outcome": "ok",
+   "said": "molmap: molmap_3 from 1363 atoms at 3 A, 56x59x66 step 1, values 0 to 6.202  [obj11]"
+  },
+  {
+   "name": "mouse_panel",
+   "line": "mouse_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "move",
+   "line": "move x, 1.0",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "mpause",
+   "line": "mpause",
+   "outcome": "ok",
+   "said": "Movie paused."
+  },
+  {
+   "name": "mplay",
+   "line": "",
+   "outcome": "skipped",
+   "said": "starts a timer that never stops"
+  },
+  {
+   "name": "mset",
+   "line": "mset 1 x10",
+   "outcome": "ok",
+   "said": "Timeline set to 10 frames."
+  },
+  {
+   "name": "mstop",
+   "line": "mstop",
+   "outcome": "ok",
+   "said": "Movie paused."
+  },
+  {
+   "name": "mutate",
+   "line": "mutate resi 20, ALA",
+   "outcome": "error",
+   "said": "mutate: the selection spans more than one object"
+  },
+  {
+   "name": "mview",
+   "line": "mview store",
+   "outcome": "error",
+   "said": "mview (keyframes) is not yet implemented (deferred to Phase 5.2)"
+  },
+  {
+   "name": "nerd",
+   "line": "nerd",
+   "outcome": "ok",
+   "said": "nerd mode on"
+  },
+  {
+   "name": "nerd_mode",
+   "line": "nerd_mode",
+   "outcome": "ok",
+   "said": "nerd mode off"
+  },
+  {
+   "name": "object_panel",
+   "line": "object_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "objects",
+   "line": "objects",
+   "outcome": "ok",
+   "said": "Objects:\n1: 148l (id=obj2, visible=on, path=<path>)\n2: 148l_2 (id=obj3, visible=on, path=<path>)\n3: copy1 (id=obj4, visible=on, path=<path>)\n4: frag1 (id=obj5, visible=on, path=<path>)\n5: 148l_3 (id=obj6, visible=on, path=<path>)\n6: 148l_4 (id=obj7, visible=on, path=<path>)\n7: part1 (id=obj8, visible=on, path=<path>)\n8: 148l_5 (id=obj9, visible=on, path=<path>)\n9: 148l_6 (id=obj10, visible=on, pat"
+  },
+  {
+   "name": "open",
+   "line": "",
+   "outcome": "skipped",
+   "said": "opens a file dialog on the desktop and cannot on a page"
+  },
+  {
+   "name": "open_all_panels",
+   "line": "open_all_panels",
+   "outcome": "ok",
+   "said": "opened 6 panel(s)"
+  },
+  {
+   "name": "order",
+   "line": "order 148l",
+   "outcome": "ok",
+   "said": "order: 1 objects, current"
+  },
+  {
+   "name": "orient",
+   "line": "orient 148l",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "origin",
+   "line": "origin resi 20-40",
+   "outcome": "ok",
+   "said": "origin: rotating about (7.155, 56.560, 42.942)"
+  },
+  {
+   "name": "pair_fit",
+   "line": "pair_fit 148l, 148l",
+   "outcome": "ok",
+   "said": "pair_fit: fitted on 1363 atom pairs (RMSD: 0.000 \u00c5)"
+  },
+  {
+   "name": "panels_all",
+   "line": "panels_all",
+   "outcome": "ok",
+   "said": "opened 6 panel(s)"
+  },
+  {
+   "name": "pbc",
+   "line": "pbc",
+   "outcome": "error",
+   "said": "Usage: pbc unwrap|wrap|box [, selection]"
+  },
+  {
+   "name": "pi_interactions",
+   "line": "pi_interactions 148l",
+   "outcome": "ok",
+   "said": "distance 148l: 49 pi interactions (49 pi-cation)"
+  },
+  {
+   "name": "plugins",
+   "line": "plugins",
+   "outcome": "ok",
+   "said": "symmetry       builtin      chimol.plugins.symmetry:plugin |   hierarchy      builtin      chimol.plugins.hierarchy:plugin |   history        builtin      chimol.plugins.history:plugin |   density        builtin      chimol.plugins.density:plugin |   dbg            builtin      chimol.plugins.dbg:plugin |   labelling      builtin      chimol.plugins.labelling:plugin |   scores         builtin     "
+  },
+  {
+   "name": "png",
+   "line": "",
+   "outcome": "skipped",
+   "said": "writes a file; the browser's filesystem is a different thing"
+  },
+  {
+   "name": "preset",
+   "line": "preset publication",
+   "outcome": "error",
+   "said": "dss: no backbone to assign from"
+  },
+  {
+   "name": "preset_cx",
+   "line": "preset_cx",
+   "outcome": "ok",
+   "said": "ribbons                  Cartoon with flat arrows on strands and rounded loops -- the default reading view. |   cylinders                Helices as plain tubes: says a helix is here and nothing about its face, which is what shows packing. |   licorice                 One constant round section throughout, no arrows -- for a model whose secondary structure is not the point. |   ghostly_white       "
+  },
+  {
+   "name": "protect",
+   "line": "protect resi 20-40",
+   "outcome": "ok",
+   "said": "protect: 1451 atoms; 1451 now protected"
+  },
+  {
+   "name": "pseudoatom",
+   "line": "pseudoatom ps1, pos=[0,0,0]",
+   "outcome": "ok",
+   "said": "pseudoatom: created ps1 at (0.000, 0.000, 0.000)"
+  },
+  {
+   "name": "push_undo",
+   "line": "push_undo",
+   "outcome": "ok",
+   "said": "push_undo: 1 snapshots stored"
+  },
+  {
+   "name": "quit",
+   "line": "",
+   "outcome": "skipped",
+   "said": "ends the session"
+  },
+  {
+   "name": "radius_of_gyration",
+   "line": "radius_of_gyration",
+   "outcome": "error",
+   "said": "gyrate: 'all' has 1 atom(s); two are needed"
+  },
+  {
+   "name": "ray",
+   "line": "",
+   "outcome": "skipped",
+   "said": "seconds per call, and it is measured by its own benchmark"
+  },
+  {
+   "name": "redo",
+   "line": "redo",
+   "outcome": "ok",
+   "said": "redo: nothing to redo"
+  },
+  {
+   "name": "reinit",
+   "line": "reinit",
+   "outcome": "ok",
+   "said": "Reinitialized everything; <n> setting(s) back to defaults"
+  },
+  {
+   "name": "reinitialize",
+   "line": "reinitialize",
+   "outcome": "ok",
+   "said": "Reinitialized everything"
+  },
+  {
+   "name": "remove",
+   "line": "remove",
+   "outcome": "error",
+   "said": "Usage: remove selection"
+  },
+  {
+   "name": "reset",
+   "line": "reset",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "reset_windows",
+   "line": "reset_windows",
+   "outcome": "ok",
+   "said": "window_reset: 2 window(s) restored, saved layout cleared"
+  },
+  {
+   "name": "resolution",
+   "line": "resolution",
+   "outcome": "ok",
+   "said": "resolution: this model states a single representation"
+  },
+  {
+   "name": "rm",
+   "line": "rm",
+   "outcome": "error",
+   "said": "Usage: remove selection"
+  },
+  {
+   "name": "rmf",
+   "line": "rmf",
+   "outcome": "ok",
+   "said": "rmf: 0 series"
+  },
+  {
+   "name": "rmf_viewer",
+   "line": "rmf_viewer",
+   "outcome": "ok",
+   "said": "rmf: 0 series"
+  },
+  {
+   "name": "rms",
+   "line": "rms 148l, 148l",
+   "outcome": "ok",
+   "said": "RMSD between 148l and 148l over 1299 atoms: 0.000 \u00c5"
+  },
+  {
+   "name": "rms_cur",
+   "line": "rms_cur 148l, 148l",
+   "outcome": "ok",
+   "said": "RMSD between 148l and 148l over 1299 atoms: 0.000 \u00c5"
+  },
+  {
+   "name": "rock",
+   "line": "",
+   "outcome": "skipped",
+   "said": "starts a timer that never stops"
+  },
+  {
+   "name": "rotate",
+   "line": "rotate x, 10",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "save",
+   "line": "",
+   "outcome": "skipped",
+   "said": "writes a file; the browser's filesystem is a different thing"
+  },
+  {
+   "name": "save_session",
+   "line": "",
+   "outcome": "skipped",
+   "said": "writes a file"
+  },
+  {
+   "name": "scene",
+   "line": "scene F1, store",
+   "outcome": "ok",
+   "said": "scene: stored 'F1' (view, color, active, rep)"
+  },
+  {
+   "name": "scores",
+   "line": "scores",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "scores_panel",
+   "line": "scores_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "select",
+   "line": "select sele, resi 20-40",
+   "outcome": "ok",
+   "said": "Selector: selection 'sele' defined with 648 atoms."
+  },
+  {
+   "name": "session_info",
+   "line": "session_info",
+   "outcome": "error",
+   "said": "Usage: session_info <filename>"
+  },
+  {
+   "name": "session_load",
+   "line": "",
+   "outcome": "skipped",
+   "said": "needs a session file"
+  },
+  {
+   "name": "session_save",
+   "line": "",
+   "outcome": "skipped",
+   "said": "writes a file"
+  },
+  {
+   "name": "set",
+   "line": "set line_width, 2",
+   "outcome": "ok",
+   "said": "line_width set to 2"
+  },
+  {
+   "name": "set_color",
+   "line": "set_color mycol, [1,0,0]",
+   "outcome": "error",
+   "said": "Cannot parse color value: Invalid color component '[1' in '[1,0,0]'"
+  },
+  {
+   "name": "set_name",
+   "line": "set_name 148l, 148l",
+   "outcome": "ok",
+   "said": "Renamed 148l to 148l"
+  },
+  {
+   "name": "set_symmetry",
+   "line": "set_symmetry 148l, 61, 61, 97, 90, 90, 120, P 32 2 1",
+   "outcome": "ok",
+   "said": "set_symmetry: 148l cell set, 'P 32 2 1' with 6 operators"
+  },
+  {
+   "name": "set_view",
+   "line": "set_view",
+   "outcome": "error",
+   "said": "Usage: set_view (<18 floats>)"
+  },
+  {
+   "name": "settings_panel",
+   "line": "settings_panel",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "show",
+   "line": "show sticks",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "show_as",
+   "line": "show_as cartoon",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "show_dust",
+   "line": "show_dust",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "smooth",
+   "line": "smooth 148l",
+   "outcome": "error",
+   "said": "smooth: 148l has a single state; smoothing averages over a trajectory"
+  },
+  {
+   "name": "sort",
+   "line": "sort 148l",
+   "outcome": "ok",
+   "said": "sort: 1016 atoms moved"
+  },
+  {
+   "name": "spectrum",
+   "line": "spectrum count, rainbow, 148l",
+   "outcome": "ok",
+   "said": "spectrum: 1363 atoms by count over 0 to 1362"
+  },
+  {
+   "name": "split_chains",
+   "line": "split_chains 148l",
+   "outcome": "ok",
+   "said": "split_chains: 2 chains (source hidden)"
+  },
+  {
+   "name": "super",
+   "line": "super 148l, 148l",
+   "outcome": "ok",
+   "said": "Super: aligned 148l onto 148l using 165<path> atoms (RMSD: 0.000 \u00c5)"
+  },
+  {
+   "name": "symexp",
+   "line": "symexp sym1, 148l, 148l, 5",
+   "outcome": "error",
+   "said": "symexp: could not convert string to float: '148l'"
+  },
+  {
+   "name": "symmetry",
+   "line": "symmetry",
+   "outcome": "error",
+   "said": "get_symmetry: 148l_5 carries no unit cell (no CRYST1 record, and none set)"
+  },
+  {
+   "name": "toggle",
+   "line": "toggle 148l",
+   "outcome": "error",
+   "said": "'Unknown setting: 148l'"
+  },
+  {
+   "name": "toggle_rep",
+   "line": "toggle_rep cartoon",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "tour",
+   "line": "tour",
+   "outcome": "ok",
+   "said": "fit_in_map  Fit a model into a cryo-EM map |   labelling   Label a protein with dyes |   superpose   Superpose two structures: align, super, rms |   Start one with: tour <name>"
+  },
+  {
+   "name": "translate",
+   "line": "translate [1,0,0]",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "turn",
+   "line": "turn x, 10",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "unbond",
+   "line": "unbond resi 20 and name CA, resi 21 and name CA",
+   "outcome": "ok",
+   "said": "unbond: 0 bonds removed from 148l_5"
+  },
+  {
+   "name": "undo",
+   "line": "undo",
+   "outcome": "ok",
+   "said": "undo: coordinates restored"
+  },
+  {
+   "name": "ungroup",
+   "line": "ungroup",
+   "outcome": "error",
+   "said": "Usage: ungroup <members>"
+  },
+  {
+   "name": "unmask",
+   "line": "unmask resi 20-40",
+   "outcome": "ok",
+   "said": "unmask: 972 atoms; 0 now unpickable"
+  },
+  {
+   "name": "unset",
+   "line": "unset line_width",
+   "outcome": "ok",
+   "said": "line_width reset to 2"
+  },
+  {
+   "name": "util.cbac",
+   "line": "util.cbac",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "util.cbag",
+   "line": "util.cbag",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "util.cbay",
+   "line": "util.cbay",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "util.cbc",
+   "line": "util.cbc",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "util.chainbow",
+   "line": "util.chainbow",
+   "outcome": "ok",
+   "said": "spectrum: 7794 atoms by count over 0 to 7793 | spectrum: 384 atoms by count over 0 to 383"
+  },
+  {
+   "name": "util.cnc",
+   "line": "util.cnc",
+   "outcome": "ok",
+   "said": ""
+  },
+  {
+   "name": "volume",
+   "line": "volume",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "volume_gaussian",
+   "line": "volume_gaussian 1.0",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "volume_level",
+   "line": "volume_level 1.0",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "volume_quality",
+   "line": "volume_quality balanced",
+   "outcome": "error",
+   "said": "no maps are loaded; `load_map file.mrc` reads one"
+  },
+  {
+   "name": "window_reset",
+   "line": "window_reset",
+   "outcome": "ok",
+   "said": "window_reset: 5 window(s) restored, saved layout cleared"
+  },
+  {
+   "name": "wizard",
+   "line": "",
+   "outcome": "skipped",
+   "said": "opens a modal flow that then owns every later key"
+  },
+  {
+   "name": "zoom",
+   "line": "zoom resi 20-40",
+   "outcome": "ok",
+   "said": ""
+  }
+ ],
+ "role": "desktop"
+}

@@ -18,6 +18,7 @@ changed" passes an inverted switch, which is how the defect survived.
 from __future__ import annotations
 
 import os
+import pathlib
 import tempfile
 
 import numpy as np
@@ -27,7 +28,14 @@ os.environ.setdefault(
     "CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chimol_ao_test_")
 )
 
-_PDB = "test/data/atomic_coordinates/pdb_files/148l.pdb"
+_PDB = str(
+    pathlib.Path(__file__).resolve().parents[4]
+    / "test"
+    / "data"
+    / "atomic_coordinates"
+    / "pdb_files"
+    / "148l.pdb"
+)
 
 #: Representations that bake ambient occlusion. ``sticks`` is deliberately absent:
 #: it has no occlusion path at all (measured: toggling the switch changes zero
