@@ -65,31 +65,6 @@ interface (e.g. `python -m build_tools.dev_utils.export_fitting_parameters`).
       --output chisurf/settings/constants/parameter_registry.json
   ```
 
-- **`export_tcspc_parameters.py`**  
-  Similar to `export_fcs_parameters.py`, but for parse-based TCSPC decay
-  models defined in `models/tcspc/tcspc.models.json`. Parameters are
-  registered under the `tcspc.*` namespace.
-
-  - Reads `tcspc.models.json` by default.
-  - Builds a mapping `parameter -> set of TCSPC model names` from the
-  `initial` sections.
-  - Ensures registry entries `tcspc.p` exist and records a TCSPC-specific
-  `sources` entry listing models and the JSON origin path.
-  - Preserves existing user-provided metadata where present.
-  - The JSON file is the single source of truth for parse-based TCSPC decay
-    models; running this tool ensures that the parameter registry reflects
-    the parameters actually used by those models, so the GUI and fit engine
-    can present consistent help text and groupings.
-
-  **Typical usage:**
-
-  ```bash
-  python -m build_tools.dev_utils.export_tcspc_parameters \
-      --root chisurf \
-      --json chisurf/models/tcspc/tcspc.models.json \
-      --output chisurf/settings/constants/parameter_registry.json
-  ```
-
 - **`fill_fcs_descriptions.py`**  
   Fills in **missing** descriptions and keywords for FCS-related entries in
   the registry (`fcs.*` keys) using simple, FCS-aware heuristics based on
@@ -109,31 +84,6 @@ interface (e.g. `python -m build_tools.dev_utils.export_fitting_parameters`).
       --output chisurf/settings/constants/parameter_registry.json
   ```
 
-- **`fill_tcspc_descriptions.py`**  
-  Fills in **missing** descriptions and keywords for TCSPC-related
-  parameters in the registry.
-
-  This covers both:
-
-  - `tcspc.*` keys introduced by `export_tcspc_parameters.py`, and
-  - plain parameter names whose `sources` live in `chisurf.models.tcspc.*`
-    modules.
-
-  For each such parameter, a generic TCSPC-/lifetime-aware description is
-  generated (or, for many common symbols, a more specific physical
-  description), and TCSPC-related keywords are merged. Existing
-  non-empty descriptions are preserved.
-
-  **Typical usage:**
-
-  ```bash
-  python -m build_tools.dev_utils.fill_tcspc_descriptions \
-      --root chisurf \
-      --output chisurf/settings/constants/parameter_registry.json
-  ```
-
----
-
 ## Typical workflow
 
 When evolving models or adding new fitting parameters, a typical maintenance
@@ -141,12 +91,10 @@ sequence is:
 
 1. **Refresh the base registry from code:**
    - **Run:** `python -m build_tools.dev_utils.export_fitting_parameters`.
-2. **Add/refresh FCS and TCSPC model parameters:**
+2. **Add/refresh FCS model parameters:**
    - **Run:** `python -m build_tools.dev_utils.export_fcs_parameters`.
-   - **Run:** `python -m build_tools.dev_utils.export_tcspc_parameters`.
 3. **Backfill missing descriptions:**
    - **Run:** `python -m build_tools.dev_utils.fill_fcs_descriptions`.
-   - **Run:** `python -m build_tools.dev_utils.fill_tcspc_descriptions`.
 
 All commands can be pointed at alternate roots or output paths via their
 respective CLI options if needed for experiments or CI scripts.

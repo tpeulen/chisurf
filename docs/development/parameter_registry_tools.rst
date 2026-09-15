@@ -95,28 +95,6 @@ Typical usage::
 This script is idempotent and safe to re-run after editing
 ``core/models/fcs/models.yaml`` or adding new FCS models.
 
-TCSPC parsed-model exporter: export_tcspc_parameters
-----------------------------------------------------
-
-Script::
-
-    dev_tools/export_tcspc_parameters.py
-
-Purpose:
-
-- Read ``chisurf/core/models/tcspc/tcspc.models.json``.
-- For each TCSPC decay model, collect parameter names from the
-  ``initial`` block.
-- Ensure there is a corresponding ``tcspc.<symbol>`` entry in the
-  registry with ``symbol`` and ``aliases``.
-
-Typical usage::
-
-    python dev_tools/export_tcspc_parameters.py
-
-Like the FCS exporter, this tool only adds or merges metadata and can
-be re-run whenever TCSPC JSON models are modified.
-
 FCS description filler: fill_fcs_descriptions
 ---------------------------------------------
 
@@ -139,49 +117,6 @@ texts and keywords for common FCS parameters (``N``, ``b``, ``td1``,
 triplet fractions, antibunching terms, etc.), while still allowing
 manual refinement directly in ``parameter_registry.json``.
 
-TCSPC description filler: fill_tcspc_descriptions
--------------------------------------------------
-
-Script::
-
-    dev_tools/fill_tcspc_descriptions.py
-
-Purpose:
-
-- Fill **missing** descriptions and keywords for TCSPC-related
-  parameters, including:
-
-  - ``tcspc.*`` entries from ``tcspc.models.json`` (parsed models);
-  - plain entries whose ``sources`` point to modules or files under
-    ``chisurf.core.models.tcspc.*`` (code-defined parameters in
-    ``nusiance.py``, ``fret.py``, etc.).
-
-- Provide conservative, physically meaningful descriptions for common
-  TCSPC parameters such as lifetimes, amplitudes, background, IRF
-  window, FRET parameters, and so on.
-
-Typical usage::
-
-    python dev_tools/fill_tcspc_descriptions.py
-
-Examples of parameters that receive heuristic descriptions:
-
-- Lifetimes and decay times: ``tcspc.tau1``, ``tcspc.tau2``, ``tau0``,
-  ``td1``, ``td2``.
-- Amplitudes and fractions: ``tcspc.a1``, ``tcspc.a2``, ``aD``,
-  ``aDO``, ``aDA``, ``aDAA``, ``ad1``, ``af1A``.
-- Quenching and FRET rates: ``kQ``, ``kf1A``, ``kf2A``, ``kf1AA``.
-- Transient-quenching geometry: ``Rdye``, ``Ddye``, ``Nq``, ``Vav``.
-- Nuisance/background: ``sc``, ``bg``, ``tBg``, ``tMeas``.
-- Convolution and IRF control: ``n0``, ``dt``, ``rep``, ``start``,
-  ``stop``, ``irf_start``, ``irf_stop``, ``lb``, ``ts``, ``iw``, ``ik``.
-- FRET TCSPC parameters: ``t0``, ``R0``, ``k2``, ``xDOnly``,
-  ``E_FRET``, and dynamic distance-distribution parameters of the form
-  ``R(G,1)``, ``x(G,1)``, etc.
-
-As with the FCS filler, **existing** descriptions in the registry are
-not modified.
-
 Recommended workflows
 ---------------------
 
@@ -194,10 +129,9 @@ A few typical maintenance workflows for developers:
 
          python dev_tools/export_fitting_parameters.py
 
-   - Optionally refresh TCSPC/FCS descriptions::
+   - Optionally refresh FCS descriptions::
 
          python dev_tools/fill_fcs_descriptions.py
-         python dev_tools/fill_tcspc_descriptions.py
 
 2. **After editing FCS parsed models (core/models/fcs/models.yaml)**
 
@@ -208,16 +142,6 @@ A few typical maintenance workflows for developers:
    - Fill descriptions (only for missing ones)::
 
          python dev_tools/fill_fcs_descriptions.py
-
-3. **After editing TCSPC parsed models (core/models/tcspc/tcspc.models.json)**
-
-   - Update TCSPC registry entries::
-
-         python dev_tools/export_tcspc_parameters.py
-
-   - Fill descriptions (parsed + code-defined TCSPC parameters)::
-
-         python dev_tools/fill_tcspc_descriptions.py
 
 Manual edits
 ------------

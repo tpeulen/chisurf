@@ -128,9 +128,9 @@ def test_dic_item_metadata_matches_registry():
 
 def test_lookup_flrcif_name_resolves_known_parameters():
     """Known parameter short names resolve to canonical identifiers."""
-    assert _lookup_flrcif_name("E_FRET", resolve_parameter_name) == "_flr_fit_parameter.E_FRET"
     assert _lookup_flrcif_name("bg", resolve_parameter_name) == "_flr_fit_parameter.bg"
-    assert _lookup_flrcif_name("R0", resolve_parameter_name) == "_flr_fit_parameter.R0"
+    assert _lookup_flrcif_name("D", resolve_parameter_name) == "_flr_fit_parameter.D"
+    assert _lookup_flrcif_name("N", resolve_parameter_name) == "_flr_fit_parameter.N"
 
 
 def test_lookup_flrcif_name_returns_none_for_unknown():
