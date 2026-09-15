@@ -181,8 +181,8 @@ class TestHistoryPersistence(unittest.TestCase):
             # Should succeed but report errors
             self.assertTrue(load_result["success"])
             self.assertGreater(len(load_result["errors"]), 0)
-            # Should have loaded events (including invalid ones) and then repaired
-            self.assertEqual(load_result["loaded_events"], 4)  # 3 valid + 1 malformed event loaded before repair
+            # The three valid events load; the malformed row is reported, not loaded
+            self.assertEqual(load_result["loaded_events"], 3)
 
     def test_backup_and_restore(self):
         """Test backup and restore functionality."""

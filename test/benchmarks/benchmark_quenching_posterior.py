@@ -54,11 +54,13 @@ import IMP
 import IMP.atom
 import IMP.bff
 import IMP.core
-from IMP.bff.quenching import maps
-from IMP.bff.quenching import (
+from IMP.bff import (
     GridDiffusionSolver,
+    atomic_quenching_parameters,
+    diffusion_coefficient_map,
     diffusion_stability_limit,
     equilibrium_occupancy,
+    quenching_rate_map,
 )
 
 from chisurf.core.fitting import deviance_residuals
@@ -188,13 +190,13 @@ class Site:
     def decay(self, theta) -> np.ndarray:
         kQ_scale, rC, free_diffusion, slow_factor = theta
         self.n_evaluations += 1
-        d_map = maps.diffusion_coefficient_map(
+        d_map = diffusion_coefficient_map(
             self.density, self.x0, self.dg, self.xyz,
             free_diffusion=free_diffusion, min_distance=CONTACT_DISTANCE,
             slow_factor=slow_factor)
-        kQ, rC_atoms = maps.atomic_quenching_parameters(
+        kQ, rC_atoms = atomic_quenching_parameters(
             self.atoms, quencher_table(kQ_scale, rC))
-        rate = maps.quenching_rate_map(
+        rate = quenching_rate_map(
             self.density, self.x0, self.dg, self.xyz, kQ, rC_atoms,
             tau0=TAU0, dye_radius=3.5)
         start = equilibrium_occupancy(d_map, self.bounds, "smoluchowski")

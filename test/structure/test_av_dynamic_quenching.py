@@ -16,9 +16,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from IMP.bff.quenching import (
-    quenching_rate_per_frame as _quenching_rate_per_frame,
-)
+import IMP.bff
+
+
+def _quenching_rate_per_frame(collided, k_quench):
+    """The kernel on a (frames, atoms) flag array: bff takes it row-major, flat."""
+    flags = np.asarray(collided)
+    return np.asarray(IMP.bff.quenching_rate_per_frame(
+        flags.ravel().astype(int).tolist(), int(flags.shape[0]),
+        np.asarray(k_quench, dtype=float).tolist()))
 
 
 def _reference(collided, k_quench):
