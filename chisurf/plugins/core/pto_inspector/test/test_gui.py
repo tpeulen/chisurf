@@ -188,10 +188,9 @@ def test_the_graph_is_not_rebuilt_when_only_the_selection_changed(tool, qapp):
 
 def test_the_graph_shows_one_node_per_object(tool):
     from chisurf.gui.autoform.sections.node_graph_section import NodeGraphSectionWidget
-    from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
 
     section = tool.auto_form.findChildren(NodeGraphSectionWidget)[0]
-    nodes = [i for i in section.viewer.scene.items() if isinstance(i, NodeGraphicsItem)]
+    nodes = section.viewer.document.nodes
     assert len(nodes) == len(tool.model.inspection.infos())
 
 

@@ -6335,10 +6335,8 @@ class MMFDBWidget(NavigationPanelTool):
         self.prov_edge_table.itemSelectionChanged.connect(self.on_prov_edge_selected)
         left_splitter.addWidget(self.prov_edge_table)
 
-        from chisurf.gui.widgets.node_editor.editor import NodeEditorWidget
-        self.prov_node_editor = NodeEditorWidget(
-            build_example=False, show_side_panel=False, show_timeline=False, read_only=True, graph_purpose="provenance_view"
-        )
+        from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
+        self.prov_node_editor = NodeGraphWidget(read_only=True)
         self.prov_node_editor.nodeSelected.connect(self.on_prov_node_selected_in_editor)
         self.prov_node_editor.edgeSelected.connect(self.on_prov_edge_selected_in_editor)
         left_splitter.addWidget(self.prov_node_editor)

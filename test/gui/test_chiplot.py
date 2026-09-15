@@ -473,26 +473,6 @@ def test_grid_panel_region_and_markers(qapp):
     assert reg.bounds == (12.0, 35.0)  # region survived the curve churn
 
 
-def test_pt_plot_widget_renders(qapp):
-    """The node-editor PtPlotWidget builds a chiplot curve and accepts data.
-
-    Regression guard for PRD-64 Batch 18: the themed node plot must construct
-    with a chiplot backend, expose a live curve, and round-trip set_data.
-    """
-    from chisurf.gui.widgets.node_editor.widgets.pt_plot_widget import PtPlotWidget
-
-    w = PtPlotWidget("Damped sine")
-    assert isinstance(w._curve, cp.handles.Curve)
-    x = np.linspace(0, 12, 200)
-    y = np.exp(-0.25 * x) * np.sin(3.0 * x)
-    w.set_data(x, y)
-    gx, gy = w._curve.get_data()
-    assert len(gx) == 200 and len(gy) == 200
-    w.clear()
-    gx, _ = w._curve.get_data()
-    assert gx is None or len(gx) == 0  # empty curve -> None or zero-length
-
-
 def test_spectrum_view_plots_traces(qapp):
     """SpectrumView.plot_series draws one chiplot curve per trace + styles.
 
@@ -543,9 +523,6 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.core.lightpath_simulator.gui.node_types",
         # Batch 17
         "chisurf.plugins.burst.burst_2cde.gui.tool",
-        # Batch 18
-        "chisurf.gui.widgets.node_editor.widgets.pt_plot_widget",
-        # Batch 19
         "chisurf.gui.widgets.spectrum_view",
         # Batch 20
         "chisurf.plugins.burst.burst_background.gui.sections",

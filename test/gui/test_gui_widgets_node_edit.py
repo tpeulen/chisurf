@@ -1,9 +1,31 @@
 import pytest
 from qtpy import QtWidgets
 
-pytest.importorskip("chinet")
+pytest.importorskip("cmtk")
 
-from chisurf.gui.widgets import node_editor as gui_node_editor
+from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
+
+#: A small graph in schema v1 -- ``pos`` not ``position``, and an edge port
+#: is an index into the node's per-direction port list.
+GRAPH: dict = {
+    "version": 1,
+    "meta": {"purpose": "test"},
+    "nodes": [
+        {"id": "a", "type": "constant", "title": "Constant A",
+         "inputs": [], "outputs": ["Value"], "config": {"value": 2.5},
+         "pos": [-260.0, -80.0], "collapsed": False},
+        {"id": "b", "type": "constant", "title": "Constant B",
+         "inputs": [], "outputs": ["Value"], "config": {"value": 4.0},
+         "pos": [-260.0, 90.0], "collapsed": False},
+        {"id": "op", "type": "binary_op", "title": "Operation",
+         "inputs": ["A", "B"], "outputs": ["Result"], "config": {},
+         "pos": [60.0, 0.0], "collapsed": False},
+    ],
+    "edges": [
+        {"source": "a", "source_port": 0, "target": "op", "target_port": 0},
+        {"source": "b", "source_port": 0, "target": "op", "target_port": 1},
+    ],
+}
 
 
 @pytest.fixture
@@ -16,44 +38,55 @@ def app():
 
 @pytest.fixture
 def editor(app):  # noqa: ARG001 - ensures QApplication exists
-    return gui_node_editor.NodeEditorWidget()
+    widget = NodeGraphWidget()
+    widget.load_graph_dict(GRAPH)
+    return widget
 
 
-def test_gui_widgets_node_edit_round_trip(editor, tmp_path):
-    editor._build_example_graph()
+def test_gui_widgets_node_edit_round_trip(editor):
+    graph_dict = editor.graph_dict()
+    assert graph_dict["nodes"]
+    assert graph_dict["edges"]
 
+    editor.clear_graph()
+    assert not editor.graph_dict()["nodes"]
+    editor.load_graph_dict(graph_dict)
+    assert [n.id for n in editor.document.nodes] == ["a", "b", "op"]
+    assert len(editor.document.edges) == 2
+
+
+def test_gui_widgets_node_edit_json_round_trip(editor):
     json_str = editor.to_json()
     assert isinstance(json_str, str)
     assert json_str
 
     editor.clear_graph()
     editor.load_graph_from_json(json_str)
-
-    items = list(editor.scene.items())
-    assert items
+    assert editor.document.edges
 
 
 def test_gui_widgets_node_edit_file_io(editor, tmp_path):
-    editor._build_example_graph()
-
     path = tmp_path / "graph.json"
     editor.save_graph_to_file(str(path))
     assert path.exists()
 
     editor.clear_graph()
     editor.load_graph_from_file(str(path))
-
-    items = list(editor.scene.items())
-    assert items
+    assert [n.id for n in editor.document.nodes] == ["a", "b", "op"]
 
 
-def test_gui_widgets_node_edit_help_dialog(editor):
-    dlg = editor.show_help_dialog()
-    try:
-        assert dlg is not None
-        edits = dlg.findChildren(QtWidgets.QTextEdit)
-        assert edits
-        text = edits[0].toPlainText()
-        assert "Node Editor" in text
-    finally:
-        dlg.close()
+def test_gui_widgets_node_edit_selection_reporting(editor, qtbot):
+    """Selecting a node reports it; emptying the selection reports that too.
+
+    The report is produced by the control during its draw pass, so the test
+    calls the report directly: an offscreen widget the test never shows gets
+    no paint events, and an ``update()`` on an unmapped widget paints nothing.
+    """
+    with qtbot.waitSignal(editor.nodeSelected, timeout=2000) as selected:
+        assert editor.select_node("b", reveal=False) is True
+        editor.control._report_selection()
+    assert selected.args[0]["id"] == "b"
+
+    editor.control.editor.selected_nodes.clear()
+    with qtbot.waitSignal(editor.selectionCleared, timeout=2000):
+        editor.control._report_selection()

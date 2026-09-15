@@ -477,7 +477,10 @@ class GraphControl:
             # before that would paint every node in the default colour.
             nodes.push_color_style(nodes.Col.TITLE_BAR, title_colour)
         nodes.begin_node(number, shape=shape, label=label, radius=radius)
-        im.push_item_width(NODE_ITEM_WIDTH)
+        # Scaled by the editor's zoom: under content scaling the metrics and
+        # the font already follow it, and an unscaled item width would leave
+        # every control the same width while the text around it shrinks.
+        im.push_item_width(NODE_ITEM_WIDTH * nodes.content_scale())
 
         if shape == nodes.NodeShape.DISC:
             # Returns **before** the title bar, and that placement is the whole
@@ -661,6 +664,12 @@ class GraphControl:
             edge = self.document.edge_for_link(link_ids[0])
             if edge is not None:
                 self.on_select("edge", self._edge_payload(edge))
+        else:
+            # The selection emptied -- the user clicked the background, or the
+            # selected object was deleted. Saying so is what lets a host's
+            # detail panel follow: reporting only *selctions* left the panel
+            # describing a node the user had just deselected.
+            self.on_select("none", {})
 
     def _node_payload(self, node: GraphNode) -> dict:
         """What a host is told about a selected node.

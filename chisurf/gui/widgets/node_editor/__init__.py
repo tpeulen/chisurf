@@ -1,21 +1,20 @@
-"""Node editor widgets, imported on demand.
+"""The node editor: a cmtk-backed graph editor, imported on demand.
 
-The GUI classes are not imported at module level so that the headless
-submodules (model, graph, registry) stay importable without Qt. They are
-resolved lazily instead of merely being named in ``__all__``: a name promised
-there but never bound raises ``AttributeError`` on the attribute access that
-``__all__`` invites, which is what ``node_editor.NodeEditorWidget`` did.
+The editor itself is Qt-free: the graph is a plain
+:class:`~.document.GraphDocument` and the editing behaviour lives in
+:class:`~.cmtk_control.GraphControl`, which draws through `cmtk` and is
+hosted — in a Qt window by :class:`~.widget.NodeGraphWidget`, in a browser
+or a headless test by the same control. The Qt wrapper adds only the
+signals the consumers connect to.
+
+Nothing here is imported at module level so the headless submodules stay
+importable without Qt; names resolve lazily (PEP 562).
 """
 import importlib
 
 #: exported name -> submodule that defines it
 _LAZY = {
-    "apply_node_ui_theme": "theme_widgets",
-    "StyledComboBox": "theme_widgets",
-    "InlineLabeledSlider": "inline_slider",
-    "Vector1DWidget": "vector_widget",
-    "NodeEditorWidget": "editor",
-    "NodeViewerWidget": "node_viewer",
+    "NodeGraphWidget": "widget",
 }
 
 __all__ = list(_LAZY)

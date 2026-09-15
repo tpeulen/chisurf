@@ -55,9 +55,11 @@ def test_raw_to_process_to_product():
         assert len(n["inputs"]) == 1
         assert len(n["outputs"]) == 1
 
-    # Every converted edge uses source_port=1 and target_port=0
+    # Every converted edge uses source_port=0 (the source's only output) and
+    # target_port=0 (the target's only input) -- the schema's per-direction
+    # indices, not the flat inputs-then-outputs count the old editor used.
     for e in out["edges"]:
-        assert e["source_port"] == 1
+        assert e["source_port"] == 0
         assert e["target_port"] == 0
 
     # Color check

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
-if TYPE_CHECKING:
-    from qtpy import QtWidgets
+from typing import Any, Callable, Dict, List, Optional
 
 
 @dataclass
@@ -32,9 +30,9 @@ class PortSpec:
 class NodeModel:
     """Model for a node: title, port specs and optional widget factory.
 
-    The view (`NodeGraphicsItem`) is responsible only for painting, geometry
-    and interaction; it reads from this model and (optionally) calls the
-    `content_factory` once to obtain an embedded QWidget.
+    The document layer reads from this model; the cmtk control draws it.
+    The ``content_factory`` hook is what a host sets when a node body needs
+    to host live controls rather than drawn text.
     """
 
     title: str

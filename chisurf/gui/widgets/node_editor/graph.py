@@ -123,7 +123,7 @@ class GraphDef:
 
     @staticmethod
     def from_dict(d: dict) -> "GraphDef":
-        """Parse NodeScene.to_dict() output."""
+        """Parse graph-schema v1 (``json_schema.md``), as the editor saves it."""
         return GraphDef(
             nodes=[NodeDef.from_dict(n) for n in d.get("nodes", [])],
             edges=[EdgeDef.from_dict(e) for e in d.get("edges", [])],
@@ -139,7 +139,7 @@ class GraphDef:
         return self.to_dict()
 
     def to_dict(self) -> dict:
-        """Produce NodeScene.from_dict()-compatible output."""
+        """Produce graph-schema v1 (``json_schema.md``) output."""
         return {
             "nodes": [n.to_dict() for n in self.nodes],
             "edges": [e.to_dict() for e in self.edges],

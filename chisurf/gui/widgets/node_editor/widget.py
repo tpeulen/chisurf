@@ -58,11 +58,20 @@ class NodeGraphWidget(QtWidgets.QWidget):
         Emitted with the selected node's serialised form.
     edgeSelected : QtCore.Signal
         Emitted with the selected edge's serialised form.
+    nodeActivated : QtCore.Signal
+        Emitted with the node's serialised form on a double-click *on* a node.
+    selectionCleared : QtCore.Signal
+        Emitted when the selection empties -- the background was clicked, the
+        selection was deleted, or a new graph was loaded. ``nodeSelected``
+        only ever fires when something *is* selected, so a host whose detail
+        panel follows the graph needs this to know when to stop describing.
     """
 
     graphChanged = QtCore.Signal()
     nodeSelected = QtCore.Signal(dict)
     edgeSelected = QtCore.Signal(dict)
+    nodeActivated = QtCore.Signal(dict)
+    selectionCleared = QtCore.Signal()
 
     def __init__(
         self,
@@ -93,6 +102,10 @@ class NodeGraphWidget(QtWidgets.QWidget):
         # unresponsive to the keyboard.
         self.host.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.host.setMouseTracking(True)
+        # Watched, not overridden: the double-click still reaches the control
+        # (and folds the node, where editing is allowed) -- the filter only
+        # listens, which is how a read-only viewer still gets ``nodeActivated``.
+        self.host.installEventFilter(self)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -234,6 +247,97 @@ class NodeGraphWidget(QtWidgets.QWidget):
         edge = self.control.document.edge_for_link(chosen[0])
         return self.control._edge_payload(edge) if edge is not None else {}
 
+    def select_node(self, node_id: str, reveal: bool = True) -> bool:
+        """Select the node with *node_id*, as a programmatic selection.
+
+        Parameters
+        ----------
+        node_id : str
+            The node to select. Unknown ids are refused, not ignored, so a
+            caller whose model drifted from the picture finds out.
+        reveal : bool
+            Pan the node into view when it is off screen. Never recentres:
+            a selection made in the graph must not yank the view sideways
+            under the cursor, so this only scrolls when it has to -- the same
+            contract the scene viewer's ``ensureVisible`` had.
+
+        Returns
+        -------
+        bool
+            ``True`` when the node exists and is now the selection.
+        """
+        from cmtk import nodes
+
+        node = self.document.node(str(node_id))
+        if node is None:
+            return False
+        number = self.document.node_number(node.id)
+        if not nodes.is_node_selected(self.control.editor, number):
+            nodes.clear_node_selection(self.control.editor)
+            nodes.clear_link_selection(self.control.editor)
+            nodes.select_node(self.control.editor, number)
+        if reveal:
+            self._reveal_node(number)
+        self.host.update()
+        return True
+
+    def _reveal_node(self, number: int) -> None:
+        """Pan the node into the visible box, only when it is not in it.
+
+        Parameters
+        ----------
+        number : int
+            The node's renderer number (its index in the document).
+
+        Notes
+        -----
+        A node not drawn yet measures ``(0, 0)``; the nominal floor below
+        keeps such a node from sitting exactly under an edge and counting as
+        visible while showing only its title bar's first pixels.
+        """
+        from cmtk import nodes
+
+        editor = self.control.editor
+        canvas = editor.canvas
+        pos = nodes.get_node_grid_space_pos(editor, number)
+        width, height = nodes.get_node_dimensions(editor, number)
+        width = max(width, 40.0)
+        height = max(height, 24.0)
+
+        _, _, box_w, box_h = self.control._box
+        margin = 40.0
+        # Editor space: grid space after zoom and pan, relative to the box.
+        nx = pos[0] * canvas.zoom + canvas.panning[0]
+        ny = pos[1] * canvas.zoom + canvas.panning[1]
+        dx = dy = 0.0
+        if nx < margin or width > box_w - 2.0 * margin:
+            dx = margin - nx
+        elif nx + width > box_w - margin:
+            dx = (box_w - margin) - (nx + width)
+        if ny < margin or height > box_h - 2.0 * margin:
+            dy = margin - ny
+        elif ny + height > box_h - margin:
+            dy = (box_h - margin) - (ny + height)
+        if dx or dy:
+            canvas.panning = (canvas.panning[0] + dx, canvas.panning[1] + dy)
+
+    def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
+        """Turn a double-click on a node into :attr:`nodeActivated`.
+
+        The node is identified by hover, not by selection: hover is the node
+        under the *pointer*, which is what a double-click means, while the
+        selection may still be the node the previous click chose.
+        """
+        if obj is self.host and event.type() == QtCore.QEvent.MouseButtonDblClick:
+            from cmtk import nodes
+
+            number = nodes.is_node_hovered(self.control.editor)
+            if number is not None:
+                node = self.control.document.node_for_number(number)
+                if node is not None:
+                    self.nodeActivated.emit(self.control._node_payload(node))
+        return super().eventFilter(obj, event)
+
     # -- bridges from the control ---------------------------------------
 
     def _on_control_changed(self) -> None:
@@ -247,11 +351,13 @@ class NodeGraphWidget(QtWidgets.QWidget):
         Parameters
         ----------
         kind : str
-            ``"node"`` or ``"edge"``.
+            ``"node"``, ``"edge"``, or ``"none"`` when the selection emptied.
         payload : dict
-            The selected object's serialised form.
+            The selected object's serialised form; ``{}`` for ``"none"``.
         """
         if kind == "node":
             self.nodeSelected.emit(payload)
         elif kind == "edge":
             self.edgeSelected.emit(payload)
+        elif kind == "none":
+            self.selectionCleared.emit()

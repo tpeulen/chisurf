@@ -1,12 +1,13 @@
-"""AutoForm ``node_graph`` section: a read-only node-editor graph, declared in a spec.
+"""AutoForm ``node_graph`` section: a read-only node graph, declared in a spec.
 
 Anything whose structure is a **directed graph** — a provenance chain, a pipeline,
 a kinetic scheme, an evaluation network — has until now had to be drawn as a list
 or a tree, and both lie about it in the same way: a node reached by two paths is
 either duplicated or one of its edges is dropped, and that node is usually the
 interesting one. ChiSurf already ships a graph renderer
-(:class:`~chisurf.gui.widgets.node_editor.node_viewer.NodeViewerWidget`); this
-section is the seam that lets a view spec use it without the model importing Qt.
+(:class:`~chisurf.gui.widgets.node_editor.widget.NodeGraphWidget`, the cmtk
+editor); this section is the seam that lets a view spec use it without the model
+importing Qt.
 
 Declare it in a view spec as a custom section::
 
@@ -25,25 +26,23 @@ Options
     graph on screen pretending to describe the new file.
 ``selected_call``
     Model method called with the selected node dict whenever the selection
-    changes. This is how a detail panel beside the graph follows it.
+    changes — and with an empty dict when it empties, so a detail panel beside
+    the graph stops describing a node the user just deselected.
 ``activated_call``
-    Model method called with the node dict on a double-click.
-``toolbar``
-    Show the viewer's own *Fit* toolbar (default ``false``; the host usually has
-    one).
+    Model method called with the node dict on a double-click *on* a node.
 ``height``
     Minimum height in pixels (default 320).
 
 The graph is always read-only here: a section that *displays* a structure must
 not offer to rewire it, because nothing in the spec says what a rewire would
-mean. Editing stays with the node editor itself.
+mean. Editing stays with the editor itself.
 """
 
 from __future__ import annotations
 
 import logging
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from .registry import register_section
 
@@ -52,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 @register_section("node_graph")
 class NodeGraphSectionWidget(QtWidgets.QWidget):
-    """A read-only node-editor graph bound to a model method."""
+    """A read-only node graph bound to a model method."""
 
     AUTOFORM_REFRESH = True
     _autoform_expanding = True
@@ -65,27 +64,19 @@ class NodeGraphSectionWidget(QtWidgets.QWidget):
         self._activated_call = str(options.get("activated_call", "") or "")
         self._last: dict | None = None
 
-        from chisurf.gui.widgets.node_editor.node_viewer import NodeViewerWidget
+        from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
 
-        self.viewer = NodeViewerWidget(
-            read_only=True,
-            show_toolbar=bool(options.get("toolbar", False)),
-            graph_purpose="autoform_node_graph",
-        )
+        self.viewer = NodeGraphWidget(read_only=True)
         self.viewer.setMinimumHeight(int(options.get("height", 320) or 320))
         self.viewer.nodeSelected.connect(self._on_selected)
-        self.viewer.scene.selectionChanged.connect(self._on_scene_selection)
+        self.viewer.selectionCleared.connect(self._on_selection_cleared)
+        self.viewer.nodeActivated.connect(self._on_activated)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self.viewer, stretch=1)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
-
-        # A double-click on a node collapses it in the editor; here it means
-        # "open this". The scene's own handler still runs, so the collapse is
-        # harmless and the call goes out on top of it.
-        self.viewer.view.viewport().installEventFilter(self)
 
         self.refresh()
 
@@ -131,24 +122,12 @@ class NodeGraphSectionWidget(QtWidgets.QWidget):
     def select(self, node_id: str) -> None:
         """Select the node with *node_id*, bringing it into view if it is not.
 
-        Deliberately not ``centerOn``: a selection made *in* the graph would then
-        yank the view sideways under the cursor. ``ensureVisible`` scrolls only
-        when the node is actually off screen, which is the case the caller cares
-        about (a click in the artifact list).
+        Delegates to :meth:`NodeGraphWidget.select_node`, which pans only when
+        the node is actually off screen — the case the caller cares about (a
+        click in the artifact list) — and never recentres a graph the user is
+        already reading.
         """
-        from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
-
-        for item in self.viewer.scene.items():
-            if not isinstance(item, NodeGraphicsItem):
-                continue
-            if str(getattr(item.model, "id", "")) != str(node_id):
-                continue
-            if item.isSelected():
-                return
-            self.viewer.scene.clearSelection()
-            item.setSelected(True)
-            self.viewer.view.ensureVisible(item, 40, 40)
-            return
+        self.viewer.select_node(str(node_id), reveal=True)
 
     # -- selection ----------------------------------------------------------
 
@@ -167,25 +146,16 @@ class NodeGraphSectionWidget(QtWidgets.QWidget):
     def _on_selected(self, node: dict) -> None:
         self._call(self._selected_call, node)
 
-    def _on_scene_selection(self) -> None:
+    def _on_selection_cleared(self) -> None:
         """Report an emptied selection, which ``nodeSelected`` never does.
 
-        The viewer emits only when something *is* selected, so clicking the empty
-        canvas left the detail panel still describing the node the user had just
-        deselected — a panel that quietly disagrees with the graph beside it.
+        The widget emits ``nodeSelected`` only when something *is* selected, so
+        clicking the empty canvas would otherwise leave the detail panel still
+        describing the node the user had just deselected — a panel that quietly
+        disagrees with the graph beside it.
         """
-        if self.viewer.scene.selectedItems():
-            return
         self._call(self._selected_call, {})
 
-    def eventFilter(self, obj, event):  # noqa: N802 (Qt override)
-        """Turn a double-click on a node into ``activated_call``."""
-        if (
-            self._activated_call
-            and event.type() == QtCore.QEvent.MouseButtonDblClick
-            and self.viewer.scene.selectedItems()
-        ):
-            node = self.viewer.selected_node()
-            if node:
-                self._call(self._activated_call, node)
-        return super().eventFilter(obj, event)
+    def _on_activated(self, node: dict) -> None:
+        """Ask the model to open the double-clicked node."""
+        self._call(self._activated_call, node)

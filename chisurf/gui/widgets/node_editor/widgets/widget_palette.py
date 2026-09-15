@@ -49,16 +49,14 @@ class WidgetPalette(QtWidgets.QTreeWidget):
               ]
             }
         """
-
         self.clear()
 
         base = Path(__file__).resolve().parent.parent  # widgets/ -> node_editor/
-        theme_dir = base / "theme"
         if palette_path is None:
-            path = theme_dir / "widgets_palette.json"
+            path = base / "widgets_palette.json"
         else:
             p = Path(palette_path)
-            path = p if p.is_absolute() else (theme_dir / p)
+            path = p if p.is_absolute() else (base / p)
 
         try:
             data = json.loads(path.read_text(encoding="utf-8"))

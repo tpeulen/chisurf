@@ -56,23 +56,3 @@ def test_registry_get_missing():
     """Test getting non-existent node type."""
     registry._types.clear()
     assert registry.get("missing") is None
-
-
-def test_builtin_nodes_registered():
-    """Test that built-in nodes are registered."""
-    # Instantiating NodeEditorWidget registers them
-    from chisurf.gui.widgets.node_editor.editor import NodeEditorWidget
-    _ = NodeEditorWidget()
-
-    # Check that built-in types are available
-    ids = registry.available_ids()
-    assert "constant" in ids
-    assert "binary_op" in ids
-    assert "output" in ids
-    assert "controls" in ids
-
-    # Check their properties
-    constant = registry.get("constant")
-    assert constant.title == "Constant"
-    assert len(constant.outputs) == 1
-    assert constant.outputs[0].name == "Value"

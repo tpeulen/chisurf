@@ -1,123 +1,49 @@
-# Node Editor
+# Node editor
 
-A self-contained node-based editor for creating and editing computational graphs, built with PyQt5.
-
-## Features
-
-- **Visual Node Editing**: Drag-and-drop interface for creating nodes and connections.
-- **JSON Serialization**: Save and load graphs as JSON files with validation.
-- **DAG Checks**: Automatic detection of cycles with optional enforcement.
-- **Customizable Nodes**: Define node types with custom widgets and logic.
-- **Theming**: Dark theme with configurable colors and metrics.
-
-## Installation
-
-This is part of the chisurf project. No additional installation required beyond PyQt5; graph analysis uses the in-tree `chinet.graph` module.
-
-## Usage
-
-### Basic Editor
-
-```python
-from PyQt5.QtWidgets import QApplication
-from node_editor.editor import NodeEditorWidget
-
-app = QApplication([])
-editor = NodeEditorWidget()
-editor.show()
-app.exec()
-```
-
-### Loading/Saving Graphs
-
-```python
-# Load from JSON string
-editor.load_graph_from_json(json_str)
-
-# Save to JSON string
-json_str = editor.to_json()
-
-# Load/save files
-editor.load_graph_from_file("my_graph.json")
-editor.save_graph_to_file("my_graph.json")
-```
-
-### Custom Node Types
-
-Define nodes by subclassing and registering:
-
-```python
-from node_editor.model import NodeModel, PortSpec
-
-class MyNode(NodeModel):
-    def __init__(self):
-        super().__init__(
-            title="My Node",
-            inputs=[PortSpec("Input", False)],
-            outputs=[PortSpec("Output", True)],
-            node_type="my_node",
-            config={"value": 1.0}
-        )
-
-# Register in editor
-editor.available_node_types = {"My Node": MyNode}
-```
-
-## JSON Schema
-
-Graphs are saved in a structured JSON format (see `json_schema.md` for details).
-
-- `nodes`: Array of node definitions with id, type, config, position.
-- `edges`: Array of connections between node ports.
-
-## DAG Validation
-
-- Edges are validated to prevent invalid connections.
-- Optional `enforce_acyclic` mode prevents cycle creation.
-- Cycle detection uses `chinet.graph` for accurate graph analysis.
-
-## Testing
-
-Run tests with:
-
-```bash
-cd node_editor
-python -m pytest tests/
-```
+The graph editor ChiSurf shows graphs with — the lightpath simulator's optical
+path, MMFDB's provenance DAG, the AutoForm `node_graph` section, and the
+standalone demo. One editor for all four, drawn by
+[cmtk](https://github.com/tpeulen/cmtk) rather than a `QGraphicsScene`.
 
 ## Architecture
 
-- **Model Layer**: `model.py` (NodeModel, PortSpec) - pure data and logic.
-- **View/Controller Layer**: `node_item.py`, `scene.py`, `view.py` - Qt graphics and interaction.
-- **Registry Layer**: `registry.py` - extensible node type definitions.
-- **Editor Layer**: `editor.py` - high-level widget with UI panels.
+Three layers, only the last of which knows Qt exists:
 
-Serialization flows through the model/scene layer, ensuring consistency.
+- **Document** — `document.py`. The graph as a plain object: `GraphNode`,
+  `GraphEdge`, `GraphDocument`, with `from_dict`/`to_dict` for the schema v1
+  JSON in `json_schema.md`. An edge's `source_port` indexes the source node's
+  `outputs`, its `target_port` the target's `inputs` — per direction, not one
+  flat list.
+- **Control** — `cmtk_control.py`. `GraphControl` draws the document through
+  `cmtk.nodes` and turns pointer/keyboard events into edits. Read-only mode
+  refuses edits but keeps navigation and selection. `NodeContentRenderer`
+  draws what goes *inside* a node body (plots, choosers, tables).
+- **Widget** — `widget.py`. `NodeGraphWidget` puts the control in a window via
+  `cmtk.qt_host.ControlHost` and re-emits its callbacks as Qt signals
+  (`graphChanged`, `nodeSelected`, `edgeSelected`, `nodeActivated`,
+  `selectionCleared`). This is the class consumers instantiate.
 
-## Node Registry
+Supporting modules: `model.py`/`registry.py`/`validation.py` (Qt-free), and
+`widgets/widget_palette.py` (the one Qt widget a host may want beside the
+canvas — the lightpath tool hosts it).
 
-Register custom node types for extensibility:
+## Usage
 
 ```python
-from registry import registry, NodeType
-from model import PortSpec
+from chisurf.gui.widgets.node_editor import NodeGraphWidget
 
-registry.register(NodeType(
-    id="my_node",
-    title="My Custom Node",
-    inputs=[PortSpec("Input", False)],
-    outputs=[PortSpec("Output", True)],
-    factory=my_widget_factory,
-    default_config={"param": 1}
-))
+editor = NodeGraphWidget(read_only=False)
+editor.load_graph_dict(graph_dict)   # schema v1, see json_schema.md
+editor.nodeSelected.connect(lambda node: print(node["id"]))
 ```
 
-## JSON Schema
+Standalone demo: `python -m chisurf.gui.widgets.node_editor`.
 
-Graphs are saved in a versioned JSON format (see `json_schema.md`).
+## Testing
 
-## DAG Validation
+```bash
+pytest chisurf/gui/widgets/node_editor/tests/ test/test_node_editor_cmtk.py
+```
 
-- Automatic cycle detection and highlighting.
-- Optional `enforce_acyclic` mode prevents invalid connections.
-- Uses `chinet.graph` for robust graph analysis.
+The document and control need no display, which is the point of the cmtk
+split: the editor's behaviour is testable headlessly.
