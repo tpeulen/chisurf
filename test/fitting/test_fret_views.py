@@ -13,7 +13,6 @@ import pytest
 import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.fitting.fit as fitting
-from chisurf.core.fluorescence.tcspc.instrument import set_absolute_instrument
 from chisurf.core.models.description import for_family
 
 N = 256
@@ -74,13 +73,11 @@ def _view(family, structure, values, scalars=None):
     assert problem is not None, model.missing
     if structure:
         model.structure = structure
-    shared = {"donor.amplitude.0": 1.0, "donor.tau.0": 3.8, "fret.x_donly": 0.15}
+    shared = {"donor.amplitude.0": 1.0, "donor.tau.0": 3.8, "fret.x_donly": 0.15,
+              "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
     ids = set(problem.get_parameter_ids())
     for canonical, value in {**{k: v for k, v in shared.items() if k in ids}, **values}.items():
         _set(problem, canonical, value)
-    # The classic models took counts; the instrument takes fractions of the
-    # fluorescence total, converted at this curve.
-    set_absolute_instrument(model, 5000.0, 0.01, 2.0)
     model.update()
     return model
 
@@ -286,9 +283,9 @@ def test_a_structure_ensemble():
     problem = model.problem
     assert problem is not None, model.missing
     for canonical, value in {"donor.amplitude.0": 1.0, "donor.tau.0": 3.8, "fret.x_donly": 0.15,
+                             "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0,
                              "distance.amplitude.0": 0.5, "distance.amplitude.1": 0.5}.items():
         _set(problem, canonical, value)
-    set_absolute_instrument(model, 5000.0, 0.01, 2.0)
     model.update()
     np.testing.assert_allclose(np.asarray(model.y), np.asarray(reference), rtol=1e-9, atol=1e-9)
     # The ensemble and its label settings survive a save and reload.

@@ -16,7 +16,6 @@ import chisurf.core.curve
 import chisurf.core.data
 import chisurf.core.models.model
 import chisurf.core.fitting.fit as fitting
-from chisurf.core.fluorescence.tcspc.instrument import set_absolute_instrument
 from chisurf.core.fitting.mcts.dispatcher import prepare_model_search
 from chisurf.core.models.description import DescriptionModel, for_family
 
@@ -27,9 +26,9 @@ TRUTH = {
     "lifetime.tau.0": 3.2,
     "lifetime.amplitude.1": 0.45,
     "lifetime.tau.1": 0.6,
+    "instrument.background": 2.0,
+    "instrument.n0": 60000.0,
 }
-#: n0 and a background of 2 counts per channel, as absolute numbers.
-TRUTH_INSTRUMENT = {"n0": 60000.0, "background": 2.0}
 
 
 def _axis():
@@ -61,7 +60,6 @@ def _simulated():
         port = problem.get_parameter(canonical)
         port.fixed = False
         port.value = value
-    set_absolute_instrument(model, TRUTH_INSTRUMENT["n0"], 0.0, TRUTH_INSTRUMENT["background"])
     active = problem.get_active_structure()
     return np.array(problem.get_structure_output(
         active, problem.get_structure_curve_node(active, "decay")))
@@ -251,6 +249,7 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
         "lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
         "lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6,
         "instrument.response_background": 6.5, "instrument.timeshift": 0.7,
+        "instrument.n0": 9000.0, "instrument.scatter": 0.02, "instrument.background": 3.0,
     }
     for name, value in values.items():
         port = problem.get_parameter(name)
@@ -258,7 +257,6 @@ def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation
         port.fixed = False
         port.value = value
         port.fixed = held
-    set_absolute_instrument(model, 9000.0, 0.02, 3.0)
     model.update()
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
 
@@ -298,22 +296,13 @@ def test_the_view_reproduces_the_classic_background_pattern():
     model.set_scalar("t_decay", 3.0)
     problem = model.problem
     model.structure = "lifetime.components.1"
-    for name, value in {"lifetime.tau.0": 2.1, "instrument.timeshift": 0.8,
+    for name, value in {"lifetime.tau.0": 2.1, "instrument.timeshift": 0.8, "instrument.n0": 1.0,
                         "instrument.background": 0.0}.items():
         port = problem.get_parameter(name)
         held = port.fixed
         port.fixed = False
         port.value = value
         port.fixed = held
-    # ChiSurf rescaled the model to the fluorescence counts the pattern leaves
-    # (n_fl) before its n0; the instrument's scale is counts per unit of the
-    # decay, so the same curve has n0 = n_fl / sum(F).
-    from chisurf.core.fluorescence.tcspc.instrument import fluorescence_total
-    n_background = pattern.sum() / 5.0 * 3.0
-    n_fluorescence = max(y.sum() - n_background, 1.0)
-    port = problem.get_parameter("instrument.n0")
-    port.fixed = False
-    port.value = 1.0 * n_fluorescence / fluorescence_total(model)
     model.update()
     np.testing.assert_allclose(model.y, reference, rtol=1e-9, atol=1e-9)
 
@@ -350,7 +339,8 @@ def _classic_and_view(configure_classic, configure_view, n_lifetimes=2):
     problem = model.problem
     model.structure = f"lifetime.components.{n_lifetimes}"
     amplitudes = [a.value for a in classic.lifetimes._amplitudes]
-    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2}
+    values = {"lifetime.amplitude.0": amplitudes[0], "lifetime.tau.0": 3.2,
+              "instrument.n0": 5000.0, "instrument.scatter": 0.01, "instrument.background": 2.0}
     if n_lifetimes == 2:
         values.update({"lifetime.amplitude.1": amplitudes[1], "lifetime.tau.1": 0.6})
     for name, value in values.items():
@@ -359,7 +349,6 @@ def _classic_and_view(configure_classic, configure_view, n_lifetimes=2):
         port.fixed = False
         port.value = value
         port.fixed = held
-    set_absolute_instrument(model, 5000.0, 0.01, 2.0)
     model.update()
     return np.array(classic.y), np.array(model.y)
 
@@ -601,7 +590,7 @@ def test_a_mixture_view_mixes_the_lifetimes_of_other_views():
     fractions[1].value = 3.0
     _, reference = _lifetime_view([0.5, 3.0], [0.25, 0.75])
     for model in (mixture, reference):
-        for name, value in (("instrument.n0", 4000.0), ("instrument.background", 0.02)):
+        for name, value in (("instrument.n0", 4000.0), ("instrument.background", 2.0)):
             port = model.problem.get_parameter(name)
             held = port.fixed
             port.fixed = False
