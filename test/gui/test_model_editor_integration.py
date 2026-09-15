@@ -311,7 +311,6 @@ JSON_DESCRIBED_TCSPC_MODELS = [
     "chisurf.core.models.tcspc.fret.SawNuModel",
     "chisurf.core.models.tcspc.fret.IsingChainModel",
     "chisurf.core.models.tcspc.pddem.PDDEMModel",
-    "chisurf.core.models.tcspc.distributed_acceptor.DistributedAcceptorModel",
     "chisurf.core.models.tcspc.maxent.MaxEntLifetimeModel",
     "chisurf.core.models.tcspc.maxent.MaxEntFRETModel",
     "chisurf.core.models.tcspc.fret_structure.FRETStructure",

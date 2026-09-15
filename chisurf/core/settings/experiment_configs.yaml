@@ -73,7 +73,8 @@ tcspc:
     - chisurf.core.models.description.tcspc_fret_ising_chain
     # Energy migration between two chromophores, through BFF's transfer kinetics.
     - chisurf.core.models.description.tcspc_pddem
-    - chisurf.core.models.tcspc.distributed_acceptor.DistributedAcceptorModel
+    # A donor quenched by acceptors at a density in 1, 2 or 3 dimensions.
+    - chisurf.core.models.description.tcspc_fret_acceptor_density
     - chisurf.core.models.tcspc.parse.tcspc_parse.ParseDecayModel
     # Pure compute model; its editor is generated from mix_model.view.json.
     # The classic mixer, for the classic models below until they are described by BFF.

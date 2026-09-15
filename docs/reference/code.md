@@ -35,8 +35,8 @@ marker and is still compiled.
 | 12 | `text` | — | 7 | — | [docs/concepts/accurate_fret.md](/concepts/accurate_fret.md) |
 | 13 | `text` | — | 4 | — | [docs/concepts/anisotropy.md](/concepts/anisotropy.md) |
 | 14 | `text` | — | 4 | — | [docs/concepts/bva.md](/concepts/bva.md) |
-| 15 | `text` | — | 9 | — | [docs/concepts/distributed_acceptors.md](/concepts/distributed_acceptors.md) |
-| 16 | `python` | — | 12 | compiled | [docs/concepts/distributed_acceptors.md](/concepts/distributed_acceptors.md) |
+| 15 | `text` | — | 9 | — | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
+| 16 | `python` | — | 12 | compiled | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
 | 17 | `text` | — | 4 | — | [docs/concepts/fcs_correlation.md](/concepts/fcs_correlation.md) |
 | 18 | `text` | — | 4 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
 | 19 | `text` | — | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |

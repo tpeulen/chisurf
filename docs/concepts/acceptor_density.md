@@ -1,13 +1,13 @@
 ---
 type: Concept
-title: Transfer to distributed acceptors, and dimensionality
+title: Transfer to an acceptor density, and dimensionality
 description: Every expression in assumes one donor and one acceptor at one distance.
 tags: [concepts, fret, distributed, acceptors]
 anchor: concept-distributed-acceptors
 ---
 
 (concept-distributed-acceptors)=
-# Transfer to distributed acceptors, and dimensionality
+# Transfer to an acceptor density, and dimensionality
 
 Every expression in {ref}`concept-fret` assumes one donor and one acceptor at
 one distance. That assumption fails whenever the acceptors are *not placed* but
@@ -46,7 +46,7 @@ $R_0$ of the donor* — in a sphere of radius $R_0$, a circle of radius $R_0$, o
 a segment of half-length $R_0$. That makes the density immediately interpretable
 in a way a bare molar concentration is not.
 
-```{figure} /guides/figures/distributed_acceptors.png
+```{figure} /guides/figures/acceptor_density.png
 :alt: donor decays and transfer efficiencies for 1-, 2- and 3-dimensional acceptor distributions
 :width: 100%
 
@@ -55,7 +55,7 @@ Left, on log time: at the same $C/C_0$ and the same $\tau_{D(0)}$, the curves
 term rises fastest — and less overall, because there are fewer directions from
 which an acceptor can be close. Right: transfer efficiency against density, with
 $C = C_0$ marked. Computed with
-{src}`chisurf/core/fluorescence/fret/dimensionality.py#donor_decay`.
+{src}`chisurf/core/fluorescence/fret/acceptor_density.py#donor_decay`.
 ```
 
 At $C = C_0$ the transfer efficiencies are **72.4 %, 67.2 % and 64.2 %** in
@@ -66,7 +66,7 @@ The standard reference rounds the last two to 66 % and 63 %. Those do not
 reproduce: the same integral evaluated both by adaptive quadrature and by a
 dense trapezoid rule gives 67.2 % and 64.2 %, and the constants are exact gamma
 values that the tests assert independently
-(`test/fluorescence/test_fret_dimensionality.py`). The computed values are what
+(`test/fluorescence/test_fret_acceptor_density.py`). The computed values are what
 this page quotes.
 :::
 
@@ -80,7 +80,7 @@ where the *local* two-dimensional density is high even though the bulk
 concentration is not.
 
 **The observable is a density, not a distance.** Fitting a single distance to a
-distributed acceptor population returns a number with no physical referent.
+acceptor population spread at random returns a number with no physical referent.
 Conversely, a measured $C/C_0$ combined with a known $R_0$ gives the surface
 density of acceptors, which for a membrane is a real structural quantity.
 
@@ -121,7 +121,7 @@ ask whether probes are confined to a plane or leaking into the volume.
 
 ## Fitting it
 
-The model is **FRET: distributed acceptors** in the model selector. It releases
+The model is **FRET: acceptor density (1, 2 or 3 dimensions)** in the model selector (BFF family `tcspc_fret_acceptor_density`). It releases
 the density `C/C0` and the donor lifetimes, and the dimensionality is a radio
 button rather than a fitted parameter — the three laws are distinguishable, so
 the right way to choose is to fit each and compare, not to let an optimizer
@@ -177,7 +177,7 @@ The functions are Qt-free and usable directly:
 
 ```python
 import numpy as np
-from chisurf.core.fluorescence.fret.dimensionality import (
+from chisurf.core.fluorescence.fret.acceptor_density import (
     characteristic_density, donor_decay, transfer_efficiency,
 )
 
@@ -203,13 +203,14 @@ argument these take, divide by $C_0$: `c_over_c0 = sigma / c0`.
   {ref}`concept-kappa2-orientation` · {ref}`concept-maximum-entropy`.
 - Guide: {doc}`/guides/03_polymer_distance_distributions` — the linked-pair
   alternative, for when the acceptor is attached rather than dissolved.
-- Implementation: the fittable model
-  `chisurf/core/models/tcspc/distributed_acceptor.py`
-  (`DistributedAcceptorModel`) with its editor layout
-  `distributed_acceptor.view.json`; the physics in
-  {src}`chisurf/core/fluorescence/fret/dimensionality.py#donor_decay` ·
-  {src}`chisurf/core/fluorescence/fret/dimensionality.py#characteristic_density`
-  · {src}`chisurf/core/fluorescence/fret/dimensionality.py#transfer_efficiency`;
-  tests in `test/fluorescence/test_fret_dimensionality.py`.
+- Implementation: the fittable model is IMP.bff's description
+  `tcspc_fret_acceptor_density` (the decay law in `FRETAcceptorDensity.h`, the
+  node `AcceptorDensityDecay`); the dimensionality is a searched structure. The
+  Python forwarders are
+  {src}`chisurf/core/fluorescence/fret/acceptor_density.py#donor_decay` ·
+  {src}`chisurf/core/fluorescence/fret/acceptor_density.py#characteristic_density`
+  · {src}`chisurf/core/fluorescence/fret/acceptor_density.py#transfer_efficiency`;
+  tests in `test/fluorescence/test_fret_acceptor_density.py` and
+  `test/fitting/test_acceptor_density_model.py`.
 - Literature: {cite}`lakowicz2006`, the chapter on energy transfer to multiple
   acceptors in one, two or three dimensions.

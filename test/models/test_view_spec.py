@@ -341,37 +341,3 @@ def test_plot_section_axis_ranges_are_parsed():
     assert _section_from_dict({"type": "plot", "source": "s"}).x_range == ()
 
 
-def test_distributed_acceptor_view_spec_is_pure_data():
-    """The distributed-acceptor editor is described by JSON, with no Anisotropy.
-
-    The omission is deliberate and easy to "fix" by mistake: the polarized
-    channels are built from a lifetime spectrum, and this model's decay is a
-    stretched exponential rather than a finite mixture, so there is nothing to
-    hand the anisotropy mixing. A panel added here would render controls that
-    silently do nothing.
-    """
-    import inspect
-    import pathlib
-
-    from chisurf.core.models.tcspc.distributed_acceptor import DistributedAcceptorModel
-
-    json_path = (
-        pathlib.Path(inspect.getsourcefile(DistributedAcceptorModel)).parent
-        / DistributedAcceptorModel.view_spec_file
-    )
-    assert json_path.exists(), f"view spec not found at {json_path}"
-
-    spec = json.loads(json_path.read_text())
-    titles = [s.get("title") for s in spec["sections"]]
-    assert "Distributed acceptors" in titles
-    assert "Anisotropy" not in titles, (
-        "this model cannot fit polarized decays -- see the class docstring"
-    )
-    # The nuisance panels must stay in step with lifetime.view.json.
-    for required in ("Convolution", "Generic", "Corrections", "Lifetimes"):
-        assert required in titles, f"missing the {required} panel"
-
-    panel = next(s for s in spec["sections"] if s.get("title") == "Distributed acceptors")
-    kinds = [s.get("type") for s in panel["sections"]]
-    assert "choice" in kinds, "the dimensionality must be selectable"
-    assert "parameter_group_table" in kinds, "C/C0 must be an editable parameter"

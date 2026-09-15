@@ -79,7 +79,7 @@ def test_dimensionality_transfer_efficiency_runs():
     ``DecayPhasor`` computes the same coordinates, and to the definition rather
     than to a trapezoid); this is the surviving ``np.trapz`` in the same package.
     """
-    from chisurf.core.fluorescence.fret.dimensionality import transfer_efficiency
+    from chisurf.core.fluorescence.fret.acceptor_density import transfer_efficiency
 
     values = [transfer_efficiency(1.0, d) for d in (3, 2, 1)]
     assert all(np.isfinite(v) and 0.0 < v < 1.0 for v in values)

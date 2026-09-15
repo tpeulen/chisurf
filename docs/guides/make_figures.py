@@ -1599,7 +1599,7 @@ if __name__ == "__main__":
     # Fundamentals / theory pages
     fig_jablonski(); fig_lifetime_averages(); fig_stern_volmer()
     fig_energy_transfer_window(); fig_perrin(); fig_kappa2_models()
-    fig_maxent_nu(); fig_distributed_acceptors()
+    fig_maxent_nu(); fig_acceptor_density()
     fig_static_quenching_mechanisms(); fig_quenching_mixtures()
     fig_transient_quenching(); fig_rehm_weller()
     print("all figures written to", FIG)
@@ -1905,9 +1905,9 @@ def fig_maxent_nu():
     save(fig, "maxent_nu.png")
 
 
-def fig_distributed_acceptors():
+def fig_acceptor_density():
     """The three dimensionalities, and why they are distinguishable."""
-    from chisurf.core.fluorescence.fret.dimensionality import (
+    from chisurf.core.fluorescence.fret.acceptor_density import (
         donor_decay,
         transfer_efficiency,
     )
@@ -1937,13 +1937,13 @@ def fig_distributed_acceptors():
         ax2.semilogx(dens, e, lw=1.9, color=colours[d], label=names[d])
         e0 = transfer_efficiency(1.0, d)
         ax2.plot([1.0], [e0], "o", color=colours[d], ms=5)
-        print(f"  distributed_acceptors.png: d={d}  E(C=C0) = {e0:.4f}")
+        print(f"  acceptor_density.png: d={d}  E(C=C0) = {e0:.4f}")
     ax2.axvline(1.0, color="0.6", lw=0.8, ls=":")
     ax2.set_xlabel(r"$C/C_0$   (acceptors within $R_0$)")
     ax2.set_ylabel("transfer efficiency")
     ax2.set_ylim(0, 1); ax2.legend(fontsize=8, loc="lower right")
     ax2.set_title("more directions to approach from, more transfer", fontsize=10)
-    save(fig, "distributed_acceptors.png")
+    save(fig, "acceptor_density.png")
 
 
 def fig_static_quenching_mechanisms():

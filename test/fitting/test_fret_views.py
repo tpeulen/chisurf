@@ -237,3 +237,22 @@ def test_pddem(mode, rtol):
         "pddem.excitation_a": 0.9, "pddem.excitation_b": 0.1, "pddem.emission_a": 0.2, "pddem.emission_b": 0.8},
         scalars={"transfer_mode": mode})
     np.testing.assert_allclose(np.asarray(view.y), np.asarray(reference.y), rtol=rtol, atol=1e-9)
+
+
+@pytest.mark.parametrize("dimension", [1, 2, 3])
+@pytest.mark.parametrize("periodic", [False, True])
+def test_acceptor_density(dimension, periodic):
+    """A donor quenched by acceptors at a density in 1, 2 or 3 dimensions.
+
+    ChiSurf's classic model is gone; its curves at these numbers were stored
+    before deletion (data/acceptor_density_reference.json).
+    """
+    import json
+    import pathlib
+
+    reference = json.loads((pathlib.Path(__file__).parent / "data" / "acceptor_density_reference.json")
+                           .read_text())["curves"][f"{dimension}-{int(periodic)}"]
+    view = _view("tcspc_fret_acceptor_density", f"tcspc_fret_acceptor_density.dimensions.{dimension}",
+                 {"acceptor.c_over_c0": 0.8, "fret.tau0": 4.0},
+                 scalars={"periodic_excitation": 1.0 if periodic else 0.0})
+    np.testing.assert_allclose(np.asarray(view.y), np.asarray(reference), rtol=1e-9, atol=1e-9)

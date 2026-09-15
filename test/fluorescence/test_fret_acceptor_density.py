@@ -1,4 +1,4 @@
-"""FRET to distributed acceptors, checked against things it cannot get wrong.
+"""FRET to an acceptor density, checked against things it cannot get wrong.
 
 The three decay laws differ only in one exponent — a sixth, a third, a half —
 and in a gamma-function prefactor, which makes them easy to transcribe wrongly
@@ -22,7 +22,7 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.core.fluorescence.fret.dimensionality import (
+from chisurf.core.fluorescence.fret.acceptor_density import (
     characteristic_density,
     donor_decay,
     reduced_density,

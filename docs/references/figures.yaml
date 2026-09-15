@@ -1820,15 +1820,15 @@ concepts/figures/frc_thresholds.png:
     counts taken as 2*pi*q/dq. A crossing is reported only after the curve has been *above* the
     threshold -- without that rule the count-dependent criteria trigger in the first ring, which is
     the failure the page warns about and the figure must not itself commit.
-guides/figures/distributed_acceptors.png:
+guides/figures/acceptor_density.png:
   caption: Donor decays and transfer efficiencies for acceptors distributed in one, two and three
     dimensions; at equal density the curves cross.
   kind: plot
-  origin: docs/guides/make_figures.py::fig_distributed_acceptors
+  origin: docs/guides/make_figures.py::fig_acceptor_density
   pages:
-  - docs/concepts/distributed_acceptors.md
-  recipe: Run `python docs/guides/make_figures.py`; `fig_distributed_acceptors()` calls
-    `chisurf.core.fluorescence.fret.dimensionality.donor_decay` and `transfer_efficiency` with
+  - docs/concepts/acceptor_density.md
+  recipe: Run `python docs/guides/make_figures.py`; `fig_acceptor_density()` calls
+    `chisurf.core.fluorescence.fret.acceptor_density.donor_decay` and `transfer_efficiency` with
     tau_D(0) = 4 ns at C = C0. The left panel is deliberately log-log -- the distinguishing feature is
     the short-time behaviour, and a linear time axis compresses the crossing into the first pixel
     column. The marked efficiencies (0.724, 0.672, 0.642) are computed, not quoted.

@@ -107,13 +107,13 @@ one, two or three dimensions each give a distinct decay law.
 Two consequences worth knowing before fitting such a sample:
 
 - The observable is a **surface or volume density of acceptors**, not a distance.
-  Fitting a distance to a distributed acceptor population returns a number with
+  Fitting a distance to a acceptor population spread at random returns a number with
   no physical referent.
 - The decay is strongly non-exponential by construction, so a multi-exponential
   fit will describe it with components that are not species. This is the same
   trap as in {ref}`concept-maximum-entropy`, arriving from a different direction.
 
-For a randomly distributed acceptor population there is a characteristic
+For a randomly acceptor population spread at random there is a characteristic
 concentration at which transfer becomes efficient, set by $R_0$ — for
 $R_0 = 25$ Å it is in the tens of millimolar, which is why homo-transfer between
 freely diffusing dyes needs concentrations far above those used in

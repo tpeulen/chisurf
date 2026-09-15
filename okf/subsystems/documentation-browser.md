@@ -140,14 +140,14 @@ because a click lands *between* two characters.
    `--ai` records.
 3. **The Lakowicz pass is closed, and its scope was set by the user.** Written:
    `kappa2_orientation`, `distance_distributions`, `maximum_entropy`,
-   `energy_migration`, `distributed_acceptors`, plus the 11 `fundamentals`
+   `energy_migration`, `acceptor_density`, plus the 11 `fundamentals`
    pages, guides 61–62 and the `kappa2_dist` / `maxent_decay` renovations.
    **Ruled out explicitly, do not re-propose:** frequency-domain lifetime
    measurement and spectral relaxation. Both are covered at length in the
    source and neither has an analysis behind it here.
 
    Multi-acceptor was the one gap that needed *code* rather than prose, and it
-   got it: `chisurf/core/fluorescence/fret/dimensionality.py` implements the
+   got it: `chisurf/core/fluorescence/fret/acceptor_density.py` implements the
    1-D/2-D/3-D donor decay laws, the characteristic density and the efficiency,
    with 31 tests. Worth knowing before extending it — **the reference's own
    numbers do not all reproduce**. Lakowicz quotes 72 %, 66 % and 63 % for the
@@ -157,7 +157,7 @@ because a click lands *between* two characters.
    the computed values and say so.
 
    It is now a **fittable model** as well:
-   `chisurf/core/models/tcspc/distributed_acceptor.py` releases `C/C0` against a
+   `the BFF family `tcspc_fret_acceptor_density`` releases `C/C0` against a
    donor lifetime spectrum, with the dimensionality as a radio button. Two
    design points that a later change could undo by accident — both are asserted
    in `test/models/test_view_spec.py`: the editor has **no Anisotropy panel**

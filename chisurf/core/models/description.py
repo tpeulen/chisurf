@@ -689,13 +689,16 @@ class DescriptionModel(ModelCurve):
 
     def _update_statistics(self) -> None:
         statistics = self.presentation.get("statistics", {})
-        if not statistics:
+        # Scalars a node computes itself (an efficiency from a density), shown
+        # the same way.
+        values = self.presentation.get("values", {})
+        if not statistics and not values:
             return
         import chisurf.core.fluorescence.general as general
         outputs = self.__dict__.get("_statistic_parameters")
         if outputs is None:
             outputs = {}
-            for key, info in statistics.items():
+            for key, info in {**statistics, **values}.items():
                 outputs[key] = FittingParameter(
                     value=0.0, name=info.get("label", key), fixed=True, is_output=True)
                 # Not a parameter of the BFF model: derived from it, shown beside it.
@@ -716,6 +719,15 @@ class DescriptionModel(ModelCurve):
                 outputs[key].value = float(function(*spectra))
             except Exception:
                 pass
+        problem = self.problem
+        if values and problem is not None:
+            active = problem.get_active_structure()
+            for key, info in values.items():
+                try:
+                    read = problem.get_structure_port(active, f"{active}.{info['node']}", info["port"])
+                    outputs[key].value = float(np.atleast_1d(read)[0])
+                except Exception:
+                    pass
 
     def get_plot_reference_modes(self):
         from chisurf.core.plotting.reference_modes import modes_named

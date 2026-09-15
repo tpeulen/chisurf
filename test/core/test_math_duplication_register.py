@@ -8,7 +8,7 @@ operator matrix) -- deleted rather than forwarded. This guards the deletion.
 
 The ``models/tcspc/nusiance.py`` ``"full"``-mode convolution
 (``np.convolve(data, irf_y, mode="full")[:n_points]``) is the opposite
-finding: it is live (``parse``, ``av_decay`` and ``distributed_acceptor``
+finding: it is live (``parse`` and ``av_decay``
 models all pass ``mode="full"``), and the only generic two-array
 convolution primitive tttrlib exposes -- ``sconv``, already wrapped as
 :func:`chisurf.core.fluorescence.tcspc.convolve.convolve_decay` -- computes
@@ -124,7 +124,7 @@ def _convolve():
 def test_full_mode_convolution_is_pinned():
     """Pin ``nusiance.py``'s ``"full"``-mode ``np.convolve`` output.
 
-    Guards the exact numbers ``parse``/``av_decay``/``distributed_acceptor``
+    Guards the exact numbers ``parse``/``av_decay``
     models fit against, in case a future change (e.g. a forward to an
     engine kernel) is made without re-deriving this parity check.
     """
@@ -157,8 +157,7 @@ def test_sconv_is_not_a_drop_in_for_full_mode_np_convolve():
     plain (rectangular) discrete convolution via ``np.convolve``. They are
     different integrals of the same physical quantity, not two spellings of
     one algorithm, so forwarding ``"full"`` mode to ``sconv`` would silently
-    move every fit built on ``parse``, ``av_decay`` or
-    ``distributed_acceptor`` -- this is why that forward was not made in
+    move every fit built on ``parse`` or ``av_decay`` -- this is why that forward was not made in
     PRD-122; it needs an owner decision, the same way the ``i0`` digit and
     ``distance_between_gaussian`` rows do.
 
