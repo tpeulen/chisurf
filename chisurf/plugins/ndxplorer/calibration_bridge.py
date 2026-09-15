@@ -786,8 +786,8 @@ def optimize_calibration_from_ndx(
     Parameters
     ----------
     ndx : object
-        In-process ndX window (needs ``data_source.data`` and
-        ``constants``).
+        In-process ndX window (needs a ``data_source`` holding the burst
+        columns, and ``constants``).
     columns : dict, optional
         Explicit ``{role: column_name}`` overrides for ``i_dd``/``i_da``/
         ``i_aa``/``tau_f``; the rest are recognised automatically
@@ -852,14 +852,13 @@ def optimize_calibration_from_ndx(
         "columns", "injected", "populations"}``, or ``{"ok": False, "error": …}``
         when the window carries no usable burst columns.
     """
-    from chisurf.core.fluorescence.burst.table import columns_from_data, guess_columns
+    from chisurf.core.fluorescence.burst.table import guess_columns
     from chisurf.core.fluorescence.fret.accurate import accurate_fret, auto_calibrate
     from chisurf.core.fluorescence.fret.calibration import calibration_from_ndx_constants
     from chisurf.core.fluorescence.fret.lines import static_fret_line
 
     data_source = getattr(ndx, "data_source", None)
-    data = getattr(data_source, "data", None)
-    table = columns_from_data(data)
+    table = ndx_columns(data_source)
     if not table:
         return {"ok": False, "error": "the ndX window holds no burst columns"}
 
@@ -973,7 +972,7 @@ def optimize_calibration_from_ndx(
             setattr(calib, name, kept[name])
 
     injected: list[str] = []
-    if inject_columns and data is not None:
+    if inject_columns:
         split = result.split
         labels = np.zeros(np.asarray(counts("i_dd")).shape, dtype=int)
         if split is not None:
@@ -983,17 +982,17 @@ def optimize_calibration_from_ndx(
             counts("i_dd"), counts("i_da"), counts("i_aa"), calibration=calib, tau_f=tau_f,
             line=line, uncertainties=result.uncertainties, labels=labels,
         )
-        data["FRET efficiency (accurate)"] = np.asarray(accurate["E"], dtype=float)
+        data_source.set_column("FRET efficiency (accurate)", np.asarray(accurate["E"], dtype=float))
         injected.append("FRET efficiency (accurate)")
         if accurate["S"] is not None:
-            data["Stoichiometry (accurate)"] = np.asarray(accurate["S"], dtype=float)
+            data_source.set_column("Stoichiometry (accurate)", np.asarray(accurate["S"], dtype=float))
             injected.append("Stoichiometry (accurate)")
-        data["R_DA (accurate)"] = np.asarray(accurate["distance"], dtype=float)
+        data_source.set_column("R_DA (accurate)", np.asarray(accurate["distance"], dtype=float))
         injected.append("R_DA (accurate)")
-        data["Population"] = labels.astype(float)
+        data_source.set_column("Population", labels.astype(float))
         injected.append("Population")
         if accurate["deviation"] is not None:
-            data["Off static FRET line"] = np.asarray(accurate["deviation"], dtype=float)
+            data_source.set_column("Off static FRET line", np.asarray(accurate["deviation"], dtype=float))
             injected.append("Off static FRET line")
         refresh_column_selectors(ndx)
 
@@ -1032,7 +1031,7 @@ def optimize_calibration_from_ndx(
 def refresh_column_selectors(ndx) -> None:
     """Make newly injected columns selectable in ndxplorer's axis pickers.
 
-    Writing a column into ``data_source.data`` does not tell the window about it,
+    Writing a column into the data source does not tell the window about it,
     so an injected column would exist but be unplottable until the next reload.
     Best-effort and silent: a window that does not expose the hook simply keeps
     its current selectors.
@@ -1059,14 +1058,20 @@ def refresh_column_selectors(ndx) -> None:
             pass
 
 
-def _column(data, name):
-    """Return ``data[name]`` as a float array, or ``None`` if absent."""
-    try:
-        if name in data:
-            return np.asarray(data[name], dtype=float)
-    except Exception:
-        pass
-    return None
+def ndx_columns(data_source) -> dict:
+    """The numeric columns of an ndX data source, as ``{name: float array}``.
+
+    A column holding no finite value (a text column reads as all NaN) is left
+    out.
+    """
+    if data_source is None:
+        return {}
+    columns: dict = {}
+    for name in data_source.parameter_names:
+        values = data_source.column_values(name)
+        if values is not None and values.size and np.any(np.isfinite(values)):
+            columns[str(name)] = values
+    return columns
 
 
 def push_unmixed_columns_to_ndx(
@@ -1086,7 +1091,7 @@ def push_unmixed_columns_to_ndx(
     (``Fr = Sr - Br - alpha*Sg``) with no matrix inversion or positivity
     constraint, so with strong spectral overlap it can produce negative,
     noise-amplified signals. This reads the per-burst measured photon counts from
-    ``ndx.data_source.data`` and spectrally **un-mixes** them with the light-path
+    ``ndx.data_source`` and spectrally **un-mixes** them with the light-path
     ``emission`` matrix using either
 
     * ``unmix="stable"`` — non-negative least squares (continuous, robust to
@@ -1109,14 +1114,14 @@ def push_unmixed_columns_to_ndx(
     Parameters
     ----------
     ndx : object
-        In-process ndxplorer window; needs ``data_source.data`` (a mapping /
-        DataFrame of burst columns).
+        In-process ndxplorer window; needs a ``data_source`` holding the burst
+        columns.
     emission : array_like
         ``(n_sources, n_detectors)`` emission/detection crosstalk matrix
         ``emission[k, m]`` (source ``k`` detected in channel ``m``); its columns
         are aligned with ``channel_columns`` and rows with ``source_labels``.
     channel_columns : sequence of str
-        Column names in ``data`` holding the measured per-detector photon counts,
+        Column names in the data source holding the measured per-detector photon counts,
         ordered to match the columns of ``emission``.
     source_labels : sequence of str
         Names for the un-mixed sources, ordered to match the rows of ``emission``;
@@ -1144,8 +1149,7 @@ def push_unmixed_columns_to_ndx(
     suffix = "shuffle" if method == "shuffle" else "unmix"
 
     data_source = getattr(ndx, "data_source", None)
-    data = getattr(data_source, "data", None)
-    if data is None:
+    if data_source is None:
         return {}
 
     channel_columns = list(channel_columns)
@@ -1157,7 +1161,7 @@ def push_unmixed_columns_to_ndx(
             f"got {emis.shape} for {len(source_labels)}x{len(channel_columns)}"
         )
 
-    measured = [_column(data, c) for c in channel_columns]
+    measured = [data_source.column_values(c) for c in channel_columns]
     if any(col is None for col in measured):
         return {}
     counts = np.vstack(measured)  # (n_detectors, n_burst)
@@ -1172,7 +1176,7 @@ def push_unmixed_columns_to_ndx(
     count_cols = []
     for k, label in enumerate(source_labels):
         col = f"Number of Photons ({label}, {suffix})"
-        data[col] = src[k]
+        data_source.set_column(col, src[k])
         injected[col] = float(np.sum(src[k]))
         count_cols.append(col)
 
@@ -1180,7 +1184,7 @@ def push_unmixed_columns_to_ndx(
     # the burst's measured photons-per-kHz (total rate / total counts), which is
     # the same per-burst duration for every channel.
     if rate_columns is not None:
-        rate_arrays = [_column(data, r) for r in rate_columns]
+        rate_arrays = [data_source.column_values(r) for r in rate_columns]
         if all(r is not None for r in rate_arrays):
             raw_count_tot = counts.sum(axis=0)
             raw_rate_tot = np.sum(rate_arrays, axis=0)
@@ -1189,7 +1193,7 @@ def push_unmixed_columns_to_ndx(
                                            raw_rate_tot / raw_count_tot, 0.0)
             for k, label in enumerate(source_labels):
                 rcol = f"{label} Count Rate {suffix} (KHz)"
-                data[rcol] = src[k] * per_photon_rate
+                data_source.set_column(rcol, src[k] * per_photon_rate)
                 injected[rcol] = "rate"
 
     refresh_column_selectors(ndx)

@@ -639,7 +639,7 @@ class ImagingMapViewModel:
 def build_ndx_data_source(df):
     """Build an ndxplorer ``DataSource`` from an in-memory per-pixel table.
 
-    Through ``from_store``, which takes the store as it is: no DataFrame is
+    The store becomes the data source's table as it is: no DataFrame is
     built and nothing is copied, and a per-pixel table is most of the memory in
     the process at the moment it is handed over.
 
@@ -655,4 +655,4 @@ def build_ndx_data_source(df):
 
     from chisurf.core.datastore import as_store
 
-    return DataSource.from_store(as_store(df))
+    return DataSource(as_store(df))

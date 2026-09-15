@@ -14,8 +14,6 @@ from collections.abc import Callable
 
 import numpy as np
 
-from chisurf.core.datastore import column_names
-
 from .. import core as _core
 
 logger = logging.getLogger(__name__)
@@ -172,23 +170,19 @@ class AccurateFretViewModel:
             A status message.
         """
         try:
-            from chisurf.plugins.ndxplorer.calibration_bridge import find_ndx_windows
+            from chisurf.plugins.ndxplorer.calibration_bridge import (
+                find_ndx_windows,
+                ndx_columns,
+            )
         except Exception:
             return "ndX is not available."
         windows = find_ndx_windows()
         if not windows:
             return "No open ndX window found."
-        data = getattr(getattr(windows[-1], "data_source", None), "data", None)
-        if data is None:
+        data_source = getattr(windows[-1], "data_source", None)
+        if data_source is None or data_source.empty:
             return "The ndX window holds no burst data."
-        columns: dict[str, np.ndarray] = {}
-        for name in column_names(data):
-            try:
-                values = np.asarray(data[name], dtype=float).ravel()
-            except Exception:
-                continue
-            if values.size and np.any(np.isfinite(values)):
-                columns[str(name)] = values
+        columns = ndx_columns(data_source)
         if not columns:
             return "No numeric burst columns in the ndX window."
         self._columns = columns

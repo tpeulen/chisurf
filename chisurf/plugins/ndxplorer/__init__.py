@@ -344,7 +344,10 @@ if __name__ == "plugin":
             data_source = getattr(ndx, "data_source", None)
             try:
                 if data_source is not None and hasattr(data_source, "compute_columns"):
-                    data_source.compute_columns(getattr(ndx, "equations", None))
+                    data_source.compute_columns(
+                        constants=ndx.constants,
+                        equations=getattr(ndx, "equations", None),
+                    )
                 if hasattr(ndx, "update_plots"):
                     ndx.update_plots()
             except Exception:

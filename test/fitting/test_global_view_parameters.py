@@ -46,7 +46,6 @@ MATRICES = {
 class _DataSource:
     """Minimal stand-in for ndX's data source."""
 
-    data = None
     last: dict | None = None
 
     def compute_columns(self, constants=None, equations=None):

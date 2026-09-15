@@ -202,11 +202,14 @@ def test_the_reader_picks_the_column_up(tmp_path, two_colour_burst):
 
 def test_the_companion_reader_keeps_it_and_still_strips_the_blank(tmp_path, two_colour_burst):
     """The companion reader drops trailing *empty* columns only — this one survives."""
-    ndx_reader = pytest.importorskip("ndxplorer.io.reader")
+    ndx_tables = pytest.importorskip("ndxplorer.io.tables")
+    import tttrlib
 
     out = tmp_path / "m000.bur"
     _write_bur(out, two_colour_burst)
-    frame = ndx_reader._drop_trailing_empty_columns(pd.read_csv(out, sep="\t"))
+    store = ndx_tables.drop_trailing_empty_columns(tttrlib.read_csv(str(out), delimiter="\t"))
 
-    assert "Mean Microtime (green) (ns)" in frame.columns
-    assert not str(frame.columns[-1]).strip().lower().startswith("unnamed")
+    names = list(store.column_names())
+    assert "Mean Microtime (green) (ns)" in names
+    assert names[-1].strip()
+    assert not names[-1].strip().lower().startswith("unnamed")

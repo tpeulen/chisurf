@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import collections.abc
 
+import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.fret.calibration import (
@@ -11,6 +12,10 @@ from chisurf.core.fluorescence.fret.calibration import (
     calibration_to_ndx_constants,
 )
 from chisurf.plugins.ndxplorer.calibration_bridge import push_calibration_to_ndx
+
+pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
+
+from ndxplorer.core.data_source import DataSource  # noqa: E402
 
 
 def _calib():
@@ -35,8 +40,11 @@ def test_mapping_matches_ndx_constant_names():
     assert (m["PhiA"] / m["PhiD"]) / m["gG/gR"] == pytest.approx(1.6)
 
 
-class _StubDataSource:
-    def __init__(self):
+class _StubDataSource(DataSource):
+    """An ndX data source that records the constants of a recompute."""
+
+    def __init__(self, columns=None):
+        super().__init__(DataSource.from_columns(columns).store if columns else None)
         self.last = None
 
     def compute_columns(self, constants, equations=None):
@@ -77,9 +85,9 @@ def test_push_without_recompute():
     assert ndx.updated == 0
 
 
-class _DataSourceWithData:
-    def __init__(self, df):
-        self.data = df
+class _DataSourceWithData(DataSource):
+    def __init__(self, columns):
+        super().__init__(DataSource.from_columns(columns).store)
         self.computed = 0
 
     def compute_columns(self, constants=None, equations=None):
@@ -87,27 +95,25 @@ class _DataSourceWithData:
 
 
 class _NdxWithData:
-    def __init__(self, df):
+    def __init__(self, columns):
         self.constants = {}
         self.equations = []
-        self.data_source = _DataSourceWithData(df)
+        self.data_source = _DataSourceWithData(columns)
         self.updated = 0
 
     def update_plots(self):
         self.updated += 1
 
 
-def _burst_df():
-    import numpy as np
-    import pandas as pd
+def _burst_columns():
     rng = np.random.default_rng(0)
     n = 300
-    return pd.DataFrame({
+    return {
         "Number of Photons (green)": rng.integers(20, 400, n),
         "Number of Photons (red)": rng.integers(20, 400, n),
         "Green Count Rate (KHz)": rng.uniform(10, 80, n),
         "Red Count Rate (KHz)": rng.uniform(10, 80, n),
-    })
+    }
 
 
 def test_inject_stable_unmixed_columns_no_hardcoded_names():
@@ -116,8 +122,8 @@ def test_inject_stable_unmixed_columns_no_hardcoded_names():
 
     from chisurf.plugins.ndxplorer.calibration_bridge import push_unmixed_columns_to_ndx
 
-    df = _burst_df()
-    ndx = _NdxWithData(df)
+    ndx = _NdxWithData(_burst_columns())
+    source = ndx.data_source
     emission = np.array([[1.0, 0.08], [0.0, 1.4]])  # donor/acceptor x green/red
     injected = push_unmixed_columns_to_ndx(
         ndx,
@@ -126,11 +132,11 @@ def test_inject_stable_unmixed_columns_no_hardcoded_names():
         source_labels=["donor", "acceptor"],
         rate_columns=["Green Count Rate (KHz)", "Red Count Rate (KHz)"],
     )
-    assert "Number of Photons (donor, unmix)" in df.columns
-    assert "Number of Photons (acceptor, unmix)" in df.columns
-    assert "donor Count Rate unmix (KHz)" in df.columns
+    assert "Number of Photons (donor, unmix)" in source.parameter_names
+    assert "Number of Photons (acceptor, unmix)" in source.parameter_names
+    assert "donor Count Rate unmix (KHz)" in source.parameter_names
     # non-negative continuous unmix
-    assert np.all(df["Number of Photons (donor, unmix)"] >= 0)
+    assert np.all(source.column_values("Number of Photons (donor, unmix)") >= 0)
     assert ndx.data_source.computed == 1 and ndx.updated == 1
     assert injected  # non-empty
 
@@ -140,8 +146,8 @@ def test_inject_shuffle_preserves_total_counts_and_is_integer():
 
     from chisurf.plugins.ndxplorer.calibration_bridge import push_unmixed_columns_to_ndx
 
-    df = _burst_df()
-    ndx = _NdxWithData(df)
+    ndx = _NdxWithData(_burst_columns())
+    source = ndx.data_source
     emission = np.array([[1.0, 0.08], [0.0, 1.4]])
     push_unmixed_columns_to_ndx(
         ndx,
@@ -151,21 +157,19 @@ def test_inject_shuffle_preserves_total_counts_and_is_integer():
         unmix="shuffle",
         seed=1,
     )
-    donor = df["Number of Photons (donor, shuffle)"].to_numpy()
-    acceptor = df["Number of Photons (acceptor, shuffle)"].to_numpy()
-    raw_total = (df["Number of Photons (green)"] + df["Number of Photons (red)"]).to_numpy()
+    donor = source.column_values("Number of Photons (donor, shuffle)")
+    acceptor = source.column_values("Number of Photons (acceptor, shuffle)")
+    raw_total = (source.column_values("Number of Photons (green)")
+                 + source.column_values("Number of Photons (red)"))
     # integer + exact photon-count preservation per burst
     assert np.array_equal(donor + acceptor, raw_total)
     assert np.allclose(donor, np.rint(donor))
 
 
 def test_inject_returns_empty_when_columns_absent():
-    import numpy as np
-    import pandas as pd
-
     from chisurf.plugins.ndxplorer.calibration_bridge import push_unmixed_columns_to_ndx
 
-    ndx = _NdxWithData(pd.DataFrame({"something else": [1, 2, 3]}))
+    ndx = _NdxWithData({"something else": np.array([1.0, 2.0, 3.0])})
     out = push_unmixed_columns_to_ndx(
         ndx,
         emission=np.array([[1.0, 0.08], [0.0, 1.4]]),
@@ -226,7 +230,7 @@ class _LoadedNdx(_StubNdx):
         super().__init__()
         self.constants.update({"PhiA": 0.32, "PhiD": 0.8, "forster_radius": 52.0,
                                "Bg": 0.0, "Br": 0.0, "By": 0.0, "r": 1.0})
-        self.data_source.data = _simulated_burst_columns()
+        self.data_source = _StubDataSource(_simulated_burst_columns())
 
 
 def test_optimize_recovers_the_factors_from_the_loaded_data():
@@ -279,15 +283,17 @@ def test_optimize_injects_accurate_columns():
     from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
     ndx = _LoadedNdx()
-    original = set(ndx.data_source.data)
+    source = ndx.data_source
+    original = {name: source.column_values(name) for name in source.parameter_names}
     result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
 
     assert "FRET efficiency (accurate)" in result["injected"]
     assert "Stoichiometry (accurate)" in result["injected"]
     assert "Off static FRET line" in result["injected"]
-    assert original <= set(ndx.data_source.data)          # nothing overwritten
-    fret = ndx.data_source.data["Population"] >= 0
-    e = ndx.data_source.data["FRET efficiency (accurate)"][fret]
+    for name, values in original.items():                 # nothing overwritten
+        np.testing.assert_array_equal(source.column_values(name), values)
+    fret = source.column_values("Population") >= 0
+    e = source.column_values("FRET efficiency (accurate)")[fret]
     assert 0.2 < float(np.mean(e)) < 0.8
     # the two simulated populations come back at their true efficiencies
     populations = sorted(p["E"] for p in result["populations"])
@@ -300,7 +306,8 @@ def test_optimize_reports_unusable_data():
     from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
     ndx = _StubNdx()
-    ndx.data_source.data = {"foo": [1.0, 2.0], "bar": [3.0, 4.0]}
+    ndx.data_source = _StubDataSource({"foo": np.array([1.0, 2.0]),
+                                       "bar": np.array([3.0, 4.0])})
     result = optimize_calibration_from_ndx(ndx)
     assert not result["ok"] and "i_dd" in result["error"]
 

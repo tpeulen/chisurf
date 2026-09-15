@@ -17,6 +17,10 @@ import pytest
 from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 from chisurf.plugins.ndxplorer.calibration_options import CalibrationOptions
 
+pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
+
+from ndxplorer.core.data_source import DataSource  # noqa: E402
+
 
 def _window(**constants):
     """An ndX stand-in holding three-species burst data."""
@@ -27,17 +31,15 @@ def _window(**constants):
     S = np.where(kind == 0, 0.95, np.where(kind == 1, 0.08, 0.55))
     size = rng.gamma(4.0, 60.0, n)
 
-    class _DataSource:
-        def __init__(self):
-            self.data = {
-                "Number of Photons (green)": np.clip(size * (1 - E) * S, 1, None),
-                "Number of Photons (red)": np.clip(size * E * S, 1, None),
-                "Number of Photons (yellow)": np.clip(size * (1 - S), 1, None),
-            }
+    columns = {
+        "Number of Photons (green)": np.clip(size * (1 - E) * S, 1, None),
+        "Number of Photons (red)": np.clip(size * E * S, 1, None),
+        "Number of Photons (yellow)": np.clip(size * (1 - S), 1, None),
+    }
 
     class _Ndx:
         def __init__(self):
-            self.data_source = _DataSource()
+            self.data_source = DataSource.from_columns(columns)
             self.constants = {
                 "gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
                 "Bg": 0.0, "Br": 0.0, "By": 0.0, "PhiA": 1.0, "PhiD": 1.0,
@@ -238,16 +240,14 @@ def _physical_window(bg_dd=2.0, bg_da=1.2, bg_aa=2.8, alpha=0.06, n=8000, seed=1
     da += rng.poisson(bg_da * duration)
     aa += rng.poisson(bg_aa * duration)
 
-    class _DataSource:
-        def __init__(self):
-            self.data = {"Number of Photons (green)": dd,
-                         "Number of Photons (red)": da,
-                         "Number of Photons (yellow)": aa,
-                         "Duration (ms)": duration}
+    columns = {"Number of Photons (green)": dd,
+               "Number of Photons (red)": da,
+               "Number of Photons (yellow)": aa,
+               "Duration (ms)": duration}
 
     class _Ndx:
         def __init__(self):
-            self.data_source = _DataSource()
+            self.data_source = DataSource.from_columns(columns)
             self.constants = {"gG/gR": 1.0, "alpha": 0.0, "beta": 0.0, "r": 1.0,
                               "Bg": 0.0, "Br": 0.0, "By": 0.0, "PhiA": 1.0,
                               "PhiD": 1.0, "forster_radius": 52.0, "tauD0": 4.0}

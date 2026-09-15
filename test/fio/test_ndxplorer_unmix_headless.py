@@ -5,13 +5,13 @@ this exercises ndxplorer's **real** ``DataSource`` evaluation engine and the rea
 MFD equation/constant files, so it verifies that
 
 * pushing calibration constants actually changes ndx's derived FRET columns, and
-* the stable-/shuffle-unmixed columns injected by the bridge are real dataframe
-  columns that ndx's own equation engine can compute over.
+* the stable-/shuffle-unmixed columns injected by the bridge are real columns of
+  the data source's store that ndx's own equation engine can compute over.
 
 ndxplorer is an optional in-tree submodule; the test puts it on the path (as the
 plugin does at load time) and skips when it is unavailable. It needs no display —
-``DataSource.compute_columns`` is pure pandas — but we force the offscreen Qt
-platform defensively because importing the ndx core pulls pyqtgraph.
+``DataSource.compute_columns`` works on the tttrlib store — but we force the
+offscreen Qt platform defensively because importing the ndx core pulls pyqtgraph.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ import pathlib
 import sys
 
 import numpy as np
-import pandas as pd
 import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -52,19 +51,19 @@ def _real_equations_and_constants():
 
 def _burst_df(n=200, seed=0):
     rng = np.random.default_rng(seed)
-    return pd.DataFrame({
+    return {
         "Green Count Rate (KHz)": rng.uniform(20, 90, n),
         "Red Count Rate (KHz)": rng.uniform(20, 90, n),
         "Number of Photons (green)": rng.integers(30, 400, n),
         "Number of Photons (red)": rng.integers(30, 400, n),
-    })
+    }
 
 
 class _RealNdx:
     """Minimal ndx-window shim over the real DataSource + real equations."""
 
-    def __init__(self, df, constants, equations):
-        self.data_source = DataSource(data=df)
+    def __init__(self, columns, constants, equations):
+        self.data_source = DataSource.from_columns(columns)
         self.constants = dict(constants)
         self.equations = equations
         self.updated = 0
@@ -87,11 +86,11 @@ def test_pushed_calibration_changes_real_derived_fret():
 
     ndx_lo = _RealNdx(_burst_df(), constants, equations)
     push_calibration_to_ndx(ndx_lo, _calib(gamma=1.2))
-    e_lo = float(np.nanmean(ndx_lo.data_source.data["FRET efficiency"]))
+    e_lo = float(np.nanmean(ndx_lo.data_source.column_values("FRET efficiency")))
 
     ndx_hi = _RealNdx(_burst_df(), constants, equations)
     push_calibration_to_ndx(ndx_hi, _calib(gamma=2.5))
-    e_hi = float(np.nanmean(ndx_hi.data_source.data["FRET efficiency"]))
+    e_hi = float(np.nanmean(ndx_hi.data_source.column_values("FRET efficiency")))
 
     # the derived column exists and genuinely depends on the pushed gamma
     assert np.isfinite(e_lo) and np.isfinite(e_hi)
@@ -100,7 +99,7 @@ def test_pushed_calibration_changes_real_derived_fret():
 
 
 def test_injected_stable_columns_are_computable_by_real_engine():
-    """Unmixed columns are real dataframe columns ndx equations can use."""
+    """Unmixed columns are real store columns ndx equations can use."""
     equations, constants = _real_equations_and_constants()
     ndx = _RealNdx(_burst_df(), constants, equations)
     emission = np.array([[1.0, 0.08], [0.0, 1.6]])
@@ -113,24 +112,23 @@ def test_injected_stable_columns_are_computable_by_real_engine():
         rate_columns=["Green Count Rate (KHz)", "Red Count Rate (KHz)"],
         recompute=False,
     )
-    df = ndx.data_source.data
-    assert "Number of Photons (donor, unmix)" in df.columns
-    assert (df["Number of Photons (donor, unmix)"] >= 0).all()
+    source = ndx.data_source
+    assert "Number of Photons (donor, unmix)" in source.parameter_names
+    assert (source.column_values("Number of Photons (donor, unmix)") >= 0).all()
 
     # add an equation over the injected columns and let the REAL engine compute it
     extra = [{"Proximity ratio (unmix)":
               "'Number of Photons (acceptor, unmix)' / "
               "('Number of Photons (donor, unmix)' + 'Number of Photons (acceptor, unmix)')"}]
     ndx.data_source.compute_columns(constants=ndx.constants, equations=extra)
-    pr = ndx.data_source.data["Proximity ratio (unmix)"].to_numpy()
+    pr = ndx.data_source.column_values("Proximity ratio (unmix)")
     assert np.all((pr >= -1e-9) & (pr <= 1 + 1e-9))
 
 
 def test_injected_shuffle_columns_are_integer_and_count_preserving():
     """The shuffle path lands integer, count-preserving columns in the real engine."""
     equations, constants = _real_equations_and_constants()
-    df = _burst_df()
-    ndx = _RealNdx(df, constants, equations)
+    ndx = _RealNdx(_burst_df(), constants, equations)
     emission = np.array([[1.0, 0.08], [0.0, 1.6]])
 
     push_unmixed_columns_to_ndx(
@@ -141,10 +139,11 @@ def test_injected_shuffle_columns_are_integer_and_count_preserving():
         unmix="shuffle", seed=3,
         recompute=False,
     )
-    out = ndx.data_source.data
-    donor = out["Number of Photons (donor, shuffle)"].to_numpy()
-    acceptor = out["Number of Photons (acceptor, shuffle)"].to_numpy()
-    raw = (out["Number of Photons (green)"] + out["Number of Photons (red)"]).to_numpy()
+    out = ndx.data_source
+    donor = out.column_values("Number of Photons (donor, shuffle)")
+    acceptor = out.column_values("Number of Photons (acceptor, shuffle)")
+    raw = (out.column_values("Number of Photons (green)")
+           + out.column_values("Number of Photons (red)"))
     assert np.array_equal(donor + acceptor, raw)        # exact photon-count preservation
     assert np.array_equal(donor, np.rint(donor))         # integer
 
@@ -180,12 +179,12 @@ def _alex_burst_df(seed=3):
     aa.append(rng.poisson(beta * gamma * photons))
     da.append(rng.poisson(delta * beta * gamma * photons))
     tau.append(np.full(300, np.nan))
-    return pd.DataFrame({
+    return {
         "Green Count Rate (KHz)": np.concatenate(dd).astype(float),
         "Red Count Rate (KHz)": np.concatenate(da).astype(float),
         "S delayed yellow (kHz)": np.concatenate(aa).astype(float),
         "Tau (green)": np.concatenate(tau),
-    }), {"gamma": gamma, "alpha": alpha, "beta": beta, "delta": delta}
+    }, {"gamma": gamma, "alpha": alpha, "beta": beta, "delta": delta}
 
 
 def test_optimize_from_loaded_data_drives_the_real_engine():
@@ -201,20 +200,20 @@ def test_optimize_from_loaded_data_drives_the_real_engine():
     df, truth = _alex_burst_df()
     ndx = _RealNdx(df, constants, equations)
     ndx.data_source.compute_columns(constants=ndx.constants, equations=equations)
-    before = float(np.nanmean(ndx.data_source.data["FRET efficiency"]))
+    before = float(np.nanmean(ndx.data_source.column_values("FRET efficiency")))
 
     result = optimize_calibration_from_ndx(ndx, n_bootstrap=0)
     assert result["ok"], result.get("error")
     for factor, expected in truth.items():
         assert result["factors"][factor] == pytest.approx(expected, rel=0.06, abs=0.006)
 
-    after = float(np.nanmean(ndx.data_source.data["FRET efficiency"]))
+    after = float(np.nanmean(ndx.data_source.column_values("FRET efficiency")))
     assert np.isfinite(after) and abs(after - before) > 1e-3
     assert ndx.updated == 1
 
 
 def test_injected_accurate_columns_are_computable_by_real_engine():
-    """The accurate columns are real dataframe columns ndx can compute over."""
+    """The accurate columns are real store columns ndx can compute over."""
     from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
     equations, constants = _real_equations_and_constants()
@@ -222,11 +221,11 @@ def test_injected_accurate_columns_are_computable_by_real_engine():
     ndx = _RealNdx(df, constants, equations)
     optimize_calibration_from_ndx(ndx, n_bootstrap=0)
 
-    data = ndx.data_source.data
-    assert "FRET efficiency (accurate)" in data.columns
-    assert "R_DA (accurate)" in data.columns
+    names = ndx.data_source.parameter_names
+    assert "FRET efficiency (accurate)" in names
+    assert "R_DA (accurate)" in names
 
     extra = [{"1-E (accurate)": "1.0 - 'FRET efficiency (accurate)'"}]
     ndx.data_source.compute_columns(constants=ndx.constants, equations=extra)
-    values = ndx.data_source.data["1-E (accurate)"].to_numpy()
+    values = ndx.data_source.column_values("1-E (accurate)")
     assert np.isfinite(values).any()

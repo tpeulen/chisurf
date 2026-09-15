@@ -358,7 +358,7 @@ def columns_from_data(data) -> dict[str, np.ndarray]:
     """Extract the numeric columns of an in-memory burst table.
 
     Works with anything column-addressable — a :class:`pandas.DataFrame`, a plain
-    mapping of arrays, or the ``data_source.data`` of a live ndX window —
+    mapping of arrays, or the ``data_source.store`` of a live ndX window —
     so an analysis can run on data already loaded elsewhere instead of on a file
     exported in between.
 

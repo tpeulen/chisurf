@@ -1160,9 +1160,9 @@ class H2mmTool(ChisurfDockTool):
             # ndX builds its plot widgets in a deferred init after the window is
             # shown; let that run first or the data lands before the UI exists.
             QApplication.processEvents()
-            # from_store: the store IS the data, so nothing is copied on the
-            # way into the window.
-            win.data_source = DataSource.from_store(table)
+            # The store is the data source's table, so nothing is copied on
+            # the way into the window.
+            win.data_source = DataSource(table)
             for name in ("recompute", "replot", "update_plots"):
                 fn = getattr(win, name, None)
                 if callable(fn):

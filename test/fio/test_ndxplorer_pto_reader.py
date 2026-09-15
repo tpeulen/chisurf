@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from chisurf.plugins.burst.burst_selection.api.models import (
@@ -79,8 +80,8 @@ def test_the_container_and_the_folder_hold_the_same_bursts(analysed: dict):
     from_folder = read_burst_analysis(analysed["output_folder"])
     from_container = read_burst_analysis(analysed["pto"])
 
-    assert len(from_container.data) == len(from_folder.data)
-    assert len(from_container.data) > 0
+    assert from_container.size == from_folder.size
+    assert from_container.size > 0
 
 
 def test_the_macro_time_column_arrives_in_seconds_either_way(analysed: dict):
@@ -92,8 +93,8 @@ def test_the_macro_time_column_arrives_in_seconds_either_way(analysed: dict):
     from_container = read_burst_analysis(analysed["pto"])
 
     column = "Mean Macro Time (s)"
-    assert column in from_container.data.columns
-    assert column in from_folder.data.columns
+    assert column in from_container.parameter_names
+    assert column in from_folder.parameter_names
 
 
 def test_a_second_search_does_not_get_merged_into_the_first(tmp_path: Path):
@@ -115,9 +116,9 @@ def test_a_second_search_does_not_get_merged_into_the_first(tmp_path: Path):
     )
 
     loaded = read_burst_analysis(container)
-    assert len(loaded.data) == second.metadata["n_bursts"]
+    assert loaded.size == second.metadata["n_bursts"]
     assert second.metadata["n_bursts"] < first.metadata["n_bursts"]
-    assert not loaded.data["Number of Photons"].isna().any()
+    assert not np.isnan(loaded.column_values("Number of Photons")).any()
 
 
 def test_a_container_with_no_burst_table_says_so(tmp_path: Path):

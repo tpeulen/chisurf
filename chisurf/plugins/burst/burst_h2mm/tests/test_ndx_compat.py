@@ -5,7 +5,7 @@ claim is only worth having if something checks it: the tables are plain CSV/HDF5
 so they *load* whatever is in them, and the ways they can be wrong are quiet —
 one non-numeric column and ndX drops it, a missing ``Mean Macro Time (s)`` and
 there is no time axis to select. These read every written table back through
-ndX's reader rather than through pandas, so a change to either side that breaks
+ndX's reader, so a change to either side that breaks
 the hand-off fails here.
 """
 
@@ -26,9 +26,10 @@ from .test_export import _dataset_via_tttrlib  # noqa: E402
 NDX_TIME_AXIS = "Mean Macro Time (s)"
 
 
-def _frame(source):
-    """The DataFrame behind an ndX DataSource, whatever it is called."""
-    return getattr(source, "data", getattr(source, "df", source))
+def _text_columns(source):
+    """The columns of an ndX DataSource that hold text rather than numbers."""
+    return [name for i, name in enumerate(source.parameter_names)
+            if source.is_text_column(i)]
 
 
 @pytest.fixture(scope="module")
@@ -79,13 +80,13 @@ def test_ndx_opens_every_written_csv(written, name):
     path = out / name
     assert path.is_file(), f"{name} was not written"
 
-    df = _frame(read_csv([str(path)]))
-    assert len(df) > 0, f"{name} opened empty"
-    assert len(df.columns) > 1, f"{name} did not split into columns"
+    source = read_csv([str(path)])
+    assert source.size > 0, f"{name} opened empty"
+    assert source.n_parameters > 1, f"{name} did not split into columns"
 
-    # Every column numeric: ndX silently drops the ones that are not, so a stray
+    # Every column numeric: a text column has no values to plot, so a stray
     # string column would lose data on import without any error.
-    non_numeric = [c for c in df.columns if not np.issubdtype(df[c].dtype, np.number)]
+    non_numeric = _text_columns(source)
     assert not non_numeric, f"{name} has non-numeric column(s): {non_numeric}"
 
 
@@ -93,11 +94,11 @@ def test_ndx_opens_every_written_csv(written, name):
 def test_the_event_tables_carry_the_axis_ndx_selects(written, name):
     """One row per burst/dwell means a time axis, under ndX's own name."""
     out, _ = written
-    df = _frame(read_csv([str(out / name)]))
-    assert NDX_TIME_AXIS in df.columns, (
+    source = read_csv([str(out / name)])
+    assert NDX_TIME_AXIS in source.parameter_names, (
         f"{name} has no {NDX_TIME_AXIS!r} — ndX would open it with no axis to plot"
     )
-    t = df[NDX_TIME_AXIS].to_numpy(dtype=float)
+    t = source.column_values(NDX_TIME_AXIS)
     assert np.isfinite(t).all() and (t >= 0).all()
 
 
@@ -108,24 +109,26 @@ def test_the_decay_table_is_a_histogram_not_an_event_table(written):
     oversight to "fix" by inventing one.
     """
     out, _ = written
-    df = _frame(read_csv([str(out / "h2mm_state_decays.csv")]))
-    assert NDX_TIME_AXIS not in df.columns
-    assert {"State", "Stream", "Channel", "Micro Time", "Counts"} <= set(df.columns)
-    assert (df["Counts"].to_numpy() >= 0).all()
+    source = read_csv([str(out / "h2mm_state_decays.csv")])
+    assert NDX_TIME_AXIS not in source.parameter_names
+    assert {"State", "Stream", "Channel", "Micro Time", "Counts"} <= set(source.parameter_names)
+    assert (source.column_values("Counts") >= 0).all()
     # One row per (state, stream, channel, bin) — the key the merge is done on.
-    assert len(df.drop_duplicates(["State", "Stream", "Channel", "Micro Time"])) == len(df)
+    key = np.column_stack([source.column_values(c)
+                           for c in ("State", "Stream", "Channel", "Micro Time")])
+    assert len(np.unique(key, axis=0)) == source.size
 
 
 def test_ndx_opens_the_photon_table_in_whichever_form_it_took(written):
     """HDF5 when pytables is there, CSV when it is not — ndX opens either."""
     out, _ = written
     path, reader = _photon_table(out)
-    df = _frame(reader([str(path)]))
-    assert len(df) > 0
-    assert NDX_TIME_AXIS in df.columns
-    non_numeric = [c for c in df.columns if not np.issubdtype(df[c].dtype, np.number)]
+    source = reader([str(path)])
+    assert source.size > 0
+    assert NDX_TIME_AXIS in source.parameter_names
+    non_numeric = _text_columns(source)
     assert not non_numeric, non_numeric
-    assert {"State", "Channel", "Stream", "Burst"} <= set(df.columns), (
+    assert {"State", "Channel", "Stream", "Burst"} <= set(source.parameter_names), (
         "the per-photon state assignment is what makes this table worth writing"
     )
 
