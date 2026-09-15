@@ -309,11 +309,18 @@ class TestBuildEasyGraph:
             for edge in normalized["edges"]
         }
 
-        assert (splitter["id"], 1, filters[0]["id"], 0) in repaired_edges
-        assert (splitter["id"], 2, filters[1]["id"], 0) in repaired_edges
+        assert (splitter["id"], 0, filters[0]["id"], 0) in repaired_edges
+        assert (splitter["id"], 1, filters[1]["id"], 0) in repaired_edges
 
-    def test_normalize_converts_legacy_output_relative_ports(self):
-        """Legacy output-relative source ports should become global port indices."""
+    def test_normalize_leaves_schema_ports_untouched(self):
+        """Normalization must not shift ports a builder already wrote in schema v1.
+
+        A splitter carries one input and two outputs, so its Reflection is
+        ``source_port`` 1 in the schema's per-direction indexing — the same
+        number the retired scene editor used for its *Transmission* in the old
+        flat indexing. Re-shifting on every load would route the cascade from
+        the wrong pin.
+        """
         graph = build_easy_graph({
             "emission_splitters": [{"type": "Dichroic", "probe_id": 2}],
             "detectors": [
@@ -329,7 +336,6 @@ class TestBuildEasyGraph:
             edge for edge in graph["edges"]
             if edge["source"] == splitter["id"] and edge["source_port"] == 1
         )
-        edge["source_port"] = 0
 
         normalized = normalize_lightpath_graph(graph)
         normalized_edge = next(
@@ -368,8 +374,8 @@ class TestBuildEasyGraph:
         ]
         graph["edges"].extend([
             {"source": light["id"], "source_port": 0, "target": fw["id"], "target_port": 0},
-            {"source": fw["id"], "source_port": 2, "target": sample["id"], "target_port": 0},
-            {"source": sample["id"], "source_port": 1, "target": exci["id"], "target_port": 0},
+            {"source": fw["id"], "source_port": 1, "target": sample["id"], "target_port": 0},
+            {"source": sample["id"], "source_port": 0, "target": exci["id"], "target_port": 0},
         ])
 
         normalized = normalize_lightpath_graph(graph)

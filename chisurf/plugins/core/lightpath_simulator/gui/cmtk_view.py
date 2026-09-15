@@ -36,7 +36,7 @@ import typing
 
 import numpy as np
 
-from cmtk import im, implot
+from cmtk import im, implot, nodes
 
 from chisurf.gui.widgets.node_editor.cmtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import GraphNode
@@ -369,24 +369,29 @@ class BeampathContent(NodeContentRenderer):
 
         # NoLegend as well as CanvasOnly: a legend is drawn inside the plot
         # area and, at this size, covers the curves it names.
+        scale = nodes.content_scale()
         flags = implot.ImPlotFlags_CanvasOnly | implot.ImPlotFlags_NoLegend
-        if not implot.begin_plot(f"##spectrum{node.id}", PLOT_SIZE, flags):
+        if not implot.begin_plot(
+            f"##spectrum{node.id}",
+            (PLOT_SIZE[0] * scale, PLOT_SIZE[1] * scale), flags,
+        ):
             return False
         try:
             axis = WAVELENGTHS.tolist()
             if incoming is not None:
-                implot.set_next_line_style(INPUT_COLOUR, 1.0)
+                implot.set_next_line_style(INPUT_COLOUR, 1.0 * scale)
                 implot.plot_line("in", axis, incoming)
             if outgoing is not None:
-                implot.set_next_line_style(OUTPUT_COLOUR, 2.0)
+                implot.set_next_line_style(OUTPUT_COLOUR, 2.0 * scale)
                 implot.plot_line("out", axis, outgoing)
-            self._draw_characteristic(axis, characteristic)
+            self._draw_characteristic(axis, characteristic, scale)
         finally:
             implot.end_plot()
         return False
 
     @staticmethod
-    def _draw_characteristic(axis: list, characteristic: typing.Any) -> None:
+    def _draw_characteristic(axis: list, characteristic: typing.Any,
+                             scale: float = 1.0) -> None:
         """Draw the node's own response curve, on top of the spectra.
 
         Parameters
@@ -397,6 +402,8 @@ class BeampathContent(NodeContentRenderer):
             One array for a one-curve component, or a pair for a sample --
             absorption and emission, which are two curves and must not be
             summed into one.
+        scale : float
+            The editor's content scale, for the line widths.
         """
         if characteristic is None:
             return
@@ -405,12 +412,12 @@ class BeampathContent(NodeContentRenderer):
                                       (ABSORPTION_COLOUR, EMISSION_COLOUR)):
                 curve = _normalised(np.asarray(values, dtype=float))
                 if curve is not None:
-                    implot.set_next_line_style(colour, 1.5)
+                    implot.set_next_line_style(colour, 1.5 * scale)
                     implot.plot_line("char", axis, curve)
             return
         curve = _normalised(np.asarray(characteristic, dtype=float))
         if curve is not None:
-            implot.set_next_line_style(CHARACTERISTIC_COLOUR, 1.5)
+            implot.set_next_line_style(CHARACTERISTIC_COLOUR, 1.5 * scale)
             implot.plot_line("char", axis, curve)
 
 

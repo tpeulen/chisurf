@@ -28,7 +28,7 @@ class OpticalPathSimulator:
 
     Usage (headless):
         sim = OpticalPathSimulator(db)
-        sim.load_from_dict(graph_dict)   # same format as scene.to_dict()
+        sim.load_from_dict(graph_dict)   # graph-schema v1, as GraphDocument.to_dict()
         results = sim.propagate()
         setting = sim.to_instrument_setting()
     """
@@ -38,7 +38,7 @@ class OpticalPathSimulator:
         self._graph: Optional[GraphDef] = None
 
     def load_from_dict(self, scene_dict: dict) -> None:
-        """Load from a plain graph dict (serialised NodeScene.to_dict())."""
+        """Load from a plain graph dict (graph-schema v1, as the editor saves it)."""
         self._graph = GraphDef.from_dict(scene_dict)
         self._states = {
             n.id: NodeState(id=n.id, node_type=n.node_type, config=n.config.copy())
@@ -57,34 +57,24 @@ class OpticalPathSimulator:
         for edge in self._graph.edges:
             src, tgt = edge.source, edge.target
             if src not in nodes_dict or tgt not in nodes_dict: continue
-            
-            # Port mapping - in the JSON format, port indices are absolute
-            # We need to know if it's an output or input port
+
+            # Graph-schema v1 port indices are per-direction: a source_port
+            # counts through the source's outputs, a target_port through the
+            # target's inputs. (The scene editor this replaced indexed one
+            # flat per-node list, inputs first — its files carry those
+            # indices, and their output-side edges are lost on such a load.)
             src_node = nodes_dict[src]
             tgt_node = nodes_dict[tgt]
-            
-            # Logic from simulator_widget.py
-            # port_abs >= len(inputs) means it is an output
-            u_is_out = edge.source_port >= len(src_node.inputs)
-            v_is_out = edge.target_port >= len(tgt_node.inputs)
-            
-            if u_is_out and not v_is_out:
-                s, t, s_p_abs, t_p_abs = src, tgt, edge.source_port, edge.target_port
-            elif v_is_out and not u_is_out:
-                s, t, s_p_abs, t_p_abs = tgt, src, edge.target_port, edge.source_port
-            else: continue
-            
-            s_node = nodes_dict[s]
-            t_node = nodes_dict[t]
-            
-            s_out_idx = s_p_abs - len(s_node.inputs)
-            s_p = s_node.outputs[s_out_idx]
+            if edge.source_port >= len(src_node.outputs): continue
+            if edge.target_port >= len(tgt_node.inputs): continue
+
+            s_p = src_node.outputs[edge.source_port]
             s_p_name = s_p.name if hasattr(s_p, 'name') else str(s_p)
-            
-            t_p = t_node.inputs[t_p_abs]
+
+            t_p = tgt_node.inputs[edge.target_port]
             t_p_name = t_p.name if hasattr(t_p, 'name') else str(t_p)
-            
-            out_adj[s].setdefault(s_p_name, []).append((t, t_p_name))
+
+            out_adj[src].setdefault(s_p_name, []).append((tgt, t_p_name))
 
         # 1. Clear spectral states
         for ns in self._states.values():

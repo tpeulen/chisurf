@@ -1,11 +1,59 @@
 ---
 title: Handover — wire the beam path onto the cmtk node editor
-status: open
+status: done
 group: handover
 updated: 2026-09-02
 ---
 
 # Handover: the beam path is the last consumer on the old editor
+
+**Done 2026-09-02.** `lightpath_simulator/gui/tool.py` now builds
+`NodeGraphWidget(content=BeampathContent(...))` instead of `NodeScene`/
+`NodeView`; `node_types.py` lost the five Qt widget-factory functions
+(`trigger_simulator_update`, `make_combo_opaque`, `create_node_container`/
+`finish_node_container`, `add_spectral_plot`, and the four `get_*_factory`s) and
+is now Qt-free — just the registry. Verified: all 56 `lightpath_simulator`
+tests pass; `python -m test.gui.node_editor_baseline after node-lightpath`
+(run today as `python -m test.gui.node_editor_baseline node-lightpath`, the
+phase argument having gone with the old editor)
+renders with the same 8-node/7-edge topology as the `before` capture
+(`node-editor-inventory.{before,after}.json` agree exactly once the port index
+convention is translated) and the same control counts (7 buttons, 9 controls,
+14 tables). `node_types.py` no longer belongs on
+`test/chiplot_native_allowlist.txt` and has been struck from it.
+
+**Superseded 2026-09-03:** the departure described below is undone. cmtk's
+zoom now scales node *contents* — while a node submits, the painter re-shapes
+its glyphs at the zoom and the non-font layout metrics follow, so a node's
+pixel size is no longer fixed — and `fit_to_content` solves the ordinary fit
+equation. `_build_default_path` still centres on the sample for the first
+paint (a node has no size until it has been drawn once) and then calls
+`_fit_view()`: the whole 8-node path lands in the panel, nodes and all.
+
+One deliberate departure from the plan below: **`_build_default_path` pans
+instead of fitting.** cmtk kept a node's pixel size fixed regardless of zoom,
+so fitting this 8-node, plot-heavy graph to the panel only shrank the
+*spacing* between nodes, never their fixed-size bodies — every zoom that made
+the whole graph fit also made adjacent nodes overlap. The Qt version had the
+same problem and solved it the same way: `view.centerOn(550, 200)`, a 1:1 view
+the user pans, never a fit. The port did the same (`_centre_view`, zoom held
+at 1.0). It centred on the **sample**, not the splitter: the source and the
+sample are the only two nodes with a spectrum before a component is assigned
+downstream, so those are what a first look should show — verify this against a
+real backend, not the no-server smoke test, because a screenshot with nothing
+behind `simulate()` looks identical whether the centring is right or wrong (no
+node has a spectrum either way). Wire one up in five lines the same way
+`test_headless.py::test_lightpath_api_client_unwraps_rpc_envelope` does:
+`LightPathClient(InProcessClient(ServiceDispatcher(SessionState())))` after
+`register_services(dispatcher)`, no ZMQ, no timeout.
+
+**Closed 2026-09-03:** `mmfdb_admin/gui/tool.py` builds
+`NodeGraphWidget(read_only=True)` now — the "interactive editor" note below
+turned out to be stale, the dock only ever instantiated it read-only — and the
+old scene editor itself is deleted. See
+[subsystems/node-editor](../subsystems/node-editor.md).
+
+---
 
 Everything the beam path needs is built and tested. What is left is the
 window: `chisurf/plugins/core/lightpath_simulator/gui/tool.py` still builds
@@ -71,13 +119,13 @@ work here:
 
 ```bash
 QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=/tmp/lp \
-  python -m test.gui.node_editor_baseline after node-lightpath
+  python -m test.gui.node_editor_baseline node-lightpath
 ```
 
-and **read the PNG**. The baseline half is already captured at
-`/tmp/chisurf-migration/node-lightpath.before.png` — eight components, each
-with a spectrum in it. Judge on control inventory, not pixels: every component
-present, its chooser reachable, its spectrum drawn.
+and **read the PNG** — eight components, each with a spectrum in it. Judge on
+control inventory, not pixels: every component present, its chooser reachable,
+its spectrum drawn. (The `before`/`after` phase argument is gone with the old
+editor; the harness renders the current state plain.)
 
 ## Traps, all of which have already cost time on this port
 

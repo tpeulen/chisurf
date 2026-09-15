@@ -73,7 +73,7 @@ def test_propagate_headless():
         ],
         "edges": [
             {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 1, "target": "node_det", "target_port": 0}
+            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0}
         ]
     }
 
@@ -129,7 +129,7 @@ def test_a_database_light_source_keeps_its_name_down_to_the_detector():
         ],
         "edges": [
             {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 1, "target": "node_det", "target_port": 0},
+            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
         ],
     })
     sim.propagate()
@@ -272,7 +272,7 @@ def _dye_detector_graph(dye_id: int, detector_id: int) -> dict:
         ],
         "edges": [
             {"source": "laser", "source_port": 0, "target": "sample", "target_port": 0},
-            {"source": "sample", "source_port": 1, "target": "detector", "target_port": 0},
+            {"source": "sample", "source_port": 0, "target": "detector", "target_port": 0},
         ],
     }
 
@@ -537,7 +537,7 @@ def test_simulated_optics_reach_the_global_view():
     probabilities it computes are what the FRET correction factors are made of,
     so they must be visible — and linkable — next to the fits that consume them.
     """
-    from chisurf.core.parameter_group_registry import iter_registered_parameter_groups
+    from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
     from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
     from chisurf.plugins.core.lightpath_simulator.backend.simulator import OpticalPathSimulator
     from chisurf.plugins.core.lightpath_simulator.core.parameters import (
@@ -565,7 +565,7 @@ def test_simulated_optics_reach_the_global_view():
         ],
         "edges": [
             {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
-            {"source": "node_sample", "source_port": 1, "target": "node_det", "target_port": 0},
+            {"source": "node_sample", "source_port": 0, "target": "node_det", "target_port": 0},
         ],
     })
     simulator.propagate()

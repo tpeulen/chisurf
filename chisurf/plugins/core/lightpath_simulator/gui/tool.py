@@ -5,34 +5,30 @@ from typing import Any
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.general import apply_compact_table_style
-from chisurf.gui.widgets.node_editor.scene import NodeScene
-from chisurf.gui.widgets.node_editor.state_tracker import SceneStateTracker
-from chisurf.gui.widgets.node_editor.view import NodeView
+from chisurf.gui.widgets.node_editor.document import GraphDocument, GraphEdge, GraphNode
+from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
 from chisurf.gui.widgets.node_editor.widgets.widget_palette import WidgetPalette
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.lightpath_simulator.api.client import LightPathClient
 from chisurf.plugins.core.lightpath_simulator.core.workflow import resolve_db_path
+from chisurf.plugins.core.lightpath_simulator.gui.cmtk_view import BeampathContent
 from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
+    OPTICAL_PRESETS_DIR,
     LightPathEasyDialog,
     LightPathEasyWidget,
-    OPTICAL_PRESETS_DIR,
-    save_easy_preset,
-    load_easy_preset,
     _graph_to_config,
     _normalize_pid,
+    load_easy_preset,
     normalize_lightpath_graph,
+    save_easy_preset,
 )
 from chisurf.plugins.core.lightpath_simulator.gui.node_types import (
     build_optical_registry,
-    get_forster_node_factory,
-    get_light_source_factory,
-    get_optical_node_factory,
-    get_sample_node_factory,
     optical_registry,
 )
-from chisurf.gui import dialogs
-from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 logger = logging.getLogger(__name__)
 
@@ -135,15 +131,10 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         graph_layout = QtWidgets.QVBoxLayout(self.graph_panel)
         graph_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.scene = NodeScene(self)
-        self.scene.node_adder = self._on_add_node_requested
-
-        self.view = NodeView(self.scene, self.graph_panel)
-        graph_layout.addWidget(self.view)
-
-        self.undo_stack = QtWidgets.QUndoStack(self)
-        self.state_tracker = SceneStateTracker(self, self.scene, self.undo_stack)
-        self.undo_stack.indexChanged.connect(lambda idx, s=self: s.propagate_graph())
+        self.graph_widget = NodeGraphWidget(
+            self.graph_panel, content=BeampathContent(self.probes)
+        )
+        graph_layout.addWidget(self.graph_widget)
 
         self.components_panel = QtWidgets.QWidget(self.dock_area)
         self.components_panel.setObjectName("lightpathComponentsDock")
@@ -323,7 +314,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         """Save the node graph and widget population."""
         try:
             settings = self._settings()
-            graph = _json_safe(self.scene.to_dict())
+            graph = _json_safe(self.graph_widget.graph_dict())
             if not graph.get("nodes"):
                 return
             settings.setValue("graph", json.dumps(graph, sort_keys=True))
@@ -363,6 +354,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         """Install loaded probe metadata and build the startup graph."""
         self.probes = probes or []
         logger.info("Loaded %d light-path MMFDB spectra entries", len(self.probes))
+        self.graph_widget.control.content.set_probes(self.probes)
         self._build_easy_mode_tab()
         self._setup_default_path()
 
@@ -464,8 +456,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         if not ok or not name:
             return
         OPTICAL_PRESETS_DIR.mkdir(parents=True, exist_ok=True)
-        from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
-        graph = _json_safe(self.scene.to_dict())
+        graph = _json_safe(self.graph_widget.graph_dict())
         # Strip cached/transient data from nodes
         for n in graph.get("nodes", []):
             cfg = n.get("config", {})
@@ -482,7 +473,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             self, "Save Graph", "", "JSON (*.json)")
         if path:
             try:
-                state = _json_safe(self.scene.to_dict())
+                state = _json_safe(self.graph_widget.graph_dict())
                 with open(path, "w") as f:
                     json.dump(state, f, indent=2)
             except Exception as e:
@@ -495,7 +486,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             try:
                 with open(path, "r") as f:
                     state = json.load(f)
-                self.scene.from_dict(normalize_lightpath_graph(state))
+                self.graph_widget.load_graph_dict(normalize_lightpath_graph(state))
                 self.propagate_graph()
                 self._fit_view()
             except Exception as e:
@@ -511,7 +502,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         )
         if not ok:
             return
-        graph = _json_safe(self.scene.to_dict())
+        graph = _json_safe(self.graph_widget.graph_dict())
         self.propagate_graph(graph)
         try:
             res = self.client.save(graph, name=name or "Light path simulation")
@@ -554,8 +545,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         except Exception as exc:
             dialogs.error(self, "MMFDB Load Failed", str(exc))
             return
-        self.scene.clear()
-        self.scene.from_dict(normalize_lightpath_graph(load_res["graph"]))
+        self.graph_widget.load_graph_dict(normalize_lightpath_graph(load_res["graph"]))
         self.propagate_graph()
         self._fit_view()
 
@@ -636,68 +626,67 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
     def _on_palette_node_type_activated(self, node_type_id: str):
         """Drops a node into the center of the current view."""
-        self.state_tracker.begin_action(f"Add {node_type_id}")
-        view_center = self.view.viewport().rect().center()
-        scene_pos = self.view.mapToScene(view_center)
-        item = self._on_add_node_requested(node_type_id, scene_pos)
-        if item is not None:
-            self.scene.addItem(item)
-        self.state_tracker.commit_action()
+        node = self._new_optical_node(node_type_id, self._view_centre())
+        if node is None:
+            return
+        self.graph_widget.document.add_node(node)
+        self.graph_widget.host.update()
+        self.propagate_graph()
 
-    def _on_add_node_requested(self, node_type_id: str, pos: QtCore.QPointF):
-        """Hook called by the scene when a node needs to be created, routing to our registry."""
+    def _view_centre(self) -> tuple:
+        """The grid-space point at the middle of the visible graph panel."""
+        control = self.graph_widget.control
+        x, y, w, h = control._box
+        return control.editor.canvas.to_grid((x + w / 2.0, y + h / 2.0))
+
+    def _centre_view(self, cx: float, cy: float) -> None:
+        """Pan (without zooming) so grid point `(cx, cy)` is centred.
+
+        Uses the panel's current widget size rather than the control's
+        ``_box`` -- which is only populated after the first draw -- so this
+        can be called right after building a graph, before anything has
+        been shown yet. A widget that has never been laid out reports Qt's
+        ``100x30`` default rather than its eventual real size -- the same
+        "fit before show" trap as :meth:`~.widget.NodeGraphWidget.fit_graph`
+        -- so that default is refused in favour of a plausible panel size.
+        """
+        canvas = self.graph_widget.control.editor.canvas
+        w, h = self.graph_widget.width(), self.graph_widget.height()
+        if w < 200 or h < 200:
+            w, h = 900.0, 650.0
+        canvas.panning = (w / 2.0 - cx * canvas.zoom, h / 2.0 - cy * canvas.zoom)
+
+    def _new_optical_node(
+        self, node_type_id: str, pos: tuple, node_id: str | None = None
+    ) -> GraphNode | None:
+        """Build a node of `node_type_id` from the optical registry.
+
+        Returns ``None`` for an id the registry does not carry -- the same
+        failure a stale palette entry or a hand-edited saved graph produces.
+        """
         node_type = optical_registry.get(node_type_id)
         if node_type is None:
             return None
-        
-        from chisurf.gui.widgets.node_editor.model import NodeModel
-        from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
-        
-        factory_generator = None
-        if node_type.id == "light_source":
-            factory_generator = get_light_source_factory(self.probes)
-        elif node_type.id == "sample":
-            factory_generator = get_sample_node_factory(self.probes)
-        elif node_type.id == "filter":
-            factory_generator = get_optical_node_factory(self.probes, "transmission", "Filter:")
-        elif node_type.id == "splitter":
-            factory_generator = get_optical_node_factory(self.probes, "transmission", "Splitter:")
-        elif node_type.id == "detector":
-            factory_generator = get_optical_node_factory(self.probes, "quantum_efficiency", "Detector:")
-        elif node_type.id == "combiner":
-            factory_generator = lambda config: QtWidgets.QWidget() # Stub
-        elif node_type.id == "forster_radius":
-            factory_generator = get_forster_node_factory()
-
-        model_config = node_type.default_config.copy()
-        
-        content_factory = None
-        if factory_generator is not None:
-             content_factory = lambda config=model_config, f=factory_generator: f(config)
-             
-        model = NodeModel(
+        return GraphNode(
+            node_id=node_id or node_type_id,
             node_type=node_type.id,
             title=node_type.title,
-            inputs=node_type.inputs,
-            outputs=node_type.outputs,
-            config=model_config,
-            content_factory=content_factory
+            inputs=list(node_type.inputs),
+            outputs=list(node_type.outputs),
+            config=dict(node_type.default_config or {}),
+            pos=pos,
         )
-        
-        item = NodeGraphicsItem(model, width=node_type.width)
-        item.setPos(pos.x(), pos.y())
-        return item
 
     def propagate_graph(self, state=None):
         """Propagate spectral signals from sources through the graph via ZMQ RPC."""
         if self._is_propagating:
             return
-            
+
         self._is_propagating = True
         try:
             if not state:
                 try:
-                    state = _json_safe(self.scene.to_dict())
+                    state = _json_safe(self.graph_widget.graph_dict())
                 except RuntimeError:
                     return
             else:
@@ -720,36 +709,34 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             self._last_instrument_setting = res.get("instrument_setting")
             self._update_output_tables()
 
-            # Sync back to live nodes
-            from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
-            id_to_item = {it.model.id: it for it in self.scene.items() if isinstance(it, NodeGraphicsItem)}
-            
+            # Sync back into the live document -- the next repaint reads the
+            # config, so there is no proxy to cross and no plot to poke.
+            document = self.graph_widget.document
             for n_id, ns_dict in sim_states.items():
-                if n_id not in id_to_item: continue
-                it = id_to_item[n_id]
-                
+                node = document.node(n_id)
+                if node is None:
+                    continue
+
                 # Deserialise array values from backend response
                 input_spectra = _deserialize_numpy(ns_dict.get("input_spectra", {}))
                 output_spectra = _deserialize_numpy(ns_dict.get("output_spectra", {}))
-                
+
                 node_char = ns_dict.get("node_char")
                 if isinstance(node_char, list):
                     if len(node_char) == 2 and isinstance(node_char[0], list):
                         node_char = (np.array(node_char[0], dtype=np.float64), np.array(node_char[1], dtype=np.float64))
                     else:
                         node_char = np.array(node_char, dtype=np.float64)
-                
-                # Update live config for plots
-                it.model.config.update({
+
+                node.config.update({
                     "_input_spectra": input_spectra,
                     "_output_spectra": output_spectra,
                     "_node_char": node_char,
                     "_last_signals": ns_dict.get("config", {}).get("_last_signals", {}),
                     "_last_results": ns_dict.get("config", {}).get("_last_results", [])
                 })
-                if "_update_plot" in it.model.config:
-                    it.model.config["_update_plot"]()
 
+            self.graph_widget.host.update()
             self._sync_easy_mode_from_graph()
         finally:
             self._is_propagating = False
@@ -826,14 +813,6 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                 item.setTextAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
                 table.setItem(row_idx, col_idx, item)
 
-    # Required interface for state_tracker
-    def begin_undo(self, text: str) -> None:
-        self.state_tracker.begin_action(text)
-
-    def commit_undo(self) -> None:
-        self.state_tracker.commit_action()
-        self.propagate_graph()
-
     def closeEvent(self, event):
         """Save graph state, dock layout, and geometry on close."""
         self._save_window_geometry()
@@ -860,28 +839,6 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
         super().closeEvent(event)
 
-    def _create_content_factory_for_json_node(self, node_type_id: str, config: dict) -> Any:
-        """Constructs content factories when restoring from saved dict state."""
-        factory_generator = None
-        if node_type_id == "light_source":
-            factory_generator = get_light_source_factory(self.probes)
-        elif node_type_id == "sample":
-            factory_generator = get_sample_node_factory(self.probes)
-        elif node_type_id == "filter":
-            factory_generator = get_optical_node_factory(self.probes, "transmission", "Filter:")
-        elif node_type_id == "splitter":
-            factory_generator = get_optical_node_factory(self.probes, "transmission", "Splitter:")
-        elif node_type_id == "detector":
-            factory_generator = get_optical_node_factory(self.probes, "quantum_efficiency", "Detector:")
-        elif node_type_id == "combiner":
-            factory_generator = lambda config: QtWidgets.QWidget() # Stub
-        elif node_type_id == "forster_radius":
-            factory_generator = get_forster_node_factory()
-            
-        if factory_generator is not None:
-            return lambda config=config, f=factory_generator: f(config)
-        return None
-
     def _setup_default_path(self):
         """Restores the saved graph layout, or builds the default path if none exists."""
         try:
@@ -891,8 +848,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
                     state = json.loads(saved_graph) if isinstance(saved_graph, str) else saved_graph
                     if not isinstance(state, dict) or not state.get("nodes"):
                         raise ValueError("saved graph has no nodes")
-                    self.scene.clear()
-                    self.scene.from_dict(normalize_lightpath_graph(state))
+                    self.graph_widget.load_graph_dict(normalize_lightpath_graph(state))
                     self.propagate_graph()
                     self._fit_view()
                     return
@@ -915,7 +871,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
         if self.easy_mode_widget is None or self._is_syncing_easy:
             return
         try:
-            graph = _json_safe(self.scene.to_dict())
+            graph = _json_safe(self.graph_widget.graph_dict())
         except RuntimeError:
             return
         if not graph.get("nodes"):
@@ -933,95 +889,93 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
     def load_graph_from_dict(self, graph: dict) -> None:
         """Load a graph dict into the node editor and propagate."""
-        self.scene.from_dict(normalize_lightpath_graph(graph))
+        self.graph_widget.load_graph_dict(normalize_lightpath_graph(graph))
         self.propagate_graph()
         self._fit_view()
 
     def _fit_view(self) -> None:
-        """Zoom the node view to fit all items after a new graph is loaded.
+        """Frame the whole graph once its nodes have been measured.
 
-        Deferred to the next event-loop tick so the view has a real viewport size
-        (``fitInView`` is a no-op while the widget still has zero size at startup).
+        The cmtk editor needs one paint to size every node and a second to
+        apply the fit against those sizes, so a repaint is scheduled for the
+        next event-loop tick rather than assuming the first one already did.
         """
-        QtCore.QTimer.singleShot(0, self.view.fit_all)
+        self.graph_widget.fit_graph()
+        QtCore.QTimer.singleShot(0, self.graph_widget.host.update)
 
     def _update_easy_config_in_place(self, cfg: dict) -> None:
         """Update existing graph node configs from Easy Mode without rearranging."""
-        from chisurf.gui.widgets.node_editor.node_item import NodeGraphicsItem
-        items = [it for it in self.scene.items() if isinstance(it, NodeGraphicsItem)]
+        items = self.graph_widget.document.nodes
 
-        for it in items:
-            if it.model.node_type == "light_source":
-                it.model.config["source_mode"] = "manual"
-                it.model.config["manual_lines"] = cfg.get("lasers", "488:1.0, 640:1.0")
+        for node in items:
+            if node.type == "light_source":
+                node.config["source_mode"] = "manual"
+                node.config["manual_lines"] = cfg.get("lasers", "488:1.0, 640:1.0")
 
-            elif it.model.node_type == "sample":
+            elif node.type == "sample":
                 dye_ids = [_normalize_pid(p) for p in cfg.get("dyes", {})]
-                it.model.config["probe_ids"] = dye_ids
-                it.model.config["probe_id"] = dye_ids[0] if dye_ids else None
-                it.model.config["dye_properties"] = cfg.get("dyes", {})
+                node.config["probe_ids"] = dye_ids
+                node.config["probe_id"] = dye_ids[0] if dye_ids else None
+                node.config["dye_properties"] = cfg.get("dyes", {})
 
-            elif it.model.node_type == "forster_radius":
-                it.model.config["kappa2"] = cfg.get("kappa2", 0.6667)
-                it.model.config["n"] = cfg.get("n", 1.33)
+            elif node.type == "forster_radius":
+                node.config["kappa2"] = cfg.get("kappa2", 0.6667)
+                node.config["n"] = cfg.get("n", 1.33)
 
         # Splitters — sort by position for cascade order
         splitters = sorted(
-            [it for it in items if it.model.node_type == "splitter"],
-            key=lambda it: (it.pos().x(), it.pos().y()),
+            [n for n in items if n.type == "splitter"],
+            key=lambda n: (n.pos[0], n.pos[1]),
         )
         if splitters:
-            splitters[0].model.config["probe_id"] = _normalize_pid(
+            splitters[0].config["probe_id"] = _normalize_pid(
                 cfg.get("excitation_dichroic_probe_id")
             )
         em_splitters = cfg.get("emission_splitters", [])
         for i, sp in enumerate(splitters[1:], start=1):
             if i - 1 < len(em_splitters):
-                sp.model.config["probe_id"] = _normalize_pid(
+                sp.config["probe_id"] = _normalize_pid(
                     em_splitters[i - 1].get("probe_id")
                 )
-                sp.model.config["splitter_type"] = em_splitters[i - 1].get("type", "Dichroic")
+                sp.config["splitter_type"] = em_splitters[i - 1].get("type", "Dichroic")
 
         # Detectors — sort by position
         detectors = sorted(
-            [it for it in items if it.model.node_type == "detector"],
-            key=lambda it: (it.pos().x(), it.pos().y()),
+            [n for n in items if n.type == "detector"],
+            key=lambda n: (n.pos[0], n.pos[1]),
         )
         easy_dets = cfg.get("detectors", [])
         for i, det in enumerate(detectors):
             if i < len(easy_dets):
-                det.model.config["detector_name"] = easy_dets[i].get(
+                det.config["detector_name"] = easy_dets[i].get(
                     "name", f"Channel {i + 1}"
                 )
 
         # Filters — sort by position; update probe_id from detector config
         filters = sorted(
-            [it for it in items if it.model.node_type == "filter"],
-            key=lambda it: (it.pos().x(), it.pos().y()),
+            [n for n in items if n.type == "filter"],
+            key=lambda n: (n.pos[0], n.pos[1]),
         )
         for i, f in enumerate(filters):
             if i < len(easy_dets):
                 bp_pid = _normalize_pid(easy_dets[i].get("bandpass_probe_id"))
-                f.model.config["probe_id"] = bp_pid
+                f.config["probe_id"] = bp_pid
 
-        for it in items:
-            if "_update_plot" in it.model.config:
-                it.model.config["_update_plot"]()
-
+        self.graph_widget.host.update()
         self.propagate_graph()
 
     def _build_default_path(self):
         """Build the canonical default light-path graph."""
         # Programmatically builds a standard Laser -> Sample -> Dichroic -> 2 Detectors path.
-        self.scene.clear()
-        
+        document = GraphDocument()
+
         # Try to find some reasonable defaults from pre-fetched probes metadata
         green_dye_id = None
         red_dye_id = None
         dichroic_id = None
         green_filter_id = None
         red_filter_id = None
-        
+
         for p in self.probes:
             i_id = p["probe_id"]
             i_name = p["name"]
@@ -1037,68 +991,76 @@ class LightPathSimulatorWidget(ChisurfDockTool):
             if "bp" in name_lower and "650" in name_lower and not red_filter_id and p.get("has_trans"):
                 red_filter_id = i_id
 
+        # Positions are screen pixels here, not just grid units: the view is
+        # centred rather than fit (see below), so it stays at zoom 1 and a
+        # node's rendered size -- roughly 220x130, cmtk keeps it fixed
+        # regardless of zoom -- is the thing to space these against.
         # 1. Light Source
-        ls = self._on_add_node_requested("light_source", QtCore.QPointF(50, 200))
-        ls_cfg = ls.model.config
-        ls_cfg["source_mode"] = "manual"
-        ls_cfg["manual_lines"] = "488:1.0, 640:1.0"
-        self.scene.addItem(ls)
-        
+        ls = self._new_optical_node("light_source", (30.0, 260.0))
+        ls.config["source_mode"] = "manual"
+        ls.config["manual_lines"] = "488:1.0, 640:1.0"
+        document.add_node(ls)
+
         # 2. Sample
-        sample = self._on_add_node_requested("sample", QtCore.QPointF(300, 200))
-        sample_cfg = sample.model.config
+        sample = self._new_optical_node("sample", (300.0, 260.0))
         dyes = []
         if green_dye_id: dyes.append(green_dye_id)
         if red_dye_id: dyes.append(red_dye_id)
-        if dyes: sample_cfg["probe_ids"] = dyes
-        self.scene.addItem(sample)
-        
-        # 3. Splitter
-        dichroic = self._on_add_node_requested("splitter", QtCore.QPointF(550, 200))
-        if dichroic_id: dichroic.model.config["probe_id"] = dichroic_id
-        self.scene.addItem(dichroic)
-        
-        # 4. Red Path (Transmitted if > 561nm)
-        red_f = self._on_add_node_requested("filter", QtCore.QPointF(800, 100))
-        if red_filter_id: red_f.model.config["probe_id"] = red_filter_id
-        self.scene.addItem(red_f)
-        
-        red_det = self._on_add_node_requested("detector", QtCore.QPointF(1050, 100))
-        red_det.model.config["detector_name"] = "Red Channel"
-        self.scene.addItem(red_det)
-        
-        # 5. Green Path (Reflected if < 561nm)
-        green_f = self._on_add_node_requested("filter", QtCore.QPointF(800, 300))
-        if green_filter_id: green_f.model.config["probe_id"] = green_filter_id
-        self.scene.addItem(green_f)
-        
-        green_det = self._on_add_node_requested("detector", QtCore.QPointF(1050, 300))
-        green_det.model.config["detector_name"] = "Green Channel"
-        self.scene.addItem(green_det)
-        
-        from chisurf.gui.widgets.node_editor.edge_item import EdgeGraphicsItem
-        
-        def connect(src_item, src_port_idx, dst_item, dst_port_idx):
-            edge = EdgeGraphicsItem(src_item.port_items[src_port_idx])
-            edge.set_end_port(dst_item.port_items[dst_port_idx])
-            self.scene.addItem(edge)
-            self.scene.register_edge(edge)
+        if dyes: sample.config["probe_ids"] = dyes
+        document.add_node(sample)
 
-        # Wire it up
+        # 3. Splitter
+        dichroic = self._new_optical_node("splitter", (570.0, 260.0))
+        if dichroic_id: dichroic.config["probe_id"] = dichroic_id
+        document.add_node(dichroic)
+
+        # 4. Red Path (Transmitted if > 561nm)
+        red_f = self._new_optical_node("filter", (840.0, 90.0), node_id="red_filter")
+        if red_filter_id: red_f.config["probe_id"] = red_filter_id
+        document.add_node(red_f)
+
+        red_det = self._new_optical_node("detector", (1110.0, 90.0), node_id="red_detector")
+        red_det.config["detector_name"] = "Red Channel"
+        document.add_node(red_det)
+
+        # 5. Green Path (Reflected if < 561nm)
+        green_f = self._new_optical_node("filter", (840.0, 430.0), node_id="green_filter")
+        if green_filter_id: green_f.config["probe_id"] = green_filter_id
+        document.add_node(green_f)
+
+        green_det = self._new_optical_node("detector", (1110.0, 430.0), node_id="green_detector")
+        green_det.config["detector_name"] = "Green Channel"
+        document.add_node(green_det)
+
+        # Forster Radius
+        forster = self._new_optical_node("forster_radius", (300.0, 460.0))
+        document.add_node(forster)
+
+        def connect(src, src_port_idx, dst, dst_port_idx):
+            document.add_edge(GraphEdge(src.id, src_port_idx, dst.id, dst_port_idx))
+
+        # Wire it up. Port indices are per-direction (an output's position among
+        # outputs, an input's among inputs) -- not the old scene's flat
+        # inputs-then-outputs list, which is why these are not the same numbers
+        # the Qt version used.
         connect(ls, 0, sample, 0)
-        connect(sample, 1, dichroic, 0)
-        
-        # Forster Radius connection
-        forster = self._on_add_node_requested("forster_radius", QtCore.QPointF(300, 400))
-        self.scene.addItem(forster)
-        connect(sample, 2, forster, 0) # Sample Dye Data -> Forster Dye Data
-        
+        connect(sample, 0, dichroic, 0)       # Sample "Out" -> Splitter "In"
+        connect(sample, 1, forster, 0)        # Sample "Dye Data" -> Forster "Dye Data"
+
         # A 561LP dummy transmits red (long pass) and reflects green (short)
-        connect(dichroic, 1, red_f, 0) # Splitter Trans -> Red Filter
-        connect(red_f, 1, red_det, 0)
-        
-        connect(dichroic, 2, green_f, 0) # Splitter Refl -> Green Filter
-        connect(green_f, 1, green_det, 0)
-        
-        self.view.centerOn(550, 200)
+        connect(dichroic, 0, red_f, 0)        # Splitter "Transmission" -> Red Filter
+        connect(red_f, 0, red_det, 0)
+
+        connect(dichroic, 1, green_f, 0)      # Splitter "Reflection" -> Green Filter
+        connect(green_f, 0, green_det, 0)
+
+        # Not a fit yet: the fit needs one measured paint (a node has no size
+        # until it has been drawn), so the graph first shows centred on the
+        # sample -- the source and the sample are the two nodes that actually
+        # carry a spectrum before a component is assigned to anything
+        # downstream -- and frames the whole path once the sizes exist.
+        self.graph_widget.control.set_document(document, fit=False)
+        self._centre_view(*sample.pos)
+        self.graph_widget.host.update()
         self.propagate_graph()
+        self._fit_view()
