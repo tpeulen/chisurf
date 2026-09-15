@@ -175,7 +175,12 @@ class ClsmViewModel:
         import tttrlib
 
         self.filename = filename
-        self.tttr_data = tttrlib.TTTR(filename, self.setup.tttr_type)
+        # A file that names its own container (PTU, HT3, ...) opens as what it
+        # is; the preset's type is for the ones that do not.
+        if tttrlib.inferTTTRFileType(str(filename)) >= 0:
+            self.tttr_data = tttrlib.TTTR(filename)
+        else:
+            self.tttr_data = tttrlib.TTTR(filename, self.setup.tttr_type)
         detected = setups.read_clsm_markers(self.tttr_data)
         if detected:
             if detected.get("frame_marker"):
