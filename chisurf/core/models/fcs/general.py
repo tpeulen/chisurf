@@ -81,7 +81,7 @@ class GaussDiffusion(FittingParameterGroup):
         """Initialize the classic 3-D-Gaussian diffusion parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_gauss.N",
+            value=1.0, name="N", lb=1e-6, ub=1e9, bounds_on=True, fixed=False, registry_id="fcs_gauss.N",
             description='Average number of fluorescent particles in the observation volume.'
         )
         self._D = FittingParameter(
@@ -89,6 +89,7 @@ class GaussDiffusion(FittingParameterGroup):
             name="D",
             lb=1e-3,
             ub=1e5,
+            bounds_on=True,
             fixed=False,
             label_text="D[µm²/s]",
             registry_id="fcs_gauss.D",
@@ -99,6 +100,7 @@ class GaussDiffusion(FittingParameterGroup):
             name="w_r",
             lb=10.0,
             ub=5000.0,
+            bounds_on=True,
             fixed=False,
             label_text="w<sub>r</sub>[nm]",
             registry_id="fcs_gauss.w_r",
@@ -109,6 +111,7 @@ class GaussDiffusion(FittingParameterGroup):
             name="w_z",
             lb=10.0,
             ub=20000.0,
+            bounds_on=True,
             fixed=False,
             label_text="w<sub>z</sub>[nm]",
             registry_id="fcs_gauss.w_z",
