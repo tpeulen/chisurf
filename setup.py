@@ -101,7 +101,7 @@ class build_py(_build_py):
 setup(
     name="chisurf",
     version=os.environ.get("CHISURF_VERSION", "26.dev0"),
-    # Package discovery (incl. the vendored ``chinet`` package) is configured in
+    # Package discovery (incl. the vendored companion packages) is configured in
     # pyproject.toml's [tool.setuptools.packages.find].
     include_package_data=True,
     zip_safe=False,

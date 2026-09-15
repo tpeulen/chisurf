@@ -2518,7 +2518,7 @@ def optimizer_settings() -> list:
     This used to read `scipy.optimize.leastsq`'s signature, which was a
     reasonable way to get MINPACK's option names for free while ChiSurf still
     ran on scipy. It does not: the optimiser is
-    :class:`IMP.bff.Minimizer`, `leastsq` is not imported anywhere in this
+    :class:`IMP.bff.FitMinimizer`, `leastsq` is not imported anywhere in this
     package any more, and introspecting a library nothing calls to describe
     the knobs of one it does would be a settings dialog that drifts without
     anything noticing. The names below are `Minimizer`'s own, in MINPACK's
@@ -2544,7 +2544,7 @@ def optimizer_settings() -> list:
             'type': 'value',
             'attr': name,
             'label': setting_label(name),
-            'description': f"IMP.bff.Minimizer '{name}'.",
+            'description': f"IMP.bff.FitMinimizer '{name}'.",
             'kind': kind,
         }
         if kind == 'float':

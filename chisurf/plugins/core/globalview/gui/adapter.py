@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from chinet import graph as cg
+from chisurf.core import graph as cg
 
 from chisurf.plugins.core.globalview.api.graph import build_graph, GraphResult
 
@@ -45,7 +45,7 @@ def compute_node_types(
 
 
 def graph_result_to_graph(result: GraphResult) -> cg.Graph:
-    """Convert a GraphResult to a :class:`chinet.graph.Graph` for layout."""
+    """Convert a GraphResult to a :class:`chisurf.core.graph.Graph` for layout."""
     G = cg.Graph()
     for n in result.nodes:
         G.add_node(n.node_idx, **{
@@ -70,7 +70,7 @@ def compute_layout(G: cg.Graph, layout: str = "kamada_kawai", scale: float = 1.0
 
     Parameters
     ----------
-    G : chinet.graph.Graph
+    G : chisurf.core.graph.Graph
         Graph to lay out.
     layout : str, optional
         One of ``kamada_kawai``, ``shell``, ``arf``, ``spectral``; anything else

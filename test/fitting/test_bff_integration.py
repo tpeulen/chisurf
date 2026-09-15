@@ -1,6 +1,6 @@
 """FittingParameter synchronises with its underlying port.
 
-The backing port is an ``IMP.bff.Port`` (phase 3 of removing chinet from
+The backing port is an ``IMP.bff.GraphPort`` (phase 3 of removing chinet from
 chisurf); the contract itself is unchanged from the chinet era: writes
 through the parameter reach the port, writes to the port reach the
 parameter, links link ports, and the fixed flag freezes both.

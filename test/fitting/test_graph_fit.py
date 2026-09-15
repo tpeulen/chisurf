@@ -89,7 +89,7 @@ def covariance_the_graph_offered(fit):
 
 
 def minimizer_of(fit):
-    """Run *fit* and keep the `IMP.bff.Minimizer` that did it.
+    """Run *fit* and keep the `IMP.bff.FitMinimizer` that did it.
 
     `minimize` builds one per run and drops it, which is right -- it holds
     the graph, and the graph is private to the fit. A test that wants to ask

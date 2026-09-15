@@ -17,7 +17,6 @@ log = logging.getLogger(__name__)
 
 _BUNDLED_PACKAGE_PATHS = (
     ("mmfdb", "src"),
-    ("chinet", None),
     ("ndxplorer", None),
     ("SARibbon-pyqt5", "src"),
 )
@@ -32,7 +31,7 @@ _TRUTHY = {"1", "true", "yes", "on"}
 def bootstrap_bundled_packages() -> tuple[Path, ...]:
     """Prepend available in-tree package roots and return those added.
 
-    Installed ChiSurf distributions contain ``mmfdb`` and ``chinet`` as normal
+    Installed ChiSurf distributions contain ``mmfdb`` as a normal
     packages, so their installation needs no path adjustment. A source checkout
     keeps those packages below ``modules/``; prepending their roots ensures the
     checkout consistently uses the matching bundled versions instead of a stale

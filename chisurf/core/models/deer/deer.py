@@ -371,7 +371,7 @@ class _DeerModelBase(ModelCurve):
 
         * **Parametric models** (Gaussian, Rice) re-fit their shape
           parameters per replica through one C++
-          :class:`IMP.bff.Minimizer` built for the whole band — the target
+          :class:`IMP.bff.FitMinimizer` built for the whole band — the target
           data are swapped between runs via a mutable container the
           residual closure reads. The director path
           (:func:`director_objective`) is the only *optimisation* path.
@@ -443,7 +443,7 @@ class _DeerModelBase(ModelCurve):
 
         The dict carries:
 
-        * ``minimizer``  — a :class:`IMP.bff.Minimizer` with a
+        * ``minimizer``  — a :class:`IMP.bff.FitMinimizer` with a
           :class:`ResidualNode` objective whose Python callback reads the
           target through ``target_holder[0]``;
         * ``x0``         — starting parameter vector for each replica;

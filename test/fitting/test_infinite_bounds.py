@@ -2,7 +2,7 @@
 
 Was `test_leastsqbound_infinite_bounds.py`, against ChiSurf's own bounded
 Levenberg-Marquardt; that implementation was deleted on 2026-09-01 and the
-regression moved onto `IMP.bff.Minimizer`, which is now the only one.
+regression moved onto `IMP.bff.FitMinimizer`, which is now the only one.
 
 The defect it guards: the optimiser works in an internal, unconstrained
 coordinate and maps back through a sin/arcsin transform, and it used to

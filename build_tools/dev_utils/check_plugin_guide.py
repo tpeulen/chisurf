@@ -19,7 +19,7 @@ Usage
 
     QT_QPA_PLATFORM=offscreen \\
     CHISURF_SETTINGS_DIR=/tmp/qa-settings \\
-    PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \\
+    PYTHONPATH="modules/mmfdb/src:modules/imp-tricks/src:." \\
     python build_tools/dev_utils/check_plugin_guide.py \\
         chisurf.plugins.burst.burst_analysis.gui.tool:BurstAnalysisTool /tmp/shots
 

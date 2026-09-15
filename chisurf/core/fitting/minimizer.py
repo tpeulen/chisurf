@@ -8,9 +8,9 @@ numpy arrays and formed the residual. Measured on this tree (imp.bff
 three-parameter fit while MINPACK's own arithmetic was about **4%** -- so the
 cost was never the algorithm, it was the crossing.
 
-:class:`IMP.bff.Minimizer` is that same MINPACK ``lmdif`` with this package's
-own bounds transform, in C++, driving :class:`IMP.bff.Port` parameters and a
-:class:`IMP.bff.Node` objective. Two arrangements follow from it:
+:class:`IMP.bff.FitMinimizer` is that same MINPACK ``lmdif`` with this package's
+own bounds transform, in C++, driving :class:`IMP.bff.GraphPort` parameters and a
+:class:`IMP.bff.GraphNode` objective. Two arrangements follow from it:
 
 * **A model bff can represent** -- a parse equation, say -- becomes
   ``Expression -> ChiSquared -> Minimizer``, one C++ graph. The data stay in
@@ -18,7 +18,7 @@ own bounds transform, in C++, driving :class:`IMP.bff.Port` parameters and a
   **once per fit**.
 * **A group of them** -- a ``GlobalFitModel``, which is what the GUI builds
   -- becomes one such pair per member under a
-  :class:`IMP.bff.JointChiSquared`, whose residual is the members' residuals
+  :class:`IMP.bff.FitJointChiSquared`, whose residual is the members' residuals
   end to end. That is exactly what ``GlobalFitModel.weighted_residuals``
   concatenates, and the parameters members share are ``Port`` links, so a
   group takes one Levenberg-Marquardt step over every dataset's curvature
@@ -141,7 +141,7 @@ from chisurf.core.math.optimization import OptimizationCancelled
 
 try:
     import IMP.bff as _bff
-    if not hasattr(_bff, "Minimizer"):
+    if not hasattr(_bff, "FitMinimizer"):
         raise ImportError("IMP.bff is present but carries no Minimizer")
 except Exception as _exc:  # pragma: no cover - depends on the build
     _bff = None
@@ -159,7 +159,7 @@ def have_minimizer() -> bool:
 
 if _bff is not None:
 
-    class ResidualNode(_bff.Node):
+    class ResidualNode(_bff.GraphNode):
         """A Python residual presented to C++ as a node with a residual port.
 
         The optimiser writes the trial vector into this node's input ports,
@@ -178,8 +178,8 @@ if _bff is not None:
             self._func = func
             self._names = ["p%d" % i for i in range(n_parameters)]
             for n in self._names:
-                self.add_input_port(n, _bff.Port(0.0))
-            self.add_output_port("residuals", _bff.Port([0.0], False, True))
+                self.add_input_port(n, _bff.GraphPort(0.0))
+            self.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
             # Resolved once and held. `get_input_port` is a SWIG call and the
             # ports do not move, so looking them up inside `evaluate` cost a
             # crossing per parameter per residual evaluation -- on a
@@ -223,7 +223,7 @@ if _bff is not None:
             self._out.set_values_array(residuals)
             self.set_valid(True)
 
-    class ProgressObserver(_bff.MinimizerObserver):
+    class ProgressObserver(_bff.FitMinimizerObserver):
         """chisurf's ``progress_callback`` contract, driven from C++.
 
         Reports ``(evaluated, total)`` with ``chi2``/``chi2r`` offered as
@@ -358,7 +358,7 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
         return None
 
     try:
-        curve = _bff.Expression(name + "_model")
+        curve = _bff.GraphExpression(name + "_model")
         curve.set_expression(model.func)
         variables = list(curve.get_variable_names())
     except Exception:
@@ -381,7 +381,7 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
             # nor something the optimiser writes, and the graph has no way to
             # recompute it. Refuse rather than freeze it at its start value.
             return None
-        port = _bff.Port(float(p.value))
+        port = _bff.GraphPort(float(p.value))
         curve.add_input_port(p.name, port)
         carried.append((p, port))
 
@@ -391,28 +391,28 @@ def _member_objective(fit, model, name, producer_ports=None, extra_carried=None)
     # cost of building the graph at all.
     axes_alive = []
     if "x" in variables:
-        axis = _bff.Port([0.0])
+        axis = _bff.GraphPort([0.0])
         axis.set_values_array(x)
         curve.add_input_port("x", axis)
         axes_alive.append(axis)
     for var_name in used_producers:
-        port = _bff.Port([0.0])
+        port = _bff.GraphPort([0.0])
         port.link = producer_ports[var_name]
         curve.add_input_port(var_name, port)
         axes_alive.append(port)
-    out = _bff.Port([0.0], False, True)
+    out = _bff.GraphPort([0.0], False, True)
     curve.add_output_port(name + "_model", out)
 
-    chi2 = _bff.ChiSquared(name)
+    chi2 = _bff.FitChiSquared(name)
     chi2.set_data_arrays(y, ey)
     chi2.set_fit_range(int(fit.xmin), int(fit.xmax))
     chi2.set_noise_model_name(
         _normalize_noise(getattr(fit, "noise_model", "default")))
-    model_in = _bff.Port([0.0])
+    model_in = _bff.GraphPort([0.0])
     model_in.link = out
     chi2.add_input_port("model", model_in)
-    chi2.add_output_port(name, _bff.Port(0.0, False, True))
-    chi2.add_output_port("residuals", _bff.Port([0.0], False, True))
+    chi2.add_output_port(name, _bff.GraphPort(0.0, False, True))
+    chi2.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
     return chi2, carried, (curve, axes_alive, out, model_in)
 
 
@@ -467,7 +467,7 @@ def graph_objective(fit, model, allow_priors: bool = False):
     * a single model becomes ``Expression -> ChiSquared``;
     * a :class:`~chisurf.core.models.global_model.globalfit.GlobalFitModel`
       becomes one ``Expression -> ChiSquared`` per member and a
-      :class:`IMP.bff.JointChiSquared` over them, whose residual is the
+      :class:`IMP.bff.FitJointChiSquared` over them, whose residual is the
       members' residuals end to end -- which is exactly what
       :attr:`GlobalFitModel.weighted_residuals` concatenates. Parameters
       shared between members are ``Port`` links, so a group takes one
@@ -619,7 +619,7 @@ def _single_objective(fit, model, free, producer_ports=None,
     if not _wire_links(pending, owner):
         return None
 
-    m = _bff.Minimizer()
+    m = _bff.FitMinimizer()
     m.set_parameter_ports(parameter_ports)
     m.set_objective(chi2, "residuals")
     # The graph holds the only reference to these once this function returns.
@@ -710,7 +710,7 @@ def _fcs_mdf_producer(fit, model):
         node.set_quadrature(FCS_MDF_N_GRID, FCS_MDF_SPAN, FCS_MDF_N_HERM)
         node.set_length_scale(1e-3)   # the ports carry nanometres
         node.set_normalize(True)
-        node.add_output_port("mdf_shape", _bff.Port([0.0], False, True))
+        node.add_output_port("mdf_shape", _bff.GraphPort([0.0], False, True))
     except Exception:
         return None
     carried = [(physical._w0, node.get_input_port("w0")),
@@ -808,7 +808,7 @@ def _fcs_kinetics_full_producer(fit, model):
         node.set_quadrature(120, 40)  # the model's own grid resolution
         node.set_wavelength(float(sat.wavelength_m))
         node.set_include_bunching(True)
-        node.add_output_port("fcs_saturation", _bff.Port([0.0], False, True))
+        node.add_output_port("fcs_saturation", _bff.GraphPort([0.0], False, True))
     except Exception:
         return None
     # Port names match the model's FittingParameter names (power, extinction,
@@ -973,7 +973,7 @@ def _group_objective(fit, model, free):
             continue
         if id(p) not in globals_by_id:
             return None        # a free parameter belonging to nothing
-        port = _bff.Port(float(p.value))
+        port = _bff.GraphPort(float(p.value))
         parameter_ports[slot] = port
         owner[id(p)] = port
         keepalive.append(port)
@@ -981,13 +981,13 @@ def _group_objective(fit, model, free):
     if not _wire_links(pending, owner):
         return None
 
-    joint = _bff.JointChiSquared("joint")
-    joint.add_output_port("joint", _bff.Port(0.0, False, True))
-    joint.add_output_port("residuals", _bff.Port([0.0], False, True))
+    joint = _bff.FitJointChiSquared("joint")
+    joint.add_output_port("joint", _bff.GraphPort(0.0, False, True))
+    joint.add_output_port("residuals", _bff.GraphPort([0.0], False, True))
     for chi2 in chi2_nodes:
         joint.add_member(chi2, "residuals")
 
-    m = _bff.Minimizer()
+    m = _bff.FitMinimizer()
     m.set_parameter_ports(parameter_ports)
     m.set_objective(joint, "residuals")
     # The graph holds the only reference to these once this function returns.
@@ -1108,7 +1108,7 @@ def director_objective(func, x0, args=()):
     node = ResidualNode(
         (lambda p: func(p, *args)) if args else func, len(x0))
     node.set_start(x0)
-    m = _bff.Minimizer()
+    m = _bff.FitMinimizer()
     m.set_parameter_ports(node.ports)
     m.set_objective(node, "residuals")
     return m, node

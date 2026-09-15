@@ -150,17 +150,17 @@ class ExperimentalData(chisurf.core.base.Data):
 
 #: Whether the installed ``IMP.bff`` carries the ``Dataset`` calculus.
 #:
-#: ``DataCurve`` inherits its probability calculus from ``IMP.bff.Dataset``
+#: ``DataCurve`` inherits its probability calculus from ``IMP.bff.FitDataset``
 #: where that exists, and works without it where it does not. The check is not
 #: defensive habit: chisurf declares ``imp>=2.25`` and ``Dataset`` is newer
 #: than any release of it, so an environment holding a perfectly good IMP has
 #: no ``Dataset`` -- and naming it in a base-class list evaluates at *import*
 #: time, which turned a missing feature into `chisurf.core.data` failing to
 #: import at all. A curve is not the place to make that trade.
-_HAS_BFF_DATASET = hasattr(_bff, "Dataset") and hasattr(_bff, "sync_dataset")
+_HAS_BFF_DATASET = hasattr(_bff, "FitDataset") and hasattr(_bff, "sync_dataset")
 
 _DATACURVE_BASES = (
-    (chisurf.core.curve.Curve, ExperimentalData, _bff.Dataset)
+    (chisurf.core.curve.Curve, ExperimentalData, _bff.FitDataset)
     if _HAS_BFF_DATASET
     else (chisurf.core.curve.Curve, ExperimentalData)
 )
@@ -274,7 +274,7 @@ class DataCurve(*_DATACURVE_BASES):
         # Before the chisurf half, because `super().__init__` writes the
         # arrays and `set_data` syncs into a Dataset that must already exist.
         if _HAS_BFF_DATASET:
-            _bff.Dataset.__init__(self)
+            _bff.FitDataset.__init__(self)
         super().__init__(
             x=x,
             y=y,
@@ -668,7 +668,7 @@ class DataCurve(*_DATACURVE_BASES):
         self._sync_dataset()
 
     def _sync_dataset(self) -> None:
-        """Push the arrays into the `IMP.bff.Dataset` half of this curve.
+        """Push the arrays into the `IMP.bff.FitDataset` half of this curve.
 
         `DataCurve` keeps its own numpy arrays and inherits the probability
         calculus -- variance, residuals, objective, uncertainty propagation --
@@ -714,19 +714,19 @@ class DataCurve(*_DATACURVE_BASES):
         self._sync_dataset()
         if not _HAS_BFF_DATASET:
             raise NotImplementedError(_NO_BFF_DATASET)
-        return _bff.Dataset.objective(self, model)
+        return _bff.FitDataset.objective(self, model)
 
     def variance(self, model):
         self._sync_dataset()
         if not _HAS_BFF_DATASET:
             raise NotImplementedError(_NO_BFF_DATASET)
-        return _bff.Dataset.variance(self, model)
+        return _bff.FitDataset.variance(self, model)
 
     def residuals(self, model, kind):
         self._sync_dataset()
         if not _HAS_BFF_DATASET:
             raise NotImplementedError(_NO_BFF_DATASET)
-        return _bff.Dataset.residuals(self, model, kind)
+        return _bff.FitDataset.residuals(self, model, kind)
 
     def set_weights(self, w: np.array):
         """Set y-weights (inverse of y-errors).

@@ -10,7 +10,6 @@ include chisurf/plugins/spectra_viewer/*.db
 # The curated sample_management.db seed is MMFDB package data, not ChiSurf's.
 global-exclude *.db-wal *.db-shm
 include notebooks/*.ipynb
-recursive-include modules/chinet/chinet *.py
 # The documentation an sdist carries is the documentation the *build* installs
 # into the package (see _shipped_docs.py) -- the browser reads these at runtime.
 recursive-include docs *.md *.rst *.png *.svg *.jpg *.jpeg *.gif *.json *.yaml *.bib

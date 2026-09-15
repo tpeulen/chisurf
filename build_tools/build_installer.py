@@ -14,7 +14,7 @@ linuxdeploy/build.sh, build-setup.bat and its helpers).
 The conda recipe (`pip install .`) produces a package containing only chisurf
 itself, so the installer assembles a full runtime env on top of
 it: chisurf (conda) + runtime libs + tttrlib + labellib + latexify-py +
-imp-tricks + the local ``modules/*`` (chinet/ndxplorer/quest). It then
+imp-tricks + the local ``modules/*`` (ndxplorer/quest). It then
 slims the env aggressively (strip unused Qt, debug symbols, build tools, test
 suites) before wrapping it.
 

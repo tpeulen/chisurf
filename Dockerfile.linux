@@ -38,4 +38,4 @@ RUN pixi install --environment build && \
 
 # Set entry point to run tests
 # We also sanitize sys.path to ensure no Path objects are present (which crashes pkg_resources)
-CMD ["pixi", "run", "-e", "build", "bash", "-c", "python -c 'import chisurf; import chinet; import tttrlib; print(\"ChiSurf and extensions loaded successfully on Linux!\")' && python -c 'import sys; from pathlib import Path; sys.path = [str(p) if isinstance(p, Path) else p for p in sys.path]; import pytest; sys.exit(pytest.main([\"unittests\", \"-k\", \"not gui and not widget and not window\"]))'"]
+CMD ["pixi", "run", "-e", "build", "bash", "-c", "python -c 'import chisurf; import tttrlib; print(\"ChiSurf and extensions loaded successfully on Linux!\")' && python -c 'import sys; from pathlib import Path; sys.path = [str(p) if isinstance(p, Path) else p for p in sys.path]; import pytest; sys.exit(pytest.main([\"unittests\", \"-k\", \"not gui and not widget and not window\"]))'"]

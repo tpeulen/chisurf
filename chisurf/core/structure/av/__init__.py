@@ -67,14 +67,14 @@ __all__ = ["BasicAV", "ACV", "DynamicAV", "dye_definition", "dye_names"]
 
 
 def _compute_av():
-    """``IMP.bff.compute_av``, imported on first use.
+    """``IMP.bff.get_av`` (``compute_av`` before imp.bff PRD-138), imported on first use.
 
     Lazy on purpose: importing ``IMP`` pulls a large native stack in, and
     ``import chisurf.core.structure`` must stay cheap. The upstream imp.bff
     build moved the builder from the ``IMP.bff.av`` Python subpackage into the
     ``IMP.bff`` C++ surface, which takes one ``(N, 4)`` xyz+radius array.
     """
-    from IMP.bff import compute_av
+    from IMP.bff import get_av as compute_av
 
     return compute_av
 

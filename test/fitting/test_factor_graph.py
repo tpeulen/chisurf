@@ -290,7 +290,7 @@ def test_describe_reports_the_identifiability_statement():
 def test_structural_queries_are_computed_once_per_graph():
     """The greedy elimination must not re-run for every caller that asks.
 
-    It runs in `IMP.bff.FactorGraph` now, so what is observable from here is
+    It runs in `IMP.bff.InferenceFactorGraph` now, so what is observable from here is
     the engine: built on first use, shared by every query, and *dropped* by
     :meth:`FactorGraph.invalidate` -- a mutated graph must not answer from a
     structure that describes the old one. (This test used to count copies of

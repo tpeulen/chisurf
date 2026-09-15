@@ -1,6 +1,6 @@
 """ChiSurf's parse models must evaluate in C++, not in `eval()`.
 
-`ParseModel` compiles its equation with `IMP.bff.Expression` and evaluates it
+`ParseModel` compiles its equation with `IMP.bff.GraphExpression` and evaluates it
 through `compute_curve`. It keeps `eval()` as a fallback on purpose -- an
 equation may use a numpy or scipy function the engine does not implement, and
 refusing it would break a model a user already has.
@@ -68,7 +68,7 @@ class BffIsAvailableTests(unittest.TestCase):
         attribute ever disappears, the model must not quietly use one of those.
         """
         import IMP.bff as bff
-        self.assertTrue(hasattr(bff.Expression, "compute_curve"))
+        self.assertTrue(hasattr(bff.GraphExpression, "compute_curve"))
 
 
 class CatalogueCompilesForTheEngineTests(unittest.TestCase):
@@ -88,7 +88,7 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
         refused = []
         for equation in self.equations:
             try:
-                ex = bff.Expression("parse")
+                ex = bff.GraphExpression("parse")
                 ex.set_expression(equation)
             except Exception as e:
                 refused.append((equation, str(e)[:80]))
@@ -111,7 +111,7 @@ class CatalogueCompilesForTheEngineTests(unittest.TestCase):
         checked = 0
         for equation in self.equations:
             try:
-                ex = bff.Expression("parse")
+                ex = bff.GraphExpression("parse")
                 ex.set_expression(equation)
             except Exception:
                 continue
@@ -461,7 +461,7 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
         for equation, names in [("b+a1*exp(-x/t1)", ["b", "a1", "t1"]),
                                 ("b+1/N*(1+x/td)**(-1)/sqrt(1+1/s**2*x/td)",
                                  ["b", "N", "td", "s"])]:
-            ex = bff.Expression("m")
+            ex = bff.GraphExpression("m")
             ex.set_expression(equation)
             ex.bind_parameters(names, "x")
             values = np.arange(1.0, len(names) + 1.0)
@@ -473,7 +473,7 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
     def test_a_binding_that_no_longer_matches_is_refused(self):
         """Wrong slots would give a wrong curve, not an error, so it throws."""
         import IMP.bff as bff
-        ex = bff.Expression("m")
+        ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         ex.bind_parameters(["b", "a1", "t1"], "x")
         x = np.linspace(0.1, 5.0, 16)
@@ -482,7 +482,7 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
 
     def test_evaluating_before_binding_is_refused(self):
         import IMP.bff as bff
-        ex = bff.Expression("m")
+        ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         with self.assertRaises(ValueError):
             ex.compute_curve_bound(np.array([1.0, 2.0, 3.0]),
@@ -491,7 +491,7 @@ class NoStringsCrossTheBoundaryPerIterationTests(unittest.TestCase):
     def test_a_new_equation_drops_the_old_binding(self):
         """Reusing it would evaluate the new equation from the old slots."""
         import IMP.bff as bff
-        ex = bff.Expression("m")
+        ex = bff.GraphExpression("m")
         ex.set_expression("b+a1*exp(-x/t1)")
         ex.bind_parameters(["b", "a1", "t1"], "x")
         ex.set_expression("p+q*x")

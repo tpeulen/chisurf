@@ -556,7 +556,7 @@ class FactorGraph:
 
     @property
     def engine(self):
-        """The same graph, as an :class:`IMP.bff.FactorGraph`.
+        """The same graph, as an :class:`IMP.bff.InferenceFactorGraph`.
 
         **Every structural query below is answered here rather than in
         Python.** Moralisation, greedy elimination, the cliques, the junction
@@ -1003,7 +1003,7 @@ class FactorGraph:
 
 
 def _build_engine(variables, factors):
-    """Mirror the variables and factors onto an :class:`IMP.bff.FactorGraph`.
+    """Mirror the variables and factors onto an :class:`IMP.bff.InferenceFactorGraph`.
 
     One direction only, and once: the engine is rebuilt rather than mutated,
     because :meth:`FactorGraph.invalidate` drops it and a graph whose
@@ -1019,7 +1019,7 @@ def _build_engine(variables, factors):
     """
     import IMP.bff as _bff
 
-    engine = _bff.FactorGraph()
+    engine = _bff.InferenceFactorGraph()
     for v in variables.values():
         engine.add_variable(
             v.key, v.name, int(v.index),
@@ -1028,7 +1028,7 @@ def _build_engine(variables, factors):
         scope = [k for k in f.scope if k in variables]
         engine.add_factor(
             f.key,
-            _bff.LIKELIHOOD if f.kind == LIKELIHOOD else _bff.PRIOR,
+            _bff.INFERENCE_FACTOR_LIKELIHOOD if f.kind == LIKELIHOOD else _bff.INFERENCE_FACTOR_PRIOR,
             scope,
             -1 if f.fit_index is None else int(f.fit_index),
             int(f.size))

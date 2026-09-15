@@ -3,7 +3,7 @@
 The samplers in :mod:`chisurf.core.fitting.sample` drive a Python
 ``_lnprob`` once per proposal, which for a graph-eligible fit means
 hundreds of thousands of SWIG crossings per run for arithmetic the graph
-already does in C++. ``IMP.bff.Sampler`` is the 1:1 port of those
+already does in C++. ``IMP.bff.MCMCSampler`` is the 1:1 port of those
 samplers (stretch, differential evolution, blocked Metropolis) over the
 same ``Port``/``Node`` runtime the optimiser uses, so a fit whose
 objective builds as a graph can sample entirely in C++.
@@ -17,7 +17,7 @@ is crossed only at
 * the **end** — the finished chain, log-priors and chi-squares.
 
 Per *step* nothing crosses. That is delivered by driving
-:meth:`Sampler.run` in segments from Python — a second ``run()``
+:meth:`MCMCSampler.run` in segments from Python — a second ``run()``
 continues the chain where the first left off, byte-identically to one
 long call — rather than by a per-step observer, which would be a
 crossing per step by construction. Cancellation is polled between
@@ -53,7 +53,7 @@ import chisurf.core.fitting.minimizer
 
 try:
     import IMP.bff as _bff
-    if not hasattr(_bff, "Sampler"):
+    if not hasattr(_bff, "MCMCSampler"):
         _bff = None
 except Exception:
     _bff = None
@@ -186,7 +186,7 @@ def sample_via_graph(
         lower[i] = -np.inf if lb is None else float(lb)
         upper[i] = np.inf if ub is None else float(ub)
 
-    s = _bff.Sampler(algorithm, _seed_int(seed))
+    s = _bff.MCMCSampler(algorithm, _seed_int(seed))
     s.set_parameter_ports(ports)
     s.set_objective(node, out_name)
     s.set_bounds(list(lower), list(upper))
@@ -254,7 +254,7 @@ def sample_via_graph(
             if check_cancel is not None and check_cancel():
                 break
     except Exception:
-        # A graph that fails mid-run (a SamplerConfigurationError, an
+        # A graph that fails mid-run (a MCMCSamplerConfigurationError, an
         # objective that stopped evaluating) must not kill sampling
         # outright when the Python loop can still do the job.
         if int(getattr(s, "iteration", 0)) == 0:

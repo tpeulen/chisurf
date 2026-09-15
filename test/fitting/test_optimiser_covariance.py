@@ -2,7 +2,7 @@
 
 Was `test_leastsqbound_covariance.py`, and it tested ChiSurf's own bounded
 Levenberg-Marquardt. That implementation was deleted on 2026-09-01 -- there
-is one of this algorithm in the stack now and it is `IMP.bff.Minimizer` --
+is one of this algorithm in the stack now and it is `IMP.bff.FitMinimizer` --
 so the properties moved onto the implementation that ships. They are the
 same properties and they are still worth defending:
 

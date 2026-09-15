@@ -1,6 +1,6 @@
 """The sampler crosses four times, not per step (board T-20260902-09).
 
-A graph-eligible fit samples through ``IMP.bff.Sampler``; the SWIG boundary
+A graph-eligible fit samples through ``IMP.bff.MCMCSampler``; the SWIG boundary
 is crossed only at begin, per-segment progress, per-segment partial saves,
 and the end. These tests pin
 
@@ -23,7 +23,7 @@ from chisurf.core.fitting import sampler_bff
 
 pytestmark = pytest.mark.skipif(
     not sampler_bff.have_sampler(),
-    reason="IMP.bff.Sampler not available")
+    reason="IMP.bff.MCMCSampler not available")
 
 SIGMA = 0.02
 

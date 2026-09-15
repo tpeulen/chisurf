@@ -1,6 +1,6 @@
 """DEER bootstrap C++ director path parity (PRD-132).
 
-The bootstrap confidence band runs through one C++ ``IMP.bff.Minimizer`` for
+The bootstrap confidence band runs through one C++ ``IMP.bff.FitMinimizer`` for
 the whole band (the director path), not scipy LM.  Pinned here:
 
 * the C++ director minimiser recovers the same P(r) as a manual fit for a

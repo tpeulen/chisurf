@@ -2,7 +2,7 @@
 
 `Dye`, `Sticking` and `ProteinQuenching` are ChiSurf ``ParameterGroup``s: the
 *application* layer that a widget binds to, not physics. They stayed here when
-the model itself moved to ``IMP.bff.quenching`` (PRD-109), because a parameter
+the model itself moved to ``IMP.bff.quenching``, because a parameter
 group that a Qt form edits is exactly what does not belong in a library.
 
 What left this module with that move: ``simulate_trajectory`` (a dead stub that

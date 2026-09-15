@@ -217,11 +217,11 @@ def test_port_prior_roundtrip():
     """The port (IMP.bff, chinet's successor) carries a prior dict through
     its document round-trip."""
     from chisurf.core import nodes
-    port = nodes._bff.Port(value=1.0, name="p")
+    port = nodes._bff.GraphPort(value=1.0, name="p")
     assert port.prior is None
     port.prior = {"kind": "normal", "mu": 1.0, "sigma": 0.5}
     js = port.get_json()
-    port2 = nodes._bff.Port(value=0.0, name="p2")
+    port2 = nodes._bff.GraphPort(value=0.0, name="p2")
     port2.read_json(js)
     assert port2.prior == {"kind": "normal", "mu": 1.0, "sigma": 0.5}
 

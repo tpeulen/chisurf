@@ -121,7 +121,6 @@ def build_system_info_text() -> str:
     numpy_ver = _safe_version("numpy")
     scipy_ver = _safe_version("scipy")
     pandas_ver = _safe_version("pandas")
-    chinet_ver = _safe_version("chinet")
     tttrlib_ver = _safe_version("tttrlib")
 
     try:
@@ -154,8 +153,6 @@ def build_system_info_text() -> str:
         lines.append(f"scipy: {scipy_ver}")
     if pandas_ver is not None:
         lines.append(f"pandas: {pandas_ver}")
-    if chinet_ver is not None:
-        lines.append(f"chinet: {chinet_ver}")
     if tttrlib_ver is not None:
         lines.append(f"tttrlib: {tttrlib_ver}")
 
@@ -169,15 +166,14 @@ def build_system_info_text() -> str:
             parts.append(f"Qt API: {qt_binding}")
         lines.append(" ".join(parts))
 
-    # tttrlib/chinet-related environment variables
+    # tttrlib-related environment variables
     try:
         tttrlib_verbose = os.getenv("TTTRLIB_VERBOSE")
         tttrlib_data = os.getenv("TTTRLIB_DATA")
         tttrlib_use_omp = os.getenv("TTTRLIB_USE_OPENMP")
         tttrlib_num_threads = os.getenv("TTTRLIB_NUM_THREADS")
-        chinet_verbose = os.getenv("CHINET_VERBOSE")
     except Exception:
-        tttrlib_verbose = tttrlib_data = tttrlib_use_omp = tttrlib_num_threads = chinet_verbose = None
+        tttrlib_verbose = tttrlib_data = tttrlib_use_omp = tttrlib_num_threads = None
 
     env_parts: list[str] = []
     if tttrlib_verbose:
@@ -188,10 +184,8 @@ def build_system_info_text() -> str:
         env_parts.append(f"TTTRLIB_USE_OPENMP={tttrlib_use_omp}")
     if tttrlib_num_threads:
         env_parts.append(f"TTTRLIB_NUM_THREADS={tttrlib_num_threads}")
-    if chinet_verbose:
-        env_parts.append(f"CHINET_VERBOSE={chinet_verbose}")
     if env_parts:
-        env_block = "Env(tttr/chinet):\n  " + "\n  ".join(env_parts)
+        env_block = "Env(tttr):\n  " + "\n  ".join(env_parts)
         lines.append(env_block)
 
     # Thread-related environment variables used for heavy libs

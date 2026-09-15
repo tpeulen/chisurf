@@ -13,7 +13,7 @@ boundary, not for the science.
 
 Sampler backends
 ----------------
-``DockingParameters.sampler`` names one of ``IMP.bff.Sampler``'s backends and
+``DockingParameters.sampler`` names one of ``IMP.bff.MCMCSampler``'s backends and
 nothing else changes: ``"metropolis"`` (plain Monte Carlo, the default),
 ``"stretch"`` (emcee-like, affine invariant), ``"slice"`` (zeus-like ensemble
 slice) and ``"de"`` (differential evolution).

@@ -188,7 +188,7 @@ def _donor_node(amplitudes, lifetimes):
     t = np.atleast_1d(np.asarray(lifetimes, dtype=float)).ravel()
     node = bff.PhotophysicsLifetimeSpectrumNode("donor")
     node.set_number_of_lifetimes(int(a.size))
-    node.add_output_port("donor", bff.Port([0.0], False, True))
+    node.add_output_port("donor", bff.GraphPort([0.0], False, True))
     node.set_absolute_amplitudes(False)
     node.set_normalize_amplitudes(False)
     for i in range(a.size):
@@ -233,7 +233,7 @@ def _fret_spectrum(donor_amplitudes, donor_lifetimes, weights, distances,
     donor = _donor_node(donor_amplitudes, donor_lifetimes)
     node = bff.FRETSpectrumNode("fret")
     node.build_ports()
-    node.add_output_port("fret", bff.Port([0.0], False, True))
+    node.add_output_port("fret", bff.GraphPort([0.0], False, True))
     node.get_input_port("donor_lifetime_spectrum").link = \
         donor.get_output_port("donor")
     node.get_input_port("distance_distribution").set_values_array(
@@ -303,7 +303,7 @@ def _polarized_spectrum(amplitudes, lifetimes, rho: float, optics: Optics,
     bff = _bff()
     node = bff.PhotophysicsAnisotropySpectrumNode("anisotropy")
     node.set_number_of_rotations(1)
-    node.add_output_port("anisotropy", bff.Port([0.0], False, True))
+    node.add_output_port("anisotropy", bff.GraphPort([0.0], False, True))
     # Refuses an unknown name rather than defaulting to magic angle, which would
     # silently be a model with no anisotropy in it.
     node.set_polarization_name(polarization)

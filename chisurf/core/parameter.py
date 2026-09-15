@@ -9,14 +9,14 @@ import math
 import numpy as np
 
 import chisurf.core.base
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 
 # The parameter runtime is IMP.bff's Port (phase 3 of removing chinet from
 # chisurf: bff absorbed chinet's Port/Node/Session and reads/writes chinet's
 # session format, so old projects open unchanged). The vendored chinet module
 # is gone; every layer that used it -- the node editor, the graph layer, the
 # model decorator, the parameter transform and the macros -- runs on bff now,
-# and a :class:`Parameter`'s backing port is an ``IMP.bff.Port``.
+# and a :class:`Parameter`'s backing port is an ``IMP.bff.GraphPort``.
 #
 # IMP.bff is not a dependency of an environment that never fits anything,
 # so the import is guarded rather than hard: this module imports cleanly
@@ -28,7 +28,7 @@ try:
     # A partial IMP install (data-only directories, a namespace-package stub)
     # imports but has no runtime in it; that is "absent" for this module's
     # purposes, not a working IMP.bff that will fail one attribute later.
-    if not hasattr(_bff, "Port"):
+    if not hasattr(_bff, "GraphPort"):
         raise ImportError("IMP.bff is present but carries no Port runtime")
 except ImportError as _exc:  # pragma: no cover - env without IMP
     # ``except ... as`` deletes its binding at the end of the block, so the
@@ -84,14 +84,14 @@ def _owning_class_name() -> typing.Optional[str]:
     return None
 
 
-@chisurf.core.decorators.register
+@chisurf.core.support.decorators.register
 class Parameter(chisurf.core.base.Base):
     """Scalar parameter backed by a low-level :mod:`IMP.bff` port.
 
     A :class:`Parameter` represents a single scalar value used in a model
     or fit. The value can be
 
-    - stored directly in an underlying :class:`IMP.bff.Port`,
+    - stored directly in an underlying :class:`IMP.bff.GraphPort`,
     - computed dynamically from a Python callable, or
     - linked to another :class:`Parameter`.
 
@@ -120,9 +120,9 @@ class Parameter(chisurf.core.base.Base):
         reach *target* through existing links.
 
         The cycle detection itself lives in the port runtime -- the
-        underlying :class:`IMP.bff.Port` enforces the DAG with Kahn's
+        underlying :class:`IMP.bff.GraphPort` enforces the DAG with Kahn's
         algorithm whenever a link is created (see
-        :meth:`IMP.bff.Port.would_create_cycle`). This
+        :meth:`IMP.bff.GraphPort.would_create_cycle`). This
         method simply delegates to it on the backing ports so the logic is
         defined once. It is retained as a side-effect-free predicate for GUI
         call sites that want to validate a link *before* attempting it.
@@ -170,7 +170,7 @@ class Parameter(chisurf.core.base.Base):
     def bounds(self) -> typing.Tuple[float, float]:
         """Lower and upper bounds of the parameter as a 2-tuple.
 
-        The values are stored on the underlying :class:`IMP.bff.Port`.
+        The values are stored on the underlying :class:`IMP.bff.GraphPort`.
         ``(None, None)`` is reported while enforcement is off, as chinet's
         port did -- bff's port reports ``(nan, nan)`` there, and the
         difference is adapted here so consumers (and :meth:`get_state`'s
@@ -204,7 +204,7 @@ class Parameter(chisurf.core.base.Base):
         but there were no matching properties — so ``p.lb = 0.01`` silently
         created a dead instance attribute and the bound was never applied, while
         ``p.lb`` raised ``AttributeError``. These accessors close that gap; the
-        bounds themselves live on the underlying :class:`IMP.bff.Port`.
+        bounds themselves live on the underlying :class:`IMP.bff.GraphPort`.
         """
         # Port.bounds reports (None, None) while enforcement is OFF even though
         # the values are stored, which would make lb/ub a lossy round-trip. Read
@@ -443,7 +443,7 @@ class Parameter(chisurf.core.base.Base):
         """Prior probability distribution attached to this parameter.
 
         A parameter's prior generalises its bounds. The prior specification is
-        stored on the underlying :class:`IMP.bff.Port` (as a JSON-serialisable
+        stored on the underlying :class:`IMP.bff.GraphPort` (as a JSON-serialisable
         dict), so it travels with the port through pickling and JSON. When no
         smooth prior is set but a bound is active, the bound is reported as the
         equivalent :class:`~chisurf.core.fitting.priors.UniformPrior`, so a hard
@@ -679,7 +679,7 @@ class Parameter(chisurf.core.base.Base):
             Another parameter this one should be linked to.
         lb, ub : float, optional
             Lower and upper bounds for the value stored on the underlying
-            :class:`IMP.bff.Port`.
+            :class:`IMP.bff.GraphPort`.
         bounds_on : bool, optional
             If *True*, the bounds are enforced on the port.
         """
@@ -724,13 +724,13 @@ class Parameter(chisurf.core.base.Base):
                 )
             if callable(value):
                 self._callable = value
-                self._port = _bff.Port(
+                self._port = _bff.GraphPort(
                     value=np.atleast_1d(0.0).astype(np.float64),
                     name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
                 )
             else:
                 self._callable = None
-                self._port = _bff.Port(
+                self._port = _bff.GraphPort(
                     value=np.atleast_1d(value).astype(np.float64),
                     name=self._name, lb=lb, ub=ub, is_bounded=bounds_on
                 )
@@ -739,7 +739,7 @@ class Parameter(chisurf.core.base.Base):
         # is the registry and registers nothing by construction, so the port
         # is added here explicitly (adding twice is a no-op; a port owned by
         # a node is persisted with its node and deduplicated on save).
-        if _bff is not None and isinstance(self._port, _bff.Port):
+        if _bff is not None and isinstance(self._port, _bff.GraphPort):
             _bff.get_session().add_port(self._port)
         self._link = link
         if isinstance(link, Parameter):

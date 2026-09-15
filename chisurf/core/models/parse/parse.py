@@ -10,7 +10,7 @@ import chisurf.logging
 from chisurf import typing
 
 import chisurf.core.fio
-import chisurf.core.decorators
+import chisurf.core.support.decorators
 import chisurf.core.parameter
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.catalogue import EquationCatalogueMixin
@@ -114,7 +114,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
 
         # Compile the equation in C++ as well, and prefer it. `eval()` is an
         # interpreter round trip on every fit iteration, which for a cheap
-        # model is most of the iteration; `IMP.bff.Expression` compiles the
+        # model is most of the iteration; `IMP.bff.GraphExpression` compiles the
         # string once and evaluates it over the curve in C++.
         #
         # The ORIGINAL equation is compiled, not `parsed`: bff binds variables
@@ -138,7 +138,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
                 f"be evaluated by eval() instead of in C++")
         else:
             try:
-                candidate = bff.Expression("parse")
+                candidate = bff.GraphExpression("parse")
                 candidate.set_expression(self._func)
                 self._expression = candidate
             except Exception:

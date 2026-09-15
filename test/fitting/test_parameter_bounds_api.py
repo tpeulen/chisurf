@@ -91,7 +91,7 @@ from chisurf.core import nodes
 
 
 def _port(**kw):
-    return nodes._bff.Port(value=1.0, name="t", **kw)
+    return nodes._bff.GraphPort(value=1.0, name="t", **kw)
 
 
 @pytest.mark.parametrize("v", [3.5, -2.25, 0.0, 1e-300, 1e300])

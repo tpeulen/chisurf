@@ -18,7 +18,7 @@ def resolve_parameter_name(short_name: str) -> str | None:
 
 def archive_fit_to_mmfdb(db: Any, fit: Any, operation_id: str, **kwargs: Any) -> dict[str, Any]:
     """Archive a ChiSurf fit through MMFDB's explicitly injected host boundary."""
-    from mmfdb.adapters.chinet import archive_fit_to_mmfdb as archive
+    from mmfdb.adapters.fit_archive import archive_fit_to_mmfdb as archive
 
     from chisurf.core.project.fit_state import fit_to_state
 
