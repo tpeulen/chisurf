@@ -1,11 +1,9 @@
-"""The FCS MEM inversion runs in tttrlib's engine — pinned against the loop.
+"""The FCS MEM inversion runs in the engine's MaxEnt -- pinned against the loop.
 
 `fcs_maxent` solved its inversion with a QuickFit-style fixed-count Python
-iteration; it now routes through `tttrlib.maxent_invert_weighted` — the
-shared Skilling–Bryan engine behind `maxent_invert` and
-`solve_tcspc_mem_lifetime`, with the weights and the prior the engine always
-supported exposed (owner ruling 2026-09-02: the MEM loop belongs in
-tttrlib). The deleted loop is transcribed below as the frozen reference.
+iteration; it now routes through `IMP.bff.maxent_invert`, the Skilling-Bryan
+engine behind every maximum-entropy fit, with the weights and the prior
+exposed. The deleted loop is transcribed below as the frozen reference.
 
 The two are *the same objective* (maximise ``alpha*S(p; m) - chi2_w/2``;
 the engine's ``nu = sqrt(2*alpha)``) but not the same iteration: the loop

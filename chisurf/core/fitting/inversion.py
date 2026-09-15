@@ -52,7 +52,6 @@ tree that conversion is written down.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
@@ -66,13 +65,11 @@ from chisurf.core.math.regularization import (
 __all__ = [
     "EntropyWeight",
     "LCurveData",
-    "MaxEntResult",
     "SmoothnessWeight",
     "difference_operator",
     "discrete_lcurve_corner",
     "entropy_weight_to_nu",
     "maxent",
-    "maxent_normal_equations",
     "nu_to_entropy_weight",
     "sample_lcurve",
     "tikhonov_nnls",
@@ -83,46 +80,6 @@ DEFAULT_MAXENT_ITERATIONS = 500
 
 #: Default convergence tolerance (the Skilling-Bryan ``TEST`` quantity).
 DEFAULT_MAXENT_TOLERANCE = 1.0e-8
-
-
-@dataclass(frozen=True)
-class MaxEntResult:
-    """A maximum-entropy solve, owned by Python.
-
-    The compiled engine returns a struct whose array members SWIG exposes as
-    *borrowed* views into the C++ object. Reading one after the owning result
-    has been collected is a use-after-free -- it does not raise reliably; on
-    the NumPy path it surfaced as a nonsense length. The seam therefore
-    copies every array out while the owner is alive and hands back this,
-    so no caller can hold a dangling view and no caller has to know the
-    engine's type.
-
-    Attributes
-    ----------
-    p : numpy.ndarray
-        The recovered non-negative amplitudes.
-    chisq, S, Q : float
-        Misfit, entropy and the combined objective at ``p``.
-    p_esm : numpy.ndarray
-        The early-stop-maximum (effectively unregularised) amplitudes.
-    chisq_esm, S_esm, Q_esm : float
-        The same three quantities at ``p_esm``.
-    niter : int
-        Iterations the engine ran.
-    success : bool
-        Whether the engine reports convergence.
-    """
-
-    p: np.ndarray
-    chisq: float
-    S: float
-    Q: float
-    p_esm: np.ndarray
-    chisq_esm: float
-    S_esm: float
-    Q_esm: float
-    niter: int
-    success: bool
 
 
 class EntropyWeight(Enum):
@@ -141,16 +98,10 @@ class EntropyWeight(Enum):
     CHI2
         :math:`\min \chi^2_w - \nu^2 S`. The engine's own documented
         objective; the weight passes through unchanged.
-    RUN_MEM
-        :math:`\min \chi^2_w - \tfrac12 \nu_{\text{run}} S`. The form the
-        compiled TCSPC driver takes its weight in, so a caller that already
-        holds a ``nu`` destined for that driver declares it here. Maps to
-        :math:`\nu = \sqrt{\nu_{\text{run}}/2}`.
     """
 
     HALF_CHI2 = "alpha"
     CHI2 = "nu"
-    RUN_MEM = "nu_run"
 
 
 class SmoothnessWeight(Enum):
@@ -198,8 +149,6 @@ def entropy_weight_to_nu(weight: float, convention: EntropyWeight) -> float:
     --------
     >>> entropy_weight_to_nu(0.5, EntropyWeight.HALF_CHI2)
     1.0
-    >>> entropy_weight_to_nu(2.0, EntropyWeight.RUN_MEM)
-    1.0
     """
     w = float(weight)
     if w < 0.0:
@@ -208,8 +157,6 @@ def entropy_weight_to_nu(weight: float, convention: EntropyWeight) -> float:
         return float(np.sqrt(2.0 * w))
     if convention is EntropyWeight.CHI2:
         return w
-    if convention is EntropyWeight.RUN_MEM:
-        return float(np.sqrt(0.5 * w))
     raise ValueError(f"unknown entropy-weight convention: {convention!r}")
 
 
@@ -243,8 +190,6 @@ def nu_to_entropy_weight(nu: float, convention: EntropyWeight) -> float:
         return 0.5 * n * n
     if convention is EntropyWeight.CHI2:
         return n
-    if convention is EntropyWeight.RUN_MEM:
-        return 2.0 * n * n
     raise ValueError(f"unknown entropy-weight convention: {convention!r}")
 
 
@@ -373,31 +318,20 @@ def tikhonov_nnls(
 
 
 def _engine():
-    """Return the photon library's maximum-entropy engine, or say what is missing.
-
-    Returns
-    -------
-    module
-        The photon library.
+    """Return the engine's maximum-entropy inversion, or say what is missing.
 
     Raises
     ------
     RuntimeError
-        If the library is missing or predates the weighted, prior-aware
-        entry point.
+        If IMP.bff is not importable or predates ``maxent_invert``.
     """
     try:
-        import tttrlib
+        import IMP.bff as bff
     except ImportError as error:  # pragma: no cover - a hard dependency
-        raise RuntimeError(
-            "regularised inversion needs the photon library, which is not importable"
-        ) from error
-    if not hasattr(tttrlib, "maxent_invert_weighted"):
-        raise RuntimeError(
-            "the installed photon library has no weighted maximum-entropy entry "
-            "point (maxent_invert_weighted); rebuild it"
-        )
-    return tttrlib
+        raise RuntimeError("regularised inversion needs IMP.bff, which is not importable") from error
+    if not hasattr(bff, "maxent_invert"):
+        raise RuntimeError("the installed IMP.bff has no maximum-entropy inversion (maxent_invert); rebuild it")
+    return bff.maxent_invert
 
 
 def _prepare_maxent(A, b, weights, prior):
@@ -492,9 +426,7 @@ def maxent(
     if normalise:
         return _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol)
     return np.asarray(
-        _engine().maxent_invert_weighted(
-            flat, b, w, m, nu, int(n_rows), int(n_cols), int(max_iter), float(tol)
-        ),
+        _engine()(flat, b, w, m, nu, int(n_rows), int(n_cols), int(max_iter), float(tol)).get_amplitudes(),
         dtype=float,
     )
 
@@ -523,12 +455,12 @@ def _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol,
     numpy.ndarray
         The solution with ``sum(x) == 1`` to ``sum_tol``.
     """
-    engine = _engine().maxent_invert_weighted
+    engine = _engine()
 
     def solve(log_c):
         return np.asarray(
             engine(flat, b, w, m * float(np.exp(log_c)), nu,
-                   int(n_rows), int(n_cols), int(max_iter), float(tol)),
+                   int(n_rows), int(n_cols), int(max_iter), float(tol)).get_amplitudes(),
             dtype=float,
         )
 
@@ -548,87 +480,3 @@ def _maxent_simplex(flat, b, w, m, nu, n_rows, n_cols, max_iter, tol,
             lo = mid
     total = float(p.sum())
     return p / total if total > 0.0 else p
-
-
-def maxent_normal_equations(
-    H: np.ndarray,
-    g0: np.ndarray,
-    prior: np.ndarray,
-    const_chi2: float,
-    weight: float,
-    *,
-    convention: EntropyWeight,
-    max_iter: int = 200,
-    tol: float = 1.0e-4,
-    min_prob: float = 1.0e-12,
-):
-    r"""Maximum entropy on an already-formed quadratic chi-square.
-
-    The second entry point into the same engine, for callers that build the
-    normal equations themselves (a TCSPC design matrix crosses the boundary
-    once and is reused across an outer nuisance search, so re-forming
-    :math:`A` per solve would be wasteful). Minimises
-
-    .. math::
-
-        Q(p) = \tfrac12 p^T H p - g_0^T p + \text{const} - \tfrac12 \nu_r S(p; m)
-
-    with :math:`\nu_r` the weight in :attr:`EntropyWeight.RUN_MEM` units.
-
-    Parameters
-    ----------
-    H : numpy.ndarray
-        ``(n, n)`` curvature of the chi-square term.
-    g0 : numpy.ndarray
-        ``(n,)`` linear term.
-    prior : numpy.ndarray
-        ``(n,)`` entropy prior.
-    const_chi2 : float
-        The data-only constant of the chi-square.
-    weight : float
-        Regularisation weight, in the units named by ``convention``.
-    convention : EntropyWeight
-        Which objective ``weight`` is written in.
-    max_iter, tol, min_prob : int, float, float
-        Iteration cap, convergence tolerance and the floor on ``p``.
-
-    Returns
-    -------
-    MaxEntResult
-        The solve, with every array copied into Python-owned memory -- see
-        :class:`MaxEntResult` for why the engine's own struct is not returned.
-
-    Raises
-    ------
-    RuntimeError
-        If the compiled engine is unavailable.
-    """
-    tttrlib = _engine()
-    if not hasattr(tttrlib, "tcspc_run_mem"):
-        raise RuntimeError(
-            "the installed photon library has no maximum-entropy optimiser "
-            "(tcspc_run_mem); rebuild it"
-        )
-    nu = entropy_weight_to_nu(weight, convention)
-    nu_run = nu_to_entropy_weight(nu, EntropyWeight.RUN_MEM)
-    H = np.asarray(H, dtype=float)
-    g0 = np.asarray(g0, dtype=float).ravel()
-    prior = np.asarray(prior, dtype=float).ravel()
-    # Bound to a name, not chained: the array members below are borrowed
-    # views into this object, so it has to outlive the copies.
-    raw = tttrlib.tcspc_run_mem(
-        H.ravel().tolist(), g0.tolist(), prior.tolist(),
-        float(const_chi2), float(nu_run), int(max_iter), float(tol), float(min_prob),
-    )
-    return MaxEntResult(
-        p=np.array(raw.p, dtype=float, copy=True),
-        chisq=float(raw.chisq),
-        S=float(raw.S),
-        Q=float(raw.Q),
-        p_esm=np.array(raw.p_esm, dtype=float, copy=True),
-        chisq_esm=float(raw.chisq_esm),
-        S_esm=float(raw.S_esm),
-        Q_esm=float(raw.Q_esm),
-        niter=int(raw.niter),
-        success=bool(raw.success),
-    )

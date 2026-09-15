@@ -31,13 +31,13 @@ from chisurf.core.fitting.inversion import (
     tikhonov_nnls,
 )
 
-pytest.importorskip("tttrlib")
+pytest.importorskip("IMP.bff")
 
 
 # --------------------------------------------------------------- the mapping
 
 
-def test_the_three_entropy_conventions_are_distinct_and_invertible():
+def test_the_entropy_conventions_are_distinct_and_invertible():
     """Each convention maps a weight onto a different engine ``nu``.
 
     If two of these ever collided the seam would be silently interchangeable
@@ -46,9 +46,9 @@ def test_the_three_entropy_conventions_are_distinct_and_invertible():
     w = 0.125
     nus = {
         c: entropy_weight_to_nu(w, c)
-        for c in (EntropyWeight.HALF_CHI2, EntropyWeight.CHI2, EntropyWeight.RUN_MEM)
+        for c in (EntropyWeight.HALF_CHI2, EntropyWeight.CHI2)
     }
-    assert len(set(nus.values())) == 3, nus
+    assert len(set(nus.values())) == len(nus), nus
     for convention, nu in nus.items():
         assert nu_to_entropy_weight(nu, convention) == pytest.approx(w, rel=1e-12)
 
@@ -292,52 +292,6 @@ def test_fcs_maxent_default_is_still_the_cached_svd_loop():
     assert "_quickfit_mem_iteration" in src
     assert "_maxent_engine_solve" not in src
     assert hasattr(fcs_maxent_mod, "_quickfit_mem_iteration")
-
-
-# ------------------------------------------------------ caller: TCSPC/run_mem
-
-
-def test_run_mem_convention_is_half_nu_not_nu_squared():
-    """The TCSPC optimiser's weight is ``chi2 - nu*S/2``, a *third* spelling.
-
-    ``nu = 0.02`` means something different to this caller than to the FCS
-    and DEER inversions, and the seam must not silently equate them. Solving
-    one problem through both entry points at the *same numeric weight* under
-    the two conventions must give the same solution only when the weights are
-    related by the documented map.
-    """
-    from chisurf.core.fitting.inversion import maxent_normal_equations
-
-    rng = np.random.default_rng(7)
-    n_rows, n_cols = 60, 20
-    A = np.abs(rng.standard_normal((n_rows, n_cols))) + 0.05
-    x_true = np.abs(rng.standard_normal(n_cols))
-    b = A @ x_true + rng.normal(0.0, 1e-3, n_rows)
-    m = np.full(n_cols, 1.0 / n_cols)
-
-    H = 2.0 * (A.T @ A)
-    g0 = 2.0 * (A.T @ b)
-    const = float(b @ b)
-
-    nu_run = 0.02
-    via_run_mem = np.asarray(
-        maxent_normal_equations(H, g0, m, const, nu_run,
-                                convention=EntropyWeight.RUN_MEM,
-                                max_iter=2000, tol=1e-8).p,
-        dtype=float,
-    )
-    # The same objective expressed in HALF_CHI2 units: chi2 - nu_run*S/2 is
-    # 2 * (chi2/2 - (nu_run/4) * S), so alpha = nu_run / 4.
-    via_half = maxent(A, b, nu_run / 4.0,
-                      convention=EntropyWeight.HALF_CHI2,
-                      prior=m, max_iter=2000, tol=1e-8)
-    np.testing.assert_allclose(via_run_mem, via_half, rtol=2e-4, atol=1e-8)
-
-    # And at the same *numeric* weight the two are not the same problem.
-    via_half_naive = maxent(A, b, nu_run,
-                            convention=EntropyWeight.HALF_CHI2,
-                            prior=m, max_iter=2000, tol=1e-8)
-    assert not np.allclose(via_run_mem, via_half_naive, rtol=1e-2, atol=1e-6)
 
 
 def test_the_maxent_decay_solver_runs_the_engines_maxent_model():
