@@ -51,10 +51,10 @@ def test_cs_gui_is_module():
 
 
 def _is_csp_project(path):
-    """Check if path is a .csp archive or a directory containing project.csp."""
-    if os.path.isfile(path) and path.endswith(".csp"):
+    """Check if path is a .cs.pto project or a directory containing project.cs.pto."""
+    if os.path.isfile(path) and path.endswith(".cs.pto"):
         return True
-    if os.path.isdir(path) and os.path.isfile(os.path.join(path, "project.csp")):
+    if os.path.isdir(path) and os.path.isfile(os.path.join(path, "project.cs.pto")):
         return True
     return False
 
@@ -62,13 +62,13 @@ def _is_csp_project(path):
 def test_t4l_chimol_project_loads():
     """The t4l_chimol example project should load without errors."""
     project_path = os.path.join(EXAMPLES_DIR, "t4l_chimol")
-    csp_path = project_path + ".csp"
+    csp_path = project_path + ".cs.pto"
     if _is_csp_project(csp_path):
         load_path = csp_path
     elif _is_csp_project(project_path):
         load_path = project_path
     elif os.path.isdir(project_path):
-        pytest.skip(f"Example project {project_path} has not been converted to .csp format yet")
+        pytest.skip(f"Example project {project_path} has not been converted to .cs.pto format yet")
     else:
         pytest.skip(f"Example project not found: {project_path}")
 
@@ -91,13 +91,13 @@ def test_t4l_proteinmc_project_loads():
     history) is restored without errors.
     """
     project_path = os.path.join(EXAMPLES_DIR, "t4l_proteinmc")
-    csp_path = project_path + ".csp"
+    csp_path = project_path + ".cs.pto"
     if _is_csp_project(csp_path):
         load_path = csp_path
     elif _is_csp_project(project_path):
         load_path = project_path
     elif os.path.isdir(project_path):
-        pytest.skip(f"Example project {project_path} has not been converted to .csp format yet")
+        pytest.skip(f"Example project {project_path} has not been converted to .cs.pto format yet")
     else:
         pytest.skip(f"Example project not found: {project_path}")
 
