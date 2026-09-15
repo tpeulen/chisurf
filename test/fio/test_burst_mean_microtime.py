@@ -183,6 +183,7 @@ def test_the_addition_is_positionally_non_breaking(two_colour_burst):
     for w, (r0, r1) in WINDOWS.items():
         for d in DETECTORS:
             legacy.append(f"S {w} {d} (kHz) | {r0}-{r1}")
+            legacy.append(f"S {w} {d} (photons) | {r0}-{r1}")
 
     assert columns[: len(legacy)] == legacy
     added = [f"Mean Microtime ({d}) (ns)" for d in DETECTORS]

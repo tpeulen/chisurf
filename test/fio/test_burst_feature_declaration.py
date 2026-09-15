@@ -50,7 +50,9 @@ WINDOWS = {"prompt": (0, 2000), "delay": (2000, 4096)}
 
 
 def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
-    """The pre-declaration builder, transcribed whole (columns + rows)."""
+    """The pre-declaration builder, transcribed whole (columns + rows), plus the
+    one addition made since: each PIE window x detector stream's photon count
+    beside its rate (0 for an empty stream)."""
     import pathlib
     file_name_only = pathlib.Path(filename).name
     macro, micro, rout = (tttr.macro_times, tttr.micro_times,
@@ -74,6 +76,7 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
     for w, (r0, r1) in windows.items():
         for d in detectors:
             win_cols.append(f"S {w} {d} (kHz) | {r0}-{r1}")
+            win_cols.append(f"S {w} {d} (photons) | {r0}-{r1}")
     micro_cols = [f"Mean Microtime ({d}) (ns)" for d in detectors]
     micro_ns = micro_time_resolution_ns(tttr)
     cols = static_cols + det_cols + win_cols + micro_cols + [""]
@@ -130,6 +133,7 @@ def _reference_dataframe_cells(start_stop, filename, tttr, windows, detectors):
             for d in detectors:
                 idxs = np.nonzero((det_global[d][sl] & win_global[w][sl]))[0]
                 key = f"S {w} {d} (kHz) | {windows[w][0]}-{windows[w][1]}"
+                row[idx[f"S {w} {d} (photons) | {windows[w][0]}-{windows[w][1]}"]] = idxs.size
                 if idxs.size == 0:
                     row[idx[key]] = -1.0
                 else:
