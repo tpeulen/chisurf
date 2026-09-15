@@ -149,22 +149,70 @@ def test_the_session_format_is_bffs():
     ast.parse(source)
 
 
+def _description_node_types(family: str) -> set:
+    """Every node type a BFF model description builds, read from the file the
+    view is generated from -- the view has no graph of its own to inspect."""
+    import json
+    import pathlib
+
+    text = pathlib.Path(bff.get_data_path(f"model_search/{family}.json")).read_text()
+    types = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            if isinstance(node.get("type"), str):
+                types.add(node["type"])
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(json.loads(text))
+    return types
+
+
 def test_the_decay_curve_is_bffs_and_its_kernels_are_tttrlibs():
     """The layering, end to end: bff builds the network, tttrlib computes.
 
-    ``TCSPCDecay`` is a bff node; the reconvolution and the timeshift inside
-    it are tttrlib's own kernels, taken header-only. ChiSurf is not between
-    them, which is the property this asserts -- a lifetime fit that started
-    routing its convolution back through numpy would still fit, and would
-    have quietly undone the arrangement.
+    A TCSPC lifetime model is a view on a BFF description whose curve is a
+    ``TCSPCDecay`` node; the reconvolution and the timeshift inside it are
+    tttrlib's own kernels, taken header-only. ChiSurf is not between them,
+    which is the property this asserts -- a lifetime fit that started routing
+    its convolution back through numpy would still fit, and would have quietly
+    undone the arrangement.
     """
     assert hasattr(bff, "TCSPCDecay"), "IMP.bff carries no TCSPCDecay"
+    assert "TCSPCDecay" in _description_node_types("tcspc_lifetime")
 
     import chisurf.core.fitting.minimizer as M
+    from chisurf.core.models.description import tcspc_lifetime
 
-    assert hasattr(M, "_lifetime_objective"), (
-        "the TCSPC branch of graph_objective is gone; a lifetime fit is back "
-        "on the numpy path")
+    fit = _lifetime_fit(tcspc_lifetime)
+    minimizer, _ = M._description_objective(fit.model, [])
+    # A proxy is made per access; the model is the same when its ports are.
+    graph, = minimizer._graph
+    live = fit.model.problem
+    assert graph.get_parameter("lifetime.tau.0").uid == live.get_parameter("lifetime.tau.0").uid, (
+        "a described lifetime fit is not minimised on the description's own graph")
+
+
+def _lifetime_fit(model_class):
+    import chisurf as cs
+    import chisurf.core.curve
+    import chisurf.core.data
+    import chisurf.core.fitting.fit as F
+
+    n = 128
+    x = np.arange(n) * 0.1
+    irf = np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)
+    y = np.convolve(np.exp(-x / 3.1), irf / irf.sum())[:n] * 1e4 + 5.0
+    fit = F.Fit(model_class=model_class,
+                data=cs.core.data.DataCurve(x=x, y=y, ey=np.sqrt(y)))
+    fit.model.set_dataset("response", cs.core.curve.Curve(x=x, y=irf))
+    fit.model.set_scalar("period", 12.8)
+    assert fit.model.problem is not None, fit.model.missing
+    return fit
 
 
 def test_the_photophysics_upstream_of_the_decay_is_bffs_too():
@@ -174,55 +222,33 @@ def test_the_photophysics_upstream_of_the_decay_is_bffs_too():
     and every TCSPC model shares that. What differs between them is upstream
     -- how the (amplitude, lifetime) pairs are arrived at -- and that is
     where a model quietly returns to Python once per iteration if nobody is
-    watching. Each of these is a spectrum transform in C++, which is what
-    lets the chain compose without the instrument node learning anything:
-
-        [GaussianDistances] -> [FRETSpectrumNode] -> [PhotophysicsAnisotropySpectrumNode] ->
-        TCSPCDecay -> ChiSquared
+    watching. Each of these is a spectrum transform in C++ inside the model
+    description, which is what lets the chain compose without the instrument
+    node learning anything.
     """
     for name in ("PhotophysicsLifetimeSpectrumNode", "PhotophysicsAnisotropySpectrumNode",
                  "FRETSpectrumNode", "GaussianDistances"):
         assert hasattr(bff, name), f"IMP.bff carries no {name}"
-
-    import chisurf.core.fitting.minimizer as M
-
-    assert hasattr(M, "_spectrum_chain"), (
-        "the producer chain is gone; a polarised or FRET decay is back on "
-        "the numpy path")
+    assert "PhotophysicsAnisotropySpectrumNode" in _description_node_types("tcspc_polarized")
+    fret = _description_node_types("tcspc_fret_gaussian")
+    assert "FRETSpectrumNode" in fret and "TCSPCDecay" in fret
 
 
 def test_a_graph_that_builds_is_the_model_it_claims_to_be():
     """The property the census exists to check, on the case that broke it.
 
-    `MaxEntLifetimeModel` offers exactly the four free parameters a plain
-    lifetime model does -- its grid and entropy weight ship fixed -- so a
-    builder that refused only on unplaceable parameters accepted it and
-    fitted a multi-exponential instead. Measured then: 793.8 counts between
-    the graph's curve and the model's, at identical parameters.
+    A MaxEnt lifetime model offers the same free parameters a plain lifetime
+    model does -- its grid and entropy weight ship fixed -- so a builder that
+    refused only on unplaceable parameters accepted it and fitted a
+    multi-exponential instead. Measured then: 793.8 counts between the graph's
+    curve and the model's, at identical parameters.
 
-    Stated here rather than only in the TCSPC tests because it is an
-    architectural rule, not a fact about one model: **being representable is
-    not the same as being represented**, and only the second one is allowed
-    to run.
+    **Being representable is not the same as being represented**, and only
+    the second one is allowed to run: the MaxEnt view's graph is a MaxEnt
+    inversion, and the plain lifetime view's is not.
     """
-    import chisurf.core.fitting.minimizer as M
-    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
-    from chisurf.core.models.description import tcspc_maxent_lifetime as MaxEntLifetimeModel
-
-    assert getattr(MaxEntLifetimeModel, "lifetime_spectrum") is not getattr(
-        LifetimeModel, "lifetime_spectrum"), (
-        "MaxEnt no longer computes its own spectrum; this test has no subject")
-
-    n = 128
-    x = np.linspace(0.1, 20.0, n)
-    y = 2.5 * np.exp(-x / 3.1) + 0.4
-    import chisurf as cs
-    import chisurf.core.data
-    import chisurf.core.fitting.fit as F
-    data = cs.core.data.DataCurve(x=x, y=y, ey=np.full(n, 0.02))
-    fit = F.Fit(model_class=MaxEntLifetimeModel, data=data)
-    fit.xmin, fit.xmax = 0, n - 1
-    assert M.graph_objective(fit, fit.model) is None
+    assert "MaxEntSpectrum" in _description_node_types("tcspc_maxent_lifetime")
+    assert "MaxEntSpectrum" not in _description_node_types("tcspc_lifetime")
 
 
 def test_the_crosstalk_matrix_definition_is_bffs():
@@ -231,7 +257,7 @@ def test_the_crosstalk_matrix_definition_is_bffs():
     Owner, 2026-09-04: the definition must be in bff, not in chisurf. What a
     crosstalk matrix *is* -- the label convention, how a light-path payload
     becomes values, what forward and inverse mixing mean -- is
-    ``IMP.bff.CrosstalkMatrix`` and the ``crosstalk_*`` kernels;
+    ``IMP.bff.PhotophysicsCrosstalkMatrix`` and the ``crosstalk_*`` kernels;
     ``chisurf.core.fluorescence.crosstalk`` is the numpy adapter that
     converts payloads and reshapes results, and must own no arithmetic of
     its own. A second definition of the matrix would disagree with bff's
@@ -247,7 +273,7 @@ def test_the_crosstalk_matrix_definition_is_bffs():
     # the labelled construction -- subset, reorder, zero-fill -- is bff's
     payload = {"rows": ["D", "A"], "columns": ["green", "red"],
                "values": [[0.9, 0.1], [0.05, 0.95]]}
-    labelled = bff.CrosstalkMatrix(payload["rows"], payload["columns"],
+    labelled = bff.PhotophysicsCrosstalkMatrix(payload["rows"], payload["columns"],
                                    [0.9, 0.1, 0.05, 0.95])
     via_adapter = crosstalk.matrix_from_payload(payload, rows=["A", "D", "X"],
                                                 columns=["red", "green"])
