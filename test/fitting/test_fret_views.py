@@ -237,6 +237,11 @@ def test_pddem(mode, rtol):
         "pddem.excitation_a": 0.9, "pddem.excitation_b": 0.1, "pddem.emission_a": 0.2, "pddem.emission_b": 0.8},
         scalars={"transfer_mode": mode})
     np.testing.assert_allclose(np.asarray(view.y), np.asarray(reference.y), rtol=rtol, atol=1e-9)
+    # alpha, as the classic group reported it: each chromophore's emission share.
+    reference.pddem.update()
+    outputs = {p.name: p.value for p in view.parameters_all if getattr(p, "is_output", False)}
+    assert outputs["αA→B"] == pytest.approx(reference.pddem.alpha_A, rel=1e-15)
+    assert outputs["αB→A"] == pytest.approx(reference.pddem.alpha_B, rel=1e-15)
 
 
 @pytest.mark.parametrize("dimension", [1, 2, 3])

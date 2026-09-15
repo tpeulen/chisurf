@@ -249,6 +249,27 @@ class DescriptionModel(ModelCurve):
         self._source_models: typing.List["DescriptionModel"] = []
         self._source_names: typing.List[str] = []
         self._bound_ports: typing.List[str] = []
+        self._assign_group_position(fit)
+
+    def _assign_group_position(self, fit) -> None:
+        """Set the scalar a family ties to a fit's place in its group.
+
+        The description's ``presentation.group_position`` names the scalar and
+        its values: ``single`` for a group of one, ``alternate`` by index
+        otherwise -- how a VV/VH pair added together becomes a VV and a VH fit.
+        Every view of this family in the group is re-set, since fits join a
+        group one at a time.
+        """
+        rule = self.presentation.get("group_position")
+        group = getattr(fit, "group", None)
+        if not rule or rule.get("scalar") not in self.scalar_names() or not isinstance(group, list) or not group:
+            return
+        for index, member in enumerate(group):
+            model = self if member is fit else member.__dict__.get("_model")
+            if not isinstance(model, DescriptionModel) or model.family != self.family:
+                continue
+            value = rule["single"] if len(group) == 1 else rule["alternate"][index % len(rule["alternate"])]
+            model.set_scalar(rule["scalar"], float(value))
 
     # --- what the description says ------------------------------------------
     @property
