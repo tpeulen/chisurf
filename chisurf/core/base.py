@@ -8,7 +8,6 @@ import os.path
 import zlib
 import copy
 import yaml
-import pickle
 import logging
 import weakref
 
@@ -258,7 +257,7 @@ def _is_qt_object(obj) -> bool:
 class Base(object):
 
     _verbose = cs.core.settings.cs_settings['verbose']
-    supported_save_file_types: typing.List[str] = ["yaml", "json", "pkl"]
+    supported_save_file_types: typing.List[str] = ["yaml", "json"]
     meta_data: typing.Dict = dict()
     # Global index of all live Base instances keyed by unique_identifier.
     # Entries are weak references; dead instances are evicted automatically.
@@ -348,7 +347,7 @@ class Base(object):
         filename : str
             Path to the output file.
         file_type : str
-            Output format (``'yaml'``, ``'json'``, or ``'pkl'``).
+            Output format (``'yaml'`` or ``'json'``).
         verbose : bool
             If True, print the serialized content.
         skip_qt_widgets : bool
@@ -372,9 +371,6 @@ class Base(object):
                 txt = self.to_yaml(skip_qt_widgets=skip_qt_widgets)
             elif file_type == "json":
                 txt = self.to_json(skip_qt_widgets=skip_qt_widgets)
-            elif file_type == "pkl":
-                txt = pickle.dumps(self)
-                mode = 'wb'
             if verbose:
                 print(txt)
             with io.open_maybe_zipped(filename, mode) as fp:
@@ -394,7 +390,7 @@ class Base(object):
         filename : str
             Path to the input file.
         file_type : str
-            File format (``'json'``, ``'p'``, or ``'yaml'``).
+            File format (``'json'`` or ``'yaml'``).
         verbose : bool
             If True, print the loaded content.
         """
@@ -403,11 +399,6 @@ class Base(object):
                 filename=filename,
                 verbose=verbose
             )
-        elif file_type == "p":
-            with open(filename, 'rb') as file:
-                data = file.read()
-                obj = pickle.loads(data)
-                self.__dict__.update(obj.__dict__)
         else:
             self.from_yaml(
                 filename=filename,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import pathlib
 
 from chisurf import typing
@@ -415,6 +416,8 @@ class DataCurve(*_DATACURVE_BASES):
             convert_values_to_elementary=convert_values_to_elementary,
             skip_qt_widgets=skip_qt_widgets
         )
+        # The FitDataset half is rebuilt from these arrays, not serialized.
+        d.pop('this', None)
         d['ex'] = self.ex.tolist()
         d['ey'] = self.ey.tolist()
         d['mask'] = self.mask.tolist()
@@ -708,6 +711,37 @@ class DataCurve(*_DATACURVE_BASES):
         if np.asarray(self.y).size == 0:
             return
         _bff.sync_dataset(self, self.y, self.ey, self.x, self.mask)
+
+    # -- copies: the Dataset half is rebuilt by bff, never shared ------------
+    #
+    # The `IMP.bff.FitDataset` half lives in C++ behind the SWIG pointer
+    # `this`, which sits in `__dict__` beside the Python state. It is not
+    # state: `sync_dataset` rebuilds it from the arrays. A copy that carried
+    # `__dict__` over would hand two curves one C++ object, so a copy leaves
+    # the pointer out, gets its own Dataset and syncs it.
+
+    def _python_state(self) -> dict:
+        state = dict(self.__dict__)
+        state.pop("this", None)
+        return state
+
+    def _restored(self, state: dict) -> "DataCurve":
+        new = self.__class__.__new__(self.__class__)
+        if _HAS_BFF_DATASET:
+            _bff.FitDataset.__init__(new)
+        new.__dict__.update(state)
+        chisurf.core.base.Base._uuid_index[str(new.unique_identifier)] = new
+        new.lock()
+        new._sync_dataset()
+        return new
+
+    def __copy__(self):
+        state = self._python_state()
+        state["meta_data"] = copy.deepcopy(state.get("meta_data", {}))
+        return self._restored(state)
+
+    def __deepcopy__(self, memodict=None):
+        return self._restored(copy.deepcopy(self._python_state(), {} if memodict is None else memodict))
 
     # -- the calculus, synced first so a direct `y = ...` cannot go stale ----
     def objective(self, model):

@@ -6,7 +6,6 @@ result without a trace. These tests pin the guarantee and the escape hatch.
 """
 
 import copy
-import pickle
 
 import numpy as np
 import pytest
@@ -228,9 +227,12 @@ class TestNormalize:
 class TestRoundTrip:
     """Copies and reloads come back locked."""
 
-    def test_pickle(self, data_curve):
-        """Pickle restores through `__setstate__`, which re-locks."""
-        restored = pickle.loads(pickle.dumps(data_curve))
+    def test_copy_has_its_own_dataset(self, data_curve):
+        """A copy gets its own bff Dataset, synced from its arrays -- two
+        curves never share one C++ object."""
+        restored = copy.copy(data_curve)
+        assert restored.this != data_curve.this
+        assert restored.get_size() == data_curve.get_size()
         for name in ("d", "ex", "ey", "mask"):
             assert not getattr(restored, name).flags.writeable
 
