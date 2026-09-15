@@ -329,6 +329,19 @@ mmfdb:
   server_history:
     - 127.0.0.1
 optimization:
+  # Which statistic a fit minimises when the data are NOT photon counts. This
+  # is the estimator, not a display option: it decides the fitted parameters,
+  # not just the number reported.
+  #
+  #   default  -- weighted least squares using the data's own error column.
+  #   poisson  -- the 2I* maximum-likelihood deviance.
+  #
+  # `default` here, because an FCS curve, an anisotropy or a stopped-flow trace
+  # is not a count and its error column is not sqrt(N); a Poisson deviance is
+  # simply the wrong likelihood for them. TCSPC decays ARE counts and have
+  # their own key -- see `tcspc.noise_model` below, which is `poisson`.
+  # Documented in docs/concepts/fitting_objectives.md.
+  noise_model: default
   global_optimize_local_first: false
   global_threaded_model_update: false
   # Recompute only the local models a parameter change actually reaches, using
@@ -433,6 +446,39 @@ plugins:
     ignore_updates_on_startup: false
     check_on_startup: true
 tcspc:
+  # The estimator for photon-counting decays. See
+  # docs/concepts/fitting_objectives.md, which explains both and when to switch.
+  #
+  #   default  -- weighted least squares on the data's error column. For counts
+  #               that column is sqrt(N), which makes this the NEYMAN
+  #               chi-square. It is BIASED LOW where the counts are small:
+  #               measured on 400 Poisson bins over 4000 trials, -31% at 3
+  #               counts/bin, -11% at 10, -1% at 100. A decay always has a
+  #               low-count tail whatever its peak, and that tail is where the
+  #               long lifetimes are, so the bias distorts the recovered shape
+  #               and not merely the scale. Nothing in a residual plot shows it.
+  #   poisson  -- the 2I* maximum-likelihood deviance, the statistically
+  #               correct estimator for counts. It carries no such bias.
+  #
+  # `default` ships, despite `poisson` being the better estimator, and the
+  # reason is the optimiser rather than the statistics. Measured 2026-09-09 on
+  # the repository's own convergence fixture (a two-exponential decay, 2e6
+  # photons, started deliberately far from the answer at tau = 8.0 against a
+  # true 4.0): under `poisson` the fit stops at tau = 7.24. The objective is not
+  # what is wrong -- it scores 1.47 at the true answer against 875 at 7.24, so
+  # it prefers the truth by a wide margin -- the search does not get there. The
+  # numerical-Jacobian step (`optimization.leastsq.epsfcn` below) was tuned
+  # against weighted least squares, and the deviance surface is not the surface
+  # it was tuned on. A silently wrong lifetime is worse than a slightly biased
+  # one, so the biased-but-convergent estimator remains the default until the
+  # optimiser handles the deviance as reliably.
+  #
+  # Set `poisson` when the counts are low enough for the bias to matter and you
+  # can start the fit near the answer -- from a good start it converges and is
+  # the better estimator. Switching also changes confidence intervals, because
+  # the support-plane threshold differs between a likelihood and a least-squares
+  # objective.
+  noise_model: default
   autoscale: true
   convolution_on_by_default: true
   default_convolution_mode: per

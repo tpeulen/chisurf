@@ -659,7 +659,7 @@ class Fit(cs.core.base.Base):
             xmax: int = 0,
             model_kw: typing.Dict = None,
             group: list = None,
-            noise_model: str = "default",
+            noise_model: str = None,
             **kwargs
     ):
         """Create a :class:`Fit` with a given model class and data.
@@ -678,13 +678,31 @@ class Fit(cs.core.base.Base):
         group : list, optional
             Optional list used to collect multiple :class:`Fit` instances
             into a :class:`FitGroup`.
-        noise_model : {"default", "poisson"}, optional
-            Objective/estimator used by the fit. ``"default"`` uses weighted
-            least squares (Neyman chi-square from the data error column);
-            ``"poisson"`` uses the ``2I*`` maximum-likelihood deviance, the
-            correct estimator for low photon counts.
+        noise_model : {"poisson", "default"}, optional
+            Objective/estimator used by the fit, and therefore what the fitted
+            parameters *are* -- not a display choice. ``"poisson"`` uses the
+            ``2I*`` maximum-likelihood deviance, the correct estimator for
+            photon counting; ``"default"`` uses weighted least squares on the
+            data's error column, which for Poisson data is the Neyman
+            chi-square and is biased low where the counts are small.
+
+            Omitted (the usual case), it is resolved by
+            :func:`chisurf.core.fitting.default_noise_model` from the data and
+            the model: ``settings['tcspc']['noise_model']`` for photon-counting
+            decays and ``settings['optimization']['noise_model']`` for
+            everything else. Both ship as ``default``; the TCSPC key is the one
+            worth changing, and the settings file says when. See
+            ``docs/concepts/fitting_objectives.md``.
         """
         super().__init__(**kwargs)
+        if noise_model is None:
+            # Not a constructor default, because the estimator is a policy of
+            # the installation rather than of one call site: hard-coding it
+            # here is how every fit in the program came to use weighted least
+            # squares without anyone choosing it. Photon counts get the Poisson
+            # deviance, everything else keeps least squares -- see
+            # `default_noise_model`.
+            noise_model = cs.core.fitting.default_noise_model(data, model_class)
         self.noise_model = cs.core.fitting.normalize_noise_model(noise_model)
         self._model: cs.core.models.Model = None
         self._result_current = 0
@@ -1214,6 +1232,10 @@ class Fit(cs.core.base.Base):
 
     def run(self, *args, **kwargs) -> None:
         """Run a local least-squares optimization on this fit."""
+        record_result = bool(kwargs.pop("record_result", True))
+        estimate_errors = bool(kwargs.pop("estimate_errors", True))
+        finalize = bool(kwargs.pop("finalize", True))
+        notify = bool(kwargs.pop("notify", True))
         fitting_options = _leastsq_options(cs.core.settings.cs_settings['optimization']['leastsq'])
         self.model.find_parameters(
             parameter_type=cs.core.fitting.parameter.FittingParameter
@@ -1257,11 +1279,17 @@ class Fit(cs.core.base.Base):
             # runs, and finalize() below refreshes the controllers.
             self.model.find_parameters()
         else:
-            self.update()
+            if notify:
+                self.update()
+            else:
+                self.model.update()
         if not cancelled:
-            self.update_error_estimates()
-            self.results.append(self.model.__getstate__())
-        self.model.finalize()
+            if estimate_errors:
+                self.update_error_estimates()
+            if record_result:
+                self.results.append(self.model.__getstate__())
+        if finalize:
+            self.model.finalize()
         if cancelled:
             raise OptimizationCancelled()
 
@@ -2054,6 +2082,10 @@ class FitGroup(Fit):
     def run(self, local_first: bool = None, **kwargs):
         """Run local fits followed by a global least-squares optimization."""
         fit: FitGroup = self
+        record_result = bool(kwargs.pop("record_result", True))
+        estimate_errors = bool(kwargs.pop("estimate_errors", True))
+        finalize = bool(kwargs.pop("finalize", True))
+        notify = bool(kwargs.pop("notify", True))
         if local_first is None:
             local_first = cs.core.settings.optimization['global_optimize_local_first']
         cancelled = False
@@ -2068,7 +2100,14 @@ class FitGroup(Fit):
         try:
             if local_first:
                 for i, f in enumerate(fit):
-                    f.run(progress_callback=staged.stage(i), **kwargs)
+                    f.run(
+                        progress_callback=staged.stage(i),
+                        record_result=record_result,
+                        estimate_errors=estimate_errors,
+                        finalize=finalize,
+                        notify=notify,
+                        **kwargs,
+                    )
             for f in fit:
                 f.model.find_parameters()
             fit._model.find_parameters()
@@ -2107,11 +2146,18 @@ class FitGroup(Fit):
             # evaluated the global model once (T-20260901-11).
             self.model.find_parameters()
         else:
-            self.update()
+            if notify:
+                self.update()
+            else:
+                for member in self.grouped_fits:
+                    member.model.update()
         if not cancelled:
-            self.update_error_estimates()
-            self.results.append(self.model.__getstate__())
-        self.model.finalize()
+            if estimate_errors:
+                self.update_error_estimates()
+            if record_result:
+                self.results.append(self.model.__getstate__())
+        if finalize:
+            self.model.finalize()
         if cancelled:
             raise OptimizationCancelled()
 
@@ -3486,4 +3532,3 @@ def lnprob(
     if not np.isfinite(lp):
         return float("-inf")
     return lnlike + lp
-

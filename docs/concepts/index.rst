@@ -31,6 +31,7 @@ alternatives are collected in :doc:`/fundamentals/conventions`.
 .. toctree::
    :maxdepth: 1
 
+   fitting_objectives
    global_analysis
    factor_graphs
    maximum_entropy

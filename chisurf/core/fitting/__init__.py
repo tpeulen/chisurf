@@ -33,6 +33,57 @@ def normalize_noise_model(noise_model: str) -> str:
     return _NOISE_MODEL_ALIASES.get(str(noise_model).strip().lower(), "default")
 
 
+def default_noise_model(data=None, model_class=None) -> str:
+    """The estimator a fit should use when the caller did not name one.
+
+    Counting and non-counting data are asked separately, because the right
+    estimator differs: a TCSPC decay *is* a count, so the Poisson deviance
+    (``2I*``) applies to it and least squares on its ``sqrt(N)`` error column is
+    the Neyman chi-square -- biased low wherever counts are small. An FCS curve
+    or an anisotropy is not a count, its error column is not ``sqrt(N)``, and a
+    Poisson deviance would be the wrong likelihood for it whatever the counting
+    argument says.
+
+    Both values come from settings (``tcspc.noise_model`` and
+    ``optimization.noise_model``) rather than being hard-coded, so an
+    installation changes estimator with one key and a historical fit stays
+    reproducible. **Both ship as** ``default``: `poisson` is the better
+    estimator for counts and does not yet converge as reliably from a poor
+    start, which the settings file explains at the key. See
+    ``docs/concepts/fitting_objectives.md``.
+
+    Detection is deliberately belt-and-braces: ``data.experiment`` is ``None``
+    for a curve built in a script or loaded without a reader, which is exactly
+    the case a scripted analysis hits, so the model's own package is consulted
+    as well.
+    """
+    import chisurf.core.settings as _settings
+    counting = False
+
+    experiment = getattr(data, "experiment", None)
+    name = getattr(experiment, "name", None)
+    if isinstance(name, str) and name.strip().upper() == "TCSPC":
+        counting = True
+
+    if not counting and model_class is not None:
+        module = getattr(model_class, "__module__", "") or ""
+        # The fluorescence-decay models are the counting ones: the equation
+        # catalogues under `chisurf.core.models.tcspc.…`, and the views on BFF's
+        # TCSPC descriptions (`tcspc_*` families).
+        family = str(getattr(model_class, "family", "") or "")
+        counting = ".models.tcspc" in module or family.startswith("tcspc_")
+
+    section = "tcspc" if counting else "optimization"
+    # The fallback is only reached if the key is missing from settings; it
+    # mirrors what ships, so a stripped settings file behaves like a full one.
+    fallback = "default"
+    try:
+        value = _settings.cs_settings.get(section, {}).get("noise_model", fallback)
+    except Exception:
+        value = fallback
+    return normalize_noise_model(value)
+
+
 def objective_type(fit, model=None) -> str:
     """How a fit's objective declares itself for interval statistics.
 
@@ -122,7 +173,7 @@ def deviance_residuals(
 #: Resolved once at import. The residual is too central to fitting to make
 #: bff a hard dependency of it, so the numpy path below stays as the fallback.
 try:
-    from IMP.bff import weighted_residuals as _bff_weighted_residuals
+    from IMP.bff import fit_weighted_residuals as _bff_weighted_residuals
 except Exception:   # pragma: no cover - depends on the build
     _bff_weighted_residuals = None
 
