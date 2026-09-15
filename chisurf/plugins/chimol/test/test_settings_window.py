@@ -18,7 +18,7 @@ import pytest
 from chimol.core.settings import registry as settings_api
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.ui.panels import settings as settings_window
-from chimol.cmtk.widgets import settings_editor
+from cmtk.widgets import settings_editor
 
 
 class RecordingPainter:

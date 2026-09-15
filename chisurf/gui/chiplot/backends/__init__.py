@@ -18,13 +18,18 @@ from chisurf.gui.chiplot.backends import base
 
 _REGISTRY: dict[str, str] = {
     # name -> "module:ClassName"
+    # The two supported options: pyqtgraph (the engine) and
+    # cmtk (chimol's ImPlot-style toolkit), the designated native
+    # renderer / primary plotting widget. Target state of _REGISTRY.
     "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
-    # The native renderer. WebGPU, not OpenGL: macOS reports "2.1 Metal" for a
-    # GL context, and a native backend built on that inherits a 2001 feature
-    # set. See the backend's own docstring.
+    # TODO(cmtk-backend): register chimol's cmtk here as the native backend once
+    # a chiplot backend for it exists. Until
+    # then wgpu/opengl stay registered so the backend seam is exercisable.
+    # Both are superseded experiment backends and retire when cmtk lands.
+    #   "cmtk": "chisurf.gui.chiplot.backends.cmtk_backend:CmtkBackend",
     "wgpu": "chisurf.gui.chiplot.backends.wgpu:WgpuBackend",
-    # Superseded by "wgpu"; kept until the WebGPU backend has been through the
-    # plot families, then removed.
+    # Superseded by the cmtk direction; kept until the cmtk backend has been
+    # through the plot families, then removed.
     "opengl": "chisurf.gui.chiplot.backends.opengl:OpenGLBackend",
 }
 

@@ -27,7 +27,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.cmtk.testing import RecordingPainter
+from cmtk.testing import RecordingPainter
 from chimol.plugins.scores.window import ScoresPanel
 from chimol.ui.gui import Rect
 

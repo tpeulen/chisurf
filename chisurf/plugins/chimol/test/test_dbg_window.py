@@ -19,7 +19,7 @@ import pytest
 
 from chimol.plugins.dbg import window as dw
 from chimol.render.frame_stats import FrameStats
-from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
+from cmtk.testing import RecordingPainter
 
 
 class _Rect:
@@ -449,7 +449,7 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     object that handled nothing was a black hole: Return never reached the
     command line and the viewport could not be typed into at all.
     """
-    from chimol.cmtk.keys import KEY_RETURN
+    from cmtk.keys import KEY_RETURN
     from chimol.ui.gui import InternalGui
 
     class _Deaf:

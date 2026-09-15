@@ -4,15 +4,15 @@ It used to draw the *tail* of the undo ring -- as many of the newest entries as
 the window happened to be tall enough for -- with no scrollbar and no wheel. For
 a panel whose entire job is answering "how far back can I go", losing the far
 end of the list was losing the answer. It is a
-:class:`~chimol.cmtk.widgets.list_view.ListView` now, so the whole ring is
+:class:`~cmtk.widgets.list_view.ListView` now, so the whole ring is
 reachable and only the visible rows are ever built.
 """
 from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk.testing import RecordingPainter
-from chimol.cmtk.widgets.list_view import ListView
+from cmtk.testing import RecordingPainter
+from cmtk.widgets.list_view import ListView
 from chimol.plugins.history.window import HistoryWindow
 from chimol.ui.gui import Rect
 

@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 import chimol
-from chimol.cmtk.testing import RecordingPainter
+from cmtk.testing import RecordingPainter
 
 _PDB = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
 
@@ -37,7 +37,7 @@ def app():
 
 
 def test_the_text_editor_shows_a_scrollbar_and_scrolls(tmp_path):
-    from chimol.cmtk.widgets.text_editor import TextEditor
+    from cmtk.widgets.text_editor import TextEditor
 
     editor = TextEditor("\n".join(f"line {i}" for i in range(200)))
     p = RecordingPainter()
@@ -56,7 +56,7 @@ def test_the_text_editor_shows_a_scrollbar_and_scrolls(tmp_path):
 
 
 def test_the_hex_editor_shows_a_scrollbar(tmp_path):
-    from chimol.cmtk.widgets.memory_editor import MemoryEditor
+    from cmtk.widgets.memory_editor import MemoryEditor
     from chimol.core.services.memory_probe import ArraySource
 
     ed = MemoryEditor()

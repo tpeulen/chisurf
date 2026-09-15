@@ -12,9 +12,9 @@ real editor -- colours, multiple cursors, undo, find -- for one line of JSON.
 Where the editor comes from
 ---------------------------
 It is not a ``QPlainTextEdit``. The widget is
-:class:`chimol.cmtk.widgets.text_editor.TextEditor`, the port of
+:class:`cmtk.widgets.text_editor.TextEditor`, the port of
 ImGuiColorTextEdit that chimol draws in its own viewport chrome, hosted in a
-``QWidget`` by :class:`chimol.cmtk.qt_host.ControlHost`.
+``QWidget`` by :class:`cmtk.qt_host.ControlHost`.
 
 That indirection is the point rather than an accident. The alternative --
 a Qt editor here and the ported one in the viewport -- is two editors with two
@@ -27,7 +27,7 @@ Options
 -------
 ``language`` : str, default ``"python"``
     One of the names in
-    :func:`chimol.cmtk.widgets.text_editor.shipped_languages`, case-insensitive
+    :func:`cmtk.widgets.text_editor.shipped_languages`, case-insensitive
     (``python``, ``c``, ``c++``, ``glsl``, ``lua``, ``json``, ``markdown``,
     ``sql``, ``chimol``), or ``"none"`` for no highlighting.
 ``height`` : int, default 240
@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 def _make_editor(text: str, options: dict):
     """Build a configured :class:`TextEditor`, or raise ``ImportError``."""
-    from chimol.cmtk.widgets import text_editor as te
+    from cmtk.widgets import text_editor as te
 
     wanted = str(options.get("language", "python")).strip().lower()
     language = None
@@ -99,7 +99,7 @@ class CodeEditorWidget(QtWidgets.QWidget):
         self._host = None
         try:
             self.editor = _make_editor(self._read(), self._options)
-            from chimol.cmtk.qt_host import ControlHost
+            from cmtk.qt_host import ControlHost
 
             self._host = ControlHost(self.editor, on_change=self._on_change)
             self._host.setMinimumHeight(int(self._options.get("height", 240)))

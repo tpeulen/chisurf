@@ -8,7 +8,7 @@ desktop app and the browser run one code path -- so the same file is read here
 and drawn with the chrome's own controls.
 
 That is an **adapter**, not a second renderer: the spec becomes
-:class:`~chimol.cmtk.widgets.settings_editor.Setting` rows over the editor that
+:class:`~cmtk.widgets.settings_editor.Setting` rows over the editor that
 already existed for the display settings. Stating it that way is what keeps the
 two from drifting into two form systems.
 
@@ -32,8 +32,8 @@ import pathlib
 
 import pytest
 
-from chimol.cmtk.widgets.settings_editor import BOOL, CHOICE, FLOAT, INT, TEXT
-from chimol.cmtk.widgets.view_spec import (
+from cmtk.widgets.settings_editor import BOOL, CHOICE, FLOAT, INT, TEXT
+from cmtk.widgets.view_spec import (
     load_view_spec,
     model_from_view_spec,
     settings_from_view_spec,

@@ -857,6 +857,16 @@ otherwise shadow a module emoji. Rendering emoji/text/color/file icons into
 `QIcon`s is a separate concern handled by `chisurf/plugins/icon_utils.py` (see
 `chisurf/plugins/ICON_SYSTEM.md`).
 
+# Long-term direction (maintainer, 2026-08-14)
+
+AutoForm's declarative `view.json`/dataspec rendering is the seam the
+web-capability plan runs through: the long-term goal is to abstract the UI
+backend(s) — today Qt/PyQt is the only one — so a web-capable backend renders
+the same schemas, then replace PyQt with chimol's cmtk ([PRD-104](/prds/prd-104.md))
+behind that seam to drop the PyQt licence obligations. Full statement in
+[PRD-64](/prds/prd-64.md)'s "Long-term direction". This is a direction, not a
+scheduled phase; it is recorded so the declarative-UI choice keeps its rationale.
+
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)

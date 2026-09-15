@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chimol.cmtk.quad_painter import QuadPainter
+from cmtk.quad_painter import QuadPainter
 
 RED = (255, 0, 0, 255)
 GREEN = (0, 255, 0, 255)
@@ -91,7 +91,7 @@ def test_text_takes_its_place_too():
     contents somewhere else entirely -- a worse bug than the one being fixed,
     and the reason this test asks about the accounting rather than the picture.
     """
-    from chimol.cmtk.painter import ALIGN_LEFT, ALIGN_VCENTER
+    from cmtk.painter import ALIGN_LEFT, ALIGN_VCENTER
 
     p = QuadPainter()
     p.fill_rect(0, 0, 10, 10, RED)

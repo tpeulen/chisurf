@@ -20,8 +20,9 @@ at runtime and can be swapped without touching a single call site.
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |
 | `backends/pyqtgraph_backend.py` | the only module in the tree allowed to import pyqtgraph |
-| `backends/wgpu/` | the **native** renderer: `_view.py` (data↔clip↔pixel, no Qt/GPU), `_gpu.py` (device, pipelines, offscreen render, stroke/marker geometry), `_handles.py` (handles, each contributing geometry), `_canvas.py` (the Qt widget), `_colormap.py`, `wgsl/plot2d.wgsl` |
-| `backends/opengl/` | superseded by `backends/wgpu/`; kept until the WebGPU backend has been through the plot families |
+| `backends/cmtk/` | the **native** renderer (in progress): chimol's cmtk ([PRD-104](/prds/prd-104.md)) behind the `backends/base.py` contract — the primary plotting widget; see [#Native renderer](#the-native-renderer-is-cmtk-not-webgpu) |
+| `backends/wgpu/` | superseded WebGPU experiment backend, kept registered until the cmtk backend exists; retired when it lands |
+| `backends/opengl/` | superseded experiment backend (predates wgpu); retired with wgpu |
 | `_passthrough.py` | the migration safety net and its gap recorder |
 
 `ImageView` is the image half of the same idea, and it carries two capabilities
@@ -80,21 +81,37 @@ registers there and becomes selectable with no call-site change. This is the
 mechanism [PRD-64](/prds/prd-64.md) exists to enable: pyqtgraph is the engine
 today, a native renderer behind the same contract is the goal.
 
-## The native renderer is WebGPU, not OpenGL
+## The native renderer is cmtk, not WebGPU
 
-The first native backend targeted OpenGL and could not be finished: on macOS a
-GL context reports `2.1 Metal - 90.5`, because Apple deprecated OpenGL and what
-remains is a 2001 feature set emulated over Metal. Everything that made that
-backend hard traces back to it — no dependable `gl_PointSize`, a `texture1D`
-that may not exist, and a `QPainter`-versus-GL compositing fight that painted
-axes onto a black rectangle. WebGPU is one API and one shader text across
-macOS, Linux, Windows *and* the browser, and it is what the molecular viewer's
-renderer already targets, so `backends/wgpu/` is the native backend and
-`backends/opengl/` is superseded.
+**Current direction (2026-08-14): the native renderer is chimol's cmtk.** The
+maintainer directed that chiplot's native backend **MUST** be cmtk
+([PRD-104](/prds/prd-104.md)) — the ImPlot-style plotting toolkit at
+`chisurf/plugins/chimol/chimol/cmtk/`, drawn through chimol's own painter —
+used as the **primary plotting widget**. pyqtgraph and cmtk are the **only**
+backend options. A `backends/cmtk/` package implements the `backends/base.py`
+contract on top of cmtk's `begin_plot`/`Plot.line`/… builders; chiplot is
+cmtk's first external consumer and drives PRD-104 Phase 2 breadth (bars, error
+bars, regions, pan/zoom, image, log axes). Long term, cmtk also replaces PyQt
+as the UI backend behind the AutoForm seam. See [PRD-64](/prds/prd-64.md)
+Phase 5+ and "Long-term direction".
 
-Three decisions in it are worth keeping:
+**History: WebGPU superseded OpenGL, and now steps aside for cmtk.** The first
+native backend targeted OpenGL and could not be finished: on macOS a GL context
+reports `2.1 Metal - 90.5`, because Apple deprecated OpenGL and what remains is
+a 2001 feature set emulated over Metal. Everything that made that backend hard
+traces back to it — no dependable `gl_PointSize`, a `texture1D` that may not
+exist, and a `QPainter`-versus-GL compositing fight that painted axes onto a
+black rectangle. WebGPU is one API and one shader text across macOS, Linux,
+Windows *and* the browser, so `backends/wgpu/` superseded `backends/opengl/`.
+Both proved the seam works (contract + handle tests ran against both) without
+becoming maintainable renderers; neither is a target now — cmtk is. `wgpu` and
+`opengl` stay registered until the cmtk backend exists, then retire
+(`test/gui/test_chiplot_wgpu.py` pins `"wgpu" in available_backends()`, so the
+unregistering lands with the cmtk backend).
 
-* **Rendering is offscreen, and `QPainter` blits the result.** Hosting a GPU
+Three decisions from the wgpu era are worth keeping as lessons:
+
+* **Rendering offscreen, and `QPainter` blits the result.** Hosting a GPU
   surface in the widget is what created the compositing problem; rendering to
   an image removes it, keeps text with Qt, and makes a headless screenshot the
   same code path as a visible one. The cost is one GPU→CPU copy per repaint.
@@ -105,7 +122,7 @@ Three decisions in it are worth keeping:
   line width and no point size; both were fixed-function features that went
   away. That is also what makes dashes and round joins possible at all.
 
-`CHISURF_PLOT_BACKEND=wgpu` selects it. `test/gui/chiplot_ab_screenshots.py`
+`CHISURF_PLOT_BACKEND=wgpu` selects the experiment backend. `test/gui/chiplot_ab_screenshots.py`
 renders the same recipes through each backend for side-by-side comparison; it
 runs headless unless `opengl` is named.
 
@@ -425,14 +442,18 @@ has to pin the active backend to do it: the rest of the module constructs
 canvases from the backend directly, which is exactly what let the seam go
 unexercised.
 
-# Where to pick this up — the WebGPU backend
+# Where to pick this up — the cmtk backend
 
-`backends/wgpu/` draws every family the A/B script exercises (decay on a log
-axis, scatter, bars, heatmap, region, error bars) and passes 31 tests in
-`test/gui/test_chiplot_wgpu.py`. **Measure it with
+The native backend to build is **chimol's cmtk** ([PRD-104](/prds/prd-104.md);
+ChiSurf direction 2026-08-14): a `chisurf/gui/chiplot/backends/cmtk/` package
+implementing the `backends/base.py` contract on top of cmtk's
+`begin_plot`/`Plot.line`/`Plot.scatter`/… builders (`Canvas`, `GridCanvas`,
+`ImageViewCanvas` + every handle protocol). chiplot is cmtk's first external
+consumer; the gaps PRD-104 Phase 2 must close first are **log axes, bars,
+error bars, regions, pan/zoom, image**. **Measure a backend with
 `python test/gui/chiplot_ab_screenshots.py` and read the PNG pairs** — that is
-the only instrument that has caught anything here. The traps in taking that
-measurement, both of which cost a session:
+the only instrument that has caught anything here. The A/B traps, both of which
+cost a session:
 
 * **A backend that renders nothing still writes a PNG.** The OpenGL backend's
   every handle raised `AttributeError: 'QOpenGLShaderProgram' object has no
@@ -449,26 +470,36 @@ measurement, both of which cost a session:
 
 Open, in the order that unblocks the most:
 
-1. **Bring the plot families over.** The A/B script covers primitives, not the
+1. **Read cmtk first.** `chisurf/plugins/chimol/chimol/cmtk/` (`plot.py`,
+   `axis.py`, its Phase 1 line/scatter) plus PRD-104's reading order; grow
+   cmtk's Phase 2 breadth as the chiplot contract demands it, in-tree, rather
+   than reaching past the seam.
+2. **Bring the plot families over.** The A/B script covers primitives, not the
    application's panels. Start with the highest-volume ones (TCSPC decay +
-   weighted-residual pair, FCS curves, burst histograms), run each under
-   `CHISURF_PLOT_BACKEND=wgpu`, and compare screenshots against pyqtgraph.
-   This is what decides whether the backend can become the default.
-2. **Retire `backends/opengl/`.** It is superseded and registered only so the
-   comparison can still be run. Deleting it also removes the `PyOpenGL`
-   dependency's last plotting use.
-3. **A zero-copy surface path.** Every repaint currently reads the framebuffer
-   back to the CPU. That is the right trade for plot panels, and the wrong one
-   for an animated view; `rendercanvas.qt.QRenderWidget` gives a real surface,
-   at the cost of losing the `QPainter` chrome pass (text would have to move to
-   the GPU). Do not start this before (1) — it buys nothing until a panel is
-   found that needs it.
-4. **Colour bars.** `_ColorBar` stores levels and forwards them to its image
-   but draws no bar; `_WgpuGrid.add_colorbar` therefore adds no widget.
-5. **chimol convergence.** Both renderers are now WebGPU. Once chiplot's
-   backend is through (1), chimol's standalone renderer can move onto
-   chiplot's `Canvas`/`VolumeViewCanvas` contract, and the two WGSL sets can
-   be considered together.
+   weighted-residual pair, FCS curves, burst histograms), compare screenshots
+   against pyqtgraph. This is what decides whether the backend can become the
+   default.
+3. **Retire `backends/wgpu/` and `backends/opengl/` together.** They are
+   superseded experiments, kept registered only until the cmtk backend exists
+   (`test/gui/test_chiplot_wgpu.py` pins `"wgpu" in available_backends()`; the
+   flip lands with the cmtk backend). Deleting `opengl/` also removes
+   `PyOpenGL`'s last plotting use, and `wgpu` + `rendercanvas` join it off the
+   dependency graph (`pixi.toml`). The three "worth keeping" lessons from the wgpu era — offscreen
+   render + `QPainter` blit, handles contribute geometry, CPU-expanded strokes
+   — are recorded in [the native-renderer section](#the-native-renderer-is-cmtk-not-webgpu).
+4. **A zero-copy surface path** (from the wgpu era; deferred): every repaint
+   read the framebuffer back to the CPU. That is the right trade for plot
+   panels, and the wrong one for an animated view. Do not start this before
+   (2) — it buys nothing until a panel is found that needs it.
+5. **Long-term convergence.** cmtk is the **Canvas Model Toolkit**, living
+   inside chimol; ChiSurf reaches it via chimol (chimol independence comes
+   first — see [chimol-relocation.md](/plugins/chimol-relocation.md)) — so
+   the 2-D convergence is by construction: chiplot draws through cmtk; no
+   second GL
+   stack. chimol's 3-D surface ([PRD-57](/prds/prd-57.md)) stays its own. The
+   further-horizon move (cmtk replacing PyQt as the UI backend behind AutoForm,
+   for a web-capable ChiSurf and licence-clean Qt-free status) is recorded in
+   [PRD-64](/prds/prd-64.md)'s "Long-term direction".
 
 # Related
 

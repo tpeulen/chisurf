@@ -58,8 +58,8 @@ ENGINE_MODULES = (
     "chimol.hosts.qt.menu_bar",
     "chimol.render.picking",
     "chimol.hosts.base",
-    "chimol.cmtk.events",
-    "chimol.cmtk.keys",
+    "cmtk.events",
+    "cmtk.keys",
     "chimol.hosts.native.app",
     "chimol.io.structure",
     "chimol.render.backend",
@@ -80,9 +80,9 @@ ENGINE_MODULES = (
     # run *the* viewer and *the* command layer rather than a second set of both.
     "chimol.core.viewer",
     "chimol.render.scene",
-    "chimol.cmtk.widgets.command_line",
-    "chimol.cmtk.painter",
-    "chimol.cmtk.quad_painter",
+    "cmtk.widgets.command_line",
+    "cmtk.painter",
+    "cmtk.quad_painter",
     "chimol.render.wgpu_backend",
 )
 
@@ -294,7 +294,7 @@ def test_the_default_entry_path_runs_without_a_gui_toolkit():
         # A click, all the way through: the press/release pair is what the
         # window's own pointer handlers call, and picking used to be gated on
         # there being a QWidget.
-        from chimol.cmtk.events import LEFT_BUTTON
+        from cmtk.events import LEFT_BUTTON
 
         app.renderer.click(320.0, 240.0, LEFT_BUTTON)
 

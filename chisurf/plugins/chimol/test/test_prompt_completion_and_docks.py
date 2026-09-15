@@ -16,8 +16,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from chimol.cmtk.keys import KEY_TAB  # noqa: E402
-from chimol.cmtk.widgets.command_line import CommandLine  # noqa: E402
+from cmtk.keys import KEY_TAB  # noqa: E402
+from cmtk.widgets.command_line import CommandLine  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #

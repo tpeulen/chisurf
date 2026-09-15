@@ -297,7 +297,7 @@ def test_filtering_does_not_change_what_is_drawn(panel):
 
 
 def test_backspace_clears_and_the_tree_comes_back(panel):
-    from chimol.cmtk.keys import KEY_BACKSPACE
+    from cmtk.keys import KEY_BACKSPACE
 
     window, gui, _applied = panel
     window.attach(gui)
@@ -314,7 +314,7 @@ def test_backspace_clears_and_the_tree_comes_back(panel):
 
 def test_escape_gives_the_keyboard_back(panel):
     """Otherwise every shortcut is swallowed by a box nobody is looking at."""
-    from chimol.cmtk.keys import KEY_ESCAPE
+    from cmtk.keys import KEY_ESCAPE
 
     window, gui, _applied = panel
     window.attach(gui)

@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import pytest
 
-from chimol.cmtk import events, keys
+from cmtk import events, keys
 from chimol.ui.gui import GuiRow, InternalGui
-from chimol.cmtk.widgets.command_line import CommandLine
+from cmtk.widgets.command_line import CommandLine
 
 SIZE = (900, 600)
 
@@ -221,7 +221,9 @@ def test_clicking_the_prompt_focuses_it_and_places_the_caret():
     assert gui.command_line.focused is True
 
     from chimol.ui.gui import char_width
-    from chimol.cmtk.widgets.command_line import PROMPT
+    # chimol's prompt, not cmtk's: the toolkit draws a command line for
+    # whoever asks and does not know whose it is.
+    from chimol.ui.gui._common import PROMPT
 
     advance = char_width(gui.FONT_PT)
     origin = rect.x + gui.MARGIN + advance * (len(PROMPT) + 1)
@@ -279,7 +281,7 @@ def test_focusing_the_prompt_closes_an_open_menu():
 # ── drawing ──────────────────────────────────────────────────────────────
 def test_the_prompt_paints_without_a_toolkit():
     """Quads, from the same painter the rest of the chrome uses."""
-    from chimol.cmtk.quad_painter import QuadPainter
+    from cmtk.quad_painter import QuadPainter
 
     gui = _gui()
     gui.focus_command(True)

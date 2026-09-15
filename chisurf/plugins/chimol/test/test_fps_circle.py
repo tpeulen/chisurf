@@ -4,7 +4,7 @@ An fps.json is a network -- positions on chains, distances between pairs --
 and neither the JSON nor a table of rows shows the thing that matters about
 it: which parts of the structure are labelled, how the pairs cover them, and
 which pairs are long against their Förster radius. This is that plot, drawn
-with the pyCirclize port in `chimol.cmtk.widgets.circle`.
+with the pyCirclize port in `cmtk.widgets.circle`.
 
 What is checked is the **mapping**, not the pixels: which sectors a document
 becomes, where a position lands, how many chords are drawn and what colours
@@ -19,7 +19,7 @@ import pathlib
 import pytest
 
 import chimol
-from chimol.cmtk.testing import RecordingPainter
+from cmtk.testing import RecordingPainter
 from chimol.plugins.labelling.circle_window import (
     FpsCirclePanel,
     efficiency,
