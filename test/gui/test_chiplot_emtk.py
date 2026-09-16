@@ -376,6 +376,54 @@ def test_a_grid_lays_its_panels_out(qapp):
     assert grid.native() == []
 
 
+def test_dragging_empty_space_pans_the_view(plot):
+    """What dragging a plot does everywhere else."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    plot.set_range(x=(0.0, 10.0), y=(0.0, 1000.0))
+    _paint(plot)
+
+    canvas = plot._canvas
+    canvas.press(150.0, 100.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.drag(100.0, 100.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    (x0, x1), _ = plot.get_range()
+    assert x0 > 0.0, "dragging left moved the view along the data"
+    assert x1 - x0 == pytest.approx(10.0, rel=1e-6), "a pan does not zoom"
+
+
+def test_the_wheel_zooms_about_the_middle(plot):
+    """And a panel told not to be interactive ignores it."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    plot.set_range(x=(0.0, 10.0), y=(0.0, 1000.0))
+    _paint(plot)
+    canvas = plot._canvas
+
+    canvas.scroll(-3)
+    (x0, x1), _ = plot.get_range()
+    assert x1 - x0 < 10.0, "a notch towards the user zooms in"
+
+    plot.set_range(x=(0.0, 10.0))
+    plot.set_interactive(mouse=False)
+    canvas.scroll(-3)
+    (x0, x1), _ = plot.get_range()
+    assert (x1 - x0) == pytest.approx(10.0), "a frozen panel does not zoom"
+
+
+def test_a_panel_exports_itself_to_a_file(plot, tmp_path):
+    """The export the plot menu offers."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    plot.resize(240, 180)
+
+    target = tmp_path / "panel.png"
+    plot.export_image(str(target))   # the facade returns nothing: it falls
+    assert target.is_file()          # back to a widget grab if the backend
+    assert target.stat().st_size > 0  # declines, so the file is the result
+
+
 def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
     """The reason this backend exists, stated as a test.
 

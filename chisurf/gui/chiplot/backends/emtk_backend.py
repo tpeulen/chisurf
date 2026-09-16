@@ -377,6 +377,7 @@ class EmtkCanvas(base.Canvas):
         self._grid = True
         self._legend = False
         self._background = _rgb(background, (30, 32, 38))
+        self._interactive = True
         self._click_callbacks: list[Callable] = []
         self._move_callbacks: list[Callable] = []
         self._range_callbacks: list[Callable] = []
@@ -602,8 +603,9 @@ class EmtkCanvas(base.Canvas):
         return low + (high - low) * (py - axis.pixel_min) / span_px
 
     def press(self, px: float, py: float, *_args: Any) -> None:
-        """Start a drag when the press lands on a draggable band."""
+        """Start a drag on whatever the press landed on, or a pan on nothing."""
         self._dragging = None
+        self._panning = None
         for entry in reversed(self._entries):
             if not entry.visible or not entry.state.get("movable", True):
                 continue
@@ -619,9 +621,22 @@ class EmtkCanvas(base.Canvas):
             if span[0] - 3.0 <= px <= span[1] + 3.0:
                 self._dragging = (entry, self._from_pixels(px))
                 break
+        if self._dragging is None and self._interactive:
+            # Nothing under the pointer: the gesture pans the view, which is
+            # what dragging a plot does everywhere else.
+            self._panning = (self._from_pixels(px), self._from_pixels_y(py))
+            for callback in self._click_callbacks:
+                callback(self._from_pixels(px), self._from_pixels_y(py), 1)
 
     def drag(self, px: float, py: float, *_args: Any) -> None:
-        """Move whatever the press picked up."""
+        """Move whatever the press picked up, or pan the view."""
+        if getattr(self, "_panning", None):
+            grabbed_x, grabbed_y = self._panning
+            (x0, x1), (y0, y1) = self.get_range()
+            dx = grabbed_x - self._from_pixels(px)
+            dy = grabbed_y - self._from_pixels_y(py)
+            self.set_range(x=(x0 + dx, x1 + dx), y=(y0 + dy, y1 + dy))
+            return
         if not getattr(self, "_dragging", None):
             return
         entry, grabbed_at = self._dragging
@@ -648,6 +663,22 @@ class EmtkCanvas(base.Canvas):
             entry, _ = self._dragging
             entry._notify(final=True)
         self._dragging = None
+        self._panning = None
+
+    def hover(self, px: float, py: float, *_args: Any) -> None:
+        """Report the pointer in data coordinates."""
+        for callback in self._move_callbacks:
+            callback(self._from_pixels(px), self._from_pixels_y(py))
+
+    def scroll(self, rows: float, *_args: Any) -> None:
+        """Zoom about the middle of the view, a notch at a time."""
+        if not self._interactive:
+            return
+        factor = 1.1 ** float(rows)
+        (x0, x1), (y0, y1) = self.get_range()
+        cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        half_x, half_y = (x1 - x0) / 2.0 * factor, (y1 - y0) / 2.0 * factor
+        self.set_range(x=(cx - half_x, cx + half_x), y=(cy - half_y, cy + half_y))
 
     def _draw_image(self, plot, entry: _Entry) -> None:
         """Place an image in the plot's data space.
@@ -874,6 +905,26 @@ class EmtkCanvas(base.Canvas):
     def on_mouse_move(self, callback) -> None:
         """Register ``callback(x, y)`` for pointer motion in data coordinates."""
         self._move_callbacks.append(callback)
+
+    def set_interactive(self, *, mouse=None, menu=None) -> None:
+        """Enable or disable mouse pan and zoom."""
+        if mouse is not None:
+            self._interactive = bool(mouse)
+
+    def export_image(self, path, *, width=None) -> bool:
+        """Render the panel to an image file; ``True`` when it was written."""
+        from qtpy import QtGui
+
+        widget = self._widget
+        size = widget.size()
+        if width:
+            scale = float(width) / max(size.width(), 1)
+            size.setWidth(int(width))
+            size.setHeight(int(size.height() * scale))
+        pixmap = QtGui.QPixmap(size)
+        pixmap.fill()
+        widget.render(pixmap)
+        return bool(pixmap.save(str(path)))
 
     def native(self) -> Any:
         """The display list; emtk keeps no plot object between frames."""
