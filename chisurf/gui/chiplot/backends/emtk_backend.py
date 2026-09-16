@@ -12,10 +12,10 @@ does. There are no per-item QGraphicsItems to outlive their scene and no
 Python slots connected to C++ destructors: a discarded plot is a Python list
 that the garbage collector frees like any other.
 
-What is drawn here today: curves (with symbols), scatter clouds, horizontal
-and vertical markers, the legend, axis labels and title, ranges (explicit,
-queried and auto), grid and background. Everything else -- images and
-heatmaps, draggable regions and ROIs, error bars, bars, filled bands, text and
+What is drawn here today: curves (with symbols), scatter clouds, images and
+heatmaps, horizontal markers, the legend, axis labels and title, ranges
+(explicit, queried and auto), log scaling, grid and background. Everything
+else -- draggable regions and ROIs, error bars, bars, filled bands, text and
 arrows -- raises :class:`NotImplementedError` naming what is missing, because a
 plot that silently omits half of what it was asked to draw is worse than one
 that says so. Those families are the rest of PRD-104.
@@ -63,6 +63,56 @@ def _finite_pairs(x, y) -> tuple[np.ndarray, np.ndarray]:
         return xs, ys
     keep = np.isfinite(xs) & np.isfinite(ys)
     return xs[keep], ys[keep]
+
+
+def _lut(colormap, size: int = 256) -> np.ndarray:
+    """Return ``colormap`` as an ``(size, 4)`` uint8 RGBA lookup table.
+
+    matplotlib when it is installed, a grey ramp when it is not: a heatmap in
+    the wrong colours still shows the data, and refusing to draw one because a
+    plotting nicety is missing would not.
+    """
+    name = getattr(colormap, "name", colormap)
+    table = np.linspace(0.0, 1.0, size)
+    try:
+        import matplotlib
+
+        colours = matplotlib.colormaps[str(name)](table)
+        return (np.asarray(colours) * 255.0).astype(np.uint8)
+    except Exception:
+        grey = (table * 255.0).astype(np.uint8)
+        return np.stack([grey, grey, grey, np.full(size, 255, np.uint8)], axis=1)
+
+
+def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
+    """Map *data* through *colormap* into an emtk texture.
+
+    Returns ``(texture, rows, columns)``. ``levels`` is the ``(low, high)``
+    the colours span; without one the data's own finite extent is used, which
+    is what makes a heatmap of an unfamiliar array show something rather than
+    one flat colour.
+    """
+    from emtk.texture import Texture
+
+    values = np.asarray(data, dtype=float)
+    if values.ndim != 2:
+        raise ValueError(f"an image is 2-D; got shape {values.shape}")
+    finite = values[np.isfinite(values)]
+    if levels is not None:
+        low, high = float(levels[0]), float(levels[1])
+    elif finite.size:
+        low, high = float(finite.min()), float(finite.max())
+    else:
+        low, high = 0.0, 1.0
+    span = (high - low) or 1.0
+
+    table = _lut(colormap)
+    scaled = np.clip((values - low) / span, 0.0, 1.0)
+    scaled[~np.isfinite(values)] = 0.0
+    indices = (scaled * (table.shape[0] - 1)).astype(np.intp)
+    rgba = table[indices]                      # (rows, columns, 4)
+    rows, columns = rgba.shape[0], rgba.shape[1]
+    return Texture(columns, rows, rgba.tobytes()), rows, columns
 
 
 class _Entry:
@@ -166,6 +216,30 @@ class _Entry:
     def set_clip_to_view(self, *_args: Any, **_kwargs: Any) -> None:
         """No-op: emtk clips to the plot box already."""
 
+    # -- Image ---------------------------------------------------------
+    def set_image(self, data, **_: Any) -> None:
+        """Replace the image's samples, keeping its colours and levels."""
+        self.state["data"] = np.asarray(data, dtype=float)
+        self.state["texture"] = None
+        self._canvas.refresh()
+
+    def set_levels(self, levels) -> None:
+        """Set the ``(low, high)`` the colours span."""
+        self.state["levels"] = None if levels is None else (float(levels[0]), float(levels[1]))
+        self.state["texture"] = None
+        self._canvas.refresh()
+
+    def set_colormap(self, colormap) -> None:
+        """Set the colormap the samples are mapped through."""
+        self.state["colormap"] = colormap
+        self.state["texture"] = None
+        self._canvas.refresh()
+
+    def set_rect(self, rect) -> None:
+        """Place the image in data coordinates: ``(x, y, width, height)``."""
+        self.state["rect"] = tuple(float(v) for v in rect)
+        self._canvas.refresh()
+
     # -- Marker --------------------------------------------------------
     @property
     def value(self) -> float:
@@ -238,6 +312,16 @@ class EmtkCanvas(base.Canvas):
                 continue
             self._draw_entry(plot, entry)
         plot.draw(painter)
+        # After the axes exist: the plot places its own box and axis ranges in
+        # draw(), and an image is positioned in data coordinates, so it cannot
+        # be blitted before that mapping is known.
+        for texture, x0, y0, width, height in getattr(plot, "_images", []):
+            left = plot._x_axis.to_pixels(x0)
+            right = plot._x_axis.to_pixels(x0 + width)
+            top = plot._y_axis.to_pixels(y0 + height)
+            bottom = plot._y_axis.to_pixels(y0)
+            painter.image(min(left, right), min(top, bottom),
+                          abs(right - left), abs(bottom - top), texture)
 
     def _draw_entry(self, plot, entry: _Entry) -> None:
         """Add one display-list entry to *plot*."""
@@ -257,9 +341,33 @@ class EmtkCanvas(base.Canvas):
             if xs.size:
                 plot.scatter(label, xs, ys, colour=state.get("color"),
                              radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0))
+        elif entry.kind == "image":
+            self._draw_image(plot, entry)
         elif entry.kind == "marker" and state.get("orientation") == "horizontal":
             plot.hline(float(state.get("value", 0.0)), state.get("color", (200, 200, 200)),
                        label or None)
+
+    def _draw_image(self, plot, entry: _Entry) -> None:
+        """Place an image in the plot's data space.
+
+        The texture is built once and kept until the data, levels or colormap
+        change: a frame is drawn on every repaint, and re-mapping a megapixel
+        array through a colormap each time would make panning the plot a
+        slideshow.
+        """
+        state = entry.state
+        if state.get("texture") is None:
+            state["texture"], rows, columns = _texture(
+                state["data"], state.get("colormap"), state.get("levels"))
+            state.setdefault("rect", (0.0, 0.0, float(columns), float(rows)))
+        # The axes have to know the image is there, or a panel holding nothing
+        # else auto-fits to an empty range and the image lands outside it.
+        x0, y0, width, height = state["rect"]
+        plot._x_axis.fit((x0, x0 + width))
+        plot._y_axis.fit((y0, y0 + height))
+        entry.state["_placed"] = (x0, y0, width, height)
+        plot._images = getattr(plot, "_images", [])
+        plot._images.append((state["texture"], x0, y0, width, height))
 
     def _scaled(self, xs, ys) -> tuple[np.ndarray, np.ndarray]:
         """Apply the log scaling the panel is set to, dropping what it kills."""
@@ -380,16 +488,27 @@ class EmtkCanvas(base.Canvas):
                 self._range["y"] or self._data_range(1))
 
     def _data_range(self, axis: int) -> tuple[float, float]:
-        """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty."""
-        values = [entry.state["x" if axis == 0 else "y"]
-                  for entry in self._entries
-                  if entry.visible and entry.kind in ("curve", "scatter")
-                  and entry.state.get("x") is not None]
-        values = [v for v in values if len(v)]
-        if not values:
+        """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty.
+
+        An image counts as data: its rect is where it sits, so a panel holding
+        only a heatmap fits the heatmap rather than the unit square.
+        """
+        spans: list[tuple[float, float]] = []
+        for entry in self._entries:
+            if not entry.visible:
+                continue
+            if entry.kind in ("curve", "scatter"):
+                samples = entry.state["x" if axis == 0 else "y"]
+                if samples is not None and len(samples):
+                    spans.append((float(np.min(samples)), float(np.max(samples))))
+            elif entry.kind == "image":
+                x0, y0, width, height = entry.state["rect"]
+                start, extent = (x0, width) if axis == 0 else (y0, height)
+                spans.append((float(start), float(start + extent)))
+        if not spans:
             return (0.0, 1.0)
-        low = min(float(np.min(v)) for v in values)
-        high = max(float(np.max(v)) for v in values)
+        low = min(start for start, _ in spans)
+        high = max(end for _, end in spans)
         return (low, high) if high > low else (low, low + 1.0)
 
     def auto_range(self) -> None:
@@ -480,8 +599,21 @@ class EmtkCanvas(base.Canvas):
 
     def add_image(self, data, *, colormap=None, levels=None, rect=None,
                   axis_order=None) -> H.Image:
-        """Not drawn yet."""
-        self._unsupported("an image or heatmap")
+        """Draw an image or heatmap and return its handle."""
+        values = np.asarray(data, dtype=float)
+        if values.ndim != 2:
+            raise ValueError(f"an image is 2-D; got shape {values.shape}")
+        if str(axis_order or "row-major") not in ("row-major", "col-major"):
+            raise ValueError(f"unknown axis order {axis_order!r}")
+        if str(axis_order) == "col-major":
+            values = values.T
+        return self._add(
+            "image", data=values, colormap=colormap,
+            levels=None if levels is None else (float(levels[0]), float(levels[1])),
+            rect=tuple(float(v) for v in rect) if rect is not None
+            else (0.0, 0.0, float(values.shape[1]), float(values.shape[0])),
+            texture=None,
+        )
 
     def add_region(self, bounds, *, orientation="vertical", movable=True, brush=None,
                    pen=None) -> H.Region:

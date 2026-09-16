@@ -142,10 +142,47 @@ def test_the_panel_paints(plot, qapp):
     assert len(colours) > 2, "the panel drew nothing but its background"
 
 
+def test_an_image_is_mapped_through_its_colormap(plot):
+    """A heatmap paints more than one colour, and its levels are settable."""
+    data = np.add.outer(np.arange(24.0), np.arange(32.0))
+    image = plot.image(data, colormap="viridis")
+
+    plot.resize(300, 220)
+    pixmap = QtGui.QPixmap(300, 220)
+    pixmap.fill()
+    plot.render(pixmap)
+    rendered = pixmap.toImage()
+    colours = {rendered.pixel(i, j) for i in range(0, 300, 5) for j in range(0, 220, 5)}
+    assert len(colours) > 8, "a mapped heatmap is not one flat colour"
+
+    image.set_levels((0.0, 5.0))
+    image.set_image(data * 2.0)
+    assert image.native()["texture"] is None, "the texture is rebuilt, not reused"
+
+
+def test_an_image_places_itself_in_data_coordinates(plot):
+    """Its rect drives the axes, so a panel holding only an image fits it."""
+    plot.image(np.zeros((10, 20)), rect=(5.0, 50.0, 10.0, 100.0))
+
+    plot.resize(200, 200)
+    pixmap = QtGui.QPixmap(200, 200)
+    pixmap.fill()
+    plot.render(pixmap)
+
+    (x0, x1), (y0, y1) = plot.get_range()
+    assert (x0, x1) == (5.0, 15.0)
+    assert (y0, y1) == (50.0, 150.0)
+
+
+def test_an_image_has_to_be_two_dimensional(plot):
+    """Said plainly, rather than by a reshape nobody asked for."""
+    with pytest.raises(ValueError, match="2-D"):
+        plot.image(np.zeros((4, 4, 3)))
+
+
 @pytest.mark.parametrize(
     "call, wanted",
     [
-        (lambda p: p.image(np.zeros((4, 4))), "image"),
         (lambda p: p.region((0.0, 1.0)), "region"),
         (lambda p: p.errorbars([0.0], [0.0], height=[1.0]), "error bars"),
         (lambda p: p.text("hello", (0.0, 0.0)), "text"),
