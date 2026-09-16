@@ -753,11 +753,17 @@ class CurveGroup(object):
     @abc.abstractmethod
     def add_curve(
             self,
-            *args,
             v: chisurf.core.curve.Curve = None,
+            *args,
             **kwargs
     ):
-        """Append a new curve ``v`` to the group if it is not ``None``."""
+        """Append ``v`` to the group, positionally or by keyword.
+
+        ``v`` used to be keyword-only behind ``*args``, so ``add_curve(curve)``
+        put the curve in ``args`` and appended nothing -- the TTTR histogram
+        tool's "make decay" button did exactly that, and silently added no
+        decay at all.
+        """
         if v is not None:
             self._curves.append(v)
 
