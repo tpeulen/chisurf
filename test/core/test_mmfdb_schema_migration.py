@@ -34,8 +34,6 @@ def test_already_current_db_returns_none():
 
 def test_migration_waterfall_resumes_from_version():
     conn = sqlite3.connect(":memory:")
-    conn.execute("CREATE TABLE IF NOT EXISTS _schema_version (version INTEGER)")
-    conn.execute("INSERT INTO _schema_version (version) VALUES (1)")
     conn.execute("CREATE TABLE IF NOT EXISTS mmfdb_schema_version (version INTEGER)")
     conn.execute("INSERT INTO mmfdb_schema_version (version) VALUES (1)")
 
