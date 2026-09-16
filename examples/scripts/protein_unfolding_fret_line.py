@@ -4,6 +4,12 @@
 Computes a two-state folding FRET line (Gaussian folded + WLC unfolded)
 and writes results to text files. No GUI needed.
 
+The two states are ordinary described models — ``tcspc_fret_gaussian`` for the
+folded state, ``tcspc_fret_worm_like_chain`` for the unfolded one — mixed by
+the fraction unfolded. The FRET-line engine
+(:mod:`chisurf.core.fluorescence.fret.fret_line`) does the mixing and reads the
+lifetime spectrum back, so this script and the plugin compute the same line.
+
 The ``# !chisurf: process`` shebang tells the Code Editor to run this as a
 subprocess regardless of the toolbar dropdown. Valid values: console · ipython · process.
 
@@ -16,11 +22,7 @@ For the interactive GUI version see: scripts/protein_unfolding_gui.py
 """
 import pathlib
 import numpy as np
-import chisurf
-import chisurf.core.fitting.fit as fit_mod
-from chisurf.core.data import DataCurve
-from chisurf.core.models.tcspc.fret import GaussianModel, WormLikeChainModel
-from chisurf.core.models.tcspc.lifetime import LifetimeMixtureModel
+from chisurf.core.fluorescence.fret import fret_line
 
 # ── parameters ────────────────────────────────────────────────────────────────
 TAU_D0     = 4.0          # donor lifetime without acceptor (ns)
@@ -34,52 +36,63 @@ FRACS = np.linspace(0, 1, 21)          # fraction unfolded: 0 → 1
 TIME  = np.linspace(0, 25, 256)        # time axis for synthetic decays (ns)
 OUT   = pathlib.Path(__file__).parent  # output folder = same dir as this script
 
-# ── build Gaussian (folded) model ─────────────────────────────────────────────
-print("Building Gaussian (folded) model ...")
-dummy = DataCurve(x=TIME.copy(), y=np.ones(len(TIME)))
-gauss_fit = fit_mod.Fit(model_class=GaussianModel, data=dummy)
-gm = gauss_fit.model
-gm.fret_parameters.tauD0          = TAU_D0
-gm.fret_parameters.forster_radius = R0
-gm.fret_parameters.kappa2         = 2/3
-gm.fret_parameters.xDOnly         = 0.0
-gm.donor.lifetimes                = [TAU_D0]
-gm.donor.amplitudes               = [1.0]
-while len(gm.gaussians) > 0:
-    gm.gaussians.pop()
-gm.gaussians.append(mean=GAUSS_MEAN, sigma=GAUSS_SIG, x=1.0)
 
-# ── build WLC (unfolded) model ────────────────────────────────────────────────
-print("Building WLC (unfolded) model ...")
-wlc_fit = fit_mod.Fit(model_class=WormLikeChainModel, data=dummy)
-wm = wlc_fit.model
-wm.fret_parameters.tauD0          = TAU_D0
-wm.fret_parameters.forster_radius = R0
-wm.fret_parameters.kappa2         = 2/3
-wm.fret_parameters.xDOnly         = 0.0
-wm.donor.lifetimes                = [TAU_D0]
-wm.donor.amplitudes               = [1.0]
-wm.chain_length                   = WLC_LC
-wm.persistence_length             = WLC_LP
+def _set(view, **values):
+    """Set parameters of *view* by canonical id."""
+    for canonical, value in values.items():
+        fret_line.find_parameter(view, canonical.replace("__", ".")).value = float(value)
 
-# ── build mixture and sweep fraction unfolded ─────────────────────────────────
+
+def folded_state():
+    """The folded state: one Gaussian distance between the dyes."""
+    view = fret_line.model_view("tcspc_fret_gaussian")
+    _set(view,
+         fret__tau0=TAU_D0, fret__forster_radius=R0, fret__kappa2=2 / 3,
+         fret__x_donly=0.0, donor__tau__0=TAU_D0, donor__amplitude__0=1.0,
+         distance__mean__0=GAUSS_MEAN, distance__sigma__0=GAUSS_SIG,
+         distance__amplitude__0=1.0)
+    # The family carries three distances; the folded state is the first alone.
+    for index in (1, 2):
+        _set(view, **{f"distance__amplitude__{index}": 0.0})
+    return view
+
+
+def unfolded_state(contour_length=WLC_LC, persistence_length=WLC_LP):
+    """The unfolded state: a worm-like chain of the given stiffness."""
+    view = fret_line.model_view("tcspc_fret_worm_like_chain")
+    _set(view,
+         fret__tau0=TAU_D0, fret__forster_radius=R0, fret__kappa2=2 / 3,
+         fret__x_donly=0.0, donor__tau__0=TAU_D0, donor__amplitude__0=1.0,
+         chain__contour_length=contour_length,
+         chain__persistence_length=persistence_length)
+    return view
+
+
+def unfolding_line(unfolded, fractions=FRACS):
+    """Sweep the fraction unfolded and return ``(E_FRET, <tau>_x)``."""
+    line = fret_line.sweep(
+        [folded_state(), unfolded],
+        {"kind": "fraction", "component": 1},
+        fractions,
+        fractions=[1.0, 0.0],
+        tau_d0=TAU_D0,
+    )
+    return np.asarray(line["e_fret"]), np.asarray(line["tau_x"])
+
+
+# ── the two-state line ────────────────────────────────────────────────────────
 print("Sweeping fraction unfolded ...")
-mix_fit = fit_mod.Fit(model_class=LifetimeMixtureModel, data=dummy)
-mm = mix_fit.model
-mm.append_model(gm, name="x_folded")
-mm.append_model(wm, name="x_unfolded")
+effs, taus = unfolding_line(unfolded_state())
+for f, e, tau in zip(FRACS, effs, taus):
+    print(f"  f={f:.2f}  E={e:.4f}  <tau>={tau:.4f} ns")
 
-fracs, effs, taus, decays = [], [], [], []
-for f in FRACS:
-    mm.fractions = [1 - f, f]
-    lt = mm.lifetime_spectrum              # interleaved [amp, tau, amp, tau, ...]
-    amps, tauvec = lt[::2], lt[1::2]
-    tau_avg = float(np.dot(amps, tauvec) / amps.sum())
-    e = 1 - tau_avg / TAU_D0
-    decay = sum(a * np.exp(-TIME / t) for a, t in zip(amps, tauvec) if t > 0)
-    decay = decay / decay.sum() if decay.sum() > 0 else decay
-    fracs.append(f); effs.append(e); taus.append(tau_avg); decays.append(decay)
-    print(f"  f={f:.2f}  E={e:.4f}  <tau>={tau_avg:.4f} ns")
+# A single-exponential decay per point, for plotting: the average lifetime is
+# what the line is made of, so that is what the curve shows.
+decays = []
+for tau in taus:
+    decay = np.exp(-TIME / tau) if tau > 0 else np.zeros_like(TIME)
+    total = decay.sum()
+    decays.append(decay / total if total > 0 else decay)
 
 # ── WLC parameter sweep (grid of Lc × Lp) ────────────────────────────────────
 print("\nWLC parameter sweep ...")
@@ -87,32 +100,16 @@ sweep_rows = []
 for lc in [60, 80, 100, 120]:
     for lp in [40, 60, 80, 100]:
         print(f"  Lc={lc} Å  Lp={lp} Å ...")
-        w2 = fit_mod.Fit(model_class=WormLikeChainModel, data=dummy).model
-        w2.fret_parameters.tauD0          = TAU_D0
-        w2.fret_parameters.forster_radius = R0
-        w2.fret_parameters.kappa2         = 2/3
-        w2.fret_parameters.xDOnly         = 0.0
-        w2.donor.lifetimes                = [TAU_D0]
-        w2.donor.amplitudes               = [1.0]
-        w2.chain_length                   = lc
-        w2.persistence_length             = lp
-
-        m2 = fit_mod.Fit(model_class=LifetimeMixtureModel, data=dummy).model
-        m2.append_model(gm, name="x_folded")
-        m2.append_model(w2, name="x_unfolded")
-        for f in FRACS:
-            m2.fractions = [1 - f, f]
-            lt = m2.lifetime_spectrum
-            amps, tauvec = lt[::2], lt[1::2]
-            tau_avg = float(np.dot(amps, tauvec) / amps.sum())
-            sweep_rows.append([lp, lc, f, 1 - tau_avg / TAU_D0, tau_avg])
+        grid_effs, grid_taus = unfolding_line(unfolded_state(lc, lp))
+        for f, e, tau in zip(FRACS, grid_effs, grid_taus):
+            sweep_rows.append([lp, lc, f, e, tau])
 
 # ── write output files ────────────────────────────────────────────────────────
 print("\nWriting output files ...")
 
 np.savetxt(
     OUT / "unfolding_fret_line.txt",
-    np.column_stack([fracs, effs, taus]),
+    np.column_stack([FRACS, effs, taus]),
     header=(
         f"tau_D0={TAU_D0} ns  R0={R0} A  "
         f"Gaussian R_mean={GAUSS_MEAN} A sigma={GAUSS_SIG} A  "
@@ -125,7 +122,7 @@ np.savetxt(
 np.savetxt(
     OUT / "unfolding_decays.txt",
     np.column_stack([TIME] + decays),
-    header="time_ns\t" + "\t".join(f"f={f:.2f}" for f in fracs),
+    header="time_ns\t" + "\t".join(f"f={f:.2f}" for f in FRACS),
     delimiter="\t", fmt="%.8f", comments="",
 )
 

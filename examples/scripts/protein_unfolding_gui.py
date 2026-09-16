@@ -52,55 +52,58 @@ print(f"  Registered as cs.imported_datasets[{idx}]")
 
 # ── open three fit windows ────────────────────────────────────────────────────
 print("Opening fit windows ...")
-cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="FRET: FD (Gaussian)")
+cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="FRET: Gaussian distances")
 gauss_fit = cs.fits[-1]
 
-cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="FRET: FD (Worm-like chain)")
+cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="FRET: worm-like chain")
 wlc_fit = cs.fits[-1]
 
-cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="Lifetime mixer")
+cs.macros.core_fit.add_fit(dataset_indices=[idx], model_name="Lifetime mixture")
 mix_fit = cs.fits[-1]
 
-# ── set Gaussian parameters ───────────────────────────────────────────────────
+# ── set the parameters ────────────────────────────────────────────────────────
+# Every model is a view on a BFF description, so a parameter is addressed by its
+# canonical id and reached the same way here as in the headless script.
+from chisurf.core.fluorescence.fret import fret_line
+
+
+def set_parameters(model, **values):
+    """Set parameters of *model* by canonical id (``__`` reads as ``.``)."""
+    for canonical, value in values.items():
+        fret_line.find_parameter(model, canonical.replace("__", ".")).value = float(value)
+
+
 gm = gauss_fit.model
-gm.fret_parameters.tauD0          = TAU_D0
-gm.fret_parameters.forster_radius = R0
-gm.fret_parameters.kappa2         = 2/3
-gm.fret_parameters.xDOnly         = 0.0
-gm.donor.lifetimes                = [TAU_D0]
-gm.donor.amplitudes               = [1.0]
-while len(gm.gaussians) > 0:
-    gm.gaussians.pop()
-gm.gaussians.append(mean=GAUSS_MEAN, sigma=GAUSS_SIG, x=1.0)
+set_parameters(gm,
+               fret__tau0=TAU_D0, fret__forster_radius=R0, fret__kappa2=2 / 3,
+               fret__x_donly=0.0, donor__tau__0=TAU_D0, donor__amplitude__0=1.0,
+               distance__mean__0=GAUSS_MEAN, distance__sigma__0=GAUSS_SIG,
+               distance__amplitude__0=1.0)
+# The family carries three distances; the folded state is the first alone.
+set_parameters(gm, distance__amplitude__1=0.0, distance__amplitude__2=0.0)
 
-# ── set WLC parameters ────────────────────────────────────────────────────────
 wm = wlc_fit.model
-wm.fret_parameters.tauD0          = TAU_D0
-wm.fret_parameters.forster_radius = R0
-wm.fret_parameters.kappa2         = 2/3
-wm.fret_parameters.xDOnly         = 0.0
-wm.donor.lifetimes                = [TAU_D0]
-wm.donor.amplitudes               = [1.0]
-wm.chain_length                   = WLC_LC
-wm.persistence_length             = WLC_LP
+set_parameters(wm,
+               fret__tau0=TAU_D0, fret__forster_radius=R0, fret__kappa2=2 / 3,
+               fret__x_donly=0.0, donor__tau__0=TAU_D0, donor__amplitude__0=1.0,
+               chain__contour_length=WLC_LC, chain__persistence_length=WLC_LP)
 
-# ── wire the mixture: link Gaussian + WLC into the mixer ─────────────────────
+# ── wire the mixture: the two states are its sources ─────────────────────────
 mm = mix_fit.model
 mm.append_model(gm, name="x_folded")
 mm.append_model(wm, name="x_unfolded")
-mm.fractions = [0.5, 0.5]   # start 50 % folded / 50 % unfolded
+fractions = mm._fractions
+fractions[0].value, fractions[1].value = 0.5, 0.5   # 50 % folded / 50 % unfolded
 
 # ── print a quick FRET-line sweep ─────────────────────────────────────────────
 print(f"\n{'f_unfold':>10}  {'E_FRET':>8}  {'<tau> ns':>10}")
 print("-" * 34)
-for f in np.linspace(0, 1, 11):
-    mm.fractions = [1 - f, f]
-    lt = mm.lifetime_spectrum
-    amps, tauvec = lt[::2], lt[1::2]
-    tau = float(np.dot(amps, tauvec) / amps.sum())
-    print(f"{f:>10.2f}  {1 - tau/TAU_D0:>8.4f}  {tau:>10.4f}")
+line = fret_line.sweep([gm, wm], {"kind": "fraction", "component": 1},
+                       np.linspace(0, 1, 11), fractions=[1.0, 0.0], tau_d0=TAU_D0)
+for f, e, tau in zip(line["parameter_values"], line["e_fret"], line["tau_x"]):
+    print(f"{f:>10.2f}  {e:>8.4f}  {tau:>10.4f}")
 
-mm.fractions = [0.5, 0.5]
+fractions[0].value, fractions[1].value = 0.5, 0.5
 
 print("""
 Three fit windows are open in the MDI area.
@@ -112,9 +115,7 @@ Console shortcuts (variables still in scope):
   mm   — Lifetime mixer
 
 Examples:
-  mm.fractions = [0.2, 0.8]            # 80% unfolded
-  while len(gm.gaussians) > 0: gm.gaussians.pop()
-  gm.gaussians.append(mean=40.0, sigma=4.0, x=1.0)
-  wm.chain_length = 100.0
-  wm.persistence_length = 50.0
+  fractions[0].value, fractions[1].value = 0.2, 0.8   # 80% unfolded
+  set_parameters(gm, distance__mean__0=40.0, distance__sigma__0=4.0)
+  set_parameters(wm, chain__contour_length=100.0, chain__persistence_length=50.0)
 """)
