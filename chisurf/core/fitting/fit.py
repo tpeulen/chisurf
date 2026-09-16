@@ -7,6 +7,7 @@ from collections import deque
 
 import contextlib
 import inspect
+import math
 import os
 import re
 import numpy as np
@@ -454,11 +455,15 @@ class Fit(cs.core.base.Base):
     def name(self) -> str:
         """Return a human-readable, *globally unique* fit name.
 
-        The base name is derived from the model class and attached data
-        ("ModelName - DataName"). If multiple active fits share the same
-        base name, a numeric suffix " (1)", " (2)", ... is appended based
-        on the order of appearance in ``cs.fits``.
+        A name given by a user (or by an API caller) is returned as it was
+        set. Otherwise the base name is derived from the model class and
+        attached data ("ModelName - DataName"); if multiple active fits share
+        the same base name, a numeric suffix " (1)", " (2)", ... is appended
+        based on the order of appearance in ``cs.fits``.
         """
+        chosen = self.__dict__.get("_explicit_name")
+        if chosen:
+            return str(chosen)
 
         try:
             base_name = _raw_fit_name(self)
@@ -506,6 +511,23 @@ class Fit(cs.core.base.Base):
             return f"{base_name} ({idx})"
         except Exception:
             return base_name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """Name this fit explicitly, overriding the derived name.
+
+        Naming a fit is part of the API (``fit.create`` takes one) and of the
+        GUI; without a setter here the derived-name property shadowed
+        :class:`~chisurf.core.base.Base`'s and every rename failed with
+        "can't set attribute". Setting an empty name restores the derived one.
+        """
+        # Under its own key: ``Base.__init__`` already writes a default into
+        # ``__dict__["name"]`` (the class name), and reading that back would
+        # hide the derived "Model - Data" name behind "FitGroup".
+        if value:
+            self.__dict__["_explicit_name"] = str(value)
+        else:
+            self.__dict__.pop("_explicit_name", None)
 
     @property
     def fit_range(self) -> typing.Tuple[int, int]:
@@ -1288,10 +1310,31 @@ class Fit(cs.core.base.Base):
                 self.update_error_estimates()
             if record_result:
                 self.results.append(self.model.__getstate__())
+            self._record_achieved_chi2()
         if finalize:
             self.model.finalize()
         if cancelled:
             raise OptimizationCancelled()
+
+    def _record_achieved_chi2(self) -> None:
+        """Remember the chi2 this run reached.
+
+        ``chi2`` and ``chi2r`` are computed on demand -- reading one evaluates
+        the model -- so listing fits deliberately reports only a *recorded*
+        value and never evaluates anything. Nothing recorded one, so a fit that
+        had been run still listed no chi2 at all. Recording it here is what
+        makes "no chi2 yet" mean "never run" rather than "never stored".
+        """
+        for name, attribute in (("_last_chi2", "chi2"), ("_last_chi2r", "chi2r")):
+            try:
+                value = float(getattr(self, attribute))
+            except Exception:
+                self.__dict__.pop(name, None)
+                continue
+            if math.isfinite(value):
+                self.__dict__[name] = value
+            else:
+                self.__dict__.pop(name, None)
 
     def set_parameter_value(self, name: str, value: float):
         """Update a parameter value and notify dependents."""
@@ -2156,6 +2199,7 @@ class FitGroup(Fit):
                 self.update_error_estimates()
             if record_result:
                 self.results.append(self.model.__getstate__())
+            self._record_achieved_chi2()
         if finalize:
             self.model.finalize()
         if cancelled:

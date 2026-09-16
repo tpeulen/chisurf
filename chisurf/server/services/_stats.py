@@ -3,61 +3,60 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 
-def _cached_float(obj: Any, names: tuple[str, ...]) -> Optional[float]:
-    """Return a cached float attribute without invoking descriptors."""
+def _recorded_float(fit: Any, name: str) -> Optional[float]:
+    """Return what a run recorded under *name*, without evaluating anything.
+
+    Read straight from the instance dictionary: ``chi2`` and ``chi2r`` are
+    properties that evaluate the model, and a listing must never do that.
+    :meth:`chisurf.core.fitting.fit.Fit._record_achieved_chi2` is the one
+    writer of these keys.
+    """
     try:
-        values = getattr(obj, "__dict__", {})
-        for name in names:
-            if name in values:
-                return float(values[name])
+        return float(fit.__dict__[name])
     except Exception:
-        pass
-    return None
+        return None
 
 
 def _safe_chi2(fit: Any, *, compute: bool = False) -> Optional[float]:
-    """Return the chi-squared value of *fit*, or ``None`` on failure.
+    """Return the chi-squared value of *fit*, or ``None``.
 
     Parameters
     ----------
     fit : object
         Fit instance.
-
+    compute : bool, optional
+        Evaluate the model when no run has recorded a value. Off by default,
+        so that listing fits stays free of model evaluations.
     """
-    cached = _cached_float(fit, ("chi2", "_chi2", "last_chi2", "_last_chi2"))
-    if cached is not None:
-        return cached
+    recorded = _recorded_float(fit, "_last_chi2")
+    if recorded is not None:
+        return recorded
     if not compute:
         return None
     try:
-        return float(getattr(fit, "chi2", float("nan")))
+        return float(fit.chi2)
     except Exception:
         return None
 
 
 def _safe_chi2r(fit: Any, *, compute: bool = False) -> Optional[float]:
-    """Return the reduced chi-squared value of *fit*, or ``None`` on failure.
+    """Return the reduced chi-squared value of *fit*, or ``None``.
 
     Parameters
     ----------
     fit : object
         Fit instance.
-
+    compute : bool, optional
+        See :func:`_safe_chi2`.
     """
-    cached = _cached_float(fit, ("chi2r", "_chi2r", "last_chi2r", "_last_chi2r"))
-    if cached is not None:
-        return cached
+    recorded = _recorded_float(fit, "_last_chi2r")
+    if recorded is not None:
+        return recorded
     if not compute:
         return None
     try:
-        return float(getattr(fit, "chi2r", float("nan")))
+        return float(fit.chi2r)
     except Exception:
-        try:
-            model = getattr(fit, "model", None)
-            if model is not None:
-                return float(getattr(model, "chi2r", float("nan")))
-        except Exception:
-            pass
         return None
 
 
