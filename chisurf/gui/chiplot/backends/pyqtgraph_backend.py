@@ -1007,15 +1007,18 @@ class _PgCanvas(base.Canvas):
         where it reads naturally, and where it produced an empty box. So the
         existing items are adopted here.
         """
-        existing = getattr(self._pi, "legend", None)
-        if existing is not None:
-            scene = existing.scene()
-            if scene is not None:
-                scene.removeItem(existing)
-            else:
-                self._pi.removeItem(existing)
-            self._pi.legend = None
-        legend = self._pi.addLegend(offset=offset)
+        # One legend, refilled -- never destroyed and rebuilt. Taking the box
+        # out of the scene left its LabelItems behind with their parent gone,
+        # and the next resize Qt delivered reached a C++ object that had
+        # already been deleted: a RuntimeError from the wrapper, then a
+        # segfault out of the event loop that raised it. clear() is
+        # pyqtgraph's own teardown for the contents, and it closes each label.
+        legend = getattr(self._pi, "legend", None)
+        if legend is None:
+            legend = self._pi.addLegend(offset=offset)
+        else:
+            legend.clear()
+            legend.setOffset(offset)
         for item in self._pi.listDataItems():
             name = getattr(item, "name", None)
             label = name() if callable(name) else None
