@@ -134,7 +134,7 @@ def deviance_residuals(
     and every fitted parameter stayed the same. Baker & Cousins define the
     deviance statistic and not a residual sign, so nothing rested on the old
     choice. Changed together with ``IMP.bff``'s ``deviance_residual`` in one
-    step, so the two never disagree at any commit (bff PRD-140).
+    step, so the two never disagree at any commit.
 
     Parameters
     ----------

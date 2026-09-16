@@ -15,6 +15,7 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.settings as css
+from chisurf.gui import dialogs
 from chisurf.gui.chiplot import available_backends
 from chisurf.gui.widgets.collapsible_box import CollapsibleBox
 
@@ -548,7 +549,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
             with open(settings_file, "w", encoding="utf-8") as fh:
                 yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Save failed", str(exc))
+            dialogs.warning(self, "Save failed", str(exc))
 
     def _on_changed(self):
         """Apply the dialog to the settings, unless the dialog is being loaded."""

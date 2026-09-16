@@ -16,7 +16,7 @@ arrays across the boundary and reshapes the results; it owns no arithmetic.
 The scalar three-cube correction (:func:`correct_three_cube`) is tttrlib's
 (``SpectralCrosstalk``, A/B-validated there against the Hellenkamp 2018
 formulas and FRETBursts); this module forwards to it — the duplication
-register's "one implementation per algorithm", PRD-105 phase 4.
+register's "one implementation per algorithm".
 
 Conventions
 -----------

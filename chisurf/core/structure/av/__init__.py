@@ -67,7 +67,7 @@ __all__ = ["BasicAV", "ACV", "DynamicAV", "dye_definition", "dye_names"]
 
 
 def _compute_av():
-    """``IMP.bff.get_av`` (``compute_av`` before imp.bff PRD-138), imported on first use.
+    """``IMP.bff.get_av`` (``compute_av`` under its earlier name), imported on first use.
 
     Lazy on purpose: importing ``IMP`` pulls a large native stack in, and
     ``import chisurf.core.structure`` must stay cheap. The upstream imp.bff

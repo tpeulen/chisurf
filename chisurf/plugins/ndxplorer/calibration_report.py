@@ -91,7 +91,7 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
         """Into the container by default; a file when there is none."""
         container = container_of(ndx)
         if container:
-            answer = QtWidgets.QMessageBox.question(
+            answer = dialogs.question(
                 dialog, "Save calibration",
                 "Store the calibration in the measurement?\n\n"
                 f"{container}\n\n"
@@ -99,7 +99,8 @@ def show_calibration_report(parent, title: str, report: str, *, constants: dict,
                 "No writes a separate file instead.",
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
                 | QtWidgets.QMessageBox.Cancel,
-                QtWidgets.QMessageBox.Yes,
+                # Nobody at the keyboard writes nothing.
+                QtWidgets.QMessageBox.Cancel,
             )
             if answer == QtWidgets.QMessageBox.Cancel:
                 return

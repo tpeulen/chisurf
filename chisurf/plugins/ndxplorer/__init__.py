@@ -253,7 +253,7 @@ if __name__ == "plugin":
                 return
             container = container_of(ndx)
             if container:
-                answer = QtWidgets.QMessageBox.question(
+                answer = dialogs.question(
                     ndx, "Save calibration",
                     "Store the calibration in the measurement?\n\n"
                     f"{container}\n\n"
@@ -261,7 +261,8 @@ if __name__ == "plugin":
                     "No writes a separate file instead.",
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
                     | QtWidgets.QMessageBox.Cancel,
-                    QtWidgets.QMessageBox.Yes,
+                    # Nobody at the keyboard writes nothing.
+                    QtWidgets.QMessageBox.Cancel,
                 )
                 if answer == QtWidgets.QMessageBox.Cancel:
                     return
@@ -294,14 +295,15 @@ if __name__ == "plugin":
             stored = stored_calibrations(ndx)
             loaded = None
             if stored:
-                answer = QtWidgets.QMessageBox.question(
+                answer = dialogs.question(
                     ndx, "Load calibration",
                     f"This measurement carries {len(stored)} stored "
                     f"calibration(s).\n\nLoad the most recent one? "
                     f"No opens a file instead.",
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
                     | QtWidgets.QMessageBox.Cancel,
-                    QtWidgets.QMessageBox.Yes,
+                    # Nobody at the keyboard loads nothing.
+                    QtWidgets.QMessageBox.Cancel,
                 )
                 if answer == QtWidgets.QMessageBox.Cancel:
                     return
@@ -334,11 +336,12 @@ if __name__ == "plugin":
                 + ["", ("Changes:" if changes else "Nothing would change.")]
                 + changes
             )
-            if QtWidgets.QMessageBox.question(
+            if dialogs.question(
                     ndx, "Load calibration",
                     "Apply this calibration to the window?\n\n" + detail,
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                    QtWidgets.QMessageBox.Yes) != QtWidgets.QMessageBox.Yes:
+                    # Nobody at the keyboard changes nothing.
+                    QtWidgets.QMessageBox.No) != QtWidgets.QMessageBox.Yes:
                 return
             ndx.constants = {**before, **constants}
             data_source = getattr(ndx, "data_source", None)
