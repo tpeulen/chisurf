@@ -23,7 +23,7 @@ See [VERSIONING.md](VERSIONING.md) for version format details (YY.X scheme, pre-
 
 - At most **one new major line per year** (e.g. open `26` once per year)
 - Minor releases on an existing major line are allowed (bugfix + improvements)
-- No point releases; fixes go into the next minor (`26.1`)
+- No point releases; fixes go into the next release (`26.2`)
 
 ## Pre-Release Stages
 

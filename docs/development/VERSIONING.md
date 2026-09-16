@@ -20,9 +20,14 @@ Stable releases use a two-segment `YY.X` format:
 Examples:
 
 - `26.1` — first stable release in 2026
-- `26.1` — next release in 2026 (bugfixes + features)
+- `26.2` — the next release in 2026 (bugfixes + features)
 
-There are no point releases (no `26.1.1`). Bugfixes go into the next minor (`26.1`).
+There are no point releases (no `26.1.1`). Bugfixes go into the next release
+(`26.2`).
+
+The tags before this scheme (`v24.02.14`, `v25.04.07`) are dated
+`YY.MM.DD`. They are history, not a second scheme: everything from the first
+`26` release on is `YY.X`.
 
 ## Pre-Release Versions
 

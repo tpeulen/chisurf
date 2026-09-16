@@ -70,9 +70,31 @@
 
 ### Removed
 
+- **ChiSurf no longer patches NumPy on import.** It wrote the NumPy 1 aliases back into the `numpy` module, so every library in the process saw a NumPy that was not the one it was installed against, and code here could be written against names its NumPy does not have. The eight call sites that relied on it (`np.trapz` in the Förster overlap integral and the light-path spectral propagation, `np.bool8` in ndxplorer) use the current spellings.
+
+- **The fake `distutils` for Python 3.12 is gone.** Importing ChiSurf injected stand-in `distutils`, `distutils.version` and `distutils.spawn` modules into `sys.modules`. It was already dead: setuptools ships `_distutils_hack`, so the real import resolves, and `mdtraj` — the package it named as its reason — is not a dependency any more.
+
 - **Lumis Quest has left the repository.** The game now lives in its own repository (`~/dev/lumis_quest`), where it can be made good on its own before it is embedded again. It keeps the stack it had here: the `chigame` engine (WebGPU via `wgpu`, WGSL shaders, `rendercanvas` surfaces) is vendored into that repository unchanged, and three resolver shims mean that dropping the package back under `chisurf/plugins/misc/games/` rebinds every seam to the host's engine, review API and cmtk widgets without a rewrite. Removed with it: the Games-hub panel and manifest entry, the shared `characters.py` walker module only it used, the Konami-code easter egg that was its hidden entrance (`chisurf/gui/easter_egg.py` and its install hook in the main window), and the chigame audio test that borrowed the game as a fixture — the music-context coverage it carried moved into the game's own suite. The remaining games (Number Quest, Minesweeper, Tetris, Pong, Breakout, Ninja Adventure) are untouched.
 
 ### Fixed
+
+- **The RPC server could stop answering mid-session, and nothing said why.** A ZMQ context leaked by `rpc_is_available()` on its timeout path — the path it exists to answer — and by a closed client that silently reopened itself with a fresh context on the next call. Terminating a context blocks while a socket of that context is still open, and the destructor that terminates an abandoned one runs wherever the garbage collector happens to be: it ran on the server's own worker thread, in the middle of a request, and the server never answered again. Both are closed now, and a closed client stays closed until `connect()` reopens it. `test/server` went from 47 failures and a thirteen-minute hang to 694 passing in ninety seconds.
+
+- **Plugin manifests and view specs were never validated.** Both validators import `jsonschema` inside a `try`, and `jsonschema` was undeclared in every manifest — so the import failed, the `except` returned "no errors", and every document passed. It is a declared dependency now, and the validators no longer catch its absence.
+
+- **The photokinetic bunching factor drifted off its own limit.** `X(tau)` must tend to exactly 1, because a generator conserves probability — its columns sum to zero, so the stationary mode does not decay. The eigen-decomposition returns that eigenvalue as round-off instead (~1e-18 of the largest rate), and clipping the eigenvalues to `Re <= 0` kept it as a very slow decay: for a rhodamine scheme `X` fell 3e-9 below 1 at a one-second lag and 3e-6 at a thousand. Fixed in the engine (`IMP.bff`); the residual is now 6e-15 at every lag.
+
+- **A fit could not be renamed**, including through `fit.create`'s own `fit_name` argument: `Fit.name` was a computed property with no setter, shadowing `Base`'s, so every assignment raised "can't set attribute". An explicit name now wins over the derived "Model - Data" one.
+
+- **A run never recorded the chi2 it reached**, so listing fits reported no chi2 even for a fit that had been run — "not fitted yet" and "nobody stored it" were indistinguishable. Listing still evaluates no models; a run records what it achieved.
+
+- **Removing fits by stale indices reported "no fits specified"** instead of saying which ones no longer exist. An index is only valid until the first removal shifts the list.
+
+- **CLSM Draw opened every file as the setup's container type**, so an imaging HDF5's back-reference to an HT3 file failed inside tttrlib with "Unknown exception". A file that names its own container opens as what it is.
+
+- **Event-mode Richardson-Lucy deconvolution was allocator-bound**: the PSF interpolator took its offset as a vector and built two more per call, and each photon allocated three vectors inside the OpenMP loops — about 1e8 allocations for 20k photons over 10 iterations, contending on the allocator lock, so the run time did not depend on the PSF at all. About 11x faster now (tttrlib).
+
+- **The protein-unfolding examples did not run.** Both imported the classic TCSPC models that were removed; the headless one exited 1 and the interactive one asked for three model names that are no longer registered. Both run on the described models and reproduce the recorded reference output to 1e-8.
 
 - **A `sqlite3.Connection` passed as a database path can no longer silently create a database named after the object's repr.** `MFDatabase.__init__` and `parse_database_target` stringified whatever they were handed, so a stray Connection as `db_path` made SQLite quietly create a file literally named `<sqlite3.Connection object at 0x…>` in the working directory and bootstrap the full schema into it — the real database untouched, nothing logged (the five such strays once found in the repository root are exactly this, four with a bootstrapped schema and one zero-byte from a bare `sqlite3.connect` read in `local_admin_status`). Both mmfdb entry points now raise a `TypeError` that says to pass the connection as `connection=`, `local_admin_status` validates its argument the same way, and a regression test pins that no file is created.
 
