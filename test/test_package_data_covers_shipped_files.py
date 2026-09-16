@@ -51,8 +51,9 @@ IGNORED_PARTS = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "
 #: off; it is not somewhere to add a new extension. Adding a pattern to
 #: pyproject.toml and striking the line here is the fix.
 KNOWN_UNCOVERED = {
-    ".c", ".cpp", ".h",          # bundled C sources for the AV kernel
-    ".dcd", ".pdb", ".pml",      # structure fixtures and viewer scripts
+    # .c/.cpp/.h and .pml are covered now: the AV kernel's bundled C sources
+    # went with the move to IMP.bff, and the viewer scripts are packaged.
+    ".dcd", ".pdb",              # structure fixtures
     ".gnumeric", ".xlsx", ".xlsm",  # potential-energy databases
     ".pdf",                      # reference document beside those databases
     ".icns", ".ico", ".qrc",     # icons and the Qt resource manifest

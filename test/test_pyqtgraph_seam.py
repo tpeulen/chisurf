@@ -23,6 +23,7 @@ is an empty allow-list (bar the ChiMOL OpenGL module owned by PRD-57).
 from __future__ import annotations
 
 import pathlib
+import ast
 import re
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -133,16 +134,27 @@ def _load_native_allowlist() -> set[str]:
 
 
 def _current_native_users() -> set[str]:
+    """Return the files that read a ``.native`` attribute in real code.
+
+    Parsed, not matched: ``native`` is also a *module* name here
+    (``chisurf.core.fitting.mcts.native``, ``chimol.render.gpu.native``), and a
+    text search reported every import of one and every docstring that named one
+    as a reach past the seam. An attribute read is an ``ast.Attribute``; an
+    import is not, and neither is prose.
+    """
     found = set()
     for path in _PKG.rglob("*.py"):
         rel = path.relative_to(_ROOT).as_posix()
         if rel.startswith("chisurf/gui/chiplot/"):
             continue  # chiplot *is* the seam; ``.native`` is its own property
-        text = path.read_text(encoding="utf-8", errors="ignore")
-        text = _COMMENT_RE.sub("", text)
-        text = _NATIVE_FALSE_POSITIVES.sub(".", text)
-        if _NATIVE_RE.search(text):
-            found.add(rel)
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+        except SyntaxError:  # pragma: no cover - not this test's business
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr == "native":
+                found.add(rel)
+                break
     return found
 
 

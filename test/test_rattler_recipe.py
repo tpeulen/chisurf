@@ -116,7 +116,10 @@ def _bound_names(path: pathlib.Path) -> set[str]:
 
     An entry point may name something the module only re-exports (a plugin's
     ``cli/__init__.py`` doing ``from .main import cli``), so an import alias
-    counts as a binding.
+    counts as a binding. A module that defers its imports binds its names at
+    lookup, through a module-level ``__getattr__`` reading a table of
+    ``{name: submodule}`` -- ``quest.gui`` does, so that starting the CLI does
+    not import a GUI toolkit -- and the strings in that table count too.
 
     Parameters
     ----------
@@ -139,6 +142,18 @@ def _bound_names(path: pathlib.Path) -> set[str]:
             names.update(t.id for t in node.targets if isinstance(t, ast.Name))
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
             names.add(node.target.id)
+    if "__getattr__" in names:
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Dict):
+                names.update(
+                    key.value for key in node.keys
+                    if isinstance(key, ast.Constant) and isinstance(key.value, str)
+                )
+            elif isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+                names.update(
+                    element.value for element in node.elts
+                    if isinstance(element, ast.Constant) and isinstance(element.value, str)
+                )
     return names
 
 
