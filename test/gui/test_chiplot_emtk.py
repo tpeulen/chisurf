@@ -92,7 +92,7 @@ def test_removing_a_curve_takes_it_out_of_the_panel(plot):
 
     curve.remove()
     assert not curve.is_alive()
-    assert curve.native() not in plot.native()
+    assert curve.native not in plot.native()
 
 
 def test_the_range_follows_the_data_until_it_is_set(plot):
@@ -157,7 +157,7 @@ def test_an_image_is_mapped_through_its_colormap(plot):
 
     image.set_levels((0.0, 5.0))
     image.set_image(data * 2.0)
-    assert image.native()["texture"] is None, "the texture is rebuilt, not reused"
+    assert image.native["texture"] is None, "the texture is rebuilt, not reused"
 
 
 def test_an_image_places_itself_in_data_coordinates(plot):
@@ -214,7 +214,7 @@ def test_dragging_a_region_moves_it_and_reports(plot):
 
     _paint(plot)
     canvas = plot._canvas
-    low_px, high_px = region.native()["_pixels"]
+    low_px, high_px = region.native["_pixels"]
     middle = (low_px + high_px) / 2.0
 
     canvas.press(middle, 50.0, 0.0, 0.0, 300.0, 200.0)
@@ -249,7 +249,7 @@ def test_a_vertical_marker_is_drawn_and_movable(plot):
     _paint(plot)
 
     assert marker.value == 12.0
-    assert marker.native()["_pixels"] is not None
+    assert marker.native["_pixels"] is not None
     marker.set_value(15.0)
     assert marker.value == 15.0
 
@@ -277,10 +277,40 @@ def test_error_bars_need_a_size(plot):
         plot.errorbars([0.0, 1.0], [1.0, 2.0])
 
 
+@pytest.mark.parametrize("kind", ["rect", "ellipse", "polygon"])
+def test_a_region_of_interest_is_drawn_and_dragged(plot, kind):
+    """Imaging picks pixels with these; moving one has to report where it went."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    roi = plot.add_roi(kind=kind, pos=(5.0, 100.0), size=(4.0, 200.0),
+                       points=[(5.0, 100.0), (9.0, 100.0), (9.0, 300.0)])
+
+    seen: list[tuple[float, float]] = []
+    roi.on_change(lambda *_: seen.append(roi.pos))
+
+    _paint(plot)
+    box = roi.native["_box"]
+    inside_x = (box[0] + box[2]) / 2.0
+    inside_y = (box[1] + box[3]) / 2.0
+
+    canvas = plot._canvas
+    canvas.press(inside_x, inside_y, 0.0, 0.0, 300.0, 200.0)
+    canvas.drag(inside_x + 30.0, inside_y, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    assert roi.pos[0] > 5.0, "the shape followed the pointer"
+    assert seen, "and reported where it went"
+
+
+def test_a_region_of_interest_refuses_a_shape_it_cannot_draw(plot):
+    """By name, rather than drawing a rectangle and calling it a ring."""
+    with pytest.raises(NotImplementedError, match="ring"):
+        plot.add_roi(kind="ring")
+
+
 @pytest.mark.parametrize(
     "call, wanted",
     [
-        (lambda p: p.add_roi(kind="rect"), "region of interest"),
         (lambda p: p.arrow(0.0, 0.0), "arrow"),
     ],
 )
@@ -292,6 +322,58 @@ def test_what_is_not_drawn_yet_says_so(plot, call, wanted):
     assert wanted in message
     assert "PRD-104" in message, "the refusal names where the work is tracked"
     assert "pyqtgraph" in message, "and what to use meanwhile"
+
+
+def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
+    """A (t, y, x) stack steps; a plain image is shown as it is."""
+    from chisurf.gui.chiplot import backends as backends_module
+
+    view = backends_module.get_backend().create_image_view()
+    stack = np.stack([np.full((8, 8), float(i)) for i in range(5)])
+    view.set_image(stack)
+
+    assert view._stack is not None
+    first = view._image.native["data"]
+    assert first[0, 0] == pytest.approx(0.0)
+
+    view.set_frame(3)
+    assert view._image.native["data"][0, 0] == pytest.approx(3.0)
+
+    view.set_frame(7)  # wraps, rather than raising on a stack of five
+    assert view._image.native["data"][0, 0] == pytest.approx(2.0)
+
+    view.clear()
+    assert view._image is None
+
+
+def test_an_image_view_reports_clicks_in_image_coordinates(qapp):
+    """What a pixel picker needs from it."""
+    from chisurf.gui.chiplot import backends as backends_module
+
+    view = backends_module.get_backend().create_image_view()
+    view.set_image(np.zeros((4, 4)))
+    seen: list[tuple[float, float]] = []
+    view.on_click(lambda x, y: seen.append((x, y)))
+
+    assert seen == [], "nothing is reported until something is clicked"
+
+
+def test_a_grid_lays_its_panels_out(qapp):
+    """Each cell is a panel of its own, and the cursor walks the row."""
+    from chisurf.gui.chiplot import backends as backends_module
+
+    grid = backends_module.get_backend().create_grid()
+    first = grid.add_panel(title="left")
+    second = grid.add_panel(title="right")
+    grid.next_row()
+    third = grid.add_panel(title="below")
+
+    assert len({id(first), id(second), id(third)}) == 3
+    assert len(grid.native()) == 3
+    assert grid.widget().layout().count() == 3
+
+    grid.clear()
+    assert grid.native() == []
 
 
 def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
