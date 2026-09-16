@@ -282,6 +282,9 @@
                   "string",
                   "null"
                 ]
+              },
+              "action_fixed": {
+                "type": "object"
               }
             },
             "additionalProperties": false

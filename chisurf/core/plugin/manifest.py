@@ -470,10 +470,7 @@ def validate_manifest_schema(data) -> list[str]:
         document.
 
     """
-    try:
-        import jsonschema  # noqa: PLC0415
-    except ImportError:  # pragma: no cover
-        return []
+    import jsonschema  # noqa: PLC0415
 
     schema = build_manifest_schema()
     validator = jsonschema.Draft202012Validator(schema)

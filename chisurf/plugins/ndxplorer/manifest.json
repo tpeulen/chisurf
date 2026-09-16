@@ -10,7 +10,7 @@
     "Main",
     "Tools"
   ],
-  "icon": "🔭",
+  "icon": "\ud83d\udd2d",
   "state_namespace": "ndxplorer",
   "entrypoints": {
     "gui": "chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer",
@@ -24,6 +24,7 @@
     "population_selection"
   ],
   "optional_requires": {
+    "accurate_fret": "*",
     "burst_fcs_correlator": "*",
     "burst_mle_analysis": "*",
     "fret_line": "*",

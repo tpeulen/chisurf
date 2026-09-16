@@ -440,10 +440,7 @@ def _validate(data, schema, label: str) -> list[str]:
         document, because "additionalProperties: false" on its own tells a
         plugin author nothing about *where*.
     """
-    try:
-        import jsonschema  # noqa: PLC0415
-    except ImportError:  # pragma: no cover - jsonschema is a hard dependency
-        return []
+    import jsonschema  # noqa: PLC0415
 
     validator = jsonschema.Draft202012Validator(schema)
     messages = []

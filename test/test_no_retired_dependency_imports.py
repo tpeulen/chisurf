@@ -43,7 +43,6 @@ RETIRED = {
         "encode arrays through the MMFDB payload codec",
     ),
     "pytools": ("pytools", "it was never imported"),
-    "jsonschema": ("jsonschema", "it was never imported"),
     "tifffile": (
         "tifffile",
         "use chisurf.core.fio.image (tttrlib's bundled libtiff)",

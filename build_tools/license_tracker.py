@@ -66,8 +66,9 @@ OVERRIDES = {
     "imp": ("LGPL-2.1", "https://integrativemodeling.org/latest/doc/manual/licenses.html"),
     # Ships no license metadata at all; the repository states BSD-2-Clause.
     "rendercanvas": ("BSD-2-Clause", "https://github.com/pygfx/rendercanvas/blob/main/LICENSE"),
-    # Sibling project in this ecosystem; license from its pyproject.toml.
+    # Sibling projects in this ecosystem; license from their pyproject.toml.
     "mmfdb": ("MIT", "https://github.com/tpeulen/mmfdb"),
+    "imp-bff": ("MPL-2.0", "https://github.com/tpeulen/imp.bff"),
     # Known licenses for packages the generating environment may not have
     # installed (dev/cli/postgres extras).
     "python-docx": ("MIT", "https://github.com/python-openxml/python-docx/blob/master/LICENSE"),

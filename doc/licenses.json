@@ -1,6 +1,6 @@
 {
-  "generated": "2026-08-11",
-  "project_license": "GPL-3.0-or-later",
+  "generated": "2026-09-16",
+  "project_license": "GPL-3.0-or-later AND CC-BY-SA-4.0",
   "binding_class": 4,
   "binding_class_name": "Strong copyleft (GPL)",
   "blockers": [
@@ -70,14 +70,14 @@
       "class": 1
     },
     {
-      "name": "imp",
+      "name": "imp-bff",
       "group": "runtime",
-      "requirement": "imp>=2.25",
-      "license": "LGPL-2.1",
-      "url": "https://integrativemodeling.org/latest/doc/manual/licenses.html",
+      "requirement": "imp-bff",
+      "license": "MPL-2.0",
+      "url": "https://github.com/tpeulen/imp.bff",
       "source": "override",
       "version": "not installed",
-      "class": 3
+      "class": 2
     },
     {
       "name": "scipy",
@@ -120,6 +120,16 @@
       "class": 1
     },
     {
+      "name": "glfw",
+      "group": "runtime",
+      "requirement": "glfw",
+      "license": "MIT License",
+      "url": "https://github.com/FlorianRhiem/pyGLFW",
+      "source": "metadata",
+      "version": "2.10.2",
+      "class": 1
+    },
+    {
       "name": "labellib",
       "group": "runtime",
       "requirement": "labellib",
@@ -128,6 +138,16 @@
       "source": "metadata",
       "version": "1!1.0.0",
       "class": 2
+    },
+    {
+      "name": "cmtk",
+      "group": "runtime",
+      "requirement": "cmtk",
+      "license": "MIT",
+      "url": "https://github.com/tpeulen/cmtk",
+      "source": "metadata",
+      "version": "0.1.0",
+      "class": 1
     },
     {
       "name": "PyYAML",
@@ -230,6 +250,16 @@
       "class": 1
     },
     {
+      "name": "jsonschema",
+      "group": "runtime",
+      "requirement": "jsonschema",
+      "license": "MIT",
+      "url": "https://github.com/python-jsonschema/jsonschema",
+      "source": "metadata",
+      "version": "4.26.0",
+      "class": 1
+    },
+    {
       "name": "pyzmq",
       "group": "runtime",
       "requirement": "pyzmq>=25.0",
@@ -246,7 +276,7 @@
       "license": "MIT",
       "url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
       "source": "override",
-      "version": "not installed",
+      "version": "0.16.5",
       "class": 1
     },
     {
@@ -276,7 +306,7 @@
       "license": "MIT",
       "url": "https://github.com/tpeulen/mmfdb",
       "source": "override",
-      "version": "not installed",
+      "version": "0.1.0",
       "class": 1
     },
     {
@@ -356,7 +386,7 @@
       "license": "MIT",
       "url": "https://github.com/astral-sh/ruff/blob/main/LICENSE",
       "source": "override",
-      "version": "not installed",
+      "version": "0.16.5",
       "class": 1
     },
     {
@@ -423,11 +453,11 @@
       "name": "openpyxl",
       "group": "scrape",
       "requirement": "openpyxl",
-      "version": "not installed",
-      "license": "",
-      "url": "",
-      "source": "missing",
-      "class": null
+      "license": "MIT License",
+      "url": "https://foss.heptapod.net/openpyxl/openpyxl",
+      "source": "metadata",
+      "version": "3.1.5",
+      "class": 1
     }
   ],
   "bundled": [

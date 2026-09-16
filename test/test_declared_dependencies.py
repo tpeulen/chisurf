@@ -123,6 +123,8 @@ _NOT_SHIPPED = {
 _SHIPPED_ONLY = {
     "micromamba": "the updater drives it as an executable in an installed app; "
                   "developers already have a solver",
+    "cmtk": "a sibling checkout installed editable in the dev environment, the "
+            "way tttrlib is; the shipped app gets the built package",
 }
 
 #: Runtime packages a wheel cannot or need not declare, with the reason.

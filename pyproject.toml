@@ -70,6 +70,9 @@ dependencies = [
     # path falls back to rendercanvas's offscreen canvas.
     "glfw",
     "labellib",
+    # The node-graph editor toolkit: chisurf.gui.widgets.node_editor and
+    # chimol import cmtk.qt_host unguarded, so it is not optional.
+    "cmtk",
     "PyYAML",
     "packaging",
     "typing-extensions",
@@ -82,6 +85,9 @@ dependencies = [
     # it used to arrive transitively via the removed `notebook` dependency.
     "nbformat",
     "click",
+    # Plugin-manifest and view-spec validation; without it those validators
+    # report everything valid.
+    "jsonschema",
     "pyzmq>=25.0",
     "ruff>=0.4",
     "sqlalchemy>=2.0",
@@ -165,7 +171,7 @@ csg_traj_energy_calculator = "chisurf.plugins.traj.potential_energy.__main__:mai
 csg_traj_remove_clashed_frames = "chisurf.plugins.traj.traj_remove_clashes.__main__:main"
 csg_traj_rotate_translate = "chisurf.plugins.traj.traj_rotate_translate.__main__:main"
 csg_traj_save_topology = "chisurf.plugins.traj.traj_save_topology.__main__:main"
-csg_quest = "quest.quest_gui:start_gui"
+csg_quest = "quest.gui:start_gui"
 csg_ndxplorer = "ndxplorer.__main__:main"
 csg_trace_browser = "chisurf.plugins.tttr.trace_browser.__main__:main"
 csg_tttr_image_browser = "chisurf.plugins.tttr.tttr_image_browser.__main__:main"

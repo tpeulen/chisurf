@@ -38,6 +38,10 @@ hdf5 = "*"
 # click-didyoumean was dropped: chisurf.core.cli.support.DidYouMeanGroup is the
 # in-tree replacement. pytools was dropped: nothing imports it.
 click = "*"
+# Plugin-manifest and view-spec validation (chisurf.core.plugin.manifest,
+# chisurf.core.dataspec.schema): without it those validators report every
+# document valid, because their import fails.
+jsonschema = "*"
 qtpy = "<2.0"
 pyqt = "*"
 pyqtgraph = "0.13.*"
