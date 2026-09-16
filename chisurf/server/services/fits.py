@@ -371,7 +371,17 @@ def remove_fits(
                 to_remove.add(int(i))
 
     if not to_remove:
-        return service_error("no fits specified for removal", error_code=INVALID_INPUT)
+        if not fit_indices and not fit_uids:
+            return service_error("no fits specified for removal", error_code=INVALID_INPUT)
+        # Saying which ones matched nothing is the difference between "you
+        # passed nothing" and "those are gone already" -- an index is only
+        # valid until a removal shifts the list, so a caller working from
+        # stale indices needs to be told that, not told it passed nothing.
+        asked = list(fit_indices or []) + list(fit_uids or [])
+        return service_error(
+            f"no fit matches {asked!r}; the session holds {len(fits)} fits",
+            error_code=NOT_FOUND,
+        )
 
     kept = [f for i, f in enumerate(fits) if i not in to_remove]
     state.fits[:] = kept
