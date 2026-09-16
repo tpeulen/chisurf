@@ -137,6 +137,7 @@ _PYPI_NAMES = {
     "pyqt": "pyqt5",
     "pytables": "tables",
     "msgpack-python": "msgpack",
+    "wgpu-py": "wgpu",
 }
 
 

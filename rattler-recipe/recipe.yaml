@@ -135,7 +135,9 @@ requirements:
     - emtk
     # The chigame WebGPU engine: wgpu is the graphics API, rendercanvas the
     # per-platform surface, glfw the window backend chimol runs Qt-free on.
-    - wgpu
+    # conda-forge spells it wgpu-py; PyPI spells it wgpu, imported as `wgpu`
+    # either way.
+    - wgpu-py
     - rendercanvas
     - glfw
     - pyqtgraph
