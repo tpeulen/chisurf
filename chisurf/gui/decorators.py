@@ -120,7 +120,17 @@ class init_with_ui(object):
             except TypeError:
                 super(cls.__class__, cls).__init__()
 
-            super(QtWidgets.QWidget, cls).__init__()
+            # Only if the chain above did not reach QWidget. It used to run
+            # unconditionally -- `super(QtWidgets.QWidget, cls).__init__()`,
+            # which is QObject's initialiser on a widget that has already been
+            # initialised. Initialising one C++ object twice is undefined, and
+            # it crashed: a segfault inside this decorator, in whichever widget
+            # happened to be built at the time. Asking the widget a question
+            # only an initialised one can answer is how PyQt lets us tell.
+            try:
+                cls.objectName()
+            except RuntimeError:
+                QtWidgets.QWidget.__init__(cls)
             load_ui(cls, self.ui_filename, path)
 
             f(cls, *args, **kwargs)
