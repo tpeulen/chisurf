@@ -1,4 +1,4 @@
 [submodule "modules/ndxplorer"]
 	path = modules/ndxplorer
-	url = https://github.com/fluorescence-tools/ndxplorer
+	url = https://github.com/tpeulen/ndxplorer
 	branch = development
