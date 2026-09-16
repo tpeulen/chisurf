@@ -44,17 +44,19 @@ jobs:
           submodules: recursive
 
       - name: Checkout mmfdb (sibling for the modules/mmfdb symlink)
+        shell: bash
         run: |
           git clone --depth 1 --branch "${MMFDB_REF:-main}" \
-            "${MMFDB_REPO:-https://github.com/Fluorescence-Tools/mmfdb.git}" \
+            "${MMFDB_REPO:-https://github.com/tpeulen/mmfdb.git}" \
             "$GITHUB_WORKSPACE/../mmfdb"
 
       # tttrlib is built from source (build-tttrlib), not taken from conda: the
       # published package lags far enough to be wrong, not merely old.
       - name: Checkout tttrlib (sibling for the modules/tttrlib symlink)
+        shell: bash
         run: |
-          git clone --depth 1 --branch "${TTTRLIB_REF:-development}" \
-            "${TTTRLIB_REPO:-https://github.com/Fluorescence-Tools/tttrlib.git}" \
+          git clone --depth 1 --branch "${TTTRLIB_REF:-dev}" \
+            "${TTTRLIB_REPO:-https://github.com/tpeulen/tttrlib.git}" \
             "$GITHUB_WORKSPACE/../tttrlib"
 
       - name: Install system dependencies (Linux)
