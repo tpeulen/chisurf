@@ -270,10 +270,16 @@ class ZmqClient:
         # Subscriber dispatch is driven by drain() from the owning event loop.
         self._subscribers: Dict[str, list[Callable]] = {}
         self._call_lock = threading.RLock()
+        self._closed = False
 
     def connect(self) -> None:
-        """Create ZMQ sockets and connect to the server."""
+        """Create ZMQ sockets and connect to the server.
+
+        Reopens a closed client, which is the one way back: an ordinary
+        :meth:`call` will not do it silently.
+        """
         import zmq
+        self._closed = False
         if self._ctx is None:
             self._ctx = zmq.Context()
         self._req_socket = self._ctx.socket(zmq.REQ)
@@ -302,6 +308,7 @@ class ZmqClient:
                     pass
                 self._ctx = None
             self._subscribers.clear()
+            self._closed = True
 
     def _reset_socket(self) -> None:
         """Tear down the REQ socket so the next call() creates a fresh one.
@@ -321,8 +328,19 @@ class ZmqClient:
             self._req_socket = None
 
     def call(self, method: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Send a JSON-RPC request and wait for the response."""
+        """Send a JSON-RPC request and wait for the response.
+
+        A closed client stays closed. Reconnecting here instead built a fresh
+        context per call and left the old one to its destructor, which
+        terminates it -- and ``term`` blocks while a socket of that context is
+        open, on whatever thread the garbage collector happens to run on. That
+        is how a leaked context froze the server's own worker thread.
+        """
         with self._call_lock:
+            if self._closed:
+                raise RuntimeError(
+                    "this client is closed; call connect() to reopen it"
+                )
             if self._req_socket is None:
                 self.connect()
 

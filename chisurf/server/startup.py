@@ -126,9 +126,21 @@ def rpc_is_available(
 
     """
     del pub_port
+    import json as _json
+
     try:
         import zmq
-        ctx = zmq.Context()
+    except Exception:
+        return False
+
+    # Closed in the finally, including the timeout path this function exists to
+    # answer. An abandoned context is terminated by its destructor instead,
+    # whenever the garbage collector runs -- on whatever thread happens to
+    # allocate at that moment -- and ``term`` blocks forever while a socket of
+    # that context is still open. That froze a server worker thread mid-request.
+    ctx = zmq.Context()
+    sock = None
+    try:
         sock = ctx.socket(zmq.REQ)
         sock.setsockopt(zmq.LINGER, 0)
         sock.setsockopt(zmq.RCVTIMEO, timeout_ms)
@@ -140,15 +152,16 @@ def rpc_is_available(
             "params": {},
             "id": 1,
         }
-        import json as _json
         sock.send_string(_json.dumps(request))
         reply = sock.recv_string()
-        sock.close(linger=0)
-        ctx.term()
         parsed = _json.loads(reply)
         return parsed.get("result", {}).get("ok") is True
     except Exception:
         return False
+    finally:
+        if sock is not None:
+            sock.close(linger=0)
+        ctx.term()
 
 
 def get_shared_event_bus() -> Any:
