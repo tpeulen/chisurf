@@ -1,13 +1,15 @@
 ---
-title: emtk — Canvas Model Toolkit
+title: emtk — Embeddable iMmediate-mode ToolKit (formerly cmtk)
 status: in-progress
 group: plugins
-updated: 2026-08-14
+updated: 2026-09-16
 ---
 
-# emtk — Canvas Model Toolkit
+# emtk — Embeddable iMmediate-mode ToolKit (formerly cmtk)
 
-**Name (2026-08-14): `emtk` = Canvas Model Toolkit.** Earlier spellings —
+**Renamed 2026-09-16: `cmtk` is now `emtk`, the Embeddable iMmediate-mode ToolKit**, its own project at https://github.com/tpeulen/emtk ("cmtk" on PyPI is an unrelated CMake formatter). The notes below from before that date use the old name and its old expansion, Canvas Model Toolkit.
+
+**Name (2026-08-14): `cmtk` = Canvas Model Toolkit.** Earlier spellings —
 "Canvas & Model Toolkit", "Component / Canvas Molecular Toolkit", "chimol
 toolkit" — were approximations; the maintainer's plain statement wins:
 **canvas model toolkit.**
@@ -24,9 +26,9 @@ and the one architecture decision (an arbitrary filled triangle added to
 `Painter`). This concept carries the working state and resume point as each
 phase lands.
 
-**Naming, corrected (2026-08-13 + 2026-08-14): `emtk` is the one name.**
+**Naming, corrected (2026-08-13 + 2026-08-14): `cmtk` is the one name.**
 Canonical expansion: **Canvas Model Toolkit** (2026-08-14). Not a "tk"
-package with a "emtk" alias. It runs on the **existing** GL/GPU toolkit — the
+package with a "cmtk" alias. It runs on the **existing** GL/GPU toolkit — the
 `Painter`/`QtPainter`/`QuadPainter` seam, unchanged in its own identity —
 emtk just adds widgets to it.
 

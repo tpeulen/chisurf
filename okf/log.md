@@ -1183,7 +1183,7 @@ front, not this).
   at HEAD for unrelated plugins (mfd_prepare, plot_settings, filetools,
   tttr_to_pto, lumis_quest help.md, fret-core PRD mentions) — recorded in
   known-issues, not relocation fallout.
-* **emtk's name and the ordering are settled: `emtk` = "Canvas Model
+* **cmtk's name and the ordering are settled: `cmtk` = "Canvas Model
   Toolkit", and chimol independence comes first** (maintainer, 2026-08-14).
   ChiSurf reaches emtk **via chimol** — the ChiSurf↔emtk interface is still
   floating, and making chimol independent

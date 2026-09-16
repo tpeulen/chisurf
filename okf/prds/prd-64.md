@@ -894,7 +894,7 @@ retiring experiment backend, matching the pyqtgraph tests in
 was for chimol's standalone OpenGL renderer (`chimol/renderer/qtgl.py`) to
 eventually draw through chiplot's `Canvas`/`VolumeViewCanvas` contract,
 unifying the two GL contexts. That direction is **superseded**: chiplot's
-native renderer is now **emtk** — the **Canvas Model Toolkit**, living inside
+native renderer is now **cmtk** — the **Canvas Model Toolkit**, living inside
 chimol; ChiSurf reaches it via chimol, and chimol independence comes first
 ([PRD-104](prd-104.md), [chimol-relocation.md](../plugins/chimol-relocation.md))
 — so the 2-D convergence is by construction. chiplot's

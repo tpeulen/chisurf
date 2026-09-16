@@ -491,7 +491,7 @@ Open, in the order that unblocks the most:
    read the framebuffer back to the CPU. That is the right trade for plot
    panels, and the wrong one for an animated view. Do not start this before
    (2) — it buys nothing until a panel is found that needs it.
-5. **Long-term convergence.** emtk is the **Canvas Model Toolkit**, living
+5. **Long-term convergence.** emtk (the **Embeddable iMmediate-mode ToolKit**, formerly cmtk), living
    inside chimol; ChiSurf reaches it via chimol (chimol independence comes
    first — see [chimol-relocation.md](/plugins/chimol-relocation.md)) — so
    the 2-D convergence is by construction: chiplot draws through emtk; no

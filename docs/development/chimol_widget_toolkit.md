@@ -13,7 +13,8 @@ so the same code serves the desktop Qt build and the browser build. This page
 is for someone writing a panel with that toolkit, or adding a control to it.
 
 The controls live in `modules/chimol/chimol/emtk/` — **emtk**, the
-**Canvas Model Toolkit**, chimol's in-viewport widget/plot namespace. ChiSurf
+**Embeddable iMmediate-mode ToolKit** (called cmtk, Canvas Model Toolkit, until 2026-09-16),
+chimol's in-viewport widget/plot namespace. ChiSurf
 reaches emtk **via chimol**, and chimol independence
 ([`okf/plugins/chimol-relocation.md`](../../okf/plugins/chimol-relocation.md))
 comes first — the ChiSurf↔emtk interface is still floating. Until 2026-08-13 the
