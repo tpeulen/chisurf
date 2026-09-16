@@ -2,7 +2,7 @@ r"""Scaffold a chimol control from a Dear ImGui widget's C++ source.
 
 Why a script and not a checklist
 --------------------------------
-Fourteen control families in :mod:`chimol.cmtk` came out of
+Fourteen control families in :mod:`chimol.emtk` came out of
 ``junk/imgui``, and two more out of ``junk/ImGuiColorTextEdit`` and
 ``junk/imgui_club``. Doing them one after another makes the shape of the work
 obvious: roughly a third of each port is **transcription of data** -- an
@@ -29,7 +29,7 @@ Use
 
 It writes three files and prints what is left:
 
-* ``chisurf/plugins/chimol/chimol/cmtk/<module>.py`` -- the skeleton,
+* ``chisurf/plugins/chimol/chimol/emtk/<module>.py`` -- the skeleton,
   with the extracted data filled in and the docstring's four required sections
   (where it comes from, the divergences, what is not ported, the contract)
   present but empty, because an empty heading is a prompt and a missing one is
@@ -70,7 +70,7 @@ __all__ = [
 ]
 
 #: Where the controls live, relative to the repository root.
-UI_DIR = pathlib.Path("chisurf/plugins/chimol/chimol/cmtk")
+UI_DIR = pathlib.Path("chisurf/plugins/chimol/chimol/emtk")
 
 #: Where their tests live.
 TEST_DIR = pathlib.Path("chisurf/plugins/chimol/test")
@@ -309,7 +309,7 @@ What is deliberately not ported
 TODO: the features left out, and what has no caller for them. A reader must be
 able to tell "not ported" from "forgotten".
 
-Everything draws through :class:`~chimol.cmtk.painter.Painter`'s six
+Everything draws through :class:`~chimol.emtk.painter.Painter`'s six
 operations, holds its own state, and hit-tests with :func:`.style.hit`.
 """
 from __future__ import annotations
@@ -358,7 +358,7 @@ whole point of the painter seam.
 """
 from __future__ import annotations
 
-from chisurf.plugins.chimol.chimol.cmtk import {module}
+from chisurf.plugins.chimol.chimol.emtk import {module}
 from chisurf.plugins.chimol.test.recording_painter import RecordingPainter
 
 
@@ -476,7 +476,7 @@ def render_gallery_rows(module: str, cls: str) -> str:
     return (
         f"def _{module}_rows() -> list[tuple]:\n"
         f'    """The {module} family."""\n'
-        f"    from chisurf.plugins.chimol.chimol.cmtk import {module} as m\n\n"
+        f"    from chisurf.plugins.chimol.chimol.emtk import {module} as m\n\n"
         f"    return [\n"
         f'        ("{cls}", lambda: m.{cls}(), 120.0),\n'
         f"    ]\n\n"

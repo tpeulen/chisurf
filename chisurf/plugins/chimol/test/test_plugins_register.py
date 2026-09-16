@@ -265,7 +265,7 @@ def test_the_browser_zip_ships_the_builtin_plugins_and_no_qt(tmp_path):
 def test_the_browser_zip_ships_its_dependencies_data_and_not_only_their_code(tmp_path):
     """A dependency is not only its modules.
 
-    cmtk is packed from wherever it is installed, and for a while that meant
+    emtk is packed from wherever it is installed, and for a while that meant
     ``*.py`` and nothing else -- so the page imported the whole interface
     cleanly and then died measuring the first menu label, because the baked
     glyph atlas had been left behind. Every string in the chrome is measured
@@ -274,9 +274,9 @@ def test_the_browser_zip_ships_its_dependencies_data_and_not_only_their_code(tmp
     from chimol.hosts.web import serve
 
     names = zipfile.ZipFile(serve.pack(tmp_path / "chimol.zip")).namelist()
-    assert "cmtk/im.py" in names, "the toolkit itself is missing"
-    assert "cmtk/atlas/chrome.json" in names, "the glyph metrics are missing"
-    assert "cmtk/atlas/chrome.png" in names, "the glyph image is missing"
+    assert "emtk/im.py" in names, "the toolkit itself is missing"
+    assert "emtk/atlas/chrome.json" in names, "the glyph metrics are missing"
+    assert "emtk/atlas/chrome.png" in names, "the glyph image is missing"
 
 
 def test_the_zip_knows_which_build_it_is(tmp_path):

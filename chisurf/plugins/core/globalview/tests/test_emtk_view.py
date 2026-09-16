@@ -10,10 +10,10 @@ from types import SimpleNamespace
 
 import pytest
 
-cmtk = pytest.importorskip("cmtk")
+emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.cmtk_control import GraphControl  # noqa: E402
-from chisurf.plugins.core.globalview.gui.cmtk_view import (  # noqa: E402
+from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
+from chisurf.plugins.core.globalview.gui.emtk_view import (  # noqa: E402
     EDGE_COLOURS,
     apply_network_style,
     KIND_COLOURS,
@@ -142,13 +142,13 @@ def test_only_a_link_gets_an_arrowhead():
 
 def test_every_node_is_a_disc_and_owners_are_the_larger_ones():
     """Marks, not boxes -- and a network is read outward from its fits."""
-    from cmtk import nodes as cmtk_nodes
+    from emtk import nodes as emtk_nodes
 
     content = GlobalViewContent()
     document = graph_result_to_document(_result())
     for node in document.nodes:
         shape, label, radius = content.node_shape(node)
-        assert shape == cmtk_nodes.NodeShape.DISC
+        assert shape == emtk_nodes.NodeShape.DISC
         assert label == node.title
         assert radius is not None
     fit = next(n for n in document.nodes if n.config["kind"] == NODE_FIT)
@@ -163,7 +163,7 @@ def test_a_disc_label_is_drawn_once():
     colours, which reads as a font-rendering artefact rather than as two
     draws -- so it survives a look at the screenshot.
     """
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     document = graph_result_to_document(_result(), {
         0: (0.0, 0.0), 1: (0.0, 300.0), 2: (260.0, -120.0),
@@ -218,7 +218,7 @@ def test_a_graph_with_no_layout_does_not_stack_every_node_at_the_origin():
 
 def test_the_network_draws_with_no_display():
     """Six nodes and six edges, through a painter that owns nothing."""
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     document = graph_result_to_document(_result(), {
         0: (0.0, 0.0), 1: (0.0, 300.0), 2: (260.0, -120.0),
@@ -238,7 +238,7 @@ def test_the_network_is_read_only():
     network without going through that model's own setter is a second path
     into state that has one, and the two disagree the moment either is used.
     """
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     document = graph_result_to_document(_result())
     control = GraphControl(document, read_only=True, content=GlobalViewContent())
@@ -306,7 +306,7 @@ def test_a_drawn_link_is_reported_and_not_drawn():
     Adding the edge here as well would draw a link the model has not accepted,
     and the two would disagree until the next refresh.
     """
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     document = graph_result_to_document(_result())
     reported: list = []

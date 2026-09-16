@@ -19,7 +19,7 @@ import pytest
 
 from chimol.plugins.dbg import window as dw
 from chimol.render.frame_stats import FrameStats
-from cmtk.testing import RecordingPainter
+from emtk.testing import RecordingPainter
 
 
 class _Rect:
@@ -449,7 +449,7 @@ def test_a_focused_field_that_declines_a_key_lets_it_through():
     object that handled nothing was a black hole: Return never reached the
     command line and the viewport could not be typed into at all.
     """
-    from cmtk.keys import KEY_RETURN
+    from emtk.keys import KEY_RETURN
     from chimol.ui.gui import InternalGui
 
     class _Deaf:
@@ -557,7 +557,7 @@ def test_the_reference_lines_are_drawn_over_the_line():
     """Underneath they are hidden by the data they exist to be read against.
 
     A non-stacked graph (``fps`` here) is a real polyline through
-    ``cmtk.begin_plot`` now, not a bar chart -- see
+    ``emtk.begin_plot`` now, not a bar chart -- see
     ``InternalGui._paint_nerd_graph``'s docstring. The line is
     ``fill_triangle`` calls, the guide is still a ``fill_rect``, so draw order
     is read from ``RecordingPainter.calls`` (the one list every operation

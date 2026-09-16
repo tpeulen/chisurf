@@ -1,6 +1,6 @@
 """The memory probe: what chimol offers the hex editor to look at.
 
-The editor itself is cmtk's, and its arithmetic is proved in cmtk's own suite.
+The editor itself is emtk's, and its arithmetic is proved in emtk's own suite.
 What belongs here is the half chimol owns -- walking a viewer-shaped object for
 host arrays and device buffers, splitting RAM from VRAM, reading a GPU buffer
 back through the queue, and not looping forever on a cycle.

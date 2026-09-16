@@ -5,7 +5,7 @@ a kinetic scheme, an evaluation network — has until now had to be drawn as a l
 or a tree, and both lie about it in the same way: a node reached by two paths is
 either duplicated or one of its edges is dropped, and that node is usually the
 interesting one. ChiSurf already ships a graph renderer
-(:class:`~chisurf.gui.widgets.node_editor.widget.NodeGraphWidget`, the cmtk
+(:class:`~chisurf.gui.widgets.node_editor.widget.NodeGraphWidget`, the emtk
 editor); this section is the seam that lets a view spec use it without the model
 importing Qt.
 

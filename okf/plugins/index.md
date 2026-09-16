@@ -17,5 +17,5 @@
 * [ChiMOL vs PyMOL parity](pymol-parity.md) - Measured gap between the built-in molecular viewer and PyMOL, with a prioritised route to replacing it.
 * [ChiMOL in the browser](chimol-web.md) - one WGSL codebase for desktop and web; WebGPU is the only graphics+compute API spanning macOS, Linux/Windows and the browser.
 * [ChiMOL moves to its own repository](chimol-relocation.md) - severing chimol's ChiSurf imports in place so the move to `~/dev/chimol` stays mechanical.
-* [cmtk — plotting and a view gizmo](chimol-cmtk.md) - ImPlot, ImPlot3D and a view-manipulate gizmo ported into chimol's own in-viewport toolkit.
+* [emtk — plotting and a view gizmo](chimol-emtk.md) - ImPlot, ImPlot3D and a view-manipulate gizmo ported into chimol's own in-viewport toolkit.
 * [Core tools](core-tools.md) - setup, onboarding, MMFDB admin, user editor and other infrastructure plugins.

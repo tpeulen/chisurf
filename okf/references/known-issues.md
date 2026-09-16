@@ -4508,7 +4508,7 @@ cells wide.
 
 The fix is a dirty-flag cache on the chrome quad buffer: the chrome changes on
 hover, focus and state, not on camera motion, and camera motion is when frames
-matter. **Not done here** because `internal_gui.py` and `cmtk/*` are
+matter. **Not done here** because `internal_gui.py` and `emtk/*` are
 being actively edited by another agent (+2,496 uncommitted lines, and the chrome
 baseline PNGs themselves are modified), so it would collide.
 
@@ -4577,7 +4577,7 @@ that.
 ~2,800 quads and ~330 text runs from scratch every frame. It wants a dirty-flag
 cache on the chrome vertex buffer — the chrome changes on hover, focus and
 state, not on camera motion, and camera motion is when frames matter. Not done
-here because `internal_gui.py` and `cmtk/*` are under active edit by
+here because `internal_gui.py` and `emtk/*` are under active edit by
 another agent.
 
 ### 2026-08-12 — the chimol suite's exit code lies, and four tests are stale

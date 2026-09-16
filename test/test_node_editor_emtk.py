@@ -1,4 +1,4 @@
-"""The cmtk-backed node editor: the document, and the control that edits it.
+"""The emtk-backed node editor: the document, and the control that edits it.
 
 None of these need a display or a Qt binding -- the whole point of moving the
 editor off ``QGraphicsScene`` is that the graph and its behaviour are now
@@ -16,9 +16,9 @@ from chisurf.gui.widgets.node_editor.document import (
 )
 from chisurf.gui.widgets.node_editor.model import PortSpec
 
-cmtk = pytest.importorskip("cmtk")
+emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.cmtk_control import GraphControl  # noqa: E402
+from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
 
 #: A graph in schema v1 with every shape the loader has to cope with: bare
 #: string ports, typed object ports, config, and an edge between them.
@@ -185,7 +185,7 @@ def _draw(control, box=(0, 0, 800, 400), frames=1):
         How many frames to run; interaction needs at least two, since the
         first is what measures the nodes the second one hit-tests.
     """
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     painter = RecordingPainter()
     for _ in range(frames):
@@ -263,7 +263,7 @@ def test_deleting_a_selection_renumbers_without_moving_the_survivors():
     renumbers everything after it. Reusing the old pool would move each
     survivor onto the coordinates of whichever node used to hold its number.
     """
-    from cmtk import nodes
+    from emtk import nodes
 
     control = GraphControl(_document())
     control.set_document(control.document, fit=False)

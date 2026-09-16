@@ -962,7 +962,7 @@
    "name": "edit_file",
    "line": "edit_file",
    "outcome": "ok",
-   "said": "<cmtk.widgets.text_editor.TextEditor object at <addr>>"
+   "said": "<emtk.widgets.text_editor.TextEditor object at <addr>>"
   },
   {
    "name": "edit_fps",
@@ -974,7 +974,7 @@
    "name": "editor",
    "line": "editor",
    "outcome": "ok",
-   "said": "<cmtk.widgets.text_editor.TextEditor object at <addr>>"
+   "said": "<emtk.widgets.text_editor.TextEditor object at <addr>>"
   },
   {
    "name": "enable",

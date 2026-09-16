@@ -1,8 +1,8 @@
 """The node editor as a ``QWidget``, for the places ChiSurf still needs one.
 
-The editor itself is :class:`~.cmtk_control.GraphControl`, which knows nothing
+The editor itself is :class:`~.emtk_control.GraphControl`, which knows nothing
 about Qt. This module is the twelve lines that put it in a window: a
-:func:`cmtk.qt_host.ControlHost` around the control, plus the Qt signals the
+:func:`emtk.qt_host.ControlHost` around the control, plus the Qt signals the
 existing consumers connect to.
 
 Keeping the split is the point of the rewrite. The same control is what a
@@ -18,9 +18,9 @@ import typing
 
 from qtpy import QtCore, QtWidgets
 
-from cmtk.qt_host import ControlHost
+from emtk.qt_host import ControlHost
 
-from .cmtk_control import GraphControl, NodeContentRenderer
+from .emtk_control import GraphControl, NodeContentRenderer
 from .document import GraphDocument
 
 __all__ = ["NodeGraphWidget"]
@@ -28,10 +28,10 @@ __all__ = ["NodeGraphWidget"]
 logger = logging.getLogger(__name__)
 
 #: Point size the editor's text is drawn at. The controls inside a node are
-#: monospaced, as cmtk's are throughout.
+#: monospaced, as emtk's are throughout.
 DEFAULT_FONT_PT: float = 9.0
 
-#: The editor's backdrop. cmtk's node editor paints its own grid over this, so
+#: The editor's backdrop. emtk's node editor paints its own grid over this, so
 #: it only shows through where the grid does not reach.
 DEFAULT_BACKGROUND: tuple = (30, 32, 38, 255)
 
@@ -223,7 +223,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         dict
             Empty when nothing is selected.
         """
-        from cmtk import nodes
+        from emtk import nodes
 
         chosen = nodes.get_selected_nodes(self.control.editor)
         if not chosen:
@@ -239,7 +239,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         dict
             Empty when nothing is selected.
         """
-        from cmtk import nodes
+        from emtk import nodes
 
         chosen = nodes.get_selected_links(self.control.editor)
         if not chosen:
@@ -266,7 +266,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         bool
             ``True`` when the node exists and is now the selection.
         """
-        from cmtk import nodes
+        from emtk import nodes
 
         node = self.document.node(str(node_id))
         if node is None:
@@ -295,7 +295,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         keeps such a node from sitting exactly under an edge and counting as
         visible while showing only its title bar's first pixels.
         """
-        from cmtk import nodes
+        from emtk import nodes
 
         editor = self.control.editor
         canvas = editor.canvas
@@ -329,7 +329,7 @@ class NodeGraphWidget(QtWidgets.QWidget):
         selection may still be the node the previous click chose.
         """
         if obj is self.host and event.type() == QtCore.QEvent.MouseButtonDblClick:
-            from cmtk import nodes
+            from emtk import nodes
 
             number = nodes.is_node_hovered(self.control.editor)
             if number is not None:

@@ -16,8 +16,8 @@ import pytest
 
 pytest.importorskip("qtpy")
 
-from cmtk.keys import KEY_TAB  # noqa: E402
-from cmtk.widgets.command_line import CommandLine  # noqa: E402
+from emtk.keys import KEY_TAB  # noqa: E402
+from emtk.widgets.command_line import CommandLine  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #

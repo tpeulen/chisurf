@@ -4,7 +4,7 @@ Two claims, and the second is what makes the first safe to have made.
 
 *The panel does not know what a toolkit is.* ``InternalGui`` is a layout and
 hit-test engine; it now paints through the six operations in
-:mod:`cmtk.painter`, so it imports with Qt unavailable. That is
+:mod:`emtk.painter`, so it imports with Qt unavailable. That is
 the property the browser port needs, and it is checked by blocking the import
 rather than by reading the source, because a transitive import is exactly the
 kind that gets missed.
@@ -84,7 +84,7 @@ def test_the_panel_imports_without_a_gui_toolkit():
             raise SystemExit("the Qt blocker is a no-op")
 
         import chimol.ui.gui  # noqa: F401
-        import cmtk.painter  # noqa: F401
+        import emtk.painter  # noqa: F401
         print("ok")
         """
     )

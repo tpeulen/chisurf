@@ -1,5 +1,21 @@
 # Update Log
 
+## 2026-09-16
+
+* **The GUI toolkit is emtk, renamed from cmtk.** `cmtk` collided on PyPI with an
+  unrelated CMake formatter, so the toolkit is now `emtk` (github.com/tpeulen/emtk,
+  not on PyPI; installed editable from `~/dev/emtk`). Mechanical rename across the
+  tree: imports, `pyproject.toml` / `rattler-recipe/recipe.yaml` dependency entries,
+  docs and OKF (history included), and the paths `node_editor/emtk_control.py`,
+  `globalview`/`lightpath_simulator` `gui/emtk_view.py` + `tests/test_emtk_view.py`,
+  `test/test_node_editor_emtk.py`, `okf/plugins/chimol-emtk.md`,
+  `okf/handover/lightpath-emtk-editor.md`. Needs two things beside it: chimol
+  renamed to emtk too (it still imports `cmtk`, and mixing the two breaks the
+  canvas router and the browser zip), and emtk carrying the node-editor content
+  scale (`nodes.content_scale()`), which exists so far only as uncommitted work in
+  `~/dev/cmtk`. With both, the toolkit-touching tests match the pre-rename baseline
+  and no test imports `cmtk`.
+
 ## 2026-09-15
 
 * **Samplers come from the registry.** chisurf's `SAMPLERS` table, `SAMPLER_ALIASES`,
@@ -452,8 +468,8 @@
 
 * **Zoom now scales the nodes — the vector way, at the painter boundary.**
   The question that redirected this: why thread a scale factor through every
-  layout metric when cmtk is already a vector painter? Render-to-pixel-and-
-  scale was rejected on the merits — cmtk is immediate mode, so it re-renders
+  layout metric when emtk is already a vector painter? Render-to-pixel-and-
+  scale was rejected on the merits — emtk is immediate mode, so it re-renders
   every frame anyway and pixel scaling buys nothing but blur — and "vector
   graphics" collapses, for a font-metric-driven immediate-mode layout, into
   one small move: while a node submits, scale the *glyphs* (the painter's new
@@ -470,11 +486,11 @@
   to two-thirds (the font restore moved past `channels_merge`), and Qt's
   integer `QFontMetrics` rounding each advance down, which under the scaled
   font accumulated per character into the same crop (now `QFontMetricsF`).
-  cmtk: `nodes` gained `EditorContext.scale_content` (default on; `False`
+  emtk: `nodes` gained `EditorContext.scale_content` (default on; `False`
   restores the old canvas-only zoom), `content_scale()`, `fit_to_content`'s
   second equation, and `set_font_scale` on Qt/quad/recording/pixel painters;
   44 nodes tests pass including three new ones. The README quick-start and
-  example-subprocess failures in cmtk's suite, and the IMP.bff gap in every
+  example-subprocess failures in emtk's suite, and the IMP.bff gap in every
   chisurf env, remain as they were.
 
 ## 2026-09-03
@@ -483,8 +499,8 @@
   `editor.py`, `scene.py`, `view.py`, the three graphics items, the read-only
   `NodeViewerWidget`, the timeline/side-panel chrome, `chinet_eval`/`bff_eval`,
   the theme layer and the `ui`/`node_editor` shims — is deleted. What remains
-  in `chisurf/gui/widgets/node_editor/` is the cmtk stack: `document.py`,
-  `cmtk_control.py`, `widget.py`, the Qt-free helpers, and the palette. The
+  in `chisurf/gui/widgets/node_editor/` is the emtk stack: `document.py`,
+  `emtk_control.py`, `widget.py`, the Qt-free helpers, and the palette. The
   last two consumers moved over: `mmfdb_admin`'s provenance dock builds
   `NodeGraphWidget(read_only=True)` (the "interactive editor" the handover
   called out turned out to be instantiated read-only, so it was a drop-in),
@@ -551,7 +567,7 @@
   rounds went on approximating what "looks like the old one" meant -- boxes
   instead of marks, then straight lines instead of arcs -- and both were
   settled in minutes by opening `graph_canvas.py`'s `curved_edge` and
-  `draw_arrow_head`. `cmtk.nodes` gained `LinkRouting.ARC`: rim to rim along
+  `draw_arrow_head`. `emtk.nodes` gained `LinkRouting.ARC`: rim to rim along
   the line joining the two centres, a bow of 12% of the chord clamped to
   10-22px with control points 60% of the way to the bowed mid-point, and an
   arrowhead aimed from the *last control point* at a 30-degree half angle. One
@@ -561,7 +577,7 @@
   old one's drawing code first.
 * **globalview looks like the canvas it replaces again.** The first port drew
   every parameter as a titled box, which is unreadable at network sizes, so
-  `cmtk.nodes` grew `NodeShape.DISC` -- a shaded circle with a plated label
+  `emtk.nodes` grew `NodeShape.DISC` -- a shaded circle with a plated label
   underneath -- plus `PinShape.NONE`, straight link routing, and arrowheads on
   the one edge kind whose direction is information. `GraphControl.set_document`
   now keeps the caller's style: it used to build a fresh context, so the first
@@ -574,7 +590,7 @@
 * **globalview's parameter network is ported too**, and doing it grew the
   content renderer three hooks -- `node_style`, `link_style`, `port_label` --
   which between them are what lets one editor serve graphs that mean different
-  things. `cmtk.nodes.link` takes a per-link colour: a parameter network's
+  things. `emtk.nodes.link` takes a per-link colour: a parameter network's
   edges are three different claims (ownership, a link, a base edge) and drawing
   them alike is a claim the picture makes that the model does not. Edge kinds
   are *derived from what the endpoints are* rather than transmitted, so they
@@ -582,7 +598,7 @@
   colour, or styling could hide the feedback that says which edge you are on.
   10 tests. `tool.py` still builds the old canvas; the three signals it needs
   rewired are named in the OKF concept.
-* **The beam path's node bodies are rewritten on cmtk.** `BeampathContent`
+* **The beam path's node bodies are rewritten on emtk.** `BeampathContent`
   draws the three-layer spectrum -- input, output, and the component's own
   characteristic, each normalised separately because they are different
   physical quantities -- through `implot`, with the probe chooser filtered by
@@ -591,10 +607,10 @@
   proxy -> scene -> view -> parent to find `propagate_graph`, and a "hack to
   trigger node resize" reaching into a private `_build_path`. 12 tests, no
   display needed.
-* **The node editor moves off PyQt onto cmtk, and the reference was chosen by
+* **The node editor moves off PyQt onto emtk, and the reference was chosen by
   measurement rather than by reputation.** All five ImGui node editors on Dear
   ImGui's *Useful Extensions* page were cloned into `junk/` and run through
-  cmtk's `tools/autoport`, counting what a port would actually cost:
+  emtk's `tools/autoport`, counting what a port would actually cost:
   thedmd/imgui-node-editor 8.7 kloc with 96 templates, 114 virtuals and three
   files of `imgui_internal` (133 porter flags); Fattorino/ImNodeFlow retained
   and template-driven (85 templates, 71 smart pointers), so a port is a
@@ -602,16 +618,16 @@
   and jsoncpp; rokups/ImNodes unmaintained since 2022 and too thin.
   **Nelarius/imnodes** wins on the axis that matters — dependency-free, public
   ImGui API plus `ImDrawList`, and the widest feature set that stays small.
-  `cmtk/nodes.py` is a re-implementation of it (its API names, layout
+  `emtk/nodes.py` is a re-implementation of it (its API names, layout
   arithmetic, cubic-bezier control points and palette), plus the pan/zoom
-  canvas taken from the candidate that lost. 28 tests; cmtk 1301 passed.
+  canvas taken from the candidate that lost. 28 tests; emtk 1301 passed.
 * **The zoom scales the canvas and not the glyphs, and that is stated rather
-  than glossed.** Both cmtk painters report a fixed glyph cell, so
+  than glossed.** Both emtk painters report a fixed glyph cell, so
   `push_font(font, size)` changes no measurement and a node's pixel size is
   identical at every zoom. `fit_to_content` therefore solves
   `extent = zoom x origin_span + node_size` instead of dividing by the whole
   extent, which would leave the outermost nodes off screen.
-* **Two cmtk seams were wrong, and both produced a wrong picture rather than an
+* **Two emtk seams were wrong, and both produced a wrong picture rather than an
   exception.** The drawlist's channel splitter recorded `text_width` and
   `line_height` as if they were drawing calls, so every widget inside a channel
   measured `None`; it also answered `hasattr` for every name, which made
@@ -619,7 +635,7 @@
   *merge* time, nowhere near the widget that queued it. And `end_group` updated
   the layout's last item but not the context's, so `get_item_rect_min`/`max`
   after a group described the last widget inside the group instead of the
-  group. Fixed in `~/dev/cmtk` (`2ae83b7`).
+  group. Fixed in `~/dev/emtk` (`2ae83b7`).
 * **The port index had two conventions, and the disagreement was silent and
   total.** `json_schema.md` says `source_port` indexes a node's `outputs`;
   `scene.py` indexed one flat list of inputs-then-outputs, and
@@ -630,7 +646,7 @@
   `GraphDocument.from_dict` logs each edge it drops with the reason.
 * **What landed on the ChiSurf side**: `node_editor/document.py` (the graph as
   a plain object with schema v1 I/O and the string-to-int id mapping),
-  `cmtk_control.py` (the editor as a cmtk control — one implementation for the
+  `emtk_control.py` (the editor as a emtk control — one implementation for the
   Qt host, a browser host and a headless test), and `widget.py`
   (`NodeGraphWidget`, twelve lines of Qt around it). 16 new tests, none of them
   needing a display. **The three consumers are not switched over yet** — the
@@ -640,14 +656,14 @@
   `chimol/test/renders/`, validating a *render* baseline as a plugin manifest
   and failing on a dozen fields it never claimed to have.
 * **The beam path is off `NodeScene`/`NodeView`** — the last item from
-  [lightpath-cmtk-editor](handover/lightpath-cmtk-editor.md).
+  [lightpath-emtk-editor](handover/lightpath-emtk-editor.md).
   `lightpath_simulator/gui/tool.py` now builds `NodeGraphWidget` +
   `BeampathContent`; `node_types.py` lost the five Qt widget-factory
   functions it existed to hold and is now Qt-free, registry-only. Verified
   by node/edge/port inventory against the pre-port `before` capture (8
   nodes, 7 edges, all port names identical once the port-index convention is
   translated) plus control counts (7 buttons, 9 controls, 14 tables, both
-  sides). One thing this found that generalises: **cmtk keeps a node's pixel
+  sides). One thing this found that generalises: **emtk keeps a node's pixel
   size fixed regardless of zoom** (`fit_to_content`'s own docstring), so
   fitting a dense, plot-heavy graph to its panel only shrinks the *gaps*
   between nodes, never the nodes — the fit can be mathematically correct and
@@ -1156,7 +1172,7 @@ front, not this).
   of the relocation plan is done
   ([chimol-relocation.md](plugins/chimol-relocation.md)): full 329-commit
   history extracted with `git filter-repo`, the staged index snapshot (the
-  cmtk→`renderer/ui` direction that never reached disk) preserved verbatim
+  emtk→`renderer/ui` direction that never reached disk) preserved verbatim
   as its own commit, and the disk state the suite was green on as HEAD.
   `modules/chimol` symlinks to it like mmfdb/imp-tricks/tttrlib, a
   `build-chimol` pixi task editable-installs it, and ~230 chisurf files now
@@ -1167,34 +1183,34 @@ front, not this).
   at HEAD for unrelated plugins (mfd_prepare, plot_settings, filetools,
   tttr_to_pto, lumis_quest help.md, fret-core PRD mentions) — recorded in
   known-issues, not relocation fallout.
-* **cmtk's name and the ordering are settled: `cmtk` = "Canvas Model
+* **emtk's name and the ordering are settled: `emtk` = "Canvas Model
   Toolkit", and chimol independence comes first** (maintainer, 2026-08-14).
-  ChiSurf reaches cmtk **via chimol** — the ChiSurf↔cmtk interface is still
+  ChiSurf reaches emtk **via chimol** — the ChiSurf↔emtk interface is still
   floating, and making chimol independent
   ([chimol-relocation.md](plugins/chimol-relocation.md)) must happen first
   anyway. Dependency direction: ChiSurf imports chimol; chimol may not import
-  ChiSurf; cmtk lives inside chimol and ChiSurf consumes it through chimol.
+  ChiSurf; emtk lives inside chimol and ChiSurf consumes it through chimol.
   Earlier spellings — "Canvas & Model Toolkit", "Component / Canvas Molecular
   Toolkit", "chimol toolkit" — were approximations. Recorded in
-  [chimol-cmtk.md](plugins/chimol-cmtk.md), [PRD-104](prds/prd-104.md),
+  [chimol-emtk.md](plugins/chimol-emtk.md), [PRD-104](prds/prd-104.md),
   [PRD-64](prds/prd-64.md) and
-  [chiplot.md](subsystems/chiplot.md); chiplot stays cmtk's first external
+  [chiplot.md](subsystems/chiplot.md); chiplot stays emtk's first external
   consumer and still drives PRD-104 Phase 2 breadth.
-* **chiplot's native renderer is chimol's cmtk; pyqtgraph + cmtk are the only
+* **chiplot's native renderer is chimol's emtk; pyqtgraph + emtk are the only
   backends** ([PRD-64](prds/prd-64.md)). Maintainer direction (2026-08-14):
-  the Phase 5+ native backend **MUST** be cmtk ([PRD-104](prds/prd-104.md)),
-  the ImPlot-style toolkit in `chisurf/plugins/chimol/chimol/cmtk/`, as the
+  the Phase 5+ native backend **MUST** be emtk ([PRD-104](prds/prd-104.md)),
+  the ImPlot-style toolkit in `chisurf/plugins/chimol/chimol/emtk/`, as the
   primary plotting widget; the OpenGL scaffold and the WebGPU backend that
   superseded it are exploration and retire; the registry flip
-  (unregistering `wgpu`/`opengl`) lands with the cmtk backend because
+  (unregistering `wgpu`/`opengl`) lands with the emtk backend because
   `test/gui/test_chiplot_wgpu.py::test_wgpu_backend_is_registered` pins
   `"wgpu" in available_backends()`. This reverses the old "chimol draws
-  through chiplot" convergence — chiplot draws through cmtk. Also recorded:
+  through chiplot" convergence — chiplot draws through emtk. Also recorded:
   the **long-term direction** — abstract the UI backend(s) (Qt/PyQt today) via
-  AutoForm for a web-capable ChiSurf, then replace PyQt with cmtk to drop the
+  AutoForm for a web-capable ChiSurf, then replace PyQt with emtk to drop the
   PyQt licence obligations (PRD-64 "Long-term direction",
   [gui-autoform](subsystems/gui-autoform.md)). Docs + registry comments only;
-  no cmtk chiplot backend exists yet.
+  no emtk chiplot backend exists yet.
 
 * **Lumis Quest: village ambience, honest map colours, cast reverted**
   ([PRD-91](prds/prd-91.md)). Player and companion reverted to the authored
@@ -1328,12 +1344,12 @@ front, not this).
   the phase change is live. 405 tests pass.
 
 * **View gizmo removed** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). User: *"gizmo is ugly as fuck
-  remove."* `cmtk/gizmo.py` deleted outright (not disabled behind a flag),
+  [chimol-emtk](plugins/chimol-emtk.md)). User: *"gizmo is ugly as fuck
+  remove."* `emtk/gizmo.py` deleted outright (not disabled behind a flag),
   along with every wiring point in `internal_gui.py` (Hit kind, state,
   hit-test/press/drag/release/tooltip branches, the layout_info footprint
   reservation, the paint call), `canvas_base.py`'s and `view.py`'s
-  `on_gizmo_*` callback wiring, `cmtk/__init__.py`'s exports, and
+  `on_gizmo_*` callback wiring, `emtk/__init__.py`'s exports, and
   `test_gizmo.py`/`gizmo_baseline.py` plus its rendered PNGs. Three rounds of
   work (axis-ball port, ViewCube redesign, reference-screenshot refinement)
   are kept as an honest record in the concept, not scrubbed — including the
@@ -1342,7 +1358,7 @@ front, not this).
   in the tree. Verified: 3885 tests collect (was 3946), 267-test targeted
   sweep passes clean.
 * **chimol ViewCube gizmo refined against three reference screenshots**
-  ([PRD-104](prds/prd-104.md), [chimol-cmtk.md](plugins/chimol-cmtk.md)). The
+  ([PRD-104](prds/prd-104.md), [chimol-emtk.md](plugins/chimol-emtk.md)). The
   ViewCube shipped earlier the same day was checked against three real
   Autodesk/SolidWorks references and found four gaps: a bolder/longer axis
   triad with a legibility halo fix along the way; a small fixed perspective
@@ -1396,9 +1412,9 @@ front, not this).
   402 tests pass.
 
 * **View gizmo redesigned: six axis balls → a solid ViewCube**
-  ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)). A
+  ([PRD-104](prds/prd-104.md), [chimol-emtk](plugins/chimol-emtk.md)). A
   reference screenshot showed the earlier `ImViewGuizmo` port (below, same
-  date) targeted the wrong widget entirely; `cmtk/gizmo.py` rewritten outright
+  date) targeted the wrong widget entirely; `emtk/gizmo.py` rewritten outright
   as the Blender/3ds Max/ChimeraX ViewCube — a projected cube (8 corners, the
   same `_view` projection generalised from 6 axis directions), up to 3
   visible faces drawn back-to-front and labelled, a small RGB axis indicator
@@ -1417,7 +1433,7 @@ front, not this).
   an unrelated, already-stale baseline from an earlier eye-icon fix.
   `test_gizmo.py` rewritten (34 tests), 4 headless PNGs inspected by hand.
 * **Nerd panel fixed-width; gizmo spokes widened** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). `InternalGui.NERD_WIDTH_CHARS = 68`
+  [chimol-emtk](plugins/chimol-emtk.md)). `InternalGui.NERD_WIDTH_CHARS = 68`
   replaces sizing the block to its longest current line, which resized the
   panel under the reader as content changed length; clipped rather than
   grown around, and a new test stresses `FrameStats.lines()` with the widest
@@ -1429,23 +1445,23 @@ front, not this).
   band count is a real, app-wide performance cost, and doing that mid-way
   through an open "why is the UI laggy" investigation would be moving before
   the measurement exists.
-* **`chimol.renderer.cmtk` relocated to `chimol.cmtk`** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). User: *"cmtk should be on another
+* **`chimol.renderer.emtk` relocated to `chimol.emtk`** ([PRD-104](prds/prd-104.md),
+  [chimol-emtk](plugins/chimol-emtk.md)). User: *"emtk should be on another
   module level."* Depth changed, not just a name, so every relative import
   needed its dot-count recomputed per file rather than a blind rename — two
   shapes missed by the first pass and caught only by actually importing the
-  package (not just grepping): a bare `from . import cmtk` module import, and
+  package (not just grepping): a bare `from . import emtk` module import, and
   six files reaching `chimol/host/` via a relative import indented inside a
   function body (invisible to a line-start-anchored grep). Same segmented-
-  pathlib-literal trap as the earlier `ui/`→`cmtk/` merge repeated in two
+  pathlib-literal trap as the earlier `ui/`→`emtk/` merge repeated in two
   files, found the same way. 3907 tests collect, 754 pass, all outside-chimol
   consumers import clean.
 * **Nerd-mode plots smoothed, gizmo made usable** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). `frame_stats.REPORT_INTERVAL` 0.5s →
+  [chimol-emtk](plugins/chimol-emtk.md)). `frame_stats.REPORT_INTERVAL` 0.5s →
   0.1s: the nerd-mode line plots redraw 5x more often, so the trace no longer
   jumps by up to 30 samples in one step at 60fps (the numeric fps readout,
   `_FPS_REPORT_INTERVAL`, deliberately untouched — a number redrawn at 10Hz
-  is unreadable). Gizmo (`cmtk/gizmo.py`): reported too small and
+  is unreadable). Gizmo (`emtk/gizmo.py`): reported too small and
   unclickable — `DEFAULT_SIZE` 84→120, `_HANDLE_RADIUS_RATIO` 0.117→0.16, and
   `hit_test` now accepts a click anywhere along a primary handle's spoke, not
   just the tiny ball at its tip. First attempt at the spoke hit-test gated on
@@ -1454,12 +1470,12 @@ front, not this).
   the spoke's own midpoint, fixed by gating on the much smaller handle
   radius instead. Two new tests pin both the spoke-click and the
   still-correctly-orbits-near-dead-centre cases.
-* **`renderer/ui/` merged into `cmtk/` — chimol has one widget
-  namespace** ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)).
-  User: *"all chimol widgets and autoform must be in cmtk."* Scoped first
+* **`renderer/ui/` merged into `emtk/` — chimol has one widget
+  namespace** ([PRD-104](prds/prd-104.md), [chimol-emtk](plugins/chimol-emtk.md)).
+  User: *"all chimol widgets and autoform must be in emtk."* Scoped first
   (AutoForm is a chisurf-wide, 170-file, 75-plugin-directory framework
   predating chimol — moving *that package* would invert the app's dependency
-  graph): merge `renderer/ui/`'s ~30 files into `cmtk/`, repoint
+  graph): merge `renderer/ui/`'s ~30 files into `emtk/`, repoint
   AutoForm's one bridge module (`qt_host.py`, used by two custom sections) at
   the merged package, leave AutoForm's own location untouched. 69 files'
   imports fixed inside the chimol plugin, 5 outside (AutoForm's two sections,
@@ -1472,9 +1488,9 @@ front, not this).
   `renderer/ui/` — that was the real name when they were written. Verified:
   3905 tests collect, the full widget/painter/plot/gizmo/qt-seam/autoform-bridge
   set (~800 tests) passes.
-* **cmtk gizmo: a six-axis view-orientation widget, clickable and wired to the
-  camera** ([PRD-104](prds/prd-104.md), [chimol-cmtk](plugins/chimol-cmtk.md)).
-  Phase 4 done. `cmtk/gizmo.py`: a faithful port of
+* **emtk gizmo: a six-axis view-orientation widget, clickable and wired to the
+  camera** ([PRD-104](prds/prd-104.md), [chimol-emtk](plugins/chimol-emtk.md)).
+  Phase 4 done. `emtk/gizmo.py`: a faithful port of
   `Ka1serM/ImViewGuizmo`'s `Rotate` — which turned out to be six axis balls
   (`+X`/`-X`/`+Y`/`-Y`/`+Z`/`-Z`) plus a big centre orbit-disc, **not** a
   Blender-style cube with faces/edges/corners; ported what the reference
@@ -1497,8 +1513,8 @@ front, not this).
   correctly. `junk/ImViewGuizmo/ImViewGuizmo.h` annotated
   (`CHISURF-TAKEN`/`CHISURF-SKIPPED`: dolly/pan buttons and the eased snap
   animation were deliberately not ported — see the concept for why).
-* **cmtk draws the nerd-mode frame-stats graphs** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). Phase 1: `cmtk/` gained
+* **emtk draws the nerd-mode frame-stats graphs** ([PRD-104](prds/prd-104.md),
+  [chimol-emtk](plugins/chimol-emtk.md)). Phase 1: `emtk/` gained
   `axis.py` (linear auto-fit + Heckbert nice-ticks), `markers.py`
   (circle/square/diamond/cross), `plot.py` (`Plot`/`begin_plot`, ImPlot's
   default "Deep" palette). First production caller —
@@ -1508,16 +1524,16 @@ front, not this).
   the stacked breakdown graph stays bars. 16 new tests, headless-rendered and
   inspected. One pre-existing (not introduced here) cosmetic label-overlap
   defect noted in the concept, left unfixed as out of scope.
-* **cmtk: ImPlot, ImPlot3D and a view gizmo, scoped** ([PRD-104](prds/prd-104.md),
-  [chimol-cmtk](plugins/chimol-cmtk.md)). References mined into
+* **emtk: ImPlot, ImPlot3D and a view gizmo, scoped** ([PRD-104](prds/prd-104.md),
+  [chimol-emtk](plugins/chimol-emtk.md)). References mined into
   `junk/implot`, `junk/implot3d`, `junk/ImViewGuizmo` (`junk/clone.sh`) — a
   combined ~21.7k lines of C++. The one architecture decision: `Painter`
   (`renderer/ui/painter.py`) gains an arbitrary filled triangle, the single
   primitive none of the three references can be drawn without on a floor that
   was deliberately axis-aligned-rects-only until now — additive to, not a
   reversal of, that floor's documented exclusions. Phased: foundation
-  (triangle primitive on both `QtPainter`/`QuadPainter` backends), a cmtk 2D
-  MVP (axes/line/scatter), 2D breadth, cmtk3d (surfaces/meshes), and the
+  (triangle primitive on both `QtPainter`/`QuadPainter` backends), a emtk 2D
+  MVP (axes/line/scatter), 2D breadth, emtk3d (surfaces/meshes), and the
   gizmo — tracked with resume notes in the concept as each lands.
 
 ## 2026-08-12
@@ -38147,7 +38163,7 @@ front, not this).
   neutralise the spawn fade/weather first — `update()` re-applies the
   environment every frame, so a script-side `weather.set(())` is undone.
   Fallout of the chimol round-2 tree (`330a7eb24` and friends) fixed in
-  Lumis Quest: `settings.py` re-pointed at `chimol.cmtk.style.format_value`
+  Lumis Quest: `settings.py` re-pointed at `chimol.emtk.style.format_value`
   (the old `widgets.basic.basic._format` module is gone), the slider test
   moved from the removed `step()` method to `nudge()`, and a real NPC bug
   the broken test was hiding: `_passage`'s `passable()` closed over the

@@ -1,6 +1,6 @@
 """Render the node-graph surfaces, one screenshot and inventory each.
 
-Every graph ChiSurf shows is drawn by one editor, the cmtk-backed
+Every graph ChiSurf shows is drawn by one editor, the emtk-backed
 ``NodeGraphWidget`` over a plain ``GraphDocument``. This module renders each
 surface that embeds it, so a change to the shared editor can be reviewed
 against a captured state of what the user actually sees:
@@ -215,7 +215,7 @@ def graph_inventory(widget: typing.Any) -> dict:
     """Enumerate what the *graph* holds, which the Qt control inventory cannot.
 
     :func:`~test.gui.migration_parity.control_inventory` walks the ``QWidget``
-    tree, and a cmtk editor keeps nothing there: nodes and edges are drawn
+    tree, and a emtk editor keeps nothing there: nodes and edges are drawn
     straight into a paint buffer with no ``QWidget`` at all, so comparing only
     the widget tree reports a full editor as an empty pane.
 
@@ -287,7 +287,7 @@ def graph_inventory(widget: typing.Any) -> dict:
 def _frame_the_graph(widget: typing.Any, app: typing.Any) -> None:
     """Frame every graph in `widget`, at its final size.
 
-    The cmtk editor's fit runs on the *next* paint, because a fit needs the
+    The emtk editor's fit runs on the *next* paint, because a fit needs the
     measured size of every node and a node has no size until it has been drawn
     once. Show, let the layout settle, then fit, then give it the paints to
     apply the fit with.

@@ -19,7 +19,7 @@ monochrome masks — it comes out **blank**, silently. Everything else that look
 close (`◉ ◎ ⊙ ⦿`) is a circle: a marker, not an eye. Verified by rasterising
 each candidate and counting ink, which is the check to repeat before reaching
 for a character. So the pictogram is *drawn*, from `fill_rect` runs, in
-[`cmtk/icons.py`](../../chisurf/plugins/chimol/chimol/cmtk/icons.py)
+[`emtk/icons.py`](../../chisurf/plugins/chimol/chimol/emtk/icons.py)
 — written as a picture in the source, scaled to **whole** pixels (a fractional
 scale turns a one-pixel outline into a grey smear that reads as blurred rather
 than small), and centred in one character cell. The density panel's eye shares
@@ -237,7 +237,7 @@ the selection is not yours").
 
 
 **2026-08-13 — the chrome gained a code editor and a hex view, and porting is
-now tooled.** How a control family gets into `cmtk/`, the scaffolder that
+now tooled.** How a control family gets into `emtk/`, the scaffolder that
 does the mechanical third, the shared recording painter and the Qt host that
 puts any control in an AutoForm section are all in
 [Porting a widget into chimol's chrome](../subsystems/chimol-ui-ports.md).
@@ -283,7 +283,7 @@ the embedding window"*.
 
 The architecture already allows this and most of the work is deletion, not
 design: `hosts/toolkit.py` makes `Viewer` a plain object when there is no
-toolkit, `cmtk/events.py` is a toolkit-free event vocabulary, and the browser
+toolkit, `emtk/events.py` is a toolkit-free event vocabulary, and the browser
 *already* runs the real `Viewer` with the real `cmd` layer and no Qt at all.
 What is missing is a desktop host that is not a `QWidget`.
 
@@ -332,7 +332,7 @@ Qt-free run renders without a window. Declaring `glfw` in `pixi.toml` /
 
 ---
 
-**2026-08-12 — the Dear ImGui widget stack is ported.** `cmtk/` went
+**2026-08-12 — the Dear ImGui widget stack is ported.** `emtk/` went
 from one control module to fourteen: the nineteen controls in `widgets.py`
 plus `text`, `buttons`, `sliders`, `drag`, `inputs`, `color`, `selection`,
 `menus`, `tabs`, `tables`, `dragdrop`, `layout` and the shared `style`. One
@@ -383,7 +383,7 @@ no assertion and no Qt screenshot could see it.
 
 All five now spell symbols the atlas has (`▴`/`▾`, `◀`/`▶`, `■`, ASCII), and
 `test_chrome_atlas.py` grew a parametrised guard over **every** module in
-`cmtk/`. The atlas's non-ASCII set is `… ─ ■ ▴ ▶ ▸ ▼ ▾ ◀`; widening it
+`emtk/`. The atlas's non-ASCII set is `… ─ ■ ▴ ▶ ▸ ▼ ▾ ◀`; widening it
 costs texture area the chrome uploads on every repaint, so the fix is to spell
 the symbol with a baked glyph, not to bake another. The same test also stopped
 reading raw source characters — it counted a *comment* naming `×` as something
@@ -448,7 +448,7 @@ reported:
    *registered* settings with a name and a line of documentation, and the rest
    show as their dotted path.
 1. **Voxel mode is wrong and density has no colour/alpha controls.** (The
-   sliders and swatches this asked for now exist in `cmtk/widgets.py`.)
+   sliders and swatches this asked for now exist in `emtk/widgets.py`.)
    The voxel
    style draws `Geometry(kind="points")` — screen-space dots that keep their
    size as the camera moves; tpeulen: *"voxel must be size of grid not hollow
@@ -458,7 +458,7 @@ reported:
    solid mode is ray-cast volume rendering with a **transfer function**, which
    is where the requested colour and alpha controls come from, so the two are
    one design. The widgets are ImGui's `ColorEdit4` and `SliderFloat`, and
-   `cmtk/` has neither a slider nor a colour swatch yet — both are
+   `emtk/` has neither a slider nor a colour swatch yet — both are
    reusable, so they belong there rather than inside `density_window.py`.
 2. **Density maps are "super slow"**, with the instruction to *learn from
    ChimeraX how to do it right*. Recorded with the ChimeraX guidance in
@@ -501,7 +501,7 @@ engine for this.
 
 Why this is credible rather than a rewrite: `InternalGui` is **already** a
 toolkit-free layout + hit-test engine that paints through six operations
-(`chimol/cmtk/painter.py`) and rasterises as GPU quads
+(`chimol/emtk/painter.py`) and rasterises as GPU quads
 (`ui/quad_painter.py`). The object list, sequence strip, mouse-mode block,
 wizard panel, menus and the command prompt are all drawn that way today. The
 system-info panel was the last Qt widget stacked on the surface and was ported

@@ -780,7 +780,7 @@ def test_the_panel_view_spec_uses_the_shared_section(shell):
 
     view, _grid, _cmd, _msgs, _errs = shell
     spec = VolumeViewModel(view).view_spec()
-    # chimol's own spec loader (`cmtk.view_spec`) hands back the authored
+    # chimol's own spec loader (`emtk.view_spec`) hands back the authored
     # document as a dict; ChiSurf's dataspec wraps the same file in objects.
     # The model no longer imports ChiSurf for this, so both shapes are read.
     sections = spec["sections"] if isinstance(spec, dict) else spec.sections

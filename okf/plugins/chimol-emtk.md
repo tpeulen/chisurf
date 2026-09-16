@@ -1,58 +1,58 @@
 ---
-title: cmtk — Canvas Model Toolkit
+title: emtk — Canvas Model Toolkit
 status: in-progress
 group: plugins
 updated: 2026-08-14
 ---
 
-# cmtk — Canvas Model Toolkit
+# emtk — Canvas Model Toolkit
 
-**Name (2026-08-14): `cmtk` = Canvas Model Toolkit.** Earlier spellings —
+**Name (2026-08-14): `emtk` = Canvas Model Toolkit.** Earlier spellings —
 "Canvas & Model Toolkit", "Component / Canvas Molecular Toolkit", "chimol
 toolkit" — were approximations; the maintainer's plain statement wins:
 **canvas model toolkit.**
 
 **Order of operations (2026-08-14): chimol independence comes first.**
-ChiSurf reaches cmtk **via chimol** — the interface between ChiSurf and cmtk
+ChiSurf reaches emtk **via chimol** — the interface between ChiSurf and emtk
 is still floating, and making chimol independent
 ([chimol-relocation.md](chimol-relocation.md)) must happen first anyway. The
 dependency direction is: ChiSurf imports chimol; chimol may not import
-ChiSurf; cmtk lives inside chimol and ChiSurf consumes it through chimol.
+ChiSurf; emtk lives inside chimol and ChiSurf consumes it through chimol.
 
 Tracked by [PRD-104](../prds/prd-104.md); read that first for the phased scope
 and the one architecture decision (an arbitrary filled triangle added to
 `Painter`). This concept carries the working state and resume point as each
 phase lands.
 
-**Naming, corrected (2026-08-13 + 2026-08-14): `cmtk` is the one name.**
+**Naming, corrected (2026-08-13 + 2026-08-14): `emtk` is the one name.**
 Canonical expansion: **Canvas Model Toolkit** (2026-08-14). Not a "tk"
-package with a "cmtk" alias. It runs on the **existing** GL/GPU toolkit — the
+package with a "emtk" alias. It runs on the **existing** GL/GPU toolkit — the
 `Painter`/`QtPainter`/`QuadPainter` seam, unchanged in its own identity —
-cmtk just adds widgets to it.
+emtk just adds widgets to it.
 
 **First external consumer (2026-08-14): chiplot.** The maintainer directed
-that chiplot's native backend **MUST** be cmtk — pyqtgraph and cmtk are the
+that chiplot's native backend **MUST** be emtk — pyqtgraph and emtk are the
 only two backends; the wgpu/opengl experiment backends retire. chiplot is
-cmtk's **first external consumer**, so PRD-104 Phase 2 breadth (bars, error
+emtk's **first external consumer**, so PRD-104 Phase 2 breadth (bars, error
 bars, regions, pan/zoom, image, log axes) is driven by real chiplot call
-sites via a `chisurf/gui/chiplot/backends/cmtk/` package. Long term, cmtk
+sites via a `chisurf/gui/chiplot/backends/emtk/` package. Long term, emtk
 also replaces PyQt as the UI backend behind the AutoForm seam (web-capable
 ChiSurf, drop the PyQt licence). See [PRD-64](../prds/prd-64.md) (Phase 5+
 and "Long-term direction").
 
 **Superseded later the same session: `renderer/ui/` is merged into
-`cmtk/`.** The paragraph above reasoned that a repo-wide rename of an
+`emtk/`.** The paragraph above reasoned that a repo-wide rename of an
 already-shipped, pervasively-imported package was out of scope for this PRD
-and kept the two packages separate, with `ui/` as the precedent `cmtk`
+and kept the two packages separate, with `ui/` as the precedent `emtk`
 followed. The user overrode that directly: *"all chimol widgets and autoform
-must be in cmtk"*. Scoped by a clarifying question (AutoForm is a
+must be in emtk"*. Scoped by a clarifying question (AutoForm is a
 chisurf-wide, 170-file, 75-plugin-directory framework at `chisurf/gui/autoform/`
 that predates chimol — moving *that package* into a chimol subpackage would
 invert the whole app's dependency graph, so the confirmed scope was: merge
-`renderer/ui/` into `cmtk/` so chimol has one widget namespace, and
+`renderer/ui/` into `emtk/` so chimol has one widget namespace, and
 repoint AutoForm's one narrow bridge module (`qt_host.py`) at the merged
 package — leaving AutoForm's own location untouched). All thirty files that
-were under `renderer/ui/` now live directly in `cmtk/` (no
+were under `renderer/ui/` now live directly in `emtk/` (no
 subdirectory) — `painter.py`, `qt_painter.py`, `quad_painter.py`, `widgets.py`,
 `style.py`, `qt_host.py`, `atlas/`, and the rest, alongside `axis.py`,
 `markers.py`, `plot.py`, `gizmo.py`. Every import site was updated: 64 files
@@ -74,7 +74,7 @@ the real name then.
 **2026-08-13 — the gizmo is removed. Read this before touching anything
 gizmo-related in the entries below.** User, after the chrome-refinement round
 directly below: *"gizmo is ugly as fuck remove. contine with tick."* Removed
-outright — `cmtk/gizmo.py` deleted, not kept disabled behind a flag or a
+outright — `emtk/gizmo.py` deleted, not kept disabled behind a flag or a
 config switch. Every wiring point removed too:
 
 * `chisurf/plugins/chimol/chimol/renderer/internal_gui.py` — `Hit.kind`'s
@@ -96,7 +96,7 @@ config switch. Every wiring point removed too:
   wiring block (`MolView.__init__`, right before the display-config
   listener registration). `MolView.reset_view` itself is untouched — it
   predates the gizmo and other things call it.
-* `chisurf/plugins/chimol/chimol/cmtk/__init__.py` — the `from .gizmo import
+* `chisurf/plugins/chimol/chimol/emtk/__init__.py` — the `from .gizmo import
   ...` block and every `gizmo_*`/`GIZMO_*` name from `__all__` and
   `CONTROL_MODULES`; the module docstring's "Beyond widgets: plotting and the
   view gizmo" section is now just "Beyond widgets: plotting", with one
@@ -106,12 +106,12 @@ config switch. Every wiring point removed too:
   `chisurf/plugins/chimol/test/renders/gizmo_baseline/` (the rendered PNGs) —
   all deleted.
 
-Verified after removal: `chimol.cmtk` and `chimol.chrome.gui`
+Verified after removal: `chimol.emtk` and `chimol.chrome.gui`
 import clean, 3885 tests collect (down from 3946 — the ~59 gizmo tests plus a
 handful of others gone with them), a 267-test targeted sweep
 (`test_wheel_routing`, `test_internal_gui`, `test_viewport_chrome`,
 `test_panel_layout`, `test_dbg_window`, `test_engine_is_portable`,
-`test_qt_seam`, `test_cmtk_plot`, `test_painter_triangle`,
+`test_qt_seam`, `test_emtk_plot`, `test_painter_triangle`,
 `test_quad_painter`, `test_ui_widgets`) passes clean.
 
 **Why the three rounds of work below are kept, not deleted.** This concept's
@@ -229,7 +229,7 @@ slanted to match that face's own foreshortened plane.
    reason above.
 
 *Not attempted: per-face perspective-slanted label text* (reference C).
-`Painter.text` (`cmtk/painter.py`) has no rotation parameter — checked, not
+`Painter.text` (`emtk/painter.py`) has no rotation parameter — checked, not
 assumed — and adding one is a toolkit-wide change (every backend,
 `QtPainter`/`QuadPainter`, plus the atlas) out of scope for a gizmo
 refinement; doing it silently as a side effect here was explicitly the wrong
@@ -269,7 +269,7 @@ icon a dark colour specifically when its own zone is hovered
 Broader sweep re-run and green: `test_wheel_routing.py`, `test_internal_gui.py`,
 `test_viewport_chrome.py`, `test_chrome_atlas.py`/`test_chrome_cache.py`/
 `test_chrome_scale_and_paging.py`/`test_chrome_frame_cost.py`,
-`test_sequence_chains_and_labels.py`, `test_cmtk_plot.py`, `test_dbg_window.py`,
+`test_sequence_chains_and_labels.py`, `test_emtk_plot.py`, `test_dbg_window.py`,
 `test_selection_markers.py`, `test_mouse_selection.py`, `test_browser_render.py`,
 `test_engine_is_portable.py`. One unrelated, pre-existing failure was observed
 and deliberately **not** touched: `test_chrome_painter.py`'s 5
@@ -294,7 +294,7 @@ describes the **six-axis-ball** gizmo (`ImViewGuizmo.h` ported faithfully) —
 accurate when written, and **now superseded**: the user showed a reference
 screenshot and said "make the gimbal like that", which turned out to be the
 classic Blender/3ds Max/ChimeraX ViewCube the reference header itself said
-this port was *not*. `cmtk/gizmo.py` was rewritten outright (not kept behind
+this port was *not*. `emtk/gizmo.py` was rewritten outright (not kept behind
 a flag); every mention below of balls, spokes, a centre disc, or
 `AXIS_ORIENTATIONS` as a hand-solved six-entry table describes code that no
 longer exists. Read this entry, not those, for the current design.
@@ -341,7 +341,7 @@ old "handle vs. big invisible disc" split that stopped making sense once the
 cube is solid and covers most of the footprint. A press on the cube
 (face/edge/corner, anywhere) is held pending in `InternalGui._gizmo_pressed`;
 `drag()` checks the accumulated distance from the press point against
-`_GIZMO_DRAG_THRESHOLD = 6.0px` (matching `cmtk.dragdrop`'s own click-vs-drag
+`_GIZMO_DRAG_THRESHOLD = 6.0px` (matching `emtk.dragdrop`'s own click-vs-drag
 threshold, the closest existing precedent for "did the pointer actually
 move") and, once exceeded, promotes to `_gizmo_orbiting` and calls
 `on_gizmo_orbit` for the accumulated delta, continuing frame-by-frame after
@@ -350,14 +350,14 @@ via whatever `_hover` says at that moment (unchanged from the axis-ball
 design's own "read live hover at release" logic).
 
 **The widget is now draggable, separately from the cube.** A small
-title-bar-style grip strip sits above the cube (`cmtk.gizmo.draw_grip`/
+title-bar-style grip strip sits above the cube (`emtk.gizmo.draw_grip`/
 `grip_height` -- a plain filled strip with three dots, the same "grab here"
 affordance a scrollbar thumb uses). Chosen over a modifier-key-held drag or
 overloading the cube's own drag because it needs a trigger that cannot be
 confused with orbiting the cube face itself, and a strip is the same
 convention a `GuiWindow`'s own title bar already uses in this chrome. The
 **total footprint stays exactly the size-ball design's own footprint**
-(`cmtk.GIZMO_SIZE * ui_scale`, unchanged) -- the grip strip is fit *inside*
+(`emtk.GIZMO_SIZE * ui_scale`, unchanged) -- the grip strip is fit *inside*
 that budget by shrinking the cube slightly, not added on top of it. That
 turned out to matter: growing the footprint downward by the grip's own height
 regressed `test_wheel_routing.py` (a click meant for the info panel, three
@@ -414,7 +414,7 @@ dominating the cube, and the corner hover highlight is visible. Broader sweep
 also run and green: `test_internal_gui.py`, `test_viewport_chrome.py`,
 `test_wheel_routing.py`, `test_sequence_chains_and_labels.py`,
 `test_chrome_atlas.py`/`test_chrome_cache.py`/`test_chrome_scale_and_paging.py`/
-`test_chrome_frame_cost.py`, `test_cmtk_plot.py`, `test_dbg_window.py`,
+`test_chrome_frame_cost.py`, `test_emtk_plot.py`, `test_dbg_window.py`,
 `test_selection_markers.py`, `test_mouse_selection.py`,
 `test_browser_render.py`, `test_engine_is_portable.py`.
 
@@ -476,33 +476,33 @@ in, and confirmed both by eye:
 Re-verified: `test_gizmo.py` (22/22), `gizmo_baseline.py`'s three PNGs
 re-rendered and looked at again.
 
-**2026-08-13 — relocated: `chimol.render.cmtk` → `chimol.cmtk`.** User:
-*"cmtk should be on another module level: chimol.cmtk instead of
-chimol.render.cmtk."* Package physically moved up one directory
-(`chisurf/plugins/chimol/chimol/renderer/cmtk/` →
-`chisurf/plugins/chimol/chimol/cmtk/`), a bigger mechanical job than the
-`ui/`→`cmtk/` merge earlier the same session because this one changes
+**2026-08-13 — relocated: `chimol.render.emtk` → `chimol.emtk`.** User:
+*"emtk should be on another module level: chimol.emtk instead of
+chimol.render.emtk."* Package physically moved up one directory
+(`chisurf/plugins/chimol/chimol/renderer/emtk/` →
+`chisurf/plugins/chimol/chimol/emtk/`), a bigger mechanical job than the
+`ui/`→`emtk/` merge earlier the same session because this one changes
 **directory depth**, not just a name — every relative import's dot-count
 needed recomputing per importing file, not a blind find/replace. Two shapes
 the first-pass script missed, both real import errors caught by actually
 importing the package afterward (not just grepping):
 
-* `internal_gui.py`'s `from . import cmtk` (a bare module import, not
-  `from .cmtk import X`) — the regex patterns only matched dotted forms.
-  Now `from .. import cmtk`.
+* `internal_gui.py`'s `from . import emtk` (a bare module import, not
+  `from .emtk import X`) — the regex patterns only matched dotted forms.
+  Now `from .. import emtk`.
 * Six files moved from the old `ui/` package (`command_line.py`,
   `memory_editor.py`, `inputs.py`, `text_field.py`, `text_editor.py`) reach
   `chimol/host/` via a relative import **inside a function body** —
   `grep -n "^from"` (anchored to line start) missed every one of them because
   they're indented. `from ...host.X import Y` (three dots, correct at the
-  old `renderer/cmtk/` depth) is one dot too many now that the package sits
+  old `renderer/emtk/` depth) is one dot too many now that the package sits
   one level higher; all became `from ..host.X import Y`.
 
 Absolute references (170+ across the repo — chimol source, tests, docs, OKF,
 `build_tools/`, and the two same outside-chimol consumers as before) fixed by
-dropping `.renderer`/`renderer/` before `cmtk`. Two segmented-`pathlib`-literal
-traps repeated from the `ui/`→`cmtk/` merge (`"chimol" / "renderer" / "cmtk"`
-as separate path segments, invisible to a `renderer/cmtk` string search) in
+dropping `.renderer`/`renderer/` before `emtk`. Two segmented-`pathlib`-literal
+traps repeated from the `ui/`→`emtk/` merge (`"chimol" / "renderer" / "emtk"`
+as separate path segments, invisible to a `renderer/emtk` string search) in
 `test_chrome_atlas.py` and `bake_chrome_atlas.py` — same category of bug,
 found the same way, by grepping for the bare segmented literal specifically
 rather than trusting the string-search sweep alone. Verified: 3907 tests
@@ -526,7 +526,7 @@ Two direct reports, both fixed:
   redrawn ten times a second is unreadable, the module's own comment already
   says so, and the user asked about "the plots", not the counter.
 * **"gimbel thing is ugly and too small also why can't I click on the
-  diagonals?"** Two real defects in `cmtk/gizmo.py`, from a
+  diagonals?"** Two real defects in `emtk/gizmo.py`, from a
   screenshot showing it cramped against the menu bar in a small window:
   1. **Too small to click.** The reference's own proportions
      (`_HANDLE_RADIUS_RATIO` 15/128 ≈ 0.117 of the half-size) are a ~5px
@@ -567,7 +567,7 @@ Two direct reports, both fixed:
      "cramped" read was the small window, not a geometry bug).
 
 **2026-08-13 — Phase 4 landed: the view gizmo, clickable and wired to the camera.**
-`cmtk/gizmo.py` ports `Ka1serM/ImViewGuizmo`'s `Rotate`. First
+`emtk/gizmo.py` ports `Ka1serM/ImViewGuizmo`'s `Rotate`. First
 correction worth stating up front: **the reference is not a cube.** It has no
 faces, edges or corners — it is six axis balls (`+X`/`-X`/`+Y`/`-Y`/`+Z`/`-Z`)
 plus a big, mostly-invisible centre disc that starts an orbit drag. The PRD's
@@ -667,18 +667,18 @@ here.
 `junk/ImViewGuizmo/ImViewGuizmo.h` carries its `CHISURF-REVIEWED`/`-TAKEN`/
 `-SKIPPED`/`-RECORD` header now.
 
-**2026-08-13 — Phase 1 landed: cmtk draws the nerd-mode frame-stats graphs.**
-`chisurf/plugins/chimol/chimol/cmtk/` now has `axis.py` (`Axis`,
+**2026-08-13 — Phase 1 landed: emtk draws the nerd-mode frame-stats graphs.**
+`chisurf/plugins/chimol/chimol/emtk/` now has `axis.py` (`Axis`,
 `nice_ticks` -- Heckbert's algorithm), `markers.py` (circle/square/diamond/
 cross), `plot.py` (`Plot`, `begin_plot`; ImPlot's default "Deep" categorical
 palette, `implot.cpp:509`, as `DEEP_PALETTE`). 16 tests in
-`test/test_cmtk_plot.py`, all passing (`RecordingPainter`, no GUI toolkit).
+`test/test_emtk_plot.py`, all passing (`RecordingPainter`, no GUI toolkit).
 
 **The first production caller is `InternalGui._paint_nerd_graph`**
 (`chrome/gui.py`), not a standalone demo — a demo would have
 proven the plotting code works; wiring the real "nerd mode" readout proves it
 replaces something. The four non-stacked series (fps, frame time, cpu load,
-gpu-submitted instances) now draw as real `cmtk.begin_plot` line plots with
+gpu-submitted instances) now draw as real `emtk.begin_plot` line plots with
 `y_range=(0.0, None)` (baseline pinned at zero, ceiling auto-fit — matches
 the old bars' scale) and `Plot.hline` for the 60/30 fps and 16.7/33.3 ms
 reference lines (previously `_paint_nerd_guides`, drawn peak-relative; now
@@ -712,7 +712,7 @@ five states render the nerd overlay at all.
 **2026-08-13 — foundation phase in progress.** User asked to port
 [epezent/implot](https://github.com/epezent/implot) and
 [brenocq/implot3d](https://github.com/brenocq/implot3d) into chimol's UI
-toolkit as `tk`/`cmtk`, then to also add
+toolkit as `tk`/`emtk`, then to also add
 [Ka1serM/ImViewGuizmo](https://github.com/Ka1serM/ImViewGuizmo). All three are
 now mined into `junk/implot`, `junk/implot3d`, `junk/ImViewGuizmo`
 (`junk/clone.sh`, "chimol in-viewport plotting/gizmo toolkit" section) —
@@ -725,7 +725,7 @@ state, phase by phase, so the next session does not re-derive it.
 * **The floor was axis-aligned rects only, by design** — see
   [chimol-viewport-ui.md](chimol-viewport-ui.md) and
   [`docs/development/chimol_widget_toolkit.md`](../../docs/development/chimol_widget_toolkit.md)'s
-  "What is not here, and why". `PlotLines` (`cmtk/widgets.py:1001`)
+  "What is not here, and why". `PlotLines` (`emtk/widgets.py:1001`)
   already substitutes a staircase-of-columns for a true polyline, and says
   explicitly this only holds "at sparkline sizes". None of ImPlot's line
   plots, scatter markers, or ImPlot3D's meshes are expressible that way at
@@ -746,7 +746,7 @@ state, phase by phase, so the next session does not re-derive it.
 ### Reading order for whoever continues this
 
 1. `junk/implot/implot.h` — the public API surface (`BeginPlot`/`EndPlot`,
-   `SetupAxis`, `PlotLine`, `PlotScatter`) is what `cmtk`'s call shape should
+   `SetupAxis`, `PlotLine`, `PlotScatter`) is what `emtk`'s call shape should
    track, adapted to a Python context manager since there is no destructor to
    lean on for the implicit `EndPlot`.
 2. `junk/implot/implot_internal.h` — `ImPlotAxis`, `ImPlotPlot`, the
@@ -763,7 +763,7 @@ state, phase by phase, so the next session does not re-derive it.
 5. `junk/ImViewGuizmo/ImViewGuizmo.h` — small enough to read start to finish.
    **Not a cube**: `Rotate` lays out six axis balls plus a centre orbit-disc,
    no faces/edges/corners at all (see the Phase 4 resume note above, and
-   PRD-104's corrected Phase 4 paragraph) — landed as `cmtk/gizmo.py`.
+   PRD-104's corrected Phase 4 paragraph) — landed as `emtk/gizmo.py`.
    The part worth transcribing carefully is the depth-based fade/sort and the
    primary-vs-secondary handle distinction; the projection itself is a single
    matrix-vector product once you have `CameraState._rotation`.
@@ -774,12 +774,12 @@ state, phase by phase, so the next session does not re-derive it.
   note lands `fill_triangle`/`line` on both painters with a passing parity
   test — check `git log` for a commit touching `painter.py`, `qt_painter.py`,
   `quad_painter.py` referencing PRD-104 before trusting this line.
-- **Phase 1 (cmtk 2D MVP):** see PRD-104's Definition of Done for the checked
-  state. If unchecked, `chisurf/plugins/chimol/chimol/cmtk/` does not
+- **Phase 1 (emtk 2D MVP):** see PRD-104's Definition of Done for the checked
+  state. If unchecked, `chisurf/plugins/chimol/chimol/emtk/` does not
   exist yet or is incomplete — start from implot_internal.h's axis transform
   (item 2 above), not from a plot type, or the transform gets rebuilt per
   plot type and disagrees under zoom.
-- **Phase 2 (2D breadth), Phase 3 (cmtk3d):** see PRD-104. Neither blocks on
+- **Phase 2 (2D breadth), Phase 3 (emtk3d):** see PRD-104. Neither blocks on
   the other, or ever blocked on Phase 4.
 - **Phase 4 (gizmo): done.** See the "2026-08-13 — Phase 4 landed" resume note
   above and PRD-104's Definition of Done.

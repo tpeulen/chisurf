@@ -30,7 +30,7 @@ class PortSpec:
 class NodeModel:
     """Model for a node: title, port specs and optional widget factory.
 
-    The document layer reads from this model; the cmtk control draws it.
+    The document layer reads from this model; the emtk control draws it.
     The ``content_factory`` hook is what a host sets when a node body needs
     to host live controls rather than drawn text.
     """

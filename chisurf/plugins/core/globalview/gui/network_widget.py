@@ -3,7 +3,7 @@
 `ParameterGraphCanvas` is what ``tool.py`` builds, and it is reached through a
 small, specific set of members: :meth:`set_graph`, :meth:`refit`,
 ``node_radius``, ``selected_nodes_idx``, and three signals. This presents
-exactly those over the cmtk node editor, so the swap in ``tool.py`` is one
+exactly those over the emtk node editor, so the swap in ``tool.py`` is one
 import and one constructor rather than a rewrite of a thousand-line window.
 
 Deliberately a *surface*, not a subclass. The canvas is a ``QWidget`` that
@@ -17,11 +17,11 @@ import typing
 
 from qtpy import QtCore, QtWidgets
 
-from cmtk import im, nodes
-from cmtk.qt_host import ControlHost
+from emtk import im, nodes
+from emtk.qt_host import ControlHost
 
-from chisurf.gui.widgets.node_editor.cmtk_control import GraphControl
-from chisurf.plugins.core.globalview.gui.cmtk_view import (
+from chisurf.gui.widgets.node_editor.emtk_control import GraphControl
+from chisurf.plugins.core.globalview.gui.emtk_view import (
     GlobalViewContent,
     apply_network_style,
     document_from_arrays,
@@ -88,7 +88,7 @@ def _to_pixels(positions, spread: float) -> list:
 
 
 class ParameterNetworkWidget(QtWidgets.QWidget):
-    """The network, drawn by cmtk, behind the API ``tool.py`` already calls.
+    """The network, drawn by emtk, behind the API ``tool.py`` already calls.
 
     Attributes
     ----------
@@ -197,7 +197,7 @@ class ParameterNetworkWidget(QtWidgets.QWidget):
             Multiplier on the layout's extent, so a crowded graph can be
             pulled apart without recomputing it.
         keep_view : bool
-            Unused: the cmtk editor keeps its pan and zoom across a load
+            Unused: the emtk editor keeps its pan and zoom across a load
             anyway, and refits only when asked.
         """
         del keep_view

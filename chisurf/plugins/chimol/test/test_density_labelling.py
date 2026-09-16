@@ -366,7 +366,7 @@ def test_the_smooth_slider_snaps_and_a_click_sets_it(session):
     """Whole passes only; a click on the track sets the value at once; a repaint
     while the thumb is held does not snap it back (the bug that made the slider
     'work only on release, sometimes')."""
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     win, shared, errors, qapp, tmp = session
     viewer = win.viewer

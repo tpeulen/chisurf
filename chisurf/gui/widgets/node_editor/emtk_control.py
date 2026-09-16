@@ -1,31 +1,31 @@
-"""The node editor, drawn by cmtk instead of by a ``QGraphicsScene``.
+"""The node editor, drawn by emtk instead of by a ``QGraphicsScene``.
 
 This is the replacement for ``scene.py`` + ``view.py`` + ``node_item.py`` +
 ``edge_item.py`` + ``port_item.py``: one control that draws a
-:class:`~.document.GraphDocument` through :mod:`cmtk.nodes` and edits it in
+:class:`~.document.GraphDocument` through :mod:`emtk.nodes` and edits it in
 place. It owns no ``QGraphicsItem``, imports no Qt, and runs in a test with no
 display -- which is the point of the move, since the Qt version could not.
 
 Two objects
 -----------
 :class:`GraphControl`
-    The whole editor, as a cmtk *control*: ``draw``, ``press``, ``drag``,
+    The whole editor, as a emtk *control*: ``draw``, ``press``, ``drag``,
     ``release``, ``hover``, ``scroll``, ``key``. That is the contract
-    :func:`cmtk.qt_host.ControlHost` hosts, and it is also the contract a
+    :func:`emtk.qt_host.ControlHost` hosts, and it is also the contract a
     browser host and a headless test satisfy, so there is one implementation
     rather than one per surface.
 :class:`NodeContentRenderer`
     What goes *inside* a node body. The Qt editor put a real ``QWidget`` in
-    each node -- a slider, a combo, a code editor -- through a proxy item. cmtk
+    each node -- a slider, a combo, a code editor -- through a proxy item. emtk
     has the same controls as immediate-mode calls, so a node's body is a
     function of its config rather than a widget to keep in sync with it.
 
 Reading the pointer
 -------------------
 The host reports presses and drags but not which button, and never a wheel
-button. cmtk's node editor pans on the middle button, which therefore cannot
+button. emtk's node editor pans on the middle button, which therefore cannot
 arrive. The panning gesture is **Alt-drag** here, and the wheel zooms; both are
-translated into the ``IO`` fields :mod:`cmtk.nodes` reads, so the editor itself
+translated into the ``IO`` fields :mod:`emtk.nodes` reads, so the editor itself
 needs no special case.
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ from __future__ import annotations
 import logging
 import typing
 
-from cmtk import im, nodes
+from emtk import im, nodes
 
 from .document import GraphDocument, GraphEdge, GraphNode
 
@@ -122,7 +122,7 @@ class NodeContentRenderer:
         -------
         tuple
             ``(shape, label, radius)``. ``shape`` is a
-            :class:`cmtk.nodes.NodeShape`; ``label`` is the text under a disc
+            :class:`emtk.nodes.NodeShape`; ``label`` is the text under a disc
             and is ignored for a box, which titles itself; ``radius`` may be
             ``None`` to take the style's.
 
@@ -277,7 +277,7 @@ class GraphControl:
     document : GraphDocument
         The graph. Replace it with :meth:`set_document`, which resets the view
         state that belonged to the old one.
-    editor : cmtk.nodes.EditorContext
+    editor : emtk.nodes.EditorContext
         Pan, zoom, node positions and selection.
     """
 
@@ -313,7 +313,7 @@ class GraphControl:
         #: fit the view has something to fit *to* without guessing.
         self._box: tuple = (0.0, 0.0, 0.0, 0.0)
         #: Set when the pointer is panning, since the host never reports the
-        #: middle button that cmtk.nodes pans with.
+        #: middle button that emtk.nodes pans with.
         self._panning = False
         self._pan_from: tuple = (0.0, 0.0)
         #: Deferred to the next draw, because a fit needs measured node sizes
@@ -335,7 +335,7 @@ class GraphControl:
 
         Notes
         -----
-        A fresh :class:`~cmtk.nodes.EditorContext` comes with it. Keeping the
+        A fresh :class:`~emtk.nodes.EditorContext` comes with it. Keeping the
         old one would carry the previous graph's node positions across by id,
         so loading a second graph whose ids happen to overlap would place its
         nodes wherever the first graph's were -- and the saved positions in the
@@ -389,7 +389,7 @@ class GraphControl:
         """Frame the whole graph at the next draw."""
         self._fit_pending = True
 
-    # -- the cmtk control contract --------------------------------------
+    # -- the emtk control contract --------------------------------------
 
     def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
         """Draw the editor into the given box.
@@ -397,7 +397,7 @@ class GraphControl:
         Parameters
         ----------
         painter : object
-            Anything implementing cmtk's painter contract.
+            Anything implementing emtk's painter contract.
         x, y, w, h : float
             The box, in the painter's coordinates.
         """
@@ -739,7 +739,7 @@ class GraphControl:
 
         if modifiers & _ALT:
             # The host never reports the middle button, which is what
-            # cmtk.nodes pans with, so panning is a modifier here and is
+            # emtk.nodes pans with, so panning is a modifier here and is
             # applied directly rather than through the editor's own machine.
             self._panning = True
             self._pan_from = (px, py)
@@ -769,7 +769,7 @@ class GraphControl:
 
         Notes
         -----
-        ``cmtk.qt_host`` calls ``press(px, py, x, y, w, h, modifiers, clicks)``
+        ``emtk.qt_host`` calls ``press(px, py, x, y, w, h, modifiers, clicks)``
         positionally, and other hosts pass them by keyword. Accepting both is
         two lines here and saves every host from agreeing on one.
         """
@@ -920,7 +920,7 @@ class GraphControl:
         return removed
 
     def content_key(self) -> tuple:
-        """What this control is about to draw, for :mod:`cmtk.redraw`.
+        """What this control is about to draw, for :mod:`emtk.redraw`.
 
         Returns
         -------

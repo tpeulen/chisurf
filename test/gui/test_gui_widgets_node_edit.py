@@ -1,7 +1,7 @@
 import pytest
 from qtpy import QtWidgets
 
-pytest.importorskip("cmtk")
+pytest.importorskip("emtk")
 
 from chisurf.gui.widgets.node_editor.widget import NodeGraphWidget
 

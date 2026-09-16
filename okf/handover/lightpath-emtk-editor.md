@@ -1,5 +1,5 @@
 ---
-title: Handover — wire the beam path onto the cmtk node editor
+title: Handover — wire the beam path onto the emtk node editor
 status: done
 group: handover
 updated: 2026-09-02
@@ -22,7 +22,7 @@ convention is translated) and the same control counts (7 buttons, 9 controls,
 14 tables). `node_types.py` no longer belongs on
 `test/chiplot_native_allowlist.txt` and has been struck from it.
 
-**Superseded 2026-09-03:** the departure described below is undone. cmtk's
+**Superseded 2026-09-03:** the departure described below is undone. emtk's
 zoom now scales node *contents* — while a node submits, the painter re-shapes
 its glyphs at the zoom and the non-font layout metrics follow, so a node's
 pixel size is no longer fixed — and `fit_to_content` solves the ordinary fit
@@ -31,7 +31,7 @@ paint (a node has no size until it has been drawn once) and then calls
 `_fit_view()`: the whole 8-node path lands in the panel, nodes and all.
 
 One deliberate departure from the plan below: **`_build_default_path` pans
-instead of fitting.** cmtk kept a node's pixel size fixed regardless of zoom,
+instead of fitting.** emtk kept a node's pixel size fixed regardless of zoom,
 so fitting this 8-node, plot-heavy graph to the panel only shrank the
 *spacing* between nodes, never their fixed-size bodies — every zoom that made
 the whole graph fit also made adjacent nodes overlap. The Qt version had the
@@ -65,11 +65,11 @@ the current state.
 
 | piece | where | state |
 |---|---|---|
-| the editor | `cmtk.nodes` | 41 tests |
+| the editor | `emtk.nodes` | 41 tests |
 | graph as a plain object | `node_editor/document.py` | schema v1 unchanged |
-| the control | `node_editor/cmtk_control.py` | `GraphControl`, Qt-free |
+| the control | `node_editor/emtk_control.py` | `GraphControl`, Qt-free |
 | the Qt host | `node_editor/widget.py` | `NodeGraphWidget` |
-| **the beam-path node bodies** | `lightpath_simulator/gui/cmtk_view.py` | `BeampathContent`, 12 tests |
+| **the beam-path node bodies** | `lightpath_simulator/gui/emtk_view.py` | `BeampathContent`, 12 tests |
 
 `BeampathContent` already draws the three-layer spectrum through `implot` and
 the category-filtered component chooser. It is not reached by the running app.
@@ -132,7 +132,7 @@ editor; the harness renders the current state plain.)
 * **A fixture on the wrong schema loads as an empty canvas and reports
   nothing.** `pos` is not `position`; an edge port is an *index*, not a name.
 * **Fit before show fits to a 100x30 box** and the graph renders as a speck.
-  Show, drain the event queue, then fit — and the cmtk editor fits on the
+  Show, drain the event queue, then fit — and the emtk editor fits on the
   *next paint*, because a fit needs measured node sizes.
 * **Nothing in a node body may take the container's full width.** A node is
   not a container: one full-width control makes the node as wide as the

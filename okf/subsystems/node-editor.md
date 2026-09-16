@@ -11,7 +11,7 @@ ChiSurf shows graphs in four places: the lightpath simulator's optical path,
 MMFDB's provenance DAG, the AutoForm `node_graph` section, and the standalone
 demo (`python -m chisurf.gui.widgets.node_editor`). All four are drawn by one
 editor, and since 2026-09-03 that editor is
-[cmtk](../plugins/chimol-cmtk.md) end to end. The PyQt `QGraphicsScene` editor it grew out
+[emtk](../plugins/chimol-emtk.md) end to end. The PyQt `QGraphicsScene` editor it grew out
 of is **deleted** — `editor.py`, `scene.py`, `view.py`, the graphics items, the
 read-only `NodeViewerWidget`, the timeline/side-panel chrome, the eval modules
 and the theme layer are gone; nothing imports them.
@@ -23,10 +23,10 @@ imports Qt:
 
 * **Document** (`document.py`) — the graph as a plain object, serialising to
   the schema v1 in `json_schema.md`.
-* **Control** (`cmtk_control.py`) — `GraphControl` draws the document through
-  `cmtk.nodes` and turns events into edits; `NodeContentRenderer` draws node
+* **Control** (`emtk_control.py`) — `GraphControl` draws the document through
+  `emtk.nodes` and turns events into edits; `NodeContentRenderer` draws node
   bodies. Qt-free, so the editor's behaviour is testable headlessly
-  (`test/test_node_editor_cmtk.py`).
+  (`test/test_node_editor_emtk.py`).
 * **Widget** (`widget.py`) — `NodeGraphWidget`, the class consumers
   instantiate: a `ControlHost` around the control plus the Qt signals
   (`graphChanged`, `nodeSelected`, `edgeSelected`, `nodeActivated`,
@@ -61,7 +61,7 @@ Rebuild those via Easy Mode or Reset to Default rather than loading them.
 
 ## Zoom
 
-Zoom scales the nodes. cmtk's canvas zoom always moved positions, pins, links
+Zoom scales the nodes. emtk's canvas zoom always moved positions, pins, links
 and the grid; since 2026-09-03 it scales node *contents* too: while a node
 submits, the painter re-shapes its glyphs at the zoom (Qt re-renders the face
 crisp) and the non-font layout metrics scale with it — and since a node's body
@@ -74,6 +74,6 @@ passes into the layout (item widths, plot sizes) by `nodes.content_scale()`.
 
 ## Related
 
-* [lightpath-cmtk-editor](../handover/lightpath-cmtk-editor.md) — the beam-path
+* [lightpath-emtk-editor](../handover/lightpath-emtk-editor.md) — the beam-path
   port, and the screenshot harness run it introduced.
-* [chimol-cmtk](../plugins/chimol-cmtk.md) — the toolkit underneath.
+* [chimol-emtk](../plugins/chimol-emtk.md) — the toolkit underneath.

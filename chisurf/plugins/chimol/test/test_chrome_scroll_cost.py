@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cmtk.quad_painter import QuadPainter
+from emtk.quad_painter import QuadPainter
 from chimol.ui.gui import GuiRow, GuiWindow, InternalGui
 
 
@@ -132,7 +132,7 @@ def test_the_object_list_draws_only_the_rows_it_can_see():
 
 def test_a_band_of_triangles_is_one_painter_call():
     """A circle's rings and ribbons: emitted per triangle, they are the frame."""
-    from cmtk.widgets.circle import CirclePlot
+    from emtk.widgets.circle import CirclePlot
 
     calls = {"n": 0}
 
@@ -154,8 +154,8 @@ def test_a_band_of_triangles_is_one_painter_call():
 
 def test_every_painter_gets_the_triangles_even_without_a_fast_path():
     """The recording painter has six operations and must still see them all."""
-    from cmtk.painter import fill_triangles
-    from cmtk.testing import RecordingPainter
+    from emtk.painter import fill_triangles
+    from emtk.testing import RecordingPainter
 
     painter = RecordingPainter()
     block = np.array([[[0, 0], [1, 0], [0, 1]], [[1, 0], [1, 1], [0, 1]]], dtype=float)

@@ -2,7 +2,7 @@
 
 Why a second rasteriser exists at all
 -------------------------------------
-:class:`~cmtk.quad_painter.QuadPainter` produces vertices, not
+:class:`~emtk.quad_painter.QuadPainter` produces vertices, not
 pixels, and the thing that turns them into pixels is a GPU. That makes the
 obvious test -- *does the panel still look right* -- depend on a device, a
 surface and a driver, none of which is what is being tested when the question

@@ -24,8 +24,8 @@ import pytest
 #: The committed atlas.
 import chimol
 
-_CMTK = pathlib.Path(chimol.__file__).resolve().parent / "cmtk"
-_ATLAS = _CMTK / "atlas"
+_EMTK = pathlib.Path(chimol.__file__).resolve().parent / "emtk"
+_ATLAS = _EMTK / "atlas"
 
 
 def _load():
@@ -167,7 +167,7 @@ def test_the_charset_covers_what_the_chrome_draws():
 #: painter draws from, so this list is the set of files whose string literals
 #: can reach it.
 _CONTROL_MODULES = sorted(
-    str(p.relative_to(_CMTK)) for p in _CMTK.rglob("*.py") if p.name != "__init__.py"
+    str(p.relative_to(_EMTK)) for p in _EMTK.rglob("*.py") if p.name != "__init__.py"
 )
 
 
@@ -195,7 +195,7 @@ def test_every_control_module_draws_only_baked_glyphs(module):
     every glyph costs texture area that the chrome uploads every repaint.
     """
     _alpha, meta = _load()
-    path = _CMTK / module
+    path = _EMTK / module
     tree = ast.parse(path.read_text(encoding="utf-8"))
     docstrings = {
         id(node.body[0].value)

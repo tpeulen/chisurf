@@ -1,4 +1,4 @@
-"""The beam path, drawn by cmtk: nodes with their spectra inside them.
+"""The beam path, drawn by emtk: nodes with their spectra inside them.
 
 This replaces the `QGraphicsProxyWidget` node bodies in ``node_types.py``. The
 old arrangement put a real ``QWidget`` -- a combo, a line edit, a chiplot plot
@@ -36,9 +36,9 @@ import typing
 
 import numpy as np
 
-from cmtk import im, implot, nodes
+from emtk import im, implot, nodes
 
-from chisurf.gui.widgets.node_editor.cmtk_control import NodeContentRenderer
+from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import GraphNode
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
 

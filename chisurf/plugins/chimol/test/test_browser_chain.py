@@ -42,7 +42,7 @@ def test_dom_button_translation_names_the_engine_buttons():
     every slider and marker in the panel would take a press and ignore the
     moves -- exactly the reported failure, one layer out.
     """
-    from cmtk.events import (
+    from emtk.events import (
         LEFT_BUTTON,
         MIDDLE_BUTTON,
         RIGHT_BUTTON,
@@ -86,7 +86,7 @@ _DRIVE = '''
     y0 = box.y + box.h / 2
 
     # --- the alpha drag, exactly as the browser delivers it -------------
-    from cmtk.events import LEFT_BUTTON
+    from emtk.events import LEFT_BUTTON
 
     consumed = renderer.on_pointer_press(x0, y0, LEFT_BUTTON, 0, double=False)
     emit("press", f"{consumed}|{renderer._gui_grab}|{slider._held}|{gui._window_body_drag}")
@@ -181,7 +181,7 @@ _UNPAIRED_DOUBLE_THEN_CLICK = '''
     # the click below is a click.
     gui.hide_info()
 
-    from cmtk.events import LEFT_BUTTON
+    from emtk.events import LEFT_BUTTON
 
     viewer.set_selected_residues([0, 1, 2])
     emit("selected_before", str(len(viewer._selected_residues)))

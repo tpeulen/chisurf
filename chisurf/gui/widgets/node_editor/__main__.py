@@ -31,7 +31,7 @@ def main():
     """Show the demo window."""
     app = QtWidgets.QApplication(sys.argv)
     window = NodeGraphWidget()
-    window.setWindowTitle("Node editor (cmtk)")
+    window.setWindowTitle("Node editor (emtk)")
     window.resize(900, 600)
     window.load_graph_dict(DEMO_GRAPH)
     window.show()

@@ -174,7 +174,7 @@ def test_the_topmost_thing_drawn_is_the_thing_clicked(sampled):
 # ...and a layer is only hit where it actually drew
 # --------------------------------------------------------------------------- #
 COVERAGE = '''
-from cmtk.testing import RecordingPainter
+from emtk.testing import RecordingPainter
 from chimol.ui.gui.layers import CHROME_LAYERS
 
 app = open_app(size=(1200, 820))

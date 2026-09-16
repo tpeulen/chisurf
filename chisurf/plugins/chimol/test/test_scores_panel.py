@@ -18,7 +18,7 @@ ones **across every frame** with a legend, and marks the current frame with a
 dashed vertical line is one way to control trajectory playback".
 
 That is what this pins, on chimol's own controls: the list is
-``cmtk.ListView``, the graph is ``cmtk.Plot``, and a drag across the graph
+``emtk.ListView``, the graph is ``emtk.Plot``, and a drag across the graph
 issues ``frame N`` -- so it works in the browser and the toolkit-free window
 too, and every scrub is echoed at the prompt like a typed command.
 """
@@ -27,7 +27,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cmtk.testing import RecordingPainter
+from emtk.testing import RecordingPainter
 from chimol.plugins.scores.window import ScoresPanel
 from chimol.ui.gui import Rect
 

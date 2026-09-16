@@ -80,7 +80,7 @@ def test_the_adapter_only_claims_kinds_the_loader_implements():
     render there and vanish everywhere else -- and the scheme, which is derived
     from the loader, would reject the file while chimol drew it happily.
     """
-    from cmtk.widgets.view_spec import FIELD_KINDS
+    from emtk.widgets.view_spec import FIELD_KINDS
 
     from chisurf.core.dataspec.schema import VALUE_KINDS
 
@@ -90,7 +90,7 @@ def test_the_adapter_only_claims_kinds_the_loader_implements():
 
 def test_the_adapter_only_binds_real_section_types():
     """Same, one level up: the types it edits have to be types."""
-    from cmtk.widgets.view_spec import CONTAINER_TYPES, SECTION_KINDS
+    from emtk.widgets.view_spec import CONTAINER_TYPES, SECTION_KINDS
 
     from chisurf.core.dataspec import _SECTION_TYPES
 
@@ -110,7 +110,7 @@ def test_every_kind_the_loader_implements_is_handled_or_deliberately_not():
     picker. What it must not do is *silently* fall through: an unhandled kind
     lands on a text row, which is a control that looks like it works.
     """
-    from cmtk.widgets.view_spec import FIELD_KINDS
+    from emtk.widgets.view_spec import FIELD_KINDS
 
     from chisurf.core.dataspec.schema import VALUE_KINDS
 

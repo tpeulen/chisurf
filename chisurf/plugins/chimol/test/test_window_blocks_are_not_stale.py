@@ -23,7 +23,7 @@ before any of this; the split simply stopped windows from consulting it. So a
 window that does not say what it draws is keyed on the whole fingerprint --
 what it compared before the split, still cached through camera motion, which is
 the only time the frame rate is being watched. A window that *does* say
-(:attr:`GuiWindow.body_key`, :mod:`cmtk.redraw`) is keyed on exactly that.
+(:attr:`GuiWindow.body_key`, :mod:`emtk.redraw`) is keyed on exactly that.
 
 What is pinned here is that property, not the mechanism: change something a
 body draws, and the body is redrawn.
@@ -37,8 +37,8 @@ from __future__ import annotations
 
 import pytest
 
-from cmtk import redraw
-from cmtk.testing import RecordingPainter
+from emtk import redraw
+from emtk.testing import RecordingPainter
 from chimol.ui.gui._common import GuiWindow
 from chimol.ui.gui.gui import InternalGui
 
@@ -108,7 +108,7 @@ def test_a_declared_key_is_what_the_window_is_cached_on(gui):
 
 
 def test_a_body_whose_summary_raises_is_redrawn_not_fatal(gui):
-    """cmtk's contract: an unsummarisable body costs a repaint, not the window."""
+    """emtk's contract: an unsummarisable body costs a repaint, not the window."""
     def broken():
         raise RuntimeError("no")
 

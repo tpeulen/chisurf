@@ -89,7 +89,7 @@ python -m chisurf.plugins.chimol
   or an external DSSP binary is unavailable.
 - The engine is the `chimol` package (`~/dev/chimol`): `core/` (object model,
   `viewer.py::Viewer`), `render/` (WebGPU backend, WGSL), `chrome/` (in-viewport
-  UI on `cmtk/`), `viewport/`, `commands/`, `io/`, `plugins/` (the plugin API and
+  UI on `emtk/`), `viewport/`, `commands/`, `io/`, `plugins/` (the plugin API and
   the in-tree plugins), `hosts/{qt,native,web}`. See chimol's `AGENTS.md` for
   the layering and the plugin API; this ChiSurf package is the Qt dock wrapper
   (`chimol.hosts.qt`) and the test suite.
@@ -123,7 +123,7 @@ and to say so. Everything below was read from source, not merely admired.
 ### Interface
 
 - **[Dear ImGui](https://github.com/ocornut/imgui)** (Omar Cornut, MIT) —
-  `cmtk/` is a port of its widget stack, one module per section
+  `emtk/` is a port of its widget stack, one module per section
   of `imgui_widgets.cpp` and `imgui_tables.cpp`, with its `StyleColorsDark`
   palette. The controls are re-expressed as retained objects drawn through a
   six-operation painter, because chimol has no per-frame immediate-mode
@@ -131,12 +131,12 @@ and to say so. Everything below was read from source, not merely admired.
   reference's.
 - **[ImGuiColorTextEdit](https://github.com/goossens/ImGuiColorTextEdit)**
   (Johan A. Goossens, after Balázs Jákó and Santiago; MIT) —
-  `cmtk/text_editor.py`. The colouriser state machine, the
+  `emtk/text_editor.py`. The colouriser state machine, the
   multi-cursor model, the transaction-based undo and the language definitions
   come from it; its keyword tables are extracted from the source rather than
   retyped, and a test re-extracts them to prove they have not drifted.
 - **[imgui_club](https://github.com/ocornut/imgui_club)** (Omar Cornut, MIT) —
-  `cmtk/memory_editor.py`, the hex view over host arrays and
+  `emtk/memory_editor.py`, the hex view over host arrays and
   device buffers, from `imgui_memory_editor`. Its layout arithmetic, HexII
   compression and data-preview footer are transcribed.
 
@@ -154,8 +154,8 @@ python -m build_tools.dev_utils.port_imgui_widget \
 It extracts them, emits the module skeleton with the four required docstring
 sections, writes the recording-painter test, registers the module in
 `CONTROL_MODULES`, and prints the public methods still to implement in source
-order. `cmtk/control.py` supplies the contract the skeleton
-subclasses, and `cmtk/qt_host.py` is what makes any of them
+order. `emtk/control.py` supplies the contract the skeleton
+subclasses, and `emtk/qt_host.py` is what makes any of them
 usable in a Qt form without a second implementation.
 
 ### Licences

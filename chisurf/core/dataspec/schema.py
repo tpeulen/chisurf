@@ -62,7 +62,7 @@ GUIDE_SCHEMA_PATH = SCHEMA_DIR / "guide.schema.json"
 #: Top-level keys a view spec may carry that are not sections.
 #:
 #: ``title`` and ``model`` are read by chimol, which builds painted forms from
-#: the same files (`cmtk.view_spec`); the Qt loader ignores both.
+#: the same files (`emtk.view_spec`); the Qt loader ignores both.
 #: They are in the scheme because a key that one reader honours and another
 #: ignores is still part of the format -- leaving it out would make chimol's
 #: own specs invalid.

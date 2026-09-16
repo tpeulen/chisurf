@@ -14,7 +14,7 @@ from chisurf.gui.widgets.node_editor.widgets.widget_palette import WidgetPalette
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.lightpath_simulator.api.client import LightPathClient
 from chisurf.plugins.core.lightpath_simulator.core.workflow import resolve_db_path
-from chisurf.plugins.core.lightpath_simulator.gui.cmtk_view import BeampathContent
+from chisurf.plugins.core.lightpath_simulator.gui.emtk_view import BeampathContent
 from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
     OPTICAL_PRESETS_DIR,
     LightPathEasyDialog,
@@ -896,7 +896,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
     def _fit_view(self) -> None:
         """Frame the whole graph once its nodes have been measured.
 
-        The cmtk editor needs one paint to size every node and a second to
+        The emtk editor needs one paint to size every node and a second to
         apply the fit against those sizes, so a repaint is scheduled for the
         next event-loop tick rather than assuming the first one already did.
         """
@@ -993,7 +993,7 @@ class LightPathSimulatorWidget(ChisurfDockTool):
 
         # Positions are screen pixels here, not just grid units: the view is
         # centred rather than fit (see below), so it stays at zoom 1 and a
-        # node's rendered size -- roughly 220x130, cmtk keeps it fixed
+        # node's rendered size -- roughly 220x130, emtk keeps it fixed
         # regardless of zoom -- is the thing to space these against.
         # 1. Light Source
         ls = self._new_optical_node("light_source", (30.0, 260.0))

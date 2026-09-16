@@ -19,16 +19,16 @@ from chisurf.gui.chiplot.backends import base
 _REGISTRY: dict[str, str] = {
     # name -> "module:ClassName"
     # The two supported options: pyqtgraph (the engine) and
-    # cmtk (chimol's ImPlot-style toolkit), the designated native
+    # emtk (chimol's ImPlot-style toolkit), the designated native
     # renderer / primary plotting widget. Target state of _REGISTRY.
     "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
-    # TODO(cmtk-backend): register chimol's cmtk here as the native backend once
+    # TODO(emtk-backend): register chimol's emtk here as the native backend once
     # a chiplot backend for it exists. Until
     # then wgpu/opengl stay registered so the backend seam is exercisable.
-    # Both are superseded experiment backends and retire when cmtk lands.
-    #   "cmtk": "chisurf.gui.chiplot.backends.cmtk_backend:CmtkBackend",
+    # Both are superseded experiment backends and retire when emtk lands.
+    #   "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
     "wgpu": "chisurf.gui.chiplot.backends.wgpu:WgpuBackend",
-    # Superseded by the cmtk direction; kept until the cmtk backend has been
+    # Superseded by the emtk direction; kept until the emtk backend has been
     # through the plot families, then removed.
     "opengl": "chisurf.gui.chiplot.backends.opengl:OpenGLBackend",
 }

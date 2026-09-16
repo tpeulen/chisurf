@@ -27,7 +27,7 @@ The binding dependencies are GPL, so the project as a whole cannot be more permi
 | Pygments | full | 2.20.0 | BSD-2-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://pygments.org |
 | psycopg | postgres | not installed | LGPL-3.0-or-later | Weak copyleft, library-level (LGPL) | https://github.com/psycopg/psycopg/blob/master/LICENSE.txt |
 | click | runtime | 8.4.2 | BSD-3-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/pallets/click/ |
-| cmtk | runtime | 0.1.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/cmtk |
+| emtk | runtime | 0.1.0 | MIT | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/tpeulen/emtk |
 | glfw | runtime | 2.10.2 | MIT License | Permissive (MIT/BSD/Apache/PSF/...) | https://github.com/FlorianRhiem/pyGLFW |
 | imp-bff | runtime | not installed | MPL-2.0 | Weak copyleft, file-level (MPL) | https://github.com/tpeulen/imp.bff |
 | ipython | runtime | 9.16.1 | BSD-3-Clause | Permissive (MIT/BSD/Apache/PSF/...) | https://ipython.org |

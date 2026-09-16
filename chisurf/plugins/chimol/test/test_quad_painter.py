@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cmtk.painter import (
+from emtk.painter import (
     ALIGN_CENTER,
     ALIGN_LEFT,
     ALIGN_RIGHT,
@@ -26,8 +26,8 @@ from chisurf.plugins.chimol.test import chrome_baseline, quad_raster
 
 def _painter():
     """Return a fresh :class:`QuadPainter`, skipping if the atlas is unbaked."""
-    from cmtk.font import load_atlas
-    from cmtk.quad_painter import QuadPainter
+    from emtk.font import load_atlas
+    from emtk.quad_painter import QuadPainter
 
     try:
         atlas = load_atlas()

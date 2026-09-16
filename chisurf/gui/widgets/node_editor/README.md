@@ -3,7 +3,7 @@
 The graph editor ChiSurf shows graphs with — the lightpath simulator's optical
 path, MMFDB's provenance DAG, the AutoForm `node_graph` section, and the
 standalone demo. One editor for all four, drawn by
-[cmtk](https://github.com/tpeulen/cmtk) rather than a `QGraphicsScene`.
+[emtk](https://github.com/tpeulen/emtk) rather than a `QGraphicsScene`.
 
 ## Architecture
 
@@ -14,12 +14,12 @@ Three layers, only the last of which knows Qt exists:
   JSON in `json_schema.md`. An edge's `source_port` indexes the source node's
   `outputs`, its `target_port` the target's `inputs` — per direction, not one
   flat list.
-- **Control** — `cmtk_control.py`. `GraphControl` draws the document through
-  `cmtk.nodes` and turns pointer/keyboard events into edits. Read-only mode
+- **Control** — `emtk_control.py`. `GraphControl` draws the document through
+  `emtk.nodes` and turns pointer/keyboard events into edits. Read-only mode
   refuses edits but keeps navigation and selection. `NodeContentRenderer`
   draws what goes *inside* a node body (plots, choosers, tables).
 - **Widget** — `widget.py`. `NodeGraphWidget` puts the control in a window via
-  `cmtk.qt_host.ControlHost` and re-emits its callbacks as Qt signals
+  `emtk.qt_host.ControlHost` and re-emits its callbacks as Qt signals
   (`graphChanged`, `nodeSelected`, `edgeSelected`, `nodeActivated`,
   `selectionCleared`). This is the class consumers instantiate.
 
@@ -42,8 +42,8 @@ Standalone demo: `python -m chisurf.gui.widgets.node_editor`.
 ## Testing
 
 ```bash
-pytest chisurf/gui/widgets/node_editor/tests/ test/test_node_editor_cmtk.py
+pytest chisurf/gui/widgets/node_editor/tests/ test/test_node_editor_emtk.py
 ```
 
-The document and control need no display, which is the point of the cmtk
+The document and control need no display, which is the point of the emtk
 split: the editor's behaviour is testable headlessly.

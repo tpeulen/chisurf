@@ -43,7 +43,7 @@ PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
 #: Modules still importing Qt. **Shrinking**: never add to this.
 #:
 #: The `hosts/qt/` entries and `hosts/qt/wgpu_view.py` are the embedding window and
-#: are expected to stay. `cmtk/qt_painter.py` and
+#: are expected to stay. `emtk/qt_painter.py` and
 #: `hosts/qt/overlay.py` are the QPainter half of the painter seam.
 #: `hosts/toolkit.py` is the seam that decides whether Qt is used at all.
 #: The rest are leaks with no reason to exist.
@@ -223,5 +223,5 @@ def test_the_qt_host_houses_the_app_and_draws_none_of_it(module):
     found = _drawn_names(PACKAGE / module)
     assert not found, (
         f"{module} draws application content with Qt ({sorted(found)}). "
-        "chimol has its own: cmtk controls in a viewport window."
+        "chimol has its own: emtk controls in a viewport window."
     )

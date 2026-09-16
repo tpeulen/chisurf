@@ -140,11 +140,11 @@
       "class": 2
     },
     {
-      "name": "cmtk",
+      "name": "emtk",
       "group": "runtime",
-      "requirement": "cmtk",
+      "requirement": "emtk",
       "license": "MIT",
-      "url": "https://github.com/tpeulen/cmtk",
+      "url": "https://github.com/tpeulen/emtk",
       "source": "metadata",
       "version": "0.1.0",
       "class": 1

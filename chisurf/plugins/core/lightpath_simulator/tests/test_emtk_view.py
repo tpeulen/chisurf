@@ -1,4 +1,4 @@
-"""The cmtk beam-path node bodies: the probe filters and the three-layer plot.
+"""The emtk beam-path node bodies: the probe filters and the three-layer plot.
 
 None of this needs a display, which is the point of moving the node bodies out
 of ``QGraphicsProxyWidget``: what a node shows is now a function of its config,
@@ -9,14 +9,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-cmtk = pytest.importorskip("cmtk")
+emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.cmtk_control import GraphControl  # noqa: E402
+from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
 from chisurf.gui.widgets.node_editor.document import GraphDocument  # noqa: E402
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import (  # noqa: E402
     WAVELENGTHS,
 )
-from chisurf.plugins.core.lightpath_simulator.gui.cmtk_view import (  # noqa: E402
+from chisurf.plugins.core.lightpath_simulator.gui.emtk_view import (  # noqa: E402
     BeampathContent,
     _normalised,
     _parse_lines,
@@ -185,7 +185,7 @@ def _beam_path() -> dict:
 
 def _drawn(control, box=(0, 0, 1300, 400), frames=1):
     """Draw the control and hand back the recording painter."""
-    from cmtk.testing import RecordingPainter
+    from emtk.testing import RecordingPainter
 
     painter = RecordingPainter()
     for _ in range(frames):

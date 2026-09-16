@@ -129,9 +129,10 @@ requirements:
     # terminal progress bars the tree needs.
     - qtpy
     - pyqt
-    # The node-graph editor toolkit (cmtk.qt_host), imported unguarded by the
-    # node editor widgets and chimol.
-    - cmtk
+    # The node-graph editor toolkit (emtk.qt_host), imported unguarded by the
+    # node editor widgets and chimol. emtk is not on PyPI: install it from
+    # github.com/tpeulen/emtk.
+    - emtk
     # The chigame WebGPU engine: wgpu is the graphics API, rendercanvas the
     # per-platform surface, glfw the window backend chimol runs Qt-free on.
     - wgpu

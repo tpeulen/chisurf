@@ -1,25 +1,25 @@
 ---
 type: Development Note
-title: cmtk — the in-viewport toolkit
-description: How to write a panel or add a control with cmtk, the canvas toolkit ChiMOL draws inside the 3-D viewport.
-tags: [development, chimol, cmtk, gui]
+title: emtk — the in-viewport toolkit
+description: How to write a panel or add a control with emtk, the canvas toolkit ChiMOL draws inside the 3-D viewport.
+tags: [development, chimol, emtk, gui]
 audience: developer
 ---
 
-# cmtk — the in-viewport toolkit
+# emtk — the in-viewport toolkit
 
 ChiMOL draws its own interface inside the 3-D viewport rather than around it,
 so the same code serves the desktop Qt build and the browser build. This page
 is for someone writing a panel with that toolkit, or adding a control to it.
 
-The controls live in `modules/chimol/chimol/cmtk/` — **cmtk**, the
+The controls live in `modules/chimol/chimol/emtk/` — **emtk**, the
 **Canvas Model Toolkit**, chimol's in-viewport widget/plot namespace. ChiSurf
-reaches cmtk **via chimol**, and chimol independence
+reaches emtk **via chimol**, and chimol independence
 ([`okf/plugins/chimol-relocation.md`](../../okf/plugins/chimol-relocation.md))
-comes first — the ChiSurf↔cmtk interface is still floating. Until 2026-08-13 the
+comes first — the ChiSurf↔emtk interface is still floating. Until 2026-08-13 the
 widgets lived in a sibling package called `renderer/ui/`; that package was
-merged into `cmtk/` so chimol has one widget namespace, alongside the plotting
-port `cmtk` also carries — see `okf/plugins/chimol-cmtk.md`; a
+merged into `emtk/` so chimol has one widget namespace, alongside the plotting
+port `emtk` also carries — see `okf/plugins/chimol-emtk.md`; a
 view-orientation gizmo was tried and removed the same day, also recorded
 there. The widgets
 are a port of [Dear ImGui](https://github.com/ocornut/imgui)'s widget stack —
@@ -29,7 +29,7 @@ it.
 
 ## The painter is six operations, plus one for what a rectangle cannot draw
 
-Every control draws through `cmtk/painter.py`, which offers
+Every control draws through `emtk/painter.py`, which offers
 `fill_rect`, `stroke_rect`, `gradient_rect`, `text`, `push_clip`/`pop_clip`,
 and two measurements, `text_width` and `line_height`. There is no circle, no
 image, and no rotation.
@@ -43,7 +43,7 @@ faked (see *What is not here*).
 
 The floor grew one operation, `fill_triangle` — three independent corners,
 flat-shaded, no outline — when chimol's in-viewport toolkit gained a plotting
-library (`okf/plugins/chimol-cmtk.md`), which needed what a rectangle cannot
+library (`okf/plugins/chimol-emtk.md`), which needed what a rectangle cannot
 express: a diagonal line, a scatter marker. It is additive to this floor,
 not a reversal of it — every control in
 this document still draws with the original six, and `line()` (a thin quad,
@@ -58,7 +58,7 @@ style* and retained *in implementation*. A control is an object that keeps its
 state, its hit test and its drawing in one place:
 
 ```python
-from chimol.cmtk import SliderFloat
+from chimol.emtk import SliderFloat
 
 gain = SliderFloat("gain", 0.0, 1.0, 0.35)      # construct once, keep it
 
@@ -89,7 +89,7 @@ rather than a global. It removes the `y += row_h` bookkeeping every panel used
 to repeat:
 
 ```python
-from chimol.cmtk import Layout, Checkbox, Button
+from chimol.emtk import Layout, Checkbox, Button
 
 cursor = Layout(painter, x, y, w, h)
 Checkbox("cull", True).draw(painter, *cursor.row(width=90.0))
@@ -126,7 +126,7 @@ one, and `content_height()` is what tells you whether you need a scrollbar.
 | `layout` | `Layout`, `LayoutStyle` |
 | `style` | the palette, `hit`, `clamp`, `lerp_colour`, `disc`, `fit_text`, `format_value` |
 
-Every name is importable from the package directly — `from ...cmtk
+Every name is importable from the package directly — `from ...emtk
 import DragFloat` — which resolves it lazily from whichever module owns it, so
 putting one slider on screen does not import the whole toolkit.
 
@@ -160,7 +160,7 @@ accent blue, for instance, so "this is on" and "this is selected" do not share
 a colour.
 
 **Only draw glyphs the atlas has baked.** The Qt painter draws with a font, the
-GPU painter draws from `cmtk/atlas/`. A character the atlas lacks
+GPU painter draws from `emtk/atlas/`. A character the atlas lacks
 therefore looks perfect in every screenshot and paints as **nothing** in the
 app — no exception, no warning. The baked non-ASCII set is:
 
@@ -171,7 +171,7 @@ app — no exception, no warning. The baked non-ASCII set is:
 Spell a symbol with one of those or with ASCII. Widening the atlas costs
 texture area the chrome re-uploads on every repaint, so it is the last resort,
 not the first. `test/test_chrome_atlas.py` fails the build on any module in
-`cmtk/` that draws an unbaked character.
+`emtk/` that draws an unbaked character.
 
 ## Looking at what you built
 

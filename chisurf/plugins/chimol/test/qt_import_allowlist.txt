@@ -4,10 +4,10 @@
 # Everything else here is a leak.
 # Guarded by test_qt_seam.py.
 # Modules that still import Qt. SHRINKING -- never add a line.
-# QPainter half of the painter seam. cmtk is its own project now
-# (https://github.com/tpeulen/cmtk) and keeps its own Qt files --
-# `cmtk/qt_painter.py` and `cmtk/qt_host.py` -- under its own rules, so
-# they are no longer chimol's to allow. What was: `cmtk/qt_host.py` hosts a
+# QPainter half of the painter seam. emtk is its own project now
+# (https://github.com/tpeulen/emtk) and keeps its own Qt files --
+# `emtk/qt_painter.py` and `emtk/qt_host.py` -- under its own rules, so
+# they are no longer chimol's to allow. What was: `emtk/qt_host.py` hosts a
 # `hosts/qt/*` and `hosts/qt/wgpu_view.py` are the embedding window and are expected
 # `code_editor`/`memory_editor` custom sections embed a chimol control
 # all. `commands/builtin/exporting.py` and `commands/builtin/inspect.py` are commands that open a Qt
@@ -18,7 +18,7 @@
 # module they cannot use.
 # painter-level control inside a real QWidget (imported lazily, inside its
 # through. `hosts/toolkit.py` is the seam that decides whether Qt is used at
-# to stay. `cmtk/qt_painter.py` and `hosts/qt/overlay.py` are the
+# to stay. `emtk/qt_painter.py` and `hosts/qt/overlay.py` are the
 # two are a GLFW window and a browser canvas, and a module that imports Qt is a
 hosts/qt/controls_panel.py
 hosts/qt/window.py

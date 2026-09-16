@@ -38,7 +38,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cmtk.font import MISSING_GLYPH, load_atlas
+from emtk.font import MISSING_GLYPH, load_atlas
 
 #: What was reported, and what the baked set now has to cover on its own.
 REPORTED = "äöüÄÖÜß"

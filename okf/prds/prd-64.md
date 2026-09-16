@@ -2,7 +2,7 @@
 type: PRD
 prd: "64"
 title: "PRD-64: chiplot — single plotting seam and pyqtgraph replacement"
-description: Route every plotting access through one dependency-neutral chiplot facade so pyqtgraph becomes a swappable backend, then make chimol's cmtk (ImPlot-style, PRD-104) the native renderer and primary plotting widget behind the same API — pyqtgraph and cmtk are the only two backends.
+description: Route every plotting access through one dependency-neutral chiplot facade so pyqtgraph becomes a swappable backend, then make chimol's emtk (ImPlot-style, PRD-104) the native renderer and primary plotting widget behind the same API — pyqtgraph and emtk are the only two backends.
 status: in-progress
 phase: "unassigned"
 resource: chisurf/gui/chiplot/
@@ -26,7 +26,7 @@ The seam is **API-compatible** with pyqtgraph (same symbol names and item
 methods) so migration is mechanical and low-risk, and pyqtgraph stays the engine
 initially — nothing about the rendered output changes. The long-term objective
 is to grow chiplot into a **native ChiSurf plotting library** by adopting
-chimol's **cmtk** ([PRD-104](prd-104.md), an ImPlot-style plotting toolkit drawn
+chimol's **emtk** ([PRD-104](prd-104.md), an ImPlot-style plotting toolkit drawn
 through chimol's own painter) as the native renderer and primary plotting
 widget — selectable as an alternative backend behind the identical facade, so
 individual plots can flip over incrementally and pyqtgraph can eventually be
@@ -55,7 +55,7 @@ altogether rather than porting to chiplot: its graph is a node-link diagram, not
 a plot, and it is now painted directly on the shared
 `chisurf/gui/widgets/graph_canvas.py` marks — see
 [core tools](../plugins/core-tools.md#global-view-the-parameter-network). Phase 4 (`modules/`) and Phase 5+
-(native renderer via chimol's cmtk) remain.
+(native renderer via chimol's emtk) remain.
 
 **Design decision (revised).** The seam is *not* a pyqtgraph-shaped re-export.
 Per the maintainer's direction, chiplot exposes a **clean, purpose-built API**
@@ -66,15 +66,15 @@ but is the whole point: the goal is to *get rid of* pyqtgraph, not to enshrine
 its API.
 
 **Design decision (Phase 5+, 2026-08-14).** chiplot's native renderer **MUST**
-be chimol's cmtk ([PRD-104](prd-104.md)) — the ImPlot-style plotting toolkit
+be chimol's emtk ([PRD-104](prd-104.md)) — the ImPlot-style plotting toolkit
 drawn through chimol's painter — used as the **primary plotting widget**.
-pyqtgraph and cmtk are the **only** backend options. The earlier OpenGL
+pyqtgraph and emtk are the **only** backend options. The earlier OpenGL
 scaffold and the WebGPU backend that superseded it were exploration; both
-retire. cmtk gains breadth (log axes, bars, error bars, regions, pan/zoom,
+retire. emtk gains breadth (log axes, bars, error bars, regions, pan/zoom,
 image — [PRD-104](prd-104.md) Phase 2) as it becomes chiplot's native backend;
-convergence on cmtk is by construction, not by port. This also reverses the
+convergence on emtk is by construction, not by port. This also reverses the
 old "chimol eventually draws through chiplot" direction: chiplot draws through
-cmtk.
+emtk.
 
 # Goal
 
@@ -88,9 +88,9 @@ cmtk.
    (`CHISURF_PLOT_BACKEND`); a native chiplot backend can be added later without
    touching call sites.
 4. **A path to native.** The handle/canvas Protocols *are* the contract the
-   cmtk backend must satisfy to replace pyqtgraph plot-by-plot. The native
-   renderer is chimol's cmtk ([PRD-104](prd-104.md)), the primary plotting
-   widget; pyqtgraph and cmtk are the only two backends.
+   emtk backend must satisfy to replace pyqtgraph plot-by-plot. The native
+   renderer is chimol's emtk ([PRD-104](prd-104.md)), the primary plotting
+   widget; pyqtgraph and emtk are the only two backends.
 
 Non-goal for the first landings: writing the native renderer. That is the
 long-term payoff the seam unlocks, tracked as Phase 5+ here.
@@ -171,7 +171,7 @@ chisurf/gui/chiplot/
     __init__.py               # backend registry + selection (CHISURF_PLOT_BACKEND)
     base.py                   # Backend / Canvas / GridCanvas ABCs — the contract
     pyqtgraph_backend.py      # the ONLY module allowed to `import pyqtgraph`
-    # (future) cmtk_backend.py — native renderer: chimol's cmtk (PRD-104),
+    # (future) emtk_backend.py — native renderer: chimol's emtk (PRD-104),
     # the primary plotting widget. wgpu/opengl experiment backends retire.
 ```
 
@@ -212,7 +212,7 @@ backend chiplot **keeps** the native viewbox menu (which already offers
 Export → CSV / image / SVG / Matplotlib) and *injects* its own
 `Export data as CSV…` / `Export image…` entries plus any
 `plot.add_menu_action(label, cb)` custom entries into it. A backend that ships
-no native menu (the future cmtk backend) gets an equivalent chiplot-built menu
+no native menu (the future emtk backend) gets an equivalent chiplot-built menu
 via `contextMenuEvent`. Programmatic `plot.export_csv(path)` (every drawn
 line/scatter series, padded columns) and `plot.export_image(path)` (backend
 `ImageExporter`, else a widget grab) back the actions and are usable headlessly.
@@ -800,21 +800,21 @@ Migrate `ndxplorer` and `quest` on the same contract (committed in their own
 repos per the module ownership rule). Allow-list reaches empty except the
 ChiMOL OpenGL entry owned by PRD-57.
 
-**Phase 5+ — native chiplot renderer: chimol's cmtk (long-term, the actual goal).**
-**The native renderer MUST be chimol's cmtk** ([PRD-104](prd-104.md)) — the
-ImPlot-style plotting toolkit at `chisurf/plugins/chimol/chimol/cmtk/`, drawn
+**Phase 5+ — native chiplot renderer: chimol's emtk (long-term, the actual goal).**
+**The native renderer MUST be chimol's emtk** ([PRD-104](prd-104.md)) — the
+ImPlot-style plotting toolkit at `chisurf/plugins/chimol/chimol/emtk/`, drawn
 through chimol's own painter — used as the **primary plotting widget**.
-pyqtgraph and cmtk are the **only** backend options. This is the maintainer's
+pyqtgraph and emtk are the **only** backend options. This is the maintainer's
 direction (2026-08-14); the OpenGL scaffold and the WebGPU backend below are
 exploration and retire.
 
-A `backends/cmtk/` package implements the `backends/base.py` contract
+A `backends/emtk/` package implements the `backends/base.py` contract
 (`Canvas`, `GridCanvas`, `ImageViewCanvas` + all handle protocols) on top of
-cmtk's `begin_plot`/`Plot.line`/`Plot.scatter`/… builders. cmtk's own Phase 2
+emtk's `begin_plot`/`Plot.line`/`Plot.scatter`/… builders. emtk's own Phase 2
 breadth ([PRD-104](prd-104.md): bars, error bars, regions, pan/zoom, image, log
-axes) becomes the prerequisite list for the chiplot backend; chiplot is cmtk's
-first external consumer and drives that breadth. Because cmtk is in-tree and
-Qt-free, the backend stays dependency-light the way cmtk is — no GPU runtime
+axes) becomes the prerequisite list for the chiplot backend; chiplot is emtk's
+first external consumer and drives that breadth. Because emtk is in-tree and
+Qt-free, the backend stays dependency-light the way emtk is — no GPU runtime
 needed to satisfy the contract headlessly.
 
 **History (superseded, for the record).** Two earlier native attempts:
@@ -825,8 +825,8 @@ log axes without shader log, `QPainter`-overlaid axes) and `backends/wgpu/`
 "2.1 Metal — 90.5"; offscreen render blitted by `QPainter`, handles contributing
 clip-space triangles, CPU-expanded stroke/marker geometry). Both were
 registered and selectable, and both proved the seam worked without becoming
-maintainable renderers. Neither is a target; cmtk is. **The registry flip
-(unregistering `wgpu`/`opengl`) lands with the cmtk backend** —
+maintainable renderers. Neither is a target; emtk is. **The registry flip
+(unregistering `wgpu`/`opengl`) lands with the emtk backend** —
 `test/gui/test_chiplot_wgpu.py::test_wgpu_backend_is_registered` pins
 `"wgpu" in available_backends()`, so it is deliberately not done as a
 docs-only change.
@@ -836,7 +836,7 @@ screenshot parity at each step, and eventually dropping pyqtgraph) remains.
 
 ## Long-term direction (maintainer, 2026-08-14)
 
-Beyond Phase 5+, the cmtk adoption is step one of a larger arc. Recorded here
+Beyond Phase 5+, the emtk adoption is step one of a larger arc. Recorded here
 so no future session re-derives it:
 
 1. **Abstract the UI backend(s) via AutoForm → web-capable ChiSurf.** Qt/PyQt
@@ -846,9 +846,9 @@ so no future session re-derives it:
    second, web-capable backend can be added behind the same schema without
    duplicating the UI layer. This is why the widget layer is kept declarative
    rather than hand-built Qt.
-2. **Replace PyQt with cmtk → drop the PyQt licence obligations.** Once the UI
+2. **Replace PyQt with emtk → drop the PyQt licence obligations.** Once the UI
    is behind that seam, the widget layer itself becomes a swap: PyQt (GPL/
-   commercial licence) is replaced by cmtk — chimol's in-tree, in-viewport
+   commercial licence) is replaced by emtk — chimol's in-tree, in-viewport
    toolkit ([PRD-104](prd-104.md)) — carrying the controls *and* (via chiplot's
    Phase 5+ backend) the plots. ChiSurf ends up Qt-free and licence-clean.
 
@@ -866,11 +866,11 @@ backend must replicate them behind the same `Plot` API.
 **UX features that must work on every backend** (tested in
 `test/gui/test_chiplot_opengl.py` under the `gl_backend` fixture for the
 retiring experiment backend, matching the pyqtgraph tests in
-`test/gui/test_chiplot.py`; the cmtk backend is held to the same list):
+`test/gui/test_chiplot.py`; the emtk backend is held to the same list):
 
 1. **Context menu** — right-click on the plot shows a menu with: Export
    data as CSV, Export image, Auto-range, and any `add_menu_action`
-   entries.  A cmtk backend returns `provides_native_menu() → False`, so
+   entries.  A emtk backend returns `provides_native_menu() → False`, so
    chiplot's own `contextMenuEvent` builds the `QMenu`; the pyqtgraph
    backend injects into pyqtgraph's native ViewBox menu instead.  Either
    way, the same actions appear.
@@ -878,7 +878,7 @@ retiring experiment backend, matching the pyqtgraph tests in
    (respecting log axes); `autoscale(continuous=True)` keeps fitting as
    data changes.
 3. **Export CSV / image** — `export_csv` writes every named series to
-   columns; `export_image` saves a screenshot (cmtk backend: widget grab
+   columns; `export_image` saves a screenshot (emtk backend: widget grab
    onto a headless `QImage`, the same path a headless PNG uses;
    pyqtgraph: `ImageExporter` or widget grab fallback).
 4. **Interactive toggles** — `set_interactive(mouse=, menu=)` /
@@ -894,17 +894,17 @@ retiring experiment backend, matching the pyqtgraph tests in
 was for chimol's standalone OpenGL renderer (`chimol/renderer/qtgl.py`) to
 eventually draw through chiplot's `Canvas`/`VolumeViewCanvas` contract,
 unifying the two GL contexts. That direction is **superseded**: chiplot's
-native renderer is now **cmtk** — the **Canvas Model Toolkit**, living inside
+native renderer is now **emtk** — the **Canvas Model Toolkit**, living inside
 chimol; ChiSurf reaches it via chimol, and chimol independence comes first
 ([PRD-104](prd-104.md), [chimol-relocation.md](../plugins/chimol-relocation.md))
 — so the 2-D convergence is by construction. chiplot's
-cmtk backend draws through `chimol.cmtk`'s `begin_plot`/`Plot` builders and the
-`Painter` protocol (which cmtk extends with `fill_triangle`/`line`); chiplot is
-cmtk's first external consumer, and the breadth chiplot needs (bars, error
+emtk backend draws through `chimol.emtk`'s `begin_plot`/`Plot` builders and the
+`Painter` protocol (which emtk extends with `fill_triangle`/`line`); chiplot is
+emtk's first external consumer, and the breadth chiplot needs (bars, error
 bars, regions, pan/zoom, image, log axes) is PRD-104 Phase 2, driven by real
 chiplot call sites. chimol's in-viewport interaction layer (`internal_gui.py`)
 stays separate — a GL-drawn, command-driven widget surface, not chiplot's Qt
-menus. pyqtgraph is dropped only when the cmtk backend covers every used
+menus. pyqtgraph is dropped only when the emtk backend covers every used
 handle family at parity — at which point the allow-list and this dependency are
 both gone.
 
@@ -921,16 +921,16 @@ both gone.
 - Switching `CHISURF_PLOT_BACKEND` is the *only* change required to route
   plotting through a different backend — no call site references a backend
   directly. *(Phase 1: selection + `Backend` contract in place.)*
-- (Phase 5+) A demonstrator plot family renders through the **cmtk** backend
-  (`chimol.cmtk` behind a `backends/cmtk/` package) at output parity with
+- (Phase 5+) A demonstrator plot family renders through the **emtk** backend
+  (`chimol.emtk` behind a `backends/emtk/` package) at output parity with
   pyqtgraph for the same input; `available_backends()` reports exactly
-  `["cmtk", "pyqtgraph"]` and the wgpu/opengl experiment backends are
+  `["emtk", "pyqtgraph"]` and the wgpu/opengl experiment backends are
   unregistered.
 
 # Non-goals
 
 - **Short-term:** subsuming ChiMOL 3-D / raw-OpenGL rendering. chiplot's native
-  backend is cmtk (2-D, through chimol's painter); chiMOL's 3-D renderer
+  backend is emtk (2-D, through chimol's painter); chiMOL's 3-D renderer
   (`qtgl.py`) stays its own — nothing here folds the two together.
 - Re-exposing non-plot widgets through chiplot (PRD-42 removes those).
 - Speculatively over-building the handle contract — capabilities are added when
@@ -938,7 +938,7 @@ both gone.
 - Shipping the native renderer in the first landings — Phases 1–4 leave
   pyqtgraph as the *engine* behind the clean API; only Phase 5+ replaces it.
 - Building a third native renderer: the wgpu/opengl experiment backends retire,
-  not iterate — the native backend is cmtk, period.
+  not iterate — the native backend is emtk, period.
 
 # Relationships
 
@@ -946,13 +946,13 @@ both gone.
   `SpinBox`/`parametertree`; PRD-64 puts the remaining plot-only surface behind
   one swappable seam. PRD-42 should land first (or concurrently) so the facade
   never has to re-expose non-plot symbols.
-- **Consumes [PRD-104](prd-104.md) (cmtk).** chiplot's native backend is
-  chimol's cmtk, the ImPlot-style toolkit; chiplot is its first external
+- **Consumes [PRD-104](prd-104.md) (emtk).** chiplot's native backend is
+  chimol's emtk, the ImPlot-style toolkit; chiplot is its first external
   consumer and drives PRD-104 Phase 2 breadth. This replaces the old
   "chimol draws through chiplot" convergence.
 - Shares the renderer-behind-a-stable-contract shape with [PRD-57](prd-57.md)
   (ChiMOL renderer migration); the two stay separate — PRD-57 owns chimol's
-  3-D/raw-GL surface, PRD-64's cmtk backend is 2-D through the same toolkit.
+  3-D/raw-GL surface, PRD-64's emtk backend is 2-D through the same toolkit.
 - Interacts with [PRD-40](prd-40.md)/[PRD-38](prd-38.md) AutoForm: AutoForm plot
   sections (`decay_conv`, `phasor`, `waterfall`, `image`, `builtin`) become
   chiplot consumers, so the seam also covers the data-driven view layer.

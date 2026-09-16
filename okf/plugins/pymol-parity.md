@@ -74,7 +74,7 @@ what it blocks:
 
 * **the format is one format, and chimol reads it (2026-08-13, user round):**
   chimol builds painted forms from ChiSurf `view.json` specs
-  (`cmtk/view_spec.py` + `chrome/panels/form.py`, opened with `form`).
+  (`emtk/view_spec.py` + `chrome/panels/form.py`, opened with `form`).
   It is an **adapter, not a second renderer**: a spec becomes `Setting` rows
   over the settings editor that already existed. The trap it walked into first
   is the one worth carrying -- the draft invented `{"type": "float", "min": 0}`

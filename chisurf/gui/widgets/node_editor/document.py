@@ -3,7 +3,7 @@
 The editor used to keep its graph *in* its ``QGraphicsScene``: a node was a
 ``QGraphicsItem``, an edge was another, and "what is the graph" was answered by
 walking the scene. That works until you want the same graph without a scene --
-headless, in a test, in a browser, or drawn by :mod:`cmtk.nodes`, which owns no
+headless, in a test, in a browser, or drawn by :mod:`emtk.nodes`, which owns no
 items at all.
 
 So the graph is a plain object here, and drawing it is somebody else's job. The
@@ -14,7 +14,7 @@ editor loads into this one.
 Ids, and why there are two kinds
 --------------------------------
 A node's id in the schema is a **string** the host chooses (``"sub1"``,
-``"operation:op2"``). :mod:`cmtk.nodes` keys everything by **int**, because an
+``"operation:op2"``). :mod:`emtk.nodes` keys everything by **int**, because an
 immediate-mode editor looks a node up on every frame and a string key is a
 hash per node per frame for no benefit.
 
@@ -224,7 +224,7 @@ class GraphDocument:
 
     # -- integer ids for the renderer -----------------------------------
     #
-    # cmtk.nodes keys nodes, pins and links by int. The three ranges must not
+    # emtk.nodes keys nodes, pins and links by int. The three ranges must not
     # collide with each other *within their own kind*, and a pin's number has
     # to be recoverable back to (node, port index, direction) because that is
     # what a link the user drew reports.
@@ -235,7 +235,7 @@ class GraphDocument:
     PINS_PER_NODE: int = 512
 
     def node_number(self, node_id: str) -> int:
-        """The int id :mod:`cmtk.nodes` uses for a node.
+        """The int id :mod:`emtk.nodes` uses for a node.
 
         Parameters
         ----------

@@ -20,10 +20,10 @@ happens **here**, in `chisurf/plugins/chimol/`, against the real suite. The
 move itself is then a directory move and an import rewrite — not a debugging
 session in a repository where the tests do not yet run.
 
-**cmtk goes with it** (2026-08-14): ChiSurf consumes cmtk **via chimol**, and
-the ChiSurf↔cmtk interface is still floating — so this relocation is the
-prerequisite for the cmtk work too (see
-[chimol-cmtk.md](chimol-cmtk.md)).
+**emtk goes with it** (2026-08-14): ChiSurf consumes emtk **via chimol**, and
+the ChiSurf↔emtk interface is still floating — so this relocation is the
+prerequisite for the emtk work too (see
+[chimol-emtk.md](chimol-emtk.md)).
 
 ## Where to pick this up
 
@@ -44,8 +44,8 @@ Three states existed at move time and none was dropped:
 | state | where it lives now |
 |---|---|
 | full history (329 commits) | `~/dev/chimol` — extracted with filter-repo, rewritten to `chimol/` at repo root |
-| the **staged index snapshot** (204 files, the cmtk→`renderer/ui` rename direction that never materialised on disk and matches no commit) | `~/dev/chimol` commit `d13209b` — "snapshot: chisurf staged-index engine state, carried verbatim" |
-| the **disk state** the suite was green on (cmtk layout + `chrome/menus.py` + working-tree edits) | `~/dev/chimol` HEAD lineage, commit `cf9076d` |
+| the **staged index snapshot** (204 files, the emtk→`renderer/ui` rename direction that never materialised on disk and matches no commit) | `~/dev/chimol` commit `d13209b` — "snapshot: chisurf staged-index engine state, carried verbatim" |
+| the **disk state** the suite was green on (emtk layout + `chrome/menus.py` + working-tree edits) | `~/dev/chimol` HEAD lineage, commit `cf9076d` |
 
 The staged snapshot is byte-identical (verified by blob-hash comparison) and
 sits in history one commit *before* the disk state, so the renderer/ui
@@ -163,7 +163,7 @@ called from the page at all. Nothing had to be *written*: the page runs the
 real `Viewer`, its windowless renderer projects, and `renderer/picking` is
 duck-typed (`x()`, `y()`, `modifiers()`). A press/release with a travel
 threshold and a small event shim is the whole fix. `boot.js` already builds
-the modifier mask from `chimol.cmtk.events` values, so nothing translates.
+the modifier mask from `chimol.emtk.events` values, so nothing translates.
 
 ### Why the rest of 1:1 is not a small change
 
@@ -339,8 +339,8 @@ fallback is for.
 `renderer/gui_overlay.py` -> `hosts/qt/overlay.py`. It opens a `QPainter`, and
 `renderer/` is the half that has to run in a browser. Compositing chrome is a
 *host* job: the Qt host paints it into an image, a browser host builds it as
-quads. It could not go in `cmtk` beside `qt_painter.py` -- it calls
-`refresh_gui_state`, and cmtk imports nothing from `renderer/`, a layering
+quads. It could not go in `emtk` beside `qt_painter.py` -- it calls
+`refresh_gui_state`, and emtk imports nothing from `renderer/`, a layering
 worth keeping.
 
 `renderer/` now has Qt in two files, both widgets (`view.py`, `wgpu_view.py`),

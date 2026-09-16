@@ -28,8 +28,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from cmtk import quad_painter as qp
-from cmtk.quad_painter import QuadPainter
+from emtk import quad_painter as qp
+from emtk.quad_painter import QuadPainter
 
 
 # --------------------------------------------------------------------------

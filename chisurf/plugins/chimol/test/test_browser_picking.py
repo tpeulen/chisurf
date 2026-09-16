@@ -50,7 +50,7 @@ from chimol_pkg.core.viewer import Viewer
 from chimol_pkg.render.wgpu_backend import WgpuMeshRenderer
 from chimol_pkg.commands import Cmd
 from chimol_pkg.hosts.base import ViewerHost
-from cmtk.events import LEFT_BUTTON  # cmtk is its own package, not chimol's
+from emtk.events import LEFT_BUTTON  # emtk is its own package, not chimol's
 from chimol_pkg.hosts.toolkit import HAS_QT
 
 assert not HAS_QT, "the toolkit was not stripped; this is not the page's configuration"

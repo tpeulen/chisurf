@@ -148,7 +148,7 @@ widgets:
 form modules/chimol/chimol/gui/appearance.view.json
 ```
 
-That is an adapter (`chimol/cmtk/view_spec.py`), not a second renderer,
+That is an adapter (`chimol/emtk/view_spec.py`), not a second renderer,
 and the shared scheme is what keeps it one dialect: ChiMOL's own spec is
 validated by the same test as every other, so it cannot quietly grow a
 convenient spelling of its own. Sections a painted panel cannot draw — a

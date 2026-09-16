@@ -2,7 +2,7 @@
 
 The one survivor of the old view layer: the palette a host uses to offer
 node creation (:class:`WidgetPalette`). The lightpath simulator's tool
-window hosts it beside its cmtk canvas.
+window hosts it beside its emtk canvas.
 """
 
 from __future__ import annotations

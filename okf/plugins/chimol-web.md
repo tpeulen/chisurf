@@ -345,8 +345,8 @@ so a browser -- which has no console to dock -- has a real prompt.
 
 - `renderer/ui/command_line.py` is the model (buffer, caret, history, tab
   completion, a feedback log). No toolkit, no GPU, no host: it draws nothing.
-- `cmtk/keys.py` states the key values (Qt's) and translates
-  `KeyboardEvent.key`, exactly as `cmtk/events.py` does for buttons.
+- `emtk/keys.py` states the key values (Qt's) and translates
+  `KeyboardEvent.key`, exactly as `emtk/events.py` does for buttons.
 - `InternalGui` lays it out along the bottom of the scene, paints it as quads,
   hit-tests it, and routes keys through `key_press`.
 - Hosts: `wgpu_view.keyPressEvent` offers keys to the chrome *first*;

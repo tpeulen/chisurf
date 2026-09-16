@@ -1,4 +1,4 @@
-"""The parameter network, as a cmtk node graph.
+"""The parameter network, as a emtk node graph.
 
 This replaces ``graph_canvas.py``'s ``ParameterGraphCanvas`` -- a hand-painted
 ``QWidget`` that drew its own discs, arrows, hit tests and drag handling. The
@@ -12,7 +12,7 @@ The old canvas drew *marks*: a disc per node, a curve per edge, and a hand-rolle
 hit test to find out which one the pointer was on. That is a node editor with
 the parts that make one usable left out -- no pan, no zoom, no box select, no
 sticking, and a link made by dragging one disc onto another with no pin to aim
-at. Expressing the graph in :mod:`cmtk.nodes` gets all of that, and the
+at. Expressing the graph in :mod:`emtk.nodes` gets all of that, and the
 per-node body gets somewhere to put a parameter's actual value.
 
 The three kinds of edge, which are three different claims
@@ -29,17 +29,17 @@ a cosmetic loss -- it is a claim the picture makes that the model does not:
     owner to owner, the *Connect base* option. Dim, because it says only
     "these are the things links can run between".
 
-:func:`cmtk.nodes.link` takes a per-link colour for exactly this.
+:func:`emtk.nodes.link` takes a per-link colour for exactly this.
 """
 from __future__ import annotations
 
 import logging
 import typing
 
-from cmtk import im
-from cmtk import nodes as cmtk_nodes
+from emtk import im
+from emtk import nodes as emtk_nodes
 
-from chisurf.gui.widgets.node_editor.cmtk_control import NodeContentRenderer
+from chisurf.gui.widgets.node_editor.emtk_control import NodeContentRenderer
 from chisurf.gui.widgets.node_editor.document import (
     GraphDocument,
     GraphEdge,
@@ -83,7 +83,7 @@ KIND_TITLE: dict = {
 #: graphs in ChiSurf keep reading as one idea.
 #:
 #: These are the *light* stop of each of the old canvas' gradients, because
-#: :func:`cmtk.nodes` shades a disc around the colour it is given rather than
+#: :func:`emtk.nodes` shades a disc around the colour it is given rather than
 #: between two stops -- handing it the dark stop would produce a disc darker
 #: than the one it replaces.
 KIND_COLOURS: dict = {
@@ -185,7 +185,7 @@ def graph_result_to_document(
     Returns
     -------
     GraphDocument
-        Ready for :class:`~chisurf.gui.widgets.node_editor.cmtk_control.GraphControl`.
+        Ready for :class:`~chisurf.gui.widgets.node_editor.emtk_control.GraphControl`.
 
     Notes
     -----
@@ -261,7 +261,7 @@ def apply_network_style(editor: typing.Any) -> None:
 
     Parameters
     ----------
-    editor : cmtk.nodes.EditorContext
+    editor : emtk.nodes.EditorContext
         The editor to restyle, in place.
 
     Notes
@@ -283,11 +283,11 @@ def apply_network_style(editor: typing.Any) -> None:
     * **No node outline.** Discs draw their own rim.
     """
     style = editor.style
-    style.link_routing = cmtk_nodes.LinkRouting.ARC
-    style.flags &= ~cmtk_nodes.StyleFlags.NODE_OUTLINE
-    style.colors[cmtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
-    style.colors[cmtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
-    style.colors[cmtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
+    style.link_routing = emtk_nodes.LinkRouting.ARC
+    style.flags &= ~emtk_nodes.StyleFlags.NODE_OUTLINE
+    style.colors[emtk_nodes.Col.GRID_LINE] = (255, 255, 255, 14)
+    style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, 24)
+    style.colors[emtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
     # A disc is its own connector, so the pointer must be able to catch it
     # anywhere on the mark rather than on a dot that is not drawn.
     style.pin_hover_radius = 14.0
@@ -396,7 +396,7 @@ class GlobalViewContent(NodeContentRenderer):
             if isinstance(value, (int, float)):
                 label = f"{node.title} = {value:.4g}"
         radius = KIND_RADIUS.get(kind, 11.0) * self.radius_scale
-        return (cmtk_nodes.NodeShape.DISC, label, radius)
+        return (emtk_nodes.NodeShape.DISC, label, radius)
 
     def node_style(self, node: GraphNode) -> typing.Optional[tuple]:
         """Colour the disc by what kind of node this is.

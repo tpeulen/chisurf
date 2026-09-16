@@ -67,7 +67,7 @@ def loaded(qapp):
 class _Recorder:
     """A painter that draws nothing; layout is what the tests need.
 
-    It implements the whole :class:`~cmtk.painter.Painter`
+    It implements the whole :class:`~emtk.painter.Painter`
     interface, measurement included. A double that answers only the calls a
     panel happened to make when it was written fails the moment the panel makes
     another -- which is what happened when the header started measuring its

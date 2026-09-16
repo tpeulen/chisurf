@@ -8,7 +8,7 @@ release path, and that is the seam BUGS/001 (the DOM's ``dblclick`` is a press
 with no release) and BUGS/002 (a grab left standing swallowed the next click)
 lived in.
 
-Now the canvas owns a :class:`~cmtk.router.Router`: the chrome is a
+Now the canvas owns a :class:`~emtk.router.Router`: the chrome is a
 layer, the camera is the fallthrough, and the grab *is* the capture slot. What
 these pin is the behaviour that arrangement buys, at the seam where the chrome
 and the camera meet:
@@ -25,8 +25,8 @@ from __future__ import annotations
 
 import pytest
 
-from cmtk.events import LEFT_BUTTON, RIGHT_BUTTON
-from cmtk.router import Consumed, Event, OverlayStack, Pass, Router
+from emtk.events import LEFT_BUTTON, RIGHT_BUTTON
+from emtk.router import Consumed, Event, OverlayStack, Pass, Router
 from chimol.viewport.chrome_layer import ChromeLayer
 
 

@@ -1,8 +1,8 @@
-"""The node editor: a cmtk-backed graph editor, imported on demand.
+"""The node editor: a emtk-backed graph editor, imported on demand.
 
 The editor itself is Qt-free: the graph is a plain
 :class:`~.document.GraphDocument` and the editing behaviour lives in
-:class:`~.cmtk_control.GraphControl`, which draws through `cmtk` and is
+:class:`~.emtk_control.GraphControl`, which draws through `emtk` and is
 hosted — in a Qt window by :class:`~.widget.NodeGraphWidget`, in a browser
 or a headless test by the same control. The Qt wrapper adds only the
 signals the consumers connect to.
