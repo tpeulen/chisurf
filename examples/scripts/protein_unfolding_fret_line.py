@@ -68,31 +68,40 @@ def unfolded_state(contour_length=WLC_LC, persistence_length=WLC_LP):
     return view
 
 
-def unfolding_line(unfolded, fractions=FRACS):
-    """Sweep the fraction unfolded and return ``(E_FRET, <tau>_x)``."""
-    line = fret_line.sweep(
-        [folded_state(), unfolded],
-        {"kind": "fraction", "component": 1},
-        fractions,
-        fractions=[1.0, 0.0],
-        tau_d0=TAU_D0,
-    )
-    return np.asarray(line["e_fret"]), np.asarray(line["tau_x"])
+def unfolding_line(unfolded, fractions=FRACS, decays=None):
+    """Walk the fraction unfolded and return ``(E_FRET, <tau>_x)``.
+
+    The two states are mixed by ``tcspc_mixture``, and each point is read off
+    the mixture's own lifetime spectrum -- the same spectrum a fit would see.
+    Passing a list as *decays* collects the decay curve of each point.
+    """
+    mixture = fret_line.model_view("tcspc_mixture",
+                                   sources=[folded_state(), unfolded])
+    folded_weight = fret_line.find_parameter(mixture, "mixture.fraction.0")
+    unfolded_weight = fret_line.find_parameter(mixture, "mixture.fraction.1")
+
+    effs, taus = [], []
+    for f in fractions:
+        folded_weight.value, unfolded_weight.value = 1.0 - float(f), float(f)
+        spectrum = fret_line.lifetime_spectrum(mixture)
+        amplitudes, lifetimes = spectrum[::2], spectrum[1::2]
+        tau_avg = float(np.dot(amplitudes, lifetimes) / amplitudes.sum())
+        taus.append(tau_avg)
+        effs.append(1.0 - tau_avg / TAU_D0)
+        if decays is not None:
+            decay = sum(a * np.exp(-TIME / t)
+                        for a, t in zip(amplitudes, lifetimes) if t > 0)
+            total = np.sum(decay)
+            decays.append(decay / total if total > 0 else decay)
+    return np.asarray(effs), np.asarray(taus)
 
 
 # ── the two-state line ────────────────────────────────────────────────────────
 print("Sweeping fraction unfolded ...")
-effs, taus = unfolding_line(unfolded_state())
+decays = []
+effs, taus = unfolding_line(unfolded_state(), decays=decays)
 for f, e, tau in zip(FRACS, effs, taus):
     print(f"  f={f:.2f}  E={e:.4f}  <tau>={tau:.4f} ns")
-
-# A single-exponential decay per point, for plotting: the average lifetime is
-# what the line is made of, so that is what the curve shows.
-decays = []
-for tau in taus:
-    decay = np.exp(-TIME / tau) if tau > 0 else np.zeros_like(TIME)
-    total = decay.sum()
-    decays.append(decay / total if total > 0 else decay)
 
 # ── WLC parameter sweep (grid of Lc × Lp) ────────────────────────────────────
 print("\nWLC parameter sweep ...")
