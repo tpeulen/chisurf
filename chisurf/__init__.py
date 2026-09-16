@@ -23,10 +23,6 @@ _sys_path_setup.drop_foreign_environment_paths()
 _sys_path_setup.bootstrap_bundled_packages()
 del _sys_path_setup
 
-# Dependency APIs that were renamed out from under us (NumPy 2 removed np.trapz
-# and friends). Restored before anything computes with them -- see the module.
-from chisurf.core.runtime import compat as _compat  # noqa: F401
-
 import chisurf.core.info
 
 # --- DISTUTILS SHIM FOR PYTHON 3.12 ---

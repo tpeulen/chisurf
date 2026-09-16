@@ -46,11 +46,11 @@ def overlap_integral(
             "wavelength_nm, donor_emission and acceptor_extinction must be 1-D arrays "
             "of the same length (>= 2)"
         )
-    area = np.trapz(f_d, wl)
+    area = np.trapezoid(f_d, wl)
     if area <= 0:
         raise ValueError("donor emission spectrum has non-positive area")
     f_d_norm = f_d / area
-    return float(np.trapz(f_d_norm * eps_a * wl**4, wl))
+    return float(np.trapezoid(f_d_norm * eps_a * wl**4, wl))
 
 
 def forster_radius(

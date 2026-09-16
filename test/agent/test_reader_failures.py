@@ -113,16 +113,16 @@ def test_no_numpy_aliases_removed_in_numpy_2_remain():
     # ``int`` belongs here too — it went with the rest in NumPy 1.24 and, unlike
     # ``bool`` and ``long``, was never reinstated in NumPy 2. Leaving it out of
     # this pattern is what let ``np.int`` survive in the ALV reader.
+    # ``trapz`` is here for the same reason: NumPy 2 removed it, and nothing
+    # restores it any more -- the tree spells these the way the installed
+    # NumPy does.
     removed = re.compile(
-        r"\bnp\.(float|complex|int|unicode|object|str|bool8|NaN|Inf|infty)(?![\w.])"
+        r"\bnp\.(float|complex|int|unicode|object|str|bool8|NaN|Inf|infty|trapz)(?![\w.])"
     )
     offenders: list[str] = []
     root = pathlib.Path(chisurf.__file__).parent
-    # The compatibility shim exists to restore these names, so its prose names
-    # them; scanning it would flag the fix rather than a use of the alias.
-    exempt = {root / "core" / "runtime" / "compat.py"}
     for path in root.rglob("*.py"):
-        if "__pycache__" in path.parts or "build" in path.parts or path in exempt:
+        if "__pycache__" in path.parts or "build" in path.parts:
             continue
         for number, line in enumerate(
             path.read_text(encoding="utf-8", errors="replace").splitlines(), 1
