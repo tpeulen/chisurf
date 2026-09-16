@@ -13,10 +13,10 @@ Python slots connected to C++ destructors: a discarded plot is a Python list
 that the garbage collector frees like any other.
 
 What is drawn here today: curves (with symbols), scatter clouds, images and
-heatmaps, horizontal markers, the legend, axis labels and title, ranges
-(explicit, queried and auto), log scaling, grid and background. Everything
-else -- draggable regions and ROIs, error bars, bars, filled bands, text and
-arrows -- raises :class:`NotImplementedError` naming what is missing, because a
+heatmaps, draggable regions (the fit range is one), markers in both
+orientations, the legend, axis labels and title, ranges (explicit, queried and
+auto), log scaling, grid and background. Everything else -- ROIs, error bars,
+bars, filled bands, text and arrows -- raises :class:`NotImplementedError` naming what is missing, because a
 plot that silently omits half of what it was asked to draw is worse than one
 that says so. Those families are the rest of PRD-104.
 
@@ -50,6 +50,15 @@ def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[i
     if text.startswith("#") and len(text) >= 7:
         return (int(text[1:3], 16), int(text[3:5], 16), int(text[5:7], 16))
     return default
+
+
+def _orientation(value) -> str:
+    """Return ``"vertical"`` or ``"horizontal"`` from a string or the enum.
+
+    The facade hands down ``handles.Orientation``; ``str()`` on an enum is
+    ``"Orientation.VERTICAL"``, which matches neither.
+    """
+    return str(getattr(value, "value", value)).lower()
 
 
 def _finite_pairs(x, y) -> tuple[np.ndarray, np.ndarray]:
@@ -240,6 +249,40 @@ class _Entry:
         self.state["rect"] = tuple(float(v) for v in rect)
         self._canvas.refresh()
 
+    # -- Region --------------------------------------------------------
+    @property
+    def bounds(self) -> tuple[float, float]:
+        """The ``(low, high)`` edges in data coordinates."""
+        low, high = self.state.get("bounds", (0.0, 1.0))
+        return (float(low), float(high))
+
+    def set_bounds(self, low: float, high: float) -> None:
+        """Move the region, keeping it inside its limits."""
+        low, high = float(min(low, high)), float(max(low, high))
+        limits = self.state.get("limits")
+        if limits is not None:
+            span = high - low
+            low = max(low, float(limits[0]))
+            high = min(max(low + span, high), float(limits[1]))
+            low = min(low, high)
+        self.state["bounds"] = (low, high)
+        self._canvas.refresh()
+
+    def set_limits(self, low: float, high: float) -> None:
+        """Constrain where the region may be dragged."""
+        self.state["limits"] = (float(low), float(high))
+        self.set_bounds(*self.bounds)
+
+    def _notify(self, final: bool) -> None:
+        """Tell the drag listeners where this element is now."""
+        for callback, wants_final in self.state.get("callbacks", []):
+            if wants_final and not final:
+                continue
+            if self.kind == "region":
+                callback(*self.bounds)
+            else:
+                callback(self.value)
+
     # -- Marker --------------------------------------------------------
     @property
     def value(self) -> float:
@@ -251,14 +294,9 @@ class _Entry:
         self.state["value"] = float(value)
         self._canvas.refresh()
 
-    def on_change(self, callback, **_: Any) -> None:
-        """Register a drag callback.
-
-        Dragging is not wired yet -- markers here are read-only guides -- so
-        the callback is remembered and never called, rather than dropped
-        silently.
-        """
-        self.state.setdefault("callbacks", []).append(callback)
+    def on_change(self, callback, *, final: bool = True, **_: Any) -> None:
+        """Fire ``callback`` while (``final=False``) or after a drag."""
+        self.state.setdefault("callbacks", []).append((callback, bool(final)))
 
 
 class EmtkCanvas(base.Canvas):
@@ -315,6 +353,7 @@ class EmtkCanvas(base.Canvas):
         # After the axes exist: the plot places its own box and axis ranges in
         # draw(), and an image is positioned in data coordinates, so it cannot
         # be blitted before that mapping is known.
+        self._draw_bands(painter, plot)
         for texture, x0, y0, width, height in getattr(plot, "_images", []):
             left = plot._x_axis.to_pixels(x0)
             right = plot._x_axis.to_pixels(x0 + width)
@@ -343,9 +382,86 @@ class EmtkCanvas(base.Canvas):
                              radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0))
         elif entry.kind == "image":
             self._draw_image(plot, entry)
-        elif entry.kind == "marker" and state.get("orientation") == "horizontal":
-            plot.hline(float(state.get("value", 0.0)), state.get("color", (200, 200, 200)),
-                       label or None)
+        elif entry.kind == "marker":
+            if state.get("orientation") == "horizontal":
+                plot.hline(float(state.get("value", 0.0)),
+                           state.get("color", (200, 200, 200)), label or None)
+            else:
+                # A vertical guide: emtk's Plot draws horizontal ones, so this
+                # is a one-pixel band drawn with the regions below.
+                plot._x_axis.fit((entry.value, entry.value))
+        elif entry.kind == "region":
+            low, high = entry.bounds
+            plot._x_axis.fit((low, high))
+
+    def _draw_bands(self, painter, plot) -> None:
+        """Draw the regions and vertical markers, and record where they are.
+
+        Both are placed in data coordinates, so this runs after ``plot.draw``
+        has mapped the axes onto the box -- and the pixel span each one landed
+        at is kept, because that is what a press has to hit to start a drag.
+        """
+        top, height = plot.y, plot.h
+        for entry in self._entries:
+            if not entry.visible:
+                continue
+            if entry.kind == "region":
+                low, high = entry.bounds
+                left = plot._x_axis.to_pixels(low)
+                right = plot._x_axis.to_pixels(high)
+                painter.fill_rect(min(left, right), top, abs(right - left), height,
+                                  entry.state.get("brush", (70, 110, 160, 60)))
+                entry.state["_pixels"] = (min(left, right), max(left, right))
+            elif entry.kind == "marker" and entry.state.get("orientation") != "horizontal":
+                at = plot._x_axis.to_pixels(entry.value)
+                painter.fill_rect(at, top, 1.0, height,
+                                  entry.state.get("color", (200, 200, 200)))
+                entry.state["_pixels"] = (at - 4.0, at + 4.0)
+        self._axis = plot._x_axis
+
+    # -- dragging, which emtk's host feeds us ---------------------------
+    def _from_pixels(self, px: float) -> float:
+        """Turn a pixel x back into a data x, using the last frame's axis."""
+        axis = getattr(self, "_axis", None)
+        if axis is None:
+            return float(px)
+        low, high = axis.range
+        span_px = (axis.pixel_max - axis.pixel_min) or 1.0
+        return low + (high - low) * (px - axis.pixel_min) / span_px
+
+    def press(self, px: float, py: float, *_args: Any) -> None:
+        """Start a drag when the press lands on a draggable band."""
+        self._dragging = None
+        for entry in reversed(self._entries):
+            if not entry.visible or not entry.state.get("movable", True):
+                continue
+            span = entry.state.get("_pixels")
+            if span is None or entry.kind not in ("region", "marker"):
+                continue
+            if span[0] - 3.0 <= px <= span[1] + 3.0:
+                self._dragging = (entry, self._from_pixels(px))
+                break
+
+    def drag(self, px: float, py: float, *_args: Any) -> None:
+        """Move whatever the press picked up."""
+        if not getattr(self, "_dragging", None):
+            return
+        entry, grabbed_at = self._dragging
+        moved = self._from_pixels(px) - grabbed_at
+        if entry.kind == "region":
+            low, high = entry.bounds
+            entry.set_bounds(low + moved, high + moved)
+        else:
+            entry.set_value(entry.value + moved)
+        self._dragging = (entry, self._from_pixels(px))
+        entry._notify(final=False)
+
+    def release(self, *_args: Any) -> None:
+        """Finish the drag and tell the listeners where it ended."""
+        if getattr(self, "_dragging", None):
+            entry, _ = self._dragging
+            entry._notify(final=True)
+        self._dragging = None
 
     def _draw_image(self, plot, entry: _Entry) -> None:
         """Place an image in the plot's data space.
@@ -422,8 +538,8 @@ class EmtkCanvas(base.Canvas):
     def add_marker(self, pos, *, orientation="vertical", movable=False, pen=None,
                    label=None) -> H.Marker:
         """Draw a cursor line and return its handle."""
-        return self._add("marker", value=float(pos), orientation=str(orientation),
-                         color=_rgb(pen), name=label)
+        return self._add("marker", value=float(pos), orientation=_orientation(orientation),
+                         color=_rgb(pen), name=label, movable=bool(movable))
 
     def add_legend(self, *, offset=(30, 30)) -> None:
         """Show a legend collecting the named series."""
@@ -617,8 +733,17 @@ class EmtkCanvas(base.Canvas):
 
     def add_region(self, bounds, *, orientation="vertical", movable=True, brush=None,
                    pen=None) -> H.Region:
-        """Not drawn yet."""
-        self._unsupported("a draggable region")
+        """Draw a draggable interval selector and return its handle."""
+        if _orientation(orientation) != "vertical":
+            raise NotImplementedError(
+                "emtk: a horizontal region is not drawn yet (PRD-104); use "
+                "CHISURF_PLOT_BACKEND=pyqtgraph for one"
+            )
+        low, high = (float(bounds[0]), float(bounds[1]))
+        fill = _rgb(brush, (70, 110, 160))
+        return self._add("region", bounds=(min(low, high), max(low, high)),
+                         movable=bool(movable), brush=(*fill, 60),
+                         orientation=_orientation(orientation))
 
     def add_roi(self, *, kind="rect", pos=None, size=None, pen=None, movable=True,
                 rotatable=False, points=None) -> H.Roi:

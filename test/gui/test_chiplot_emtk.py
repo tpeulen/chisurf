@@ -180,10 +180,84 @@ def test_an_image_has_to_be_two_dimensional(plot):
         plot.image(np.zeros((4, 4, 3)))
 
 
+def _paint(plot, width=300, height=200):
+    """Paint the panel once, so the data-to-pixel mapping exists."""
+    plot.resize(width, height)
+    pixmap = QtGui.QPixmap(width, height)
+    pixmap.fill()
+    plot.render(pixmap)
+    return pixmap
+
+
+def test_a_region_reports_and_moves_between_its_edges(plot):
+    """The fit range is a region; reading and setting it is the whole job."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    region = plot.region((5.0, 10.0))
+
+    assert region.bounds == (5.0, 10.0)
+    region.set_bounds(8.0, 12.0)
+    assert region.bounds == (8.0, 12.0)
+
+    region.set_limits(0.0, 10.0)
+    assert region.bounds[1] <= 10.0, "a region stays inside the limits it is given"
+
+
+def test_dragging_a_region_moves_it_and_reports(plot):
+    """Through the same press/drag/release emtk's host feeds the control."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    region = plot.region((5.0, 10.0))
+
+    seen: list[tuple[float, float]] = []
+    region.on_change(lambda low, high: seen.append((low, high)))
+
+    _paint(plot)
+    canvas = plot._canvas
+    low_px, high_px = region.native()["_pixels"]
+    middle = (low_px + high_px) / 2.0
+
+    canvas.press(middle, 50.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.drag(middle + 40.0, 50.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    assert region.bounds[0] > 5.0, "the region followed the pointer"
+    assert seen, "and said so when the drag finished"
+    assert seen[-1] == region.bounds
+
+
+def test_a_press_that_misses_every_band_starts_no_drag(plot):
+    """Otherwise a click on the data would drag whatever was nearest."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    region = plot.region((5.0, 10.0))
+    _paint(plot)
+
+    canvas = plot._canvas
+    canvas.press(1.0, 50.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.drag(200.0, 50.0, 0.0, 0.0, 300.0, 200.0)
+    canvas.release()
+
+    assert region.bounds == (5.0, 10.0)
+
+
+def test_a_vertical_marker_is_drawn_and_movable(plot):
+    """Cursors are vertical here; emtk's own hline covers the horizontal one."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    marker = plot.vline(12.0)
+    _paint(plot)
+
+    assert marker.value == 12.0
+    assert marker.native()["_pixels"] is not None
+    marker.set_value(15.0)
+    assert marker.value == 15.0
+
+
 @pytest.mark.parametrize(
     "call, wanted",
     [
-        (lambda p: p.region((0.0, 1.0)), "region"),
+        (lambda p: p.add_roi(kind="rect"), "region of interest"),
         (lambda p: p.errorbars([0.0], [0.0], height=[1.0]), "error bars"),
         (lambda p: p.text("hello", (0.0, 0.0)), "text"),
     ],
