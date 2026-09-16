@@ -15,8 +15,9 @@ that the garbage collector frees like any other.
 What is drawn here today: curves (with symbols), scatter clouds, images and
 heatmaps, draggable regions (the fit range is one), markers in both
 orientations, the legend, axis labels and title, ranges (explicit, queried and
-auto), log scaling, grid and background. Everything else -- ROIs, error bars,
-bars, filled bands, text and arrows -- raises :class:`NotImplementedError` naming what is missing, because a
+auto), log scaling, grid and background, bar graphs, filled bands, error bars
+and text labels. What is left -- ROIs and arrows, the multi-panel grid and the
+image view -- raises :class:`NotImplementedError` naming what is missing, because a
 plot that silently omits half of what it was asked to draw is worse than one
 that says so. Those families are the rest of PRD-104.
 
@@ -249,6 +250,27 @@ class _Entry:
         self.state["rect"] = tuple(float(v) for v in rect)
         self._canvas.refresh()
 
+    # -- Bars / error bars / text --------------------------------------
+    def set_bar_data(self, x, height) -> None:
+        """Replace a bar graph's samples."""
+        self.state["x"], self.state["height"] = _finite_pairs(x, height)
+        self._canvas.refresh()
+
+    @property
+    def text(self) -> str:
+        """The label's text."""
+        return str(self.state.get("text", ""))
+
+    @text.setter
+    def text(self, value: str) -> None:
+        self.state["text"] = str(value)
+        self._canvas.refresh()
+
+    def set_position(self, pos) -> None:
+        """Move the label to a data coordinate."""
+        self.state["pos"] = (float(pos[0]), float(pos[1]))
+        self._canvas.refresh()
+
     # -- Region --------------------------------------------------------
     @property
     def bounds(self) -> tuple[float, float]:
@@ -417,7 +439,64 @@ class EmtkCanvas(base.Canvas):
                 painter.fill_rect(at, top, 1.0, height,
                                   entry.state.get("color", (200, 200, 200)))
                 entry.state["_pixels"] = (at - 4.0, at + 4.0)
+            elif entry.kind == "bars":
+                self._draw_bars(painter, plot, entry)
+            elif entry.kind == "band":
+                self._draw_band(painter, plot, entry)
+            elif entry.kind == "errorbars":
+                self._draw_errorbars(painter, plot, entry)
+            elif entry.kind == "text":
+                x, y = entry.state["pos"]
+                painter.text(plot._x_axis.to_pixels(x), plot._y_axis.to_pixels(y),
+                             120.0, plot.p_line_height if hasattr(plot, "p_line_height") else 14.0,
+                             0, entry.text, entry.state.get("color", (220, 220, 220)))
         self._axis = plot._x_axis
+
+    def _draw_bars(self, painter, plot, entry: _Entry) -> None:
+        """A bar per sample, from the axis floor up to its height."""
+        xs, heights = entry.state["x"], entry.state["height"]
+        if not len(xs):
+            return
+        width = entry.state.get("width")
+        if width is None:
+            width = float(np.min(np.diff(xs))) * 0.8 if len(xs) > 1 else 1.0
+        floor = plot._y_axis.to_pixels(0.0)
+        for centre, height in zip(xs, heights):
+            left = plot._x_axis.to_pixels(centre - width / 2.0)
+            right = plot._x_axis.to_pixels(centre + width / 2.0)
+            top = plot._y_axis.to_pixels(height)
+            painter.fill_rect(min(left, right), min(top, floor), abs(right - left),
+                              abs(floor - top), entry.state.get("brush", (120, 150, 200)))
+
+    def _draw_band(self, painter, plot, entry: _Entry) -> None:
+        """The area between two curves, as one column per sample."""
+        xs, lower = entry.state["x"], entry.state["lower"]
+        upper = entry.state["upper"]
+        if not len(xs):
+            return
+        colour = entry.state.get("brush", (120, 150, 200, 70))
+        for index in range(len(xs) - 1):
+            left = plot._x_axis.to_pixels(xs[index])
+            right = plot._x_axis.to_pixels(xs[index + 1])
+            top = plot._y_axis.to_pixels(max(lower[index], upper[index]))
+            bottom = plot._y_axis.to_pixels(min(lower[index], upper[index]))
+            painter.fill_rect(min(left, right), min(top, bottom),
+                              max(abs(right - left), 1.0), abs(bottom - top), colour)
+
+    def _draw_errorbars(self, painter, plot, entry: _Entry) -> None:
+        """A whisker per sample, with a beam at each end."""
+        xs, ys = entry.state["x"], entry.state["y"]
+        top_values = entry.state["top"]
+        bottom_values = entry.state["bottom"]
+        colour = entry.state.get("color", (200, 200, 200))
+        beam = float(entry.state.get("beam", 3.0))
+        for index in range(len(xs)):
+            at = plot._x_axis.to_pixels(xs[index])
+            high = plot._y_axis.to_pixels(ys[index] + top_values[index])
+            low = plot._y_axis.to_pixels(ys[index] - bottom_values[index])
+            painter.fill_rect(at, min(high, low), 1.0, abs(low - high), colour)
+            for edge in (high, low):
+                painter.fill_rect(at - beam, edge, 2.0 * beam, 1.0, colour)
 
     # -- dragging, which emtk's host feeds us ---------------------------
     def _from_pixels(self, px: float) -> float:
@@ -701,17 +780,37 @@ class EmtkCanvas(base.Canvas):
         )
 
     def add_bars(self, x, height, *, width=None, pen=None, brush=None) -> H.Bars:
-        """Not drawn yet."""
-        self._unsupported("a bar graph")
+        """Draw a bar graph and return its handle."""
+        xs, heights = _finite_pairs(x, height)
+        return self._add("bars", x=xs, height=heights,
+                         width=None if width is None else float(width),
+                         brush=_rgb(brush, (120, 150, 200)))
 
     def add_fill_between(self, lower, upper, *, brush=None) -> H.Handle:
-        """Not drawn yet."""
-        self._unsupported("a filled band")
+        """Fill the area between two curve handles and return its handle."""
+        low_x, low_y = lower.get_data()
+        _, high_y = upper.get_data()
+        size = min(len(low_x), len(low_y), len(high_y))
+        fill = _rgb(brush, (120, 150, 200))
+        return self._add("band", x=low_x[:size], lower=low_y[:size],
+                         upper=high_y[:size], brush=(*fill, 70))
 
     def add_errorbars(self, x, y, *, height=None, top=None, bottom=None, pen=None,
                       beam=None) -> H.ErrorBars:
-        """Not drawn yet."""
-        self._unsupported("error bars")
+        """Draw error bars and return their handle."""
+        xs, ys = _finite_pairs(x, y)
+        if top is None and bottom is None and height is None:
+            raise ValueError("error bars need height, or top and bottom")
+        if height is not None and top is None and bottom is None:
+            half = np.asarray(height, dtype=float).ravel() / 2.0
+            tops = bottoms = half
+        else:
+            tops = np.asarray(top if top is not None else 0.0, dtype=float).ravel()
+            bottoms = np.asarray(bottom if bottom is not None else 0.0, dtype=float).ravel()
+        tops = np.resize(tops, xs.shape) if tops.size else np.zeros_like(xs)
+        bottoms = np.resize(bottoms, xs.shape) if bottoms.size else np.zeros_like(xs)
+        return self._add("errorbars", x=xs, y=ys, top=tops, bottom=bottoms,
+                         color=_rgb(pen), beam=float(beam or 3.0))
 
     def add_image(self, data, *, colormap=None, levels=None, rect=None,
                   axis_order=None) -> H.Image:
@@ -757,8 +856,10 @@ class EmtkCanvas(base.Canvas):
 
     def add_text(self, text, pos, *, color=None, anchor=None, draggable=False,
                  fill=None, border=None, anchored=False) -> H.Text:
-        """Not drawn yet."""
-        self._unsupported("a text label")
+        """Draw a text label at a data coordinate and return its handle."""
+        return self._add("text", text=str(text),
+                         pos=(float(pos[0]), float(pos[1])),
+                         color=_rgb(color, (220, 220, 220)))
 
 
 class EmtkBackend(base.Backend):

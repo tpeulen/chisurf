@@ -254,12 +254,34 @@ def test_a_vertical_marker_is_drawn_and_movable(plot):
     assert marker.value == 15.0
 
 
+def test_bars_bands_errorbars_and_text_all_paint(plot):
+    """The families a decay window puts on a plot besides its curves."""
+    x, y = _decay(16)
+    lower = plot.line(x, y * 0.9, name="lower")
+    upper = plot.line(x, y * 1.1, name="upper")
+
+    plot.bars(x, y)
+    plot.fill_between(lower, upper)
+    plot.errorbars(x, y, height=np.sqrt(y))
+    plot.text("42", (10.0, 100.0))
+
+    pixmap = _paint(plot, 320, 240)
+    rendered = pixmap.toImage()
+    colours = {rendered.pixel(i, j) for i in range(0, 320, 5) for j in range(0, 240, 5)}
+    assert len(colours) > 4, "the panel drew more than its background and one curve"
+
+
+def test_error_bars_need_a_size(plot):
+    """Neither height nor top/bottom means there is nothing to draw."""
+    with pytest.raises(ValueError, match="height"):
+        plot.errorbars([0.0, 1.0], [1.0, 2.0])
+
+
 @pytest.mark.parametrize(
     "call, wanted",
     [
         (lambda p: p.add_roi(kind="rect"), "region of interest"),
-        (lambda p: p.errorbars([0.0], [0.0], height=[1.0]), "error bars"),
-        (lambda p: p.text("hello", (0.0, 0.0)), "text"),
+        (lambda p: p.arrow(0.0, 0.0), "arrow"),
     ],
 )
 def test_what_is_not_drawn_yet_says_so(plot, call, wanted):
