@@ -559,7 +559,7 @@ bug in the code being written. Two rules follow:
 Whoever owns the in-flight change should re-measure; until then, run
 `test/gui/test_chiplot.py` in its own pytest invocation.
 
-## 33 of the MMFDB suite's failures are test-order contamination, not defects
+## 33 of the MMFDB suite's failures were test-order contamination (fixed 2026-09-16)
 
 **Found 2026-08-10** while adding three enumeration terms to
 `mmfdb_flr_ext.dic` for the region/spot container contract
@@ -584,6 +584,15 @@ large enough to look like a regression to whoever runs the suite next, and
 because it means the suite currently cannot tell a real breakage from this
 noise. Whoever fixes it should bisect by explicit node ids across *files*, not
 within one.
+
+**Resolved 2026-09-16** (mmfdb `a581bb6`). The singleton was what this entry
+guessed at: `register_services` resolved the default database path once and
+cached it in a module global, so every handler called afterwards went to
+whichever database the *first* registration had found. A later file's handler
+then read an empty database -- a valid session token was "Authentication
+required", and inserts failed their foreign keys. The path is now pinned only
+when a caller names one. `pytest tests` passes in one run (809 passed), and the
+same bug was failing 11 tests in ChiSurf's `test/fio`.
 
 ## The OpenGL point glyph renders at half the size it is asked for
 
@@ -733,7 +742,7 @@ bug in the code being written. Two rules follow:
 Whoever owns the in-flight change should re-measure; until then, run
 `test/gui/test_chiplot.py` in its own pytest invocation.
 
-## 33 of the MMFDB suite's failures are test-order contamination, not defects
+## 33 of the MMFDB suite's failures were test-order contamination (fixed 2026-09-16)
 
 **Found 2026-08-10** while adding three enumeration terms to
 `mmfdb_flr_ext.dic` for the region/spot container contract
@@ -758,6 +767,15 @@ large enough to look like a regression to whoever runs the suite next, and
 because it means the suite currently cannot tell a real breakage from this
 noise. Whoever fixes it should bisect by explicit node ids across *files*, not
 within one.
+
+**Resolved 2026-09-16** (mmfdb `a581bb6`). The singleton was what this entry
+guessed at: `register_services` resolved the default database path once and
+cached it in a module global, so every handler called afterwards went to
+whichever database the *first* registration had found. A later file's handler
+then read an empty database -- a valid session token was "Authentication
+required", and inserts failed their foreign keys. The path is now pinned only
+when a caller names one. `pytest tests` passes in one run (809 passed), and the
+same bug was failing 11 tests in ChiSurf's `test/fio`.
 
 ## `test/gui` crashes the interpreter mid-run, and 20 of its failures are contamination
 
