@@ -22,11 +22,15 @@ _REGISTRY: dict[str, str] = {
     # emtk (chimol's ImPlot-style toolkit), the designated native
     # renderer / primary plotting widget. Target state of _REGISTRY.
     "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
-    # TODO(emtk-backend): register chimol's emtk here as the native backend once
-    # a chiplot backend for it exists. Until
-    # then wgpu/opengl stay registered so the backend seam is exercisable.
-    # Both are superseded experiment backends and retire when emtk lands.
-    #   "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
+    # emtk, the designated native renderer: chimol's own toolkit, drawn
+    # through its painter. Curves, scatter, markers, the legend, labels,
+    # ranges and log scaling are drawn today; the remaining families (images,
+    # regions, ROIs, error bars, bars, bands, text, arrows, grids and the
+    # image view) raise a NotImplementedError that names them, and land with
+    # the rest of PRD-104. It becomes the default when they do.
+    "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
+    # wgpu/opengl stay registered so the backend seam is exercisable. Both are
+    # superseded experiment backends and retire when emtk is complete.
     "wgpu": "chisurf.gui.chiplot.backends.wgpu:WgpuBackend",
     # Superseded by the emtk direction; kept until the emtk backend has been
     # through the plot families, then removed.
