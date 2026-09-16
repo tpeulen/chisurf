@@ -73,7 +73,12 @@ pyopengl = "*"
 # WebGPU: the graphics API behind chisurf.gui.chigame, and the platform surface
 # plumbing (Qt embedding, offscreen rendering) that goes with it. Both were only
 # incidentally present before and are now load-bearing.
-wgpu = "*"
+# The conda-forge package is `wgpu-py` (PyPI's is `wgpu`, imported as `wgpu`
+# either way) -- same mismatch pattern as msgpack-python below. `wgpu` does not
+# exist on conda-forge under that name on any platform, which is why `pixi
+# install` failed solving *every* environment on *every* platform, not just
+# osx-arm64 (the first one pixi happened to report).
+wgpu-py = "*"
 rendercanvas = "*"
 # The window backend for chimol's Qt-free default. `rendercanvas` ships the
 # glfw backend but not the binding it needs, so without this the toolkit-free
