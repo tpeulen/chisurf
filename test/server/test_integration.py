@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import threading
 import time
 import pytest
@@ -30,6 +31,14 @@ def server_client():
     yield client, server
     client.close()
     server.stop()
+
+
+#: A decay a fit can actually be run on. A one-point curve cannot support one:
+#: a least-squares fit needs at least as many points as free parameters, and
+#: the run fails with "no parameters" long before anything is optimised.
+_N_POINTS = 64
+_DECAY_X = [float(i) for i in range(_N_POINTS)]
+_DECAY_Y = [1000.0 * math.exp(-i / 8.0) + 5.0 for i in range(_N_POINTS)]
 
 
 def _create_tcspc_fit(client, dataset_index):
@@ -477,11 +486,14 @@ def test_fit_set_result_idx_endpoint(server_client):
     client, server = server_client
     ds = client.call("dataset.load", {
         "reader_name": "SRIReader", "filename": "/tmp/sri.dat",
-        "name": "ResultIdxTest", "curve_data": {"x": [0.0], "y": [1.0]},
+        "name": "ResultIdxTest", "curve_data": {"x": _DECAY_X, "y": _DECAY_Y},
     })
     assert ds.get("ok") is True
     ft = _create_tcspc_fit(client, ds["dataset_index"])
-    result = client.fit__set_result_idx(fit_index=ft["fit_index"], result_idx=1)
+    # A result index selects among the results runs have recorded, so there
+    # has to be one: restoring from an unfitted fit is an error, not a no-op.
+    client.fit__run(fit_index=ft["fit_index"])
+    result = client.fit__set_result_idx(fit_index=ft["fit_index"], result_idx=0)
     assert result.get("ok") is True
 
 
@@ -571,7 +583,7 @@ def test_event_broadcast_on_fit_run(server_client):
     client, server = server_client
     ds = client.call("dataset.load", {
         "reader_name": "RunEvt", "filename": "/tmp/run_evt.dat",
-        "name": "RunEventTest", "curve_data": {"x": [0.0], "y": [1.0]},
+        "name": "RunEventTest", "curve_data": {"x": _DECAY_X, "y": _DECAY_Y},
     })
     assert ds.get("ok") is True
     ft = _create_tcspc_fit(client, ds["dataset_index"])
@@ -585,9 +597,9 @@ def test_event_broadcast_on_fit_run(server_client):
     time.sleep(0.3)
 
     result = client.fit__run(fit_index=ft["fit_index"])
+    assert result.get("ok") is True
     time.sleep(0.3)
     client.drain()  # dispatch queued events on the main thread
-    # fit.run may fail without real model, but should still publish event
     found = any(e.get("fit_index") is not None for e in received)
     assert found, f"Expected fit.ran event, got: {received}"
 

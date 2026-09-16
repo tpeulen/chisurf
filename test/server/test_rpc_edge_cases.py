@@ -283,30 +283,29 @@ class TestTimeoutAndConnectionEdgeCases:
         unreachable.close()
 
     def test_unknown_method_error(self, server_client):
-        """Unknown method returns ok=False structured response."""
+        """An unknown method raises, carrying the JSON-RPC error with it."""
         client, server = server_client
-        result = client.call("does.not.exist")
-        assert not result.get("ok")
-        assert "error" in result
+        with pytest.raises(RemoteError) as excinfo:
+            client.call("does.not.exist")
+        assert "does.not.exist" in str(excinfo.value)
 
     def test_invalid_params_error(self, server_client):
-        """Invalid params (bad types) return error, not crash."""
+        """Params of the wrong type raise rather than crash the server."""
         client, server = server_client
-        result = client.call("dataset.load", {
-            "reader_name": "BadReader",
-            "filename": "/tmp/bad.dat",
-            "name": "Bad",
-            "curve_data": {"x": "not_a_list", "y": "also_not_a_list"},
-        })
-        assert not result.get("ok")
-        assert "error" in result
+        with pytest.raises(RemoteError):
+            client.call("dataset.load", {
+                "reader_name": "BadReader",
+                "filename": "/tmp/bad.dat",
+                "name": "Bad",
+                "curve_data": {"x": "not_a_list", "y": "also_not_a_list"},
+            })
+        assert client.meta__ping().get("ok") is True
 
     def test_missing_required_param(self, server_client):
-        """Missing required param returns error."""
+        """A missing required param raises."""
         client, server = server_client
-        result = client.call("parameter.get", {})
-        assert not result.get("ok")
-        assert "error" in result
+        with pytest.raises(RemoteError):
+            client.call("parameter.get", {})
 
     def test_disconnect_reconnect(self, server_client):
         """Client can reconnect after close."""
@@ -352,21 +351,21 @@ class TestErrorPropagation:
         ctx.term()
 
     def test_extra_params_not_crash(self, server_client):
-        """Unexpected keys in params return ok=False, not crash."""
+        """Unexpected keys raise; the server keeps serving."""
         client, server = server_client
-        result = client.call("meta.ping", {"unexpected_key": "value", "another": 42})
-        assert not result.get("ok")
-        assert "error" in result
+        with pytest.raises(RemoteError):
+            client.call("meta.ping", {"unexpected_key": "value", "another": 42})
+        assert client.meta__ping().get("ok") is True
 
 
 class TestSerializerEdgeCases:
 
     def test_very_long_method_name(self, server_client):
-        """Very long method name returns ok=False."""
+        """A 500-character method name is unknown, not fatal."""
         client, server = server_client
-        long_name = "a" * 500
-        result = client.call(long_name, {})
-        assert not result.get("ok")
+        with pytest.raises(RemoteError):
+            client.call("a" * 500, {})
+        assert client.meta__ping().get("ok") is True
 
     def test_unicode_in_dataset_name(self, server_client):
         """Unicode characters in names survive round trip."""

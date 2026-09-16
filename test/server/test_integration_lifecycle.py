@@ -114,6 +114,11 @@ class TestProxyLifecycle:
             pytest.skip(f"fit__create: {ft.get('error')}")
         flist._invalidate()
         assert len(flist) == 1
+        # A fit that has never run reports no chi2: a starting value must not
+        # look like a result, and listing fits does not evaluate their models.
+        assert flist[0].chi2 is None
+        flist[0].run()
+        flist._invalidate()
         assert flist[0].chi2 is not None
 
     def test_run_fit_through_proxy(self, client):
@@ -486,22 +491,27 @@ class TestErrorBoundary:
 class TestSessionSaveLoad:
 
     def test_save_empty(self, client):
+        """A project is one ``.cs.pto`` archive, not a directory of JSON."""
+        client.dataset__clear()
+        client.fit__clear()
         with tempfile.TemporaryDirectory() as tmp:
             r = client.project__save(target_path=tmp)
             assert r.get("ok") is True
-            pf = os.path.join(tmp, "project.json")
-            assert os.path.isfile(pf)
-            data = json.load(open(pf))
-            assert "project_format_version" in data
-            assert data["datasets"] == {}
+            saved = r["path"]
+            assert saved.endswith(".cs.pto")
+            assert os.path.isfile(saved)
+            loaded = client.project__load(project_path=saved)
+            assert loaded.get("ok") is True
+            assert loaded.get("dataset_count") == 0
 
     def test_save_with_dataset(self, client):
         _add_ds(client, "SaveDS")
         with tempfile.TemporaryDirectory() as tmp:
             r = client.project__save(target_path=tmp)
             assert r.get("ok") is True
-            data = json.load(open(os.path.join(tmp, "project.json")))
-            assert len(data["datasets"]) > 0
+            loaded = client.project__load(project_path=r["path"])
+            assert loaded.get("ok") is True
+            assert loaded.get("dataset_count", 0) > 0
 
     def test_project_info(self, client):
         info = client.project__info()
@@ -861,8 +871,9 @@ class TestConcurrentOperations:
         if not created:
             pytest.skip("fit__create not available")
         assert len(client.fit__list()) == len(created)
+        # By uid: an index is only valid until the first removal shifts the list.
         for ft in created[::2]:
-            client.fit__remove(fit_indices=[ft["fit_index"]])
+            client.fit__remove(fit_uids=[ft["uid"]])
         assert len(client.fit__list()) == len(created) - len(created[::2])
 
 

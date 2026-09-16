@@ -31,6 +31,7 @@ class TestFitsService:
         fit.unique_identifier = "fit-uid-1"
         fit.name = "Fit1"
         fit.chi2 = 1.5
+        fit._last_chi2 = 1.5
         fit.data = MagicMock()
         fit.data.name = "Data1"
 
@@ -45,6 +46,7 @@ class TestFitsService:
         fit.unique_identifier = "fit-uid"
         fit.name = "MyFit"
         fit.chi2 = 1.2
+        fit._last_chi2 = 1.2
         fit.data = MagicMock()
         fit.data.name = "MyData"
         fit.model = MagicMock()
@@ -64,6 +66,7 @@ class TestFitsService:
         fit.unique_identifier = "fit-uid"
         fit.name = "MyFit"
         fit.chi2 = 3.0
+        fit._last_chi2 = 3.0
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.model = MagicMock()
@@ -87,6 +90,7 @@ class TestFitsService:
         fit.unique_identifier = "target-uid"
         fit.name = "Target"
         fit.chi2 = 1.0
+        fit._last_chi2 = 1.0
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.run = MagicMock()
@@ -110,6 +114,7 @@ class TestFitsService:
         fit.unique_identifier = "fit-p1"
         fit.name = "ParamFit"
         fit.chi2 = 2.0
+        fit._last_chi2 = 2.0
         fit.data = MagicMock()
         fit.data.name = "Data1"
         fit.data.filename = "test.dat"
@@ -158,6 +163,7 @@ class TestFitsService:
         fit.unique_identifier = "fit-p2"
         fit.name = "ParamFit2"
         fit.chi2 = 1.5
+        fit._last_chi2 = 1.5
         fit.data = MagicMock()
         fit.data.name = "Data2"
         fit.data.filename = "other.dat"
@@ -392,7 +398,9 @@ class TestGraphService:
         fit.unique_identifier = "fit-diag-1"
         fit.name = "DiagFit"
         fit.chi2 = 1.5
+        fit._last_chi2 = 1.5
         fit.chi2r = 1.2
+        fit._last_chi2r = 1.2
         fit.data = MagicMock()
         fit.data.name = "DiagData"
         fit.data.x = [1.0, 2.0, 3.0]
@@ -431,7 +439,9 @@ class TestGraphService:
         fit.unique_identifier = "fit-down-1"
         fit.name = "Down"
         fit.chi2 = 1.5
+        fit._last_chi2 = 1.5
         fit.chi2r = 1.2
+        fit._last_chi2r = 1.2
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.data.x = list(range(1000))
@@ -459,7 +469,9 @@ class TestGraphService:
         fit.unique_identifier = "fit-nan"
         fit.name = "NaN"
         fit.chi2 = float("nan")
+        fit._last_chi2 = float("nan")
         fit.chi2r = float("inf")
+        fit._last_chi2r = float("inf")
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.model = MagicMock()
@@ -525,7 +537,7 @@ class TestGraphService:
         fit.data = MagicMock()
         fit.data.name = "D"
         fit.model = MagicMock()
-        fit.model._update_model = MagicMock()
+        fit.model.update = MagicMock()
         fit.model.finalize = MagicMock()
         p = MagicMock()
         p.name = "tau1"
@@ -537,7 +549,9 @@ class TestGraphService:
         fit.model.parameters_all_dict = {"tau1": p}
         fit.model.parameters_all = [p]
         fit.chi2 = 1.5
+        fit._last_chi2 = 1.5
         fit.chi2r = 1.2
+        fit._last_chi2r = 1.2
 
         state = SessionState(fits=[fit])
         snapshot = {
@@ -552,7 +566,7 @@ class TestGraphService:
         assert p.fixed is True
         assert p.bounds == (1, 15)
         assert p.bounds_on is False
-        fit.model._update_model.assert_called_once()
+        fit.model.update.assert_called_once()
         fit.model.finalize.assert_called_once()
 
     def test_fit_select_by_index(self):
@@ -583,22 +597,23 @@ class TestGraphService:
 
     def test_build_graph_linked_parameters(self):
         from chisurf.server.services.graph import build_fit_graph
-        link_target = MagicMock()
-        link_target.name = "tau"
-
-        linked_param = MagicMock()
-        linked_param.name = "tau"
-        linked_param.value = 3.0
-        linked_param.fixed = False
-        linked_param.is_linked = True
-        linked_param.link = link_target
-
         source_param = MagicMock()
         source_param.name = "tau"
         source_param.value = 3.0
         source_param.fixed = False
         source_param.is_linked = False
         source_param.link = None
+        source_param.unique_identifier = "param-source"
+
+        linked_param = MagicMock()
+        linked_param.name = "tau"
+        linked_param.value = 3.0
+        linked_param.fixed = False
+        linked_param.is_linked = True
+        # A link *is* the parameter followed, and the graph resolves it by its
+        # identifier: same-named parameters in other fits are not the master.
+        linked_param.link = source_param
+        linked_param.unique_identifier = "param-linked"
 
         fit1 = MagicMock()
         fit1.unique_identifier = "fit-1"
