@@ -390,6 +390,55 @@ second component's centre was held (ticked *Fixed*, greyed out, and returned
 unchanged at 0.74) while everything else was optimised onto the data.
 ```
 
+(ndx-find-projections)=
+
+## Find the informative projections
+
+Instead of paging through the axis combos, let ndX rank the views
+(theory: {ref}`concept-md-ranking`).
+
+1. Load the burst table. Under the **y** picker press
+   **🔎 Find informative projections…** (the z panel has
+   **🔎 Find informative z parameters…** for the third axis).
+2. The panel opens and starts at once. With no gate and no clustering it ranks by
+   **Population structure** — which pairs split into more than one population.
+   Draw a range gate, paint a mask or run *Cluster* first, and it opens on
+   **Class separation** with those classes instead; **Score** also offers
+   Pearson and Spearman **Correlation**.
+3. The table fills while it computes, best first, with the score as a bar. Hover
+   is not needed: the selected row's line under the table says what the number
+   means (e.g. *96.4 % of each burst's 10 nearest neighbours share its class;
+   κ = 0.924 above chance*). **Pause** stops, **Start** continues; closing the
+   panel pauses and reopening resumes. Changing **Score**, **Classes** or
+   **Sample** pauses and the next **Start** ranks again from scratch.
+4. **Click a row** to set x and y. When the ranking finishes the best row is
+   applied. Picking axes by hand marks their row, so you see where your own
+   choice ranks. The filter box narrows the rows to a parameter name.
+
+```{figure} figures/ndxplorer_find_projections.png
+:name: fig-ndxplorer-find-projections
+:width: 60%
+
+The MFD test folder (12 237 bursts) gated on $\tau_{green}$ = 2.5–4.2 ns,
+ranked by how well each view separates the gated bursts from the rest (1 431
+pairs in 13 s). $\tau_{green}$ and the columns derived from it are left out.
+```
+
+From Python, the scores are plain functions on arrays:
+
+```python
+from ndxplorer.analysis.projection_scores import (
+    ClassLabels, ProjectionRanker, RankingTable)
+
+table = RankingTable(columns, labels=ClassLabels(inside_gate, True, "gate"))
+ranker = ProjectionRanker(table, "separation")      # or "structure", "pearson"
+ranker.prepare()
+scored = sorted((ranker.compute_score(s), s) for s in ranker.iterate_states()
+                if ranker.compute_score(s) is not None)
+best = ranker.row_for_state(*scored[0])
+print(best.cells, best.tooltip)
+```
+
 ## From marginal to full model: bridges
 
 A marginal fit gives peak positions and widths. To resolve the shot-noise

@@ -1124,6 +1124,34 @@ def _grab_global_view():
     _grab(tool, "globalview_network.png")
 
 
+def _grab_ebfret_tool():
+    """ebFRET after an analysis of its simulated demo: K = 4 with the Viterbi path.
+
+    The run is the real backend loop on the demo's forty four-state traces; the
+    window then shows the four-state model, so the Viterbi overlay and the
+    posterior curves -- what the guide explains -- are on screen.
+    """
+    import time
+
+    from chisurf.plugins.burst.burst_ebfret.gui.tool import EbfretTool
+
+    tool = EbfretTool()
+    tool.resize(1200, 820)
+    tool.show()
+    tool._load_demo()
+    client = tool.client
+    client.set("max_states", 4)
+    client.run()
+    while client.status()["running"]:
+        time.sleep(0.2)
+    client.set("ensemble", 4)
+    client.set("series", 3)
+    for _ in range(4):
+        tool._tick()
+        QApplication.instance().processEvents()
+    _grab(tool, "ebfret_gui.png")
+
+
 def _grab_pto_inspector():
     """A container holding an instrument file and two results derived from it.
 
@@ -1584,6 +1612,7 @@ def main():
         _grab_ask_the_documentation,
         _grab_maxent_decay,
         _grab_global_view,
+        _grab_ebfret_tool,
         _grab_pto_inspector,
         _grab_irf_estimator,
         _grab_console,

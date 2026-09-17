@@ -129,36 +129,35 @@ rates.
 
 ## Mapping to ChiSurf
 
-The `chisurf/plugins/burst/burst_ebfret/` plugin implements the above as a
-headless port of ebFRET (single-prior, `D = 1`):
+The `chisurf/plugins/burst/burst_ebfret/` plugin is a plain port of the ebFRET
+GUI and its MATLAB analysis (single-prior, `D = 1`, as the GUI runs it):
 
-- **Per-trace VBEM.** `core/vbem.py` — variational-Bayes EM with conjugate
-  Dirichlet priors on the initial-state and transition distributions and a
-  Normal-Gamma prior on each state's `(mean, precision)`, in ebFRET's
-  `(m, beta, a, b)` convention (`nu = 2a`, `W = 1/(2b)`); linear-domain scaled
-  forward-backward.
-- **Empirical Bayes.** `core/ebayes.py` — the outer h-step loop re-estimating
-  the shared prior (Dirichlet Newton + Normal-Gamma moment matching, ported from
-  ebFRET's `h_step.m`), iterating until the summed evidence converges.
-- **Decoding + scan.** `core/viterbi.py` decodes MAP state paths;
-  `core/analysis.py` (`analyse()`) scans a range of state counts, selects the
-  highest-evidence model, and reports per-state emission summaries
-  (`StateFit`), a Viterbi transition-count matrix, and dwell segments
-  (`Dwell`).
-- **Interfaces.** `ebfret compute` CLI and the `burst_ebfret.jobs.compute` RPC
-  service (`backend/services.py`); the ebFRET stacked-`.dat` loader in `io.py`.
+- **Per-trace VBEM with restarts.** `core/hmm.py` — `e_step`, `forwback`,
+  `m_step`, `kl_div`, `vbayes` in ebFRET's Normal-Wishart names
+  (`mu, beta, W, nu, A, pi`; `a = nu/2`, `b = 1/(2W)`), and `vbayes_series`, the
+  body of `run_vbayes.m`: previous posterior, an uninformative start and random
+  prior draws, best lower bound wins.
+- **Empirical Bayes.** `core/ebayes.py` — `run_ebayes.m`'s loop; the prior
+  update is `h_step` with the expected sufficient statistics (Dirichlet Newton +
+  Normal-Gamma moment matching, `core/dist.py`).
+- **Priors.** `guess_prior` (histogram-spread centers, noise from the state
+  spacing, dwell half the mean trace length) and `init_prior` (the Set Priors
+  dialog).
+- **Decoding, report, scan.** `viterbi_vb`; `report` (the Analysis Summary);
+  `core/analysis.py::analyse` scans state counts headless and adds dwell
+  segments and transition counts.
+- **Interfaces.** The ebFRET window (`gui/`), `burst_ebfret.session.*` RPC
+  methods, `ebfret compute` CLI; formats in `io.py`.
 
-Status is **experimental**: single-prior `D = 1` path validated for state
-recovery against ebFRET's own `simulated-K04-N350` dataset (vendored under
-`tests/data/`); the prior-mixture (subpopulation) path, VBEM restarts, and a
-GUI tool are not yet implemented. Porting this one binned-trace HMM closes the
-functional gap behind a family of TIRF tools (ebFRET, vbFRET, HaMMy, SMACKS).
+Validated against ebFRET under Octave and MATLAB — see
+[burst-ebfret](../plugins/burst-ebfret.md). The prior-mixture (subpopulation)
+model of the ebFRET paper is not reachable from the ebFRET GUI and not ported.
 
 ## Pointers
 
-- Plugin: `chisurf/plugins/burst/burst_ebfret/` (README for implementation
-  detail; `core/vbem.py`, `core/ebayes.py`, `core/viterbi.py`,
-  `core/analysis.py`; `io.py` for the stacked-`.dat` loader).
+- Plugin: `chisurf/plugins/burst/burst_ebfret/` (README; `core/hmm.py`,
+  `core/ebayes.py`, `core/session.py`, `core/analysis.py`, `io.py`) and its
+  record [burst-ebfret](../plugins/burst-ebfret.md).
 - Photon-by-photon complement: [h2mm-theory.md](h2mm-theory.md).
 - User-facing rendering of this theory: `docs/concepts/ebfret.md`.
 - Key literature: Bronson, Fei, Hofman, Gonzalez & Wiggins 2009 (Biophys. J.

@@ -210,6 +210,61 @@ A fitted component is also a **gate**: its $n\sigma$ ellipse becomes a selection
 and the bursts inside it are what a {ref}`bridge <concept-md-bridges>` hands to a
 quantitative model.
 
+(concept-md-ranking)=
+
+## Which two parameters to look at: ranking the views
+
+A burst table with forty parameters holds 780 two-parameter plots, and the one
+that shows the populations is rarely the first one tried. **Find informative
+projections** scores every pair (and every candidate third axis) and lists them
+best first, in the background, so the plots worth looking at are found rather
+than hunted for. The design is Orange3's *VizRank*; three scores answer three
+different questions, and all of them are computed on one random sample of the
+bursts (5 000 by default), identical for every view.
+
+**Class separation.** When classes exist — the gate (inside vs outside), each
+gate as its own population, the clusters, or the value of the z parameter — a view
+is good when bursts of one class sit next to each other. For every burst the
+$k = 10$ nearest bursts in the view are found and the share $p_o$ with the same
+class is averaged (Orange3's scatter-plot score). The table shows it corrected for
+chance,
+
+$$\kappa = \frac{p_o - p_e}{1 - p_e}, \qquad p_e = \sum_c p_c^2 ,$$
+
+because a gate holding 5 % of the bursts makes $p_o \geq 0.9$ in *every* view by
+the majority class alone. For a continuous class the score is the $R^2$ of
+predicting it by the neighbours' mean, weighted by the share of bursts that have
+a value. Distances are taken **as the plot draws the axes** — each axis mapped onto
+its range, in decades on a log axis — rather than in raw units, where a photon
+count in the hundreds would decide every neighbourhood and a lifetime in
+nanoseconds none. The parameters a gate is defined on, and any parameter that is
+a monotone function of one of them (Spearman $|\rho| \geq 0.98$, e.g. $E_\tau$ from
+$\tau$), are left out: they separate their own gate by construction.
+
+**Population structure.** With no classes, a view is good when the cloud splits
+into more than one population. The score is the 2-means *cluster index* of
+SigClust (Liu, Hayes, Nobel & Marron,
+[10.1198/016214508000000454](https://doi.org/10.1198/016214508000000454)): whiten
+the points, split them into the two groups with the least spread inside them, and
+take the within-group sum of squares over the total, $CI = W/T$, along the split
+direction. Whitening makes it indifferent to units, elongation and correlation,
+and gives a closed-form reference: a single Gaussian has $CI = 1 - 2/\pi \approx
+0.363$, two equal populations $\Delta$ widths apart $CI = 4/(\Delta^2 + 4)$. The
+table shows $1 - CI/0.363$: 0 for one population, 0.45 for $\Delta = 4$, 0.72 for
+$\Delta = 6$, negative for heavy-tailed clouds. The smaller group must hold at least
+5 % of the bursts, and parameters with fewer than 20 distinct values (fit flags)
+are not scored — otherwise a clump at a fit bound or a 0/1 switch is a perfect
+"split". Correlation cannot stand in for this: two populations side by side along
+one axis are uncorrelated.
+
+**Correlation.** Pearson's $r$ or Spearman's $\rho$ over the bursts where both
+parameters have values (Orange3's correlation ranking). Duplicated quantities — a
+count and its rate over a similar window — rank first, correctly.
+
+Clicking a row sets the axes (and the scale they were scored on); choosing axes by
+hand marks the matching row. The workflow is in the
+{ref}`guide <ndx-find-projections>`.
+
 (concept-md-bridges)=
 
 ## From a selection to a full analysis: bridges

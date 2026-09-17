@@ -4,6 +4,7 @@
 * [Plugin documentation worklist](documentation-worklist.md) - Current screening of plugins by documentation coverage and priority.
 * [High-priority plugin profiles](profiles/index.md) - Evidence records for plugins that should be documented or stabilized first.
 * [Burst analysis](burst.md) - smFRET burst selection, BVA, burst MLE, burst browser, per-burst FCS and background estimation.
+* [ebFRET port](burst-ebfret.md) - the ebFRET MATLAB GUI and analysis ported onto emtk as the burst_ebfret plugin; A/B against Octave and MATLAB, control parity, what was not taken.
 * [ALEX Suite](alex-suite.md) - the legacy ALEX-Suite workflow as a linear pipeline over those same tools, plus the alternation conversion and the titration analysis it had.
 * [ndX multidimensional explorer](ndxplorer.md) - projection, gating, curve overlays and playing a measurement back along one of its own columns.
 * [Correlation (FCS)](fcs.md) - correlator wizard, fFCS filters, 2D-FLCS, curve merging, diffusion/volume calculator and format conversion.

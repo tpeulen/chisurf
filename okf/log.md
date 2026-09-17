@@ -2,6 +2,22 @@
 
 ## 2026-09-17
 
+* **ndX ranks the views: Orange3's VizRank ported as *Find informative
+  projections*.** ndxplorer repo: Qt-free framework (`analysis/vizrank.py`),
+  scores (`analysis/projection_scores.py` — kNN class separation and correlation
+  transcribed from Orange3 with its test expectations, SigClust 2-means
+  population structure added), an emtk panel declared in `ui/vizrank.view.json`
+  over `ui/vizrank_panel.py`, buttons under the x/y and z pickers
+  (`ui/projection_rank.py`). Runs on `chisurf/gui/task.py` rather than a second
+  port of `ConcurrentMixin`. Classes: gate, gates, clusters, z. Guards found on
+  the MFD folder: flags, clumps < 5 %, columns monotone in a gated parameter.
+  Docs: concept *ranking the views*, guide 46 *Find the informative
+  projections*. Record: [ndX](plugins/ndxplorer.md),
+  [Orange3 adopted §4](references/orange3-adopted.md); mining note marked done.
+  ndxplorer commit `3d5bd43` (gitlink not bumped: unpushed). Fixed there too:
+  every ndX GUI load raised `AttributeError` (`reader.DataLoadWorker` gone since
+  the reader became Qt-free); loads go through `async_loader.run_task`.
+
 * **2D-FLCS harvest, part 2: the reference's basis, MEM ramp, IRF-rise scan and
   average are ported; `TK_DisIntLife2Dmap` is SKIPPED.** `flc_2d/fit/exp_curve.py`
   (`TK_CreateExpCurve`: IRF placed by rise points, basis summed over the linear/log

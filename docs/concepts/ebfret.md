@@ -189,18 +189,22 @@ resolved on physical grounds — do the extra state's dwells and level make sens
 rather than by a small ELBO difference. ChiSurf's `analyse()` scans
 `min_states=2` to `max_states=4` by default and runs from a fixed `seed`, so
 repeat runs reproduce exactly; that reproducibility is determinism, not evidence
-that a global optimum was found. Widen the scan range when the best model sits
+that a global optimum was found. The random **restarts** are what guard against
+a local optimum: on one simulated demo dataset, with a single uninformative restart the
+four-state fit settles at E = [0.20, 0.38, 0.50, 0.72], with the default two it
+recovers [0.10, 0.35, 0.55, 0.75]. Widen the scan range when the best model sits
 at either end of it.
 
 ## See also
 
 - Guide: {doc}`/guides/20_ebfret_binned_hmm`; photon-by-photon alternative
   {ref}`concept-h2mm`.
-- Plugin `chisurf/plugins/burst/burst_ebfret/` — per-trace VBEM
-  {src}`chisurf/plugins/burst/burst_ebfret/core/vbem.py`, empirical-Bayes prior
-  loop {src}`chisurf/plugins/burst/burst_ebfret/core/ebayes.py`, Viterbi
-  decoding {src}`chisurf/plugins/burst/burst_ebfret/core/viterbi.py`, state scan
-  and dwell/transition outputs
+- Plugin `chisurf/plugins/burst/burst_ebfret/` — a port of the ebFRET GUI and
+  its MATLAB analysis: per-trace VBEM and restarts
+  {src}`chisurf/plugins/burst/burst_ebfret/core/hmm.py`, the empirical-Bayes loop
+  {src}`chisurf/plugins/burst/burst_ebfret/core/ebayes.py`, the window's actions
+  {src}`chisurf/plugins/burst/burst_ebfret/core/session.py`, file formats
+  {src}`chisurf/plugins/burst/burst_ebfret/io.py`, and the state scan
   {src}`chisurf/plugins/burst/burst_ebfret/core/analysis.py#analyse`.
 - Key literature: {cite}`vandemeent2014` is ebFRET — the empirical-Bayes
   variational HMM this implements; {cite}`bronson2009` is vbFRET, the per-trace

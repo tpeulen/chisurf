@@ -179,7 +179,7 @@ Of the **134 plugins**, **63** build their interface from declarative AutoForm s
 | [PCH](pch.md) | Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy. |
 | [Photon-by-photon kinetics](burst_gs.md) | Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check. |
 | [Trace Browser](trace_browser.md) | Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces. |
-| [ebFRET (binned traces)](burst_ebfret.md) *(hidden)* | Empirical-Bayes Gaussian hidden Markov model for binned single-molecule FRET time traces (ebFRET/vbFRET-style), with a state-count scan, per-state emission recovery, and Viterbi dwell/transition analysis. Complements the photon-by-photon H2MM plugin for TIRF-style intensity-vs-time data. |
+| [ebFRET](burst_ebfret.md) | ebFRET, ported from its MATLAB GUI: empirical-Bayes hidden Markov analysis of binned donor/acceptor smFRET time series. The same window -- time series with the Viterbi path, the ensemble histograms and parameter distributions, series/crop/state controls -- the same menus (load/save session, raw/SF-Tracer/SMD import, photobleaching and outlier removal, priors, summary/trace/SMD export) and the same analysis loop, run on the backend. Ships a simulated four-state demo. |
 
 ## Structure → Computation
 

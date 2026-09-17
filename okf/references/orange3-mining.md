@@ -42,7 +42,7 @@ the survey and the backlog.
 | `Orange/data/table.py:489,654-700` | Write-locked arrays; explicit `unlocked()` context to mutate | ✅ **adopted** — `NCurve`/`DataCurve` lock their sample arrays | **DONE** — see [data model](/subsystems/data-model.md) | **5** |
 | `Orange/widgets/utils/concurrent.py:387,453,558` | `TaskState` / `ConcurrentMixin` / `ConcurrentWidgetMixin` — cancel, partial results, auto-wired progress | ✅ **adopted** — `chisurf/gui/task.py` on the `ChiSurfProgress` seam | **DONE** — see [GUI/AutoForm](/subsystems/gui-autoform.md) | **5** |
 | `Orange/widgets/tests/base.py:46,248,608,686` | Widget-contract test mixins + pathological-dataset battery + `ParameterMapping` | static manifest contract tests only | **CLEAR-GAP** — behavioural contract tests over 104 plugins | **5** |
-| `Orange/widgets/visualize/utils/__init__.py:40` | VizRank — score-ranked candidate views computed in the background | none | **CLEAR-GAP** — new capability for burst/parameter tables | **5** |
+| `Orange/widgets/visualize/utils/__init__.py:40` | VizRank — score-ranked candidate views computed in the background | ✅ **adopted** — ndX *Find informative projections* (`ndxplorer/analysis/vizrank.py`, `ui/vizrank_panel.py`) | **DONE** — see [adopted §4](orange3-adopted.md) | **5** |
 | `orangewidget.widget.Msg` + `class Error/Warning/Information` | Declared, named, non-modal, testable widget messages | ✅ **adopted** — `chisurf/gui/widgets/messages.py` | **DONE** — see [GUI/AutoForm](/subsystems/gui-autoform.md) | **4** |
 | `Orange/widgets/report/` (`report.py:14`, `owreport.py`) | Every node contributes `send_report()`; one aggregated HTML/PDF report | none | **CLEAR-GAP** — cross-plugin analysis report | **4** |
 | `Orange/widgets/settings.py:65,312` | `DomainContextHandler` — settings matched to the *data*, not just the widget | per-plugin `state_namespace` only | **CLEAR-GAP** — per-dataset setting recall | **4** |
@@ -60,7 +60,7 @@ the survey and the backlog.
 | `orangewidget.utils.matplotlib_export` (`scatterplot_code`, `scene_code`) | "Copy this plot as matplotlib code" | none | **Partial-gap** — publication figures from a GUI plot | **3** |
 | `widgets/data/owgroupby.py`, `owpivot.py`, `owmelt.py`, `owtranspose.py`, `owaggregatecolumns.py` | Table reshaping as first-class operations | chitable (PRD-66) — view-side only | **Partial-gap** | **3** |
 | `widgets/visualize/owviolinplot.py`, `owheatmap.py`, `owdistributions.py`, `owsilhouetteplot.py` | Violin, clustered heat map with dendrogram, fitted-distribution overlay | chiplot has none of these | **Partial-gap** — plot-type gaps | **3** |
-| `widgets/data/owcorrelations.py` | VizRank applied to correlation — most-correlated pairs, ranked | none | **Partial-gap** (follows from VizRank) | **3** |
+| `widgets/data/owcorrelations.py` | VizRank applied to correlation — most-correlated pairs, ranked | ✅ **adopted** — ndX ranking's Pearson/Spearman score | **DONE** — see [adopted §4](orange3-adopted.md) | **3** |
 | `Orange/widgets/utils/domaineditor.py` + `data/owcsvimport.py` | Inline column name/type/role editor; per-file remembered import options | staging + readers | **Partial-gap** | **2.5** |
 | `Orange/misc/cache.py:6,27` | `single_cache`, `memoize_method` (no `self` reference leak) | `functools.lru_cache` on methods in places | **Partial-gap** — a real leak class | **2.5** |
 | `Orange/misc/environ.py` | Config-file-driven data/cache/settings directories | `chisurf/core/settings/` | Low-priority | 2 |
@@ -202,6 +202,11 @@ several open ChiSurf problems:
 
 `widgets/data/owcorrelations.py` is the same machinery applied to correlation
 search and is the closest template for a burst-parameter version.
+
+**Landed 2026-09-17 in ndX** (projections by class separation, population
+structure and correlation; z parameters by separation and structure) — what was
+taken, how it departs, and where it lives: [adopted §4](orange3-adopted.md). Still
+open from the list above: fit-model ranking by χ²ᵣ/AIC, gate-combination purity.
 
 ### 5. Declared messages instead of modal dialogs
 
@@ -385,8 +390,8 @@ superseded by MMFDB.
    screenshot-the-GUI rules across 104 plugins.
 4. ✅ **Declared message groups** — non-modal, addressable, testable widget
    messages layered on the existing dialog seam. **Landed 2026-07-27.**
-5. **VizRank** — the one genuinely new user-facing capability; start with
-   burst-parameter projection ranking in ndX.
+5. ✅ **VizRank** — the one genuinely new user-facing capability; burst-parameter
+   projection ranking in ndX. **Landed 2026-09-17.**
 6. **Report system** on the dockable-tool base, rendered from the view specs
    that already carry every control's description.
 7. **Data-matched settings contexts**, then the **safe-expression layer**, the

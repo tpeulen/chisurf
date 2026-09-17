@@ -271,7 +271,34 @@ decides only whether its range filters.
 
 ## Where to pick this up
 
-1. **Playback on a real burst folder.** The gate, the panel and the axis
+1. **Leakage through compound derived columns in the gate-separation ranking.**
+   Gating on `Tau (green)` excludes it and every column monotone in it
+   (Spearman |ρ| ≥ 0.98: `E_tau`), but `(1-E)*E_tau` still carries τ and tops
+   the MFD ranking (κ 0.924 with `R_FRET(PIE)`). Measure: open the MFD folder,
+   gate τ 2.5–4.2, *Find informative projections* — see which top pairs are
+   functions of τ. A fix needs the equation graph (`core/equation_graph.py`
+   knows each derived column's inputs): exclude every column downstream of a
+   gated one. Tried and rejected: a Spearman test against combinations (too
+   slow, and a threshold would drop genuinely correlated parameters).
+2. **Population structure and point masses.** 2-means reads a pile-up at a fit
+   bound or sentinel as a population: on the MFD folder the top structure pairs
+   are the red-channel fit columns with `-1` in 22 % of bursts (unfitted,
+   mostly donor-only) — interpretable, but an artefact of the fit's sentinel.
+   The ≥ 5 % smaller-group rule removed `rho = 10⁴` (2.7 %); flags (< 20
+   distinct values) are skipped. Tried and rejected: stripping edge point
+   masses with a gap test — it also strips an exact `E = 0` donor-only
+   population. The honest fix is sentinels declared per feature
+   (`burst_features.yaml` already names them for chisurf's own writers).
+3. **Ranking is 12–16 s for ~1 500 pairs** (5 000 bursts; kNN ~8 ms,
+   structure ~11 ms per pair on the arm64 box). Fine streamed; a table of 100
+   columns (4 950 pairs) would take a minute. Measure with
+   `ProjectionRanker(...).compute_score` over `iterate_states()`; batching
+   states per worker call is the obvious next step before any C++.
+4. **Not yet ranked:** fit models by χ²ᵣ/AIC and gate combinations by purity
+   (the other two uses the Orange3 mining note lists); applying a z row enables
+   the z gate checkbox but leaves the folded *z axis* panel folded.
+
+5. **Playback on a real burst folder.** The gate, the panel and the axis
    detection are covered headlessly
    (`ndxplorer/tests/test_playback_controller.py`,
    `tests/test_ui/test_playback_panel.py`,
@@ -286,16 +313,16 @@ decides only whether its range filters.
      of the array returned by `DataManager.get_value_mask` is load-bearing
      downstream. A benchmark that rebuilds the controller per step measures the
      uncached path and reports a cost the app never pays.
-2. **`integrate` mode has no normalisation.** Each step draws more points than
+6. **`integrate` mode has no normalisation.** Each step draws more points than
    the last, so a colour scale that autoranges makes the early steps look empty
    and a fixed one makes the late ones saturate. Neither is wrong; there is
    simply no decision recorded. Deciding it (autorange per step vs. fix on the
    final frame) is what makes integrate mode readable rather than merely correct.
-3. **Nothing exports a playback.** The obvious next thing a user asks for after
+7. **Nothing exports a playback.** The obvious next thing a user asks for after
    watching a population move is a GIF/MP4 of it, and the screenshot helper
    (`utils/screenshot_helpers.py`) already grabs a single frame. Stepping it over
    the range and encoding is a small job that has not been done.
-4. **ndX still owes a `?` and a Guide.** It is on
+8. **ndX still owes a `?` and a Guide.** It is on
    `test/plugin_help_guide_allowlist.txt`: no `add_toolbar_help`, no
    `gui/guide.json` anywhere in the module. Every *control* now carries a
    `description` (the playback panel's are in its view spec, and AutoForm turns
@@ -303,12 +330,50 @@ decides only whether its range filters.
    unusable without a tour that says which control to touch first. The playback
    panel is the natural opening step of one, since it is the only control that
    changes what the plot means rather than how it looks.
-5. **Tried and rejected: a fixed window width in seconds.** It was the first
+9. **Tried and rejected: a fixed window width in seconds.** It was the first
    design, and it makes playback duration proportional to acquisition length — a
    three-minute playback of a one-hour measurement and an instant one of a short
    file. A fixed *step count* was chosen instead, so the wall-clock length of a
    playback is the same whatever the file; the width is derived and shown in the
    readout.
+
+## Find informative projections: the views are ranked, not hunted
+
+Under the y picker, **🔎 Find informative projections…** ranks every x/y pair;
+in the z panel, **🔎 Find informative z parameters…** ranks the third axis.
+Clicking a row sets the axes. It is Orange3's VizRank
+([what was taken and how it departs](../references/orange3-adopted.md)); the
+theory of the three scores is `docs/concepts/multidimensional_exploration.md`
+(*ranking the views*), the workflow `docs/guides/46_ndxplorer.md`.
+
+| Piece | Where | What it owns |
+| --- | --- | --- |
+| framework | `ndxplorer/analysis/vizrank.py` | Qt-free `Ranker` / `AttrRanker` / `AttrPairRanker`, `run_vizrank` (score, then check cancel; throttled batches), `ScoreList`, `RunState` |
+| scores | `ndxplorer/analysis/projection_scores.py` | `RankingTable` (one shared subsample, displayed coordinates), `knn_separation`, `correlation`, `cluster_index`, `ProjectionRanker`, `ParameterRanker` |
+| panel | `ndxplorer/ui/vizrank.view.json` + `ui/vizrank_panel.py` | the spec (drawn by `emtk.view_form`, the table a `data_table` section) and `VizRankModel`, which runs on `chisurf.gui.task.run_in_background` and hosts its own progress |
+| wiring | `ndxplorer/ui/projection_rank.py` | `collect_context` (numeric columns, axis settings as views, gates → rows, classes), `ProjectionRankModel`, the controller (buttons, apply, auto-select) |
+
+**What the classes are.** The gate (inside vs outside; all rows ranked), each
+gate as its own population (bursts in exactly one gate), the clusters (noise
+label dropped), and the z parameter (ids when ≤ 10 integer values, else a
+quantity). Without a gate or clustering the panel opens on *population
+structure*: the z parameter is always offered but is no sign the user wants
+separation by it.
+
+**Three traps, each found on the real MFD folder.**
+* A 0/1 fit flag (`BIFL scatter?`, `r0 (green)`) is a perfect 2-means split:
+  every top structure row was one. Structure skips columns with < 20 distinct
+  values.
+* A clump at a fit bound (`rho = 10⁴`, 2.7 %) is also a perfect split; the
+  smaller group must hold ≥ 5 %.
+* Excluding the gated parameter is not enough when a transform of it is a
+  column: `E_tau` separated the τ gate trivially. Columns monotone in a gated
+  one (Spearman |ρ| ≥ 0.98) go too; compound ones still leak (item 1 above).
+
+**A data change discards the panel.** Its settings carry a key over the table
+(`data_version`, columns, axis settings, gate keys); the z parameter and the
+clustering only matter to a ranking separating by them. A stale panel is rebuilt
+when its button is pressed.
 
 ## Playing a measurement back
 
