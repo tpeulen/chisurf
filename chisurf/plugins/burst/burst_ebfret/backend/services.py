@@ -292,7 +292,16 @@ def run_analysis(
     EbfretAnalysis
     """
     items = traces.traces if isinstance(traces, FretTraceSet) else list(traces)
-    return analyse(items, **settings.analyse_kwargs())
+    return analyse(
+        items,
+        min_states=settings.min_states,
+        max_states=settings.max_states,
+        max_iter=settings.max_iter,
+        threshold=settings.threshold,
+        vbem_max_iter=settings.vbem_max_iter,
+        vbem_threshold=settings.vbem_threshold,
+        seed=settings.seed,
+    )
 
 
 def _analysis_to_jsonable(analysis: EbfretAnalysis) -> dict[str, Any]:

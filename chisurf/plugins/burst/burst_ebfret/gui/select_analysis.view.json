@@ -1,0 +1,14 @@
+{
+  "_comment": "The Select dialog of the Traces and SMD exports (@MainWindow/select_analysis.m).",
+  "sections": [
+    {"type": "panel", "title": "Number of States", "sections": [
+      {"type": "choice", "attr": "states", "label": "", "options_source": "state_options",
+       "description": "Which model to export."}
+    ]},
+    {"type": "panel", "title": "Time Series Group", "sections": [
+      {"type": "choice", "attr": "group", "label": "", "options_source": "group_options",
+       "description": "Export every series (all) or one group; for a group the prior is re-estimated from its series."}
+    ]},
+    {"type": "button_row", "buttons": [{"label": "Ok", "action": "ok"}, {"label": "Cancel", "action": "cancel"}]}
+  ]
+}

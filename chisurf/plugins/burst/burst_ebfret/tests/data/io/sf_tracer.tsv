@@ -1,0 +1,6 @@
+background 10 foreground 20 cutoff 3
+region	channel	area	length	background	I1	I2	I3
+0	0	9	3	5	105	106	107
+0	1	9	3	2	202	203	204
+1	0	9	3	1	11	12	13
+1	1	9	3	0	21	22	23

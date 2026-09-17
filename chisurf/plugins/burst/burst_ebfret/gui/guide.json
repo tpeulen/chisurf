@@ -1,0 +1,68 @@
+{
+  "_comment": "Guided tour for the ebFRET window. The window is drawn by emtk, so every target is a TourAnchor (gui/tool.py) kept over the real control and emitting clicked when it is used. Steps point and wait; they never press anything for the user. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this window does",
+      "text": "ebFRET learns the <b>states</b> of a set of smFRET time series — how many there are, their FRET levels, their noise and their dwell times — with a hidden Markov model whose prior is <b>shared by every trace</b> and learned from all of them.<br/><br/>This walk-through loads a simulated dataset whose answer is known (four states at E = 0.10, 0.35, 0.55, 0.75) and runs one analysis. You press the buttons; the tour only points at them.",
+      "target": {},
+      "links": [{"text": "Theory", "doc": "docs/concepts/ebfret.md"}]
+    },
+    {
+      "title": "Load data you can check",
+      "text": "<b>Load demo</b> simulates 40 donor/acceptor traces of a four-state molecule and loads them exactly as <i>File → Load</i> would load a raw <tt>.dat</tt>.",
+      "target": {"action": "Load demo"},
+      "await": {"hint": "Press <b>Load demo</b>."}
+    },
+    {
+      "title": "One series at a time",
+      "text": "The top plot is the signal <tt>E = acceptor / (donor + acceptor)</tt>, the bottom one donor (green) and acceptor (red). After the analysis the most likely state path is drawn over both.",
+      "target": {"name": "ebfret_plot_signal"}
+    },
+    {
+      "title": "Browse the series",
+      "text": "<b>Select Series</b> picks which series is shown. The edit box beside the slider takes a number.",
+      "target": {"name": "ebfret_series_slider"},
+      "await": {"hint": "Drag the slider to another series."}
+    },
+    {
+      "title": "Crop and exclude",
+      "text": "<b>Crop</b> sets the frames of this series that enter the analysis; <b>Exclude</b> leaves it out. For a whole dataset, <i>Analysis → Remove Photo-bleaching</i> and <i>Clip Outliers</i> do this automatically — they are non-destructive and can be run again.",
+      "target": {"name": "ebfret_crop_max"}
+    },
+    {
+      "title": "The priors",
+      "text": "The <b>Ensemble</b> plots show, per state, the distribution of centers, noise and dwell times. Dashed is the <b>prior</b>: loading guessed one from the data. <i>Analysis → Set Priors</i> sets it by hand.",
+      "target": {"name": "ebfret_plot_mean"}
+    },
+    {
+      "title": "How many states to try",
+      "text": "<b>States → Min, Max</b> is the range of state numbers analysed. The demo has four; set <b>Max</b> to <b>5</b> so the run finishes quickly and still tests one state too many. Type it and press Enter.",
+      "target": {"name": "ebfret_max_states"},
+      "await": {"hint": "Type <b>5</b> into <b>Max</b> and press Enter."}
+    },
+    {
+      "title": "Restarts and precision",
+      "text": "<b>Restarts</b> re-initialises each series' fit per iteration (0: continue; 1: plus an uninformative start; more: random starts). <b>Precision</b> is the convergence threshold — 1e-3 to explore, 1e-6 for results you publish.",
+      "target": {"name": "ebfret_restarts"}
+    },
+    {
+      "title": "Run",
+      "text": "<b>Run</b> analyses every number of states from Min to Max (<b>All</b>) on the backend. The window keeps drawing and follows the series and state count being fitted; <b>Stop</b> ends it.",
+      "target": {"name": "ebfret_run"},
+      "await": {"hint": "Press <b>Run</b>. Each state count takes a while; you can go on meanwhile."}
+    },
+    {
+      "title": "Compare the models",
+      "text": "<b>Select States</b> shows the result for each number of states. The solid curves are the average posterior: with four states the centers settle on the simulated levels, with five one state stays nearly empty.",
+      "target": {"name": "ebfret_states_slider"},
+      "await": {"hint": "Move <b>Select States</b> to another number of states."}
+    },
+    {
+      "title": "Keep the result",
+      "text": "<b>File → Save</b> writes the whole session as a <tt>.mat</tt> ebFRET reads; <b>File → Export</b> writes the analysis summary (with the lower bound that decides the number of states), the traces with their Viterbi paths, or an SMD.",
+      "target": {"name": "ebfret_menu_file"},
+      "await": {"hint": "Open the <b>File</b> menu."},
+      "links": [{"text": "Workflow guide", "doc": "docs/guides/20_ebfret_binned_hmm.md"}]
+    }
+  ]
+}

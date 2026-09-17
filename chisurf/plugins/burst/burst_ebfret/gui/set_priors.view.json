@@ -1,0 +1,28 @@
+{
+  "_comment": "Analysis > Set Priors (+ebfret/+ui/+dialog/init_priors.m). Defaults 0 / 1 / 0.05 / 100 and 0.1 / 10 / 10.",
+  "sections": [
+    {"type": "panel", "title": "Number of States", "sections": [
+      {"type": "choice", "attr": "scope", "label": "", "options": ["All", "Current"],
+       "description": "All: set the priors of every number of states from Min to Max. Current: only the selected one."}
+    ]},
+    {"type": "panel", "title": "Expected Parameters", "n_col": 1, "sections": [
+      {"type": "value", "attr": "mu_min", "label": "Min Center", "kind": "float",
+       "description": "Mean signal of the lowest state; the states' centers are spread evenly from Min to Max Center."},
+      {"type": "value", "attr": "mu_max", "label": "Max Center", "kind": "float",
+       "description": "Mean signal of the highest state."},
+      {"type": "value", "attr": "sigma", "label": "Noise", "kind": "float", "minimum": 0,
+       "description": "Expected standard deviation of the signal around a state's center."},
+      {"type": "value", "attr": "tau", "label": "Dwell", "kind": "float", "minimum": 0,
+       "description": "Expected number of frames spent in a state before a transition."}
+    ]},
+    {"type": "panel", "title": "Prior Strength", "n_col": 1, "sections": [
+      {"type": "value", "attr": "count_mu", "label": "Center", "kind": "float", "minimum": 0,
+       "description": "How many observations the center prior is worth. Low values let superfluous states stay empty."},
+      {"type": "value", "attr": "count_sigma", "label": "Noise", "kind": "float", "minimum": 0,
+       "description": "How many observations the noise prior is worth."},
+      {"type": "value", "attr": "count_tau", "label": "Dwell", "kind": "float", "minimum": 0,
+       "description": "How many observations the dwell-time prior is worth."}
+    ]},
+    {"type": "button_row", "buttons": [{"label": "Ok", "action": "ok"}, {"label": "Cancel", "action": "cancel"}]}
+  ]
+}

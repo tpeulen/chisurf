@@ -1,0 +1,14 @@
+{
+  "_comment": "Analysis > Clip Outliers (the inputdlg 'Select Range' of clip_outliers.m), defaults -0.2 / 1.2 / 10.",
+  "sections": [
+    {"type": "panel", "n_col": 1, "sections": [
+      {"type": "value", "attr": "clip_min", "label": "Clip at Minimum:", "kind": "float",
+       "description": "Signal values below this are clipped to it before analysis."},
+      {"type": "value", "attr": "clip_max", "label": "Clip at Maximum:", "kind": "float",
+       "description": "Signal values above this are clipped to it before analysis."},
+      {"type": "value", "attr": "max_outliers", "label": "Exclude when number of Outliers exceeds:", "kind": "int", "minimum": 0,
+       "description": "A series with more points outside the range than this is excluded."}
+    ]},
+    {"type": "button_row", "buttons": [{"label": "OK", "action": "ok"}, {"label": "Cancel", "action": "cancel"}]}
+  ]
+}

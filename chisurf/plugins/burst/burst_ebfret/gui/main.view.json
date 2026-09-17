@@ -1,0 +1,267 @@
+{
+  "_comment": "The control panels of ebFRET's main window (MainWindow.m), declared rather than hand-drawn. Panel titles are the MATLAB uipanel titles; the window frames each panel and draws the plots between them. Tables are ChiSurf additions (the MATLAB window has none): the series list drives Select Series, the state table shows the selected model.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Select Series",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "series_value",
+          "label": "",
+          "kind": "int",
+          "style": "slider",
+          "minimum": 0,
+          "description": "The time series shown in the Time Series panel (ebFRET's IndexControl: edit box and slider). The slider's range is the number of loaded series."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Crop",
+      "n_col": 3,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "crop_min",
+          "label": "Min",
+          "kind": "int",
+          "minimum": 1,
+          "description": "First frame of the current series that enters the analysis. Changing the crop resets this series' result."
+        },
+        {
+          "type": "value",
+          "attr": "crop_max",
+          "label": "Max",
+          "kind": "int",
+          "minimum": 1,
+          "description": "Last frame of the current series that enters the analysis. Frames past it are drawn dashed."
+        },
+        {
+          "type": "toggle",
+          "attr": "exclude",
+          "label": "Exclude",
+          "description": "Leave the current series out of the analysis entirely."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Select States",
+      "sections": [
+        {
+          "type": "value",
+          "attr": "ensemble_value",
+          "label": "",
+          "kind": "int",
+          "style": "slider",
+          "minimum": 1,
+          "description": "The number of states whose model the Ensemble panel and the Viterbi overlay show. Its range is States Min to Max."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "States",
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "min_states",
+          "label": "Min",
+          "kind": "int",
+          "minimum": 1,
+          "description": "Smallest number of states analysed."
+        },
+        {
+          "type": "value",
+          "attr": "max_states",
+          "label": "Max",
+          "kind": "int",
+          "minimum": 1,
+          "description": "Largest number of states analysed."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Analysis",
+      "n_col": 4,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "run_scope",
+          "label": "States",
+          "options": [
+            "All",
+            "Current"
+          ],
+          "description": "All: analyse every number of states from Min to Max. Current: only the one selected in Select States."
+        },
+        {
+          "type": "value",
+          "attr": "restarts",
+          "label": "Restarts",
+          "kind": "int",
+          "minimum": 0,
+          "description": "Re-initialisations of each series' variational fit per iteration. 0 continues from the last result, 1 adds an uninformative start, more add random starts drawn from the prior. 2 suffices for most datasets."
+        },
+        {
+          "type": "value",
+          "attr": "run_precision",
+          "label": "Precision",
+          "kind": "float",
+          "style": "scientific",
+          "decimals": 1,
+          "minimum": 0,
+          "description": "Convergence threshold of the lower bound, relative. 1e-3 for exploring, 1e-6 for results you publish."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Run",
+              "action": "run",
+              "description": "Start the empirical-Bayes analysis on the backend."
+            },
+            {
+              "label": "Stop",
+              "action": "stop",
+              "description": "Stop the running analysis."
+            },
+            {
+              "label": "Reset",
+              "action": "reset",
+              "description": "Discard the result of All/Current and re-guess its prior."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Series List",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "data_table",
+          "description": "Every loaded series; selecting one shows it (Select Series).",
+          "options": {
+            "source": "series_records",
+            "selected_call": "select_series",
+            "editable": false,
+            "height": 240,
+            "columns": [
+              {
+                "key": "index",
+                "title": "#",
+                "tooltip": "Series number",
+                "width": 36
+              },
+              {
+                "key": "label",
+                "title": "Label",
+                "tooltip": "Label read from the file",
+                "width": 56
+              },
+              {
+                "key": "file",
+                "title": "File",
+                "width": 200
+              },
+              {
+                "key": "group",
+                "title": "Group",
+                "tooltip": "One group per load that kept the loaded series",
+                "width": 70
+              },
+              {
+                "key": "length",
+                "title": "Frames",
+                "width": 56
+              },
+              {
+                "key": "crop_min",
+                "title": "Crop min",
+                "width": 66
+              },
+              {
+                "key": "crop_max",
+                "title": "Crop max",
+                "width": 66
+              },
+              {
+                "key": "exclude",
+                "title": "Excluded",
+                "width": 66
+              },
+              {
+                "key": "lowerbound",
+                "title": "Lower bound",
+                "tooltip": "Variational lower bound of this series under the selected model",
+                "width": 90,
+                "format": "%.1f"
+              }
+            ],
+            "row_key": "index",
+            "expand": true,
+            "filter": true
+          }
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "States Table",
+      "sections": [
+        {
+          "type": "table",
+          "source": "state_records",
+          "height": 160,
+          "description": "The selected model per state, as in the Analysis Summary export: occupancy, center, noise and dwell time of the prior.",
+          "columns": [
+            {
+              "key": "state",
+              "label": "State"
+            },
+            {
+              "key": "occupancy",
+              "label": "Occupancy",
+              "description": "Fraction of analysed frames in this state",
+              "display": "bar",
+              "range": [
+                0,
+                1
+              ],
+              "format": "%.3f"
+            },
+            {
+              "key": "center",
+              "label": "Center",
+              "description": "Prior mean of the state's signal",
+              "format": "%.3f"
+            },
+            {
+              "key": "center_std",
+              "label": "Center std",
+              "format": "%.3f"
+            },
+            {
+              "key": "noise",
+              "label": "Noise",
+              "description": "Expected standard deviation 1/sqrt(E[lambda])",
+              "format": "%.3f"
+            },
+            {
+              "key": "dwell",
+              "label": "Dwell",
+              "description": "Most likely dwell time in frames",
+              "format": "%.1f"
+            }
+          ],
+          "expand": true
+        }
+      ]
+    }
+  ]
+}

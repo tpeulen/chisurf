@@ -1,72 +1,84 @@
-# burst_ebfret — empirical-Bayes HMM for binned smFRET traces
+# burst_ebfret — ebFRET, ported
 
-A headless port of [ebFRET](https://github.com/ebfret/ebfret-gui) (van de Meent
-et al.; a re-implementation of vbFRET, Bronson et al. 2009) into ChiSurf. It
-fits a univariate Gaussian-emission hidden Markov model to **binned
-FRET-efficiency time traces** (intensity-vs-time, TIRF-style), the class of data
-ChiSurf previously had no analysis path for. It complements the photon-by-photon
-`burst_h2mm` plugin, which handles confocal photon streams rather than binned
-camera traces.
+A plain port of [ebFRET](https://github.com/ebfret/ebfret-gui) (van de Meent,
+Bronson, Wiggins & Gonzalez, *Biophys. J.* 2014) into ChiSurf: the MATLAB GUI
+and its analysis. Empirical-Bayes hidden Markov analysis of **binned donor/acceptor
+smFRET time series** (TIRF-style intensity-vs-time traces) — the binned-data
+complement to the photon-by-photon `burst_h2mm` plugin.
 
-Porting one binned-trace HMM closes the functional gap behind a whole family of
-TIRF tools listed on fret.community: **ebFRET, vbFRET, HaMMy, and SMACKS**.
+## What is ported
 
-## Method
+| MATLAB | here |
+| --- | --- |
+| `ebfret.ui.MainWindow` — panels, menus, controls, callbacks | `gui/app.py` (emtk window), `gui/main.view.json` (the declared controls), `gui/controls.py`, `core/session.py` (the callbacks, without the window) |
+| `+ui/+dialog/*`, `questdlg`/`inputdlg`/`msgbox`/`uigetfile` | `gui/*.view.json` + `gui/dialogs.py` |
+| `@MainWindow/refresh.m`, `+plot/*` | `core/plots.py`, `core/views.py` |
+| `+analysis/+hmm/*`, `+analysis/+dist/*`, `photobleach_index`, `x_lim` | `core/hmm.py`, `core/dist.py` |
+| `run_ebayes.m` / `run_vbayes.m` | `core/ebayes.py` (loop), `backend/services.py` (runs it in a backend thread) |
+| `+io/*`, session `.mat`, exports | `io.py` |
 
-Two nested loops (single-prior, `D = 1`):
+The window runs as a ChiSurf tool (`gui/tool.py`, Qt only as the host) with a
+**Load demo** action (`demo.py`: a simulated four-state dataset), a guided tour
+(`gui/guide.json`) and help (`gui/help.md`). The GUI holds no data: every action
+is an RPC call (`burst_ebfret.session.*`) on a backend session.
 
-- **Per-trace VBEM** (`core/vbem.py`) — variational-Bayes EM with conjugate
-  Dirichlet priors on the initial-state and transition distributions and a
-  Normal-Gamma prior on each state's `(mean, precision)`. Emission
-  hyper-parameters use ebFRET's `(m, beta, a, b)` convention
-  (`nu = 2a`, `W = 1/(2b)`). Forward-backward uses a linear-domain scaled
-  recursion for speed.
-- **Empirical Bayes** (`core/ebayes.py`) — re-estimates the shared prior from
-  all trace posteriors via conjugate h-step updates (Dirichlet Newton and
-  Normal-Gamma moment-matching, ported from ebFRET's
-  `+dist/+dirichlet/h_step.m` and `+dist/+normgamma/h_step.m`), iterating until
-  the summed variational evidence converges. Tying every trace to one prior is
-  what makes state recovery robust across a heterogeneous population.
+Deliberate differences from the MATLAB program are listed in the OKF concept
+`okf/plugins/burst-ebfret.md`; the main ones: the dark emtk theme, a tables pair
+(View → Series List / States Table) the MATLAB window does not have, SMD ids
+that are MD5 hashes of the values (MATLAB's DataHash cannot be reproduced), and
+a NumPy forward-backward instead of the MEX kernels.
 
-`core/viterbi.py` decodes MAP state paths; `core/analysis.py` scans a range of
-state counts, selects the highest-evidence model, and reports per-state
-emission summaries, a Viterbi transition-count matrix, and dwell segments.
+Not ported, because the GUI never reaches it: the prior-mixture
+(`+hmm/ebayes.m`, which calls functions that no longer exist upstream), the
+soft/hard k-means restarts, the jitter filter, the `+batch` scripts.
 
 ## Validation
 
-Validated against ebFRET's own `simulated-K04-N350` dataset (vendored under
-`tests/data/`). At `K=4` the port recovers `[0.06, 0.34, 0.51, 0.62]`; the two
-well-separated interior states match ebFRET's fitted `[0.33, 0.516]` within
-0.05. The endpoints differ only because this port fits the **uncorrected
-proximity ratio** `acceptor / (donor + acceptor)` in `[0, 1]`, whereas ebFRET
-fits a background-subtracted "signal" whose donor-only level sits near zero
-(so ebFRET reports `-0.006` where this port reports `~0.06`). `K=2` matches
-ebFRET's `[0.30, 0.55]`.
+- `tests/test_octave_ab.py` — the numerical core against ebFRET run under GNU
+  Octave on recorded fixtures (`tests/octave/make_fixtures.m`): e-step,
+  forward-backward, m-step, KL, VBEM lower-bound traces, Viterbi paths, priors,
+  h-steps and the report agree to ≲1e-11; three empirical-Bayes iterations to
+  1.5e-14 in the lower bound.
+- `tests/test_io.py` — the file formats against Octave and against the files
+  MATLAB wrote for `simulated-K04-N350` (traces export byte-identical; SMD
+  identical but for ids and the version string; the MATLAB session loads and
+  re-saves unchanged).
+- `tests/test_session.py`, `tests/test_services.py`, `tests/test_gui.py`,
+  `tests/test_tool_qt.py` — the workflow, the RPC layer, the emtk window driven
+  by clicks, and the Qt host with its tour anchors.
 
 ## Usage
 
-CLI:
+GUI: **Spectroscopy → Single-Molecule → ebFRET**, then **Guide**.
 
-```bash
-ebfret compute path/to/stacked.dat --min-states 2 --max-states 4 --limit 80
-```
-
-The input is an ebFRET "stacked" `.dat`: whitespace-delimited
-`[trace_id, donor, acceptor]`, traces concatenated and grouped by id. Python:
+Python:
 
 ```python
-from chisurf.plugins.burst.burst_ebfret.io import load_stacked_dat
-from chisurf.plugins.burst.burst_ebfret.core.analysis import analyse
+from chisurf.plugins.burst.burst_ebfret.core.session import Session, RAW
 
-traces = load_stacked_dat("stacked.dat")
-result = analyse(traces, min_states=2, max_states=4)
-print(result.n_states, result.state_means)
+session = Session(seed=1)
+session.load_data(["stacked.dat"], RAW)
+for event in session.run_ebayes(should_stop=lambda: False):
+    pass
+session.export_summary("summary.csv")
 ```
 
-## Scope / status
+CLI: `ebfret compute stacked.dat --min-states 2 --max-states 4`.
 
-Experimental. Implemented: single-prior `D = 1` VBEM + empirical Bayes, Viterbi,
-K-scan, CLI, RPC compute service. **Not yet** implemented: the prior-mixture
-(subpopulation) path, VBEM restarts, SMD/session import/export, and a GUI tool.
-Loader currently covers the ebFRET stacked `.dat` format; other trace importers
-(SMD, generic CSV) are straightforward follow-ups.
+## Licence of the ported code
+
+ebFRET is MIT-licensed: Copyright (c) 2013 Jan-Willem van de Meent, Sakellarios
+Zairis. Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions: The above copyright notice and
+this permission notice shall be included in all copies or substantial portions
+of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

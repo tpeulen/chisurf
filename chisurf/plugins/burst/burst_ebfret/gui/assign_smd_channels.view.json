@@ -1,0 +1,13 @@
+{
+  "_comment": "File > Load of an SMD, the Assign Channels dialog (+ebfret/+ui/+dialog/assign_smd_channels.m).",
+  "sections": [
+    {"type": "panel", "n_col": 1, "sections": [
+      {"type": "choice", "attr": "signal_type", "label": "Signal Type", "options": ["Donor-Acceptor", "FRET"],
+       "description": "Donor-Acceptor: compute the signal from two columns. FRET: take the signal from one column."},
+      {"type": "choice", "attr": "donor", "label": "Donor", "options_source": "column_labels", "description": "Column holding the donor intensity."},
+      {"type": "choice", "attr": "acceptor", "label": "Acceptor", "options_source": "column_labels", "description": "Column holding the acceptor intensity."},
+      {"type": "choice", "attr": "fret", "label": "FRET", "options_source": "column_labels", "description": "Column holding the FRET signal."}
+    ]},
+    {"type": "button_row", "buttons": [{"label": "Ok", "action": "ok"}, {"label": "Cancel", "action": "cancel"}]}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "_comment": "File > Export > Traces, the Channels dialog (+ebfret/+ui/+dialog/select_channels.m): all ticked by default.",
+  "sections": [
+    {"type": "panel", "n_col": 1, "sections": [
+      {"type": "toggle", "attr": "donor", "label": "Donor", "description": "Donor intensity column."},
+      {"type": "toggle", "attr": "acceptor", "label": "Acceptor", "description": "Acceptor intensity column."},
+      {"type": "toggle", "attr": "fret", "label": "FRET", "description": "FRET signal column."},
+      {"type": "toggle", "attr": "viterbi_state", "label": "Viterbi State", "description": "Most likely state number per frame."},
+      {"type": "toggle", "attr": "viterbi_mean", "label": "Viterbi Mean", "description": "Center of the most likely state per frame."}
+    ]},
+    {"type": "button_row", "buttons": [{"label": "Ok", "action": "ok"}, {"label": "Cancel", "action": "cancel"}]}
+  ]
+}

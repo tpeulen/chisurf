@@ -21,7 +21,7 @@ Everything here is maximum-likelihood: parameters are estimated by the
 Baum-Welch (EM) algorithm, with optional conjugate priors that act as
 regularisers rather than as a full Bayesian treatment. The variational-Bayes
 counterpart used for empirical-Bayes FRET analysis lives in the ebFRET plugin
-(``chisurf/plugins/burst/burst_ebfret/core/vbem.py``); the photon-by-photon
+(``chisurf/plugins/burst/burst_ebfret/core/hmm.py``); the photon-by-photon
 variant is H2MM.
 
 The forward-backward recursions run in log space, so long traces do not

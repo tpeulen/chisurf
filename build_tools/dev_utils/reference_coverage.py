@@ -103,7 +103,9 @@ _VALUE = re.compile(
 )
 _TAKEN = re.compile(r"CHISURF-TAKEN:\s*(?P<text>.+)")
 _SKIPPED = re.compile(r"CHISURF-SKIPPED:\s*(?P<text>.+)")
-_SUFFIXES = {".cpp", ".c", ".h", ".py", ".txt"}
+#: ``.m``: MATLAB references (ebFRET, PAM, MASH-FRET) are read and annotated like
+#: any other, and without it their headers never reached the coverage figure.
+_SUFFIXES = {".cpp", ".c", ".h", ".py", ".txt", ".m"}
 
 #: What the ranks mean. A file is ranked for *ChiSurf*, not in the abstract:
 #: the question is always "what would reading this buy the viewer".
