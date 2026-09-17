@@ -14,6 +14,7 @@ ParseFCSModel = for_catalogue(
     pathlib.Path(__file__).parent / "models.yaml",
     name="Parse-Model",
     module=__name__,
+    view=pathlib.Path(__file__).parent / "parse.view.json",
     reference_modes=("fcs_diffusion", "fcs_molecules"),
 )
 

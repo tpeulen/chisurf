@@ -1062,8 +1062,12 @@ class InfoWidget(QtWidgets.QTextBrowser):
         """
         source = getattr(self._section, "source", "")
         if source:
-            value = getattr(self._model, source, None)
-            if value is None and not hasattr(self._model, source):
+            from chisurf.gui.autoform.state import _resolve_owner
+
+            path, _, name = source.rpartition(".")
+            owner = _resolve_owner(self._model, path)
+            value = getattr(owner, name, None)
+            if value is None and not hasattr(owner, name):
                 logging.warning(
                     f"InfoWidget: source {source!r} not found on {type(self._model).__name__}"
                 )

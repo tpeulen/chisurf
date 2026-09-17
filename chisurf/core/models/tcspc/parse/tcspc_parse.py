@@ -16,6 +16,7 @@ ParseDecayModel = for_catalogue(
     pathlib.Path(__file__).parent / "tcspc_model.yaml",
     name="Parse-Model",
     module=__name__,
+    view=pathlib.Path(__file__).parent / "parse_decay.view.json",
     frame="equations_convolved",
 )
 

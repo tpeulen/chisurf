@@ -1,0 +1,66 @@
+{
+  "_comment": "Editor layout for the Parse model over an FCS correlation-curve equation. The equation catalogue lives in core (ParseModel.catalogue), so the picker is a plain `choice` over `catalogue_names` writing `model_name` -- no bespoke section. `rebuild_on_change` matters: a different equation has different parameters, so the table below must be rebuilt, not refreshed. ",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Equation",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "model_name",
+          "label": "Model",
+          "options_source": "catalogue_names",
+          "rebuild_on_change": true,
+          "description": "Pick an equation from the catalogue; its initial parameter values are applied with it."
+        },
+        {
+          "type": "value",
+          "attr": "func",
+          "kind": "expression",
+          "label": "f(x)",
+          "description": "The equation, in Python syntax. Every free name becomes a fitted parameter. Committed when you leave the field."
+        },
+        {
+          "type": "info",
+          "source": "description",
+          "is_markdown": false,
+          "max_height": 90
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Equation parameters",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "parameters_source": "_parameters_equation",
+          "collapsible": false,
+          "description": "One row per free name in the equation."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "line",
+      "options": {}
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
+  ]
+}

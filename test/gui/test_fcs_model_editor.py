@@ -415,6 +415,17 @@ def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
     assert "MDF" in infos[0].toPlainText()
 
 
+def test_an_info_source_on_a_group_resolves(qapp):
+    """``saturation.status_html`` names a group's method; it rendered an empty box."""
+    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
+    from chisurf.gui.autoform.sections.builtin import InfoWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    editor = build_model_editor(_make_fcs_fit(FCSKineticsModel).model)
+    texts = [i.toPlainText() for i in editor.findChildren(InfoWidget)]
+    assert any("no saturation" in t for t in texts)
+
+
 def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
     """Regression: dynamic_group add/remove must refresh_plots(), not just its own table.
 

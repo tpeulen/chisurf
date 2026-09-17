@@ -11,6 +11,8 @@ per load, which is Python by design (nothing here runs per iteration).
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 
 import chisurf as cs
@@ -70,6 +72,8 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
     """FRET: structure fit -- the fractions of an ensemble of PDB structures."""
 
     name = "FRET: Structure fit"
+    #: The classic structure editor: the TCSPC panels, the labels and the ensemble.
+    view_file = pathlib.Path(__file__).parent / "fret_structure.view.json"
 
     def __init__(self, fit, **kwargs):
         labels = {k: kwargs.pop(k) for k in list(kwargs) if k in LABEL_DEFAULTS}
@@ -78,6 +82,7 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         self.__dict__["_structure_files"] = []
         self.names = []
         self.set_port_values("distance_axis", self.rda_axis)
+        self._bind_empty_ensemble()
         threshold = cs.core.settings.cs_settings.get("tcspc", {}).get("threshold", 0.001)
         self.set_scalar("distribution_threshold", float(threshold))
 
@@ -101,13 +106,28 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
             return
         super().__setattr__(name, value)
 
+    def _bind_empty_ensemble(self) -> None:
+        """An empty ensemble is no FRET: one all-zero distribution stands in for it.
+
+        The family reads at least one distribution, and without one BFF builds
+        no model -- the editor showed no donor, FRET, IRF or anisotropy rows
+        until a PDB was loaded, where the classic structure model showed them all.
+        """
+        if not self.names and not self.source_models:
+            self.append_values(np.zeros(len(self.rda_axis)), name="no structures")
+
+    def _fraction_parameter_rows(self) -> list:
+        """One fraction per loaded structure; the empty ensemble's stand-in has none."""
+        return super()._fraction_parameter_rows()[: len(self.names)]
+
     def append(self, structure, amplitude: float = 1.0, **labels) -> None:
         """Add one structure's distance distribution to the ensemble."""
         self._labels.update({k: v for k, v in labels.items() if k in LABEL_DEFAULTS})
         name = getattr(structure, "name", f"structure {len(self.names) + 1}")
-        self.append_values(
-            av_distance_distribution(structure, self.rda_axis, **self._labels), name=name
-        )
+        distribution = av_distance_distribution(structure, self.rda_axis, **self._labels)
+        if not self.names and self.source_models:
+            self.clear_sources()
+        self.append_values(distribution, name=name)
         self.names.append(name)
         problem = self.problem
         if problem is not None:
@@ -121,10 +141,12 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
         if self.names:
             self.names.pop()
             self.pop_model()
+            self._bind_empty_ensemble()
 
     def clear(self) -> None:
         self.names = []
         self.clear_sources()
+        self._bind_empty_ensemble()
 
     @property
     def structure_files(self) -> list:
@@ -149,57 +171,6 @@ class FRETStructure(for_family("tcspc_fret_tabulated")):
                 cs.logging.warning(f"FRETStructure: could not load {path!r} ({error}); skipped")
                 continue
             self._structure_files.append(str(path))
-
-    def view_spec(self):
-        from chisurf.core.models import view_spec as vs
-
-        spec = super().view_spec()
-
-        def label(k, title):
-            return vs.PanelSection(
-                title=title,
-                sections=tuple(
-                    vs.ValueSection(label=text, kind=kind, attr=f"{key}_{k}")
-                    for key, text, kind in (
-                        ("res", "Residue", "int"),
-                        ("atom_name", "Atom", "str"),
-                        ("linker_length", "Linker length", "float"),
-                        ("linker_width", "Linker width", "float"),
-                        ("radius1", "Radius 1", "float"),
-                        ("radius2", "Radius 2", "float"),
-                        ("radius3", "Radius 3", "float"),
-                    )
-                ),
-            )
-
-        extra = (
-            vs.PanelSection(
-                title="Labels / AV",
-                sections=(
-                    label(1, "Donor label"),
-                    label(2, "Acceptor label"),
-                    vs.ValueSection(
-                        label="Resolution", kind="float", attr="simulation_grid_resolution"
-                    ),
-                ),
-            ),
-            vs.PanelSection(
-                title="Structures",
-                sections=(
-                    vs.CustomSection(
-                        key="path_list",
-                        target="structure_files",
-                        options={
-                            "extensions": [".pdb"],
-                            "add_folders": True,
-                            "dialog_filter": "PDB files (*.pdb)",
-                            "title": "PDB ensemble",
-                        },
-                    ),
-                ),
-            ),
-        )
-        return vs.ModelView(sections=tuple(spec.sections) + extra, plots=spec.plots)
 
     def get_state(self) -> dict:
         state = super().get_state()

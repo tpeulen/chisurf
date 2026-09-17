@@ -250,9 +250,11 @@ ics:
       controller_params: {}
   models:
     # One model over the spatiotemporal carpet G(xi, psi, Delta); RICS, STICS,
-    # TICS and iMSD are readings of it rather than separate models.
-    # One catalogue (ics/models.yaml): 3D, membrane and 2D-Gaussian carpets compete on BIC.
+    # TICS and iMSD are readings of it rather than separate models. The 3D and
+    # membrane carpets compete on BIC; the 2D Gaussian that sizes structures has
+    # its own editor, as it always had. Both read one catalogue (ics/models.yaml).
     - chisurf.core.models.ics.ics.ImageCorrelationModel
+    - chisurf.core.models.ics.ics.IcsGaussian2DModel
 
 mfd:
   readers:

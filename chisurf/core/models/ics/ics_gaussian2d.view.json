@@ -1,0 +1,70 @@
+{
+  "_comment": "Anisotropic 2D-Gaussian ICS model (IcsGaussian2DModel; PAM 2D_Gaussian_2Sigmas_Angle_Cor). Pure spatial structure sizing.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Anisotropic Gaussian (2 sigma + angle)",
+      "collapsible": true,
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "target": "gaussian",
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Imaging (pixel size)",
+      "collapsible": true,
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "target": "imaging",
+          "collapsible": false
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "residual2d",
+      "options": {
+        "sources": {
+          "Residual": {
+            "accessor": "chisurf.core.models.grid_images:get_grid_residual_image",
+            "accessor_kwargs": {
+              "weighted": true,
+              "frame_index": 0
+            }
+          },
+          "Data": {
+            "accessor": "chisurf.core.models.grid_images:get_grid_data_image",
+            "accessor_kwargs": {
+              "frame_index": 0
+            }
+          },
+          "Model": {
+            "accessor": "chisurf.core.models.grid_images:get_grid_model_image",
+            "accessor_kwargs": {
+              "frame_index": 0
+            }
+          }
+        },
+        "frame_kw": "frame_index",
+        "max_frames_accessor": "chisurf.core.models.grid_images:get_grid_n_frames",
+        "frame_label": "Frame lag Δ"
+      }
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    }
+  ]
+}

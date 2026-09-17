@@ -11,7 +11,10 @@ import pathlib
 from chisurf.core.models.description import for_catalogue
 
 ParsePCFModel = for_catalogue(
-    pathlib.Path(__file__).parent / "models.yaml", name="Parse-Model", module=__name__
+    pathlib.Path(__file__).parent / "models.yaml",
+    name="Parse-Model",
+    module=__name__,
+    view=pathlib.Path(__file__).parent / "parse.view.json",
 )
 
 __all__ = ["ParsePCFModel"]

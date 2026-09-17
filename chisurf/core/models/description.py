@@ -66,6 +66,18 @@ class DescriptionParameter(FittingParameter):
         self._port.fixed = was
 
     @property
+    def bounds_on(self) -> bool:
+        """Whether a bound applies: BFF marks every port bounded, an infinite pair bounds nothing."""
+        if not self._port.bounded:
+            return False
+        low, high = self.bounds
+        return not (np.isinf(float(low)) and np.isinf(float(high)))
+
+    @bounds_on.setter
+    def bounds_on(self, v: bool) -> None:
+        self._port.bounded = bool(v)
+
+    @property
     def fixed(self) -> bool:
         return bool(self._port.fixed)
 
@@ -342,6 +354,12 @@ class DescriptionModel(ModelCurve):
     family: str = ""
     #: A ChiSurf equation catalogue this model is built from, if any.
     catalogue_path = None
+    #: An authored editor for this model class (a catalogue's own view file).
+    view_file = None
+    #: The catalogue equations this class offers (all of them when empty).
+    catalogue_entries: typing.Tuple[str, ...] = ()
+    #: Editor labels by parameter id, beside the layout's (a catalogue's own symbols).
+    parameter_labels: typing.Dict[str, str] = {}
     #: Plot normalisations offered beside the description's own (see `for_catalogue`).
     reference_modes: typing.Tuple[str, ...] = ()
     name = "BFF model"
@@ -361,6 +379,18 @@ class DescriptionModel(ModelCurve):
     @property
     def catalogue_names(self) -> typing.List[str]:
         return list(self._catalogue)
+
+    @property
+    def description(self) -> str:
+        """What the selected catalogue equation describes."""
+        entry = self._catalogue.get(self.model_name) or {}
+        text = entry.get("description") if isinstance(entry, dict) else None
+        return str(text) if text else "No description!"
+
+    def _parameters_equation(self) -> list:
+        """The parameters the selected equation reads (the classic parse editor's table)."""
+        group = next((g for g in self._groups.values() if g.key == "equation"), None)
+        return group.visible_parameters() if group is not None else []
 
     @property
     def model_name(self) -> str:
@@ -410,7 +440,11 @@ class DescriptionModel(ModelCurve):
         self.__dict__["_spec"] = _bff.ModelSearchSpec.from_name(family)
         self.__dict__["_catalogue"] = {}
         if catalogue_path:
-            self.__dict__["_catalogue"] = _read_catalogue(catalogue_path)
+            catalogue = _read_catalogue(catalogue_path)
+            entries = type(self).catalogue_entries
+            if entries:
+                catalogue = {k: v for k, v in catalogue.items() if k in entries}
+            self.__dict__["_catalogue"] = catalogue
             self._spec.set_equations(json.dumps(self._catalogue))
         self.__dict__["_bound_primary"] = None
         super().__init__(fit, **kwargs)
@@ -691,6 +725,7 @@ class DescriptionModel(ModelCurve):
         symbols = {
             **layout.get("labels", {}),
             **layout.get("family_labels", {}).get(self.family, {}),
+            **type(self).parameter_labels,
         }
         by_group: typing.Dict[str, list] = {}
         known = {p.canonical_id: p for g in self._groups.values() for p in g.parameters_all}
@@ -754,6 +789,8 @@ class DescriptionModel(ModelCurve):
         from chisurf.core.models import view_spec as vs
 
         authored = pathlib.Path(__file__).parent / "views" / f"{self.family}.view.json"
+        if type(self).view_file:
+            authored = pathlib.Path(type(self).view_file)
         if authored.is_file():
             return vs.load_view_spec(authored)
         layout = _layout_for(self.family)
@@ -1811,6 +1848,10 @@ def for_catalogue(
     module: typing.Optional[str] = None,
     frame: str = "equations",
     reference_modes: typing.Sequence[str] = (),
+    view=None,
+    entries: typing.Sequence[str] = (),
+    labels: typing.Optional[typing.Mapping[str, str]] = None,
+    mixins: typing.Sequence[type] = (),
 ) -> type:
     """The model class ChiSurf lists for one equation catalogue.
 
@@ -1827,7 +1868,8 @@ def for_catalogue(
     import pathlib
 
     path = pathlib.Path(path).resolve()
-    cls = _FAMILIES.get(f"{frame}:{path}")
+    key = f"{frame}:{path}:{','.join(entries)}"
+    cls = _FAMILIES.get(key)
     if cls is None:
         attributes = {
             "catalogue_path": path,
@@ -1837,8 +1879,19 @@ def for_catalogue(
         }
         if name:
             attributes["name"] = name
-        cls = type(f"EquationModel_{path.parent.name}", (DescriptionModel,), attributes)
-        _FAMILIES[f"{frame}:{path}"] = cls
+        if view is not None:
+            attributes["view_file"] = pathlib.Path(view).resolve()
+        if entries:
+            attributes["catalogue_entries"] = tuple(entries)
+        if labels:
+            attributes["parameter_labels"] = dict(labels)
+        bases: typing.Tuple[type, ...] = (*mixins, DescriptionModel)
+        if (_layout_for(frame) or {}).get("classic_editor"):
+            from chisurf.core.models.tcspc.classic_editor import ClassicTCSPCEditor
+
+            bases = (ClassicTCSPCEditor, *bases)
+        cls = type(f"EquationModel_{path.parent.name}", bases, attributes)
+        _FAMILIES[key] = cls
     return cls
 
 

@@ -2081,33 +2081,37 @@ class FitGroup(Fit):
             for f in fit:
                 f.model.find_parameters()
             fit._model.find_parameters()
-            fitting_options = _leastsq_options(cs.core.settings.optimization["leastsq"])
-            bounds = [pi.bounds for pi in fit._model.parameters]
-            progress_callback = staged.stage(staged.n_stages - 1)
-            # Nothing about the structure changes while the optimiser runs, so
-            # the free-parameter lists are resolved once instead of per call.
-            with cs.core.fitting.factorgraph.frozen_structure(fit):
-                # The same C++ optimiser as a member fit, and -- when every
-                # member is a model bff can compile -- the same whole-graph
-                # arrangement: one `Expression -> ChiSquared` per member under
-                # one `JointChiSquared`, with the shared parameters as port
-                # links. The group's residual is its members' end to end,
-                # which is what `GlobalFitModel.weighted_residuals`
-                # concatenates, so the objective is the same one and nothing
-                # crosses the boundary per iteration. A group with a member
-                # the graph cannot represent is refused *whole* and falls back
-                # to scipy: half a group in C++ still pays the crossing.
-                cs.core.fitting.minimizer.minimize(
-                    func=get_wres,
-                    x0=fit._model.parameter_values,
-                    args=(fit._model, True),
-                    bounds=bounds,
-                    progress_callback=progress_callback,
-                    n_free=fit._model.n_free,
-                    fit=fit,
-                    model=fit._model,
-                    **fitting_options,
-                )
+            # Nothing free is nothing to optimise (a MaxEnt member solves its
+            # distribution in its own update), and BFF's minimiser refuses an
+            # empty parameter vector -- as in Fit.run.
+            if fit._model.n_free > 0:
+                fitting_options = _leastsq_options(cs.core.settings.optimization["leastsq"])
+                bounds = [pi.bounds for pi in fit._model.parameters]
+                progress_callback = staged.stage(staged.n_stages - 1)
+                # Nothing about the structure changes while the optimiser runs, so
+                # the free-parameter lists are resolved once instead of per call.
+                with cs.core.fitting.factorgraph.frozen_structure(fit):
+                    # The same C++ optimiser as a member fit, and -- when every
+                    # member is a model bff can compile -- the same whole-graph
+                    # arrangement: one `Expression -> ChiSquared` per member under
+                    # one `JointChiSquared`, with the shared parameters as port
+                    # links. The group's residual is its members' end to end,
+                    # which is what `GlobalFitModel.weighted_residuals`
+                    # concatenates, so the objective is the same one and nothing
+                    # crosses the boundary per iteration. A group with a member
+                    # the graph cannot represent is refused *whole* and falls back
+                    # to scipy: half a group in C++ still pays the crossing.
+                    cs.core.fitting.minimizer.minimize(
+                        func=get_wres,
+                        x0=fit._model.parameter_values,
+                        args=(fit._model, True),
+                        bounds=bounds,
+                        progress_callback=progress_callback,
+                        n_free=fit._model.n_free,
+                        fit=fit,
+                        model=fit._model,
+                        **fitting_options,
+                    )
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled

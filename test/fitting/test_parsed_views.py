@@ -21,7 +21,7 @@ import chisurf.core.data
 import chisurf.core.fitting.fit as F
 from chisurf.core.experiments.ics.data import carpet_coordinates
 from chisurf.core.models.fcs.parse import ParseFCSModel
-from chisurf.core.models.ics.ics import ImageCorrelationModel
+from chisurf.core.models.ics.ics import IcsGaussian2DModel, ImageCorrelationModel
 from chisurf.core.models.pcf.parse import ParsePCFModel
 from chisurf.core.models.stopped_flow.parse import ParseStoppedFlowModel
 
@@ -62,7 +62,7 @@ def test_every_catalogue_entry_reproduces_the_classic_curve(label):
         np.testing.assert_allclose(model.y, entry["y"], rtol=1e-9, atol=1e-12, err_msg=key)
 
 
-def _carpet_fit(record, y=None):
+def _carpet_fit(record, y=None, model_class=ImageCorrelationModel):
     meta = {k: (np.asarray(v) if isinstance(v, list) else v) for k, v in record["meta"].items()}
     y = np.asarray(record["y"]) if y is None else y
     frames = int(np.atleast_1d(meta.get("frame_lags", [0])).size)
@@ -77,22 +77,22 @@ def _carpet_fit(record, y=None):
         "order": "C",
     }
     data.meta_data["parameter_defaults"] = {"pxl_size": 40.0}
-    fit = F.Fit(model_class=ImageCorrelationModel, data=data)
+    fit = F.Fit(model_class=model_class, data=data)
     fit.xmin, fit.xmax = 0, y.size
     return fit
 
 
 @pytest.mark.parametrize(
-    "record, entry",
+    "record, entry, model_class",
     [
-        ("image_correlation_3d", "Image correlation (3D)"),
-        ("image_correlation_2d", "Image correlation (2D membrane)"),
-        ("gaussian_2d", "2D Gaussian (2 sigma + angle)"),
+        ("image_correlation_3d", "Image correlation (3D)", ImageCorrelationModel),
+        ("image_correlation_2d", "Image correlation (2D membrane)", ImageCorrelationModel),
+        ("gaussian_2d", "2D Gaussian (2 sigma + angle)", IcsGaussian2DModel),
     ],
 )
-def test_the_carpet_equations_reproduce_the_classic_carpets(record, entry):
+def test_the_carpet_equations_reproduce_the_classic_carpets(record, entry, model_class):
     reference = REFERENCE["ics"][record]
-    fit = _carpet_fit(reference)
+    fit = _carpet_fit(reference, model_class=model_class)
     model = fit.model
     problem = model.problem
     assert problem is not None, model.missing

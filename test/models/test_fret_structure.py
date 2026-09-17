@@ -67,3 +67,14 @@ def test_a_classic_project_reopens_with_its_structures():
     model.set_state(classic_state)
     assert model.res_1 == 18 and model.atom_name_2 == "CB"
     assert model.structure_files == [str(PDBS / "hGBP1_closed.pdb")]
+
+
+def test_without_structures_the_model_has_every_parameter_and_no_fret():
+    """An empty ensemble is no FRET, not an incomplete model: the editor shows every row."""
+    model = fret_structure.FRETStructure(fit=_fit())
+    model.find_parameters()
+    names = {p.name for p in model.parameters_all}
+    assert {"tD0", "R0", "kappa2", "r0", "g", "background", "irf width"} <= names
+    assert model._fraction_parameter_rows() == []
+    model.load_structures(["no-such-file.pdb"])
+    assert model.names == [] and model.problem is not None

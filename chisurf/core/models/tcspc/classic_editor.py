@@ -812,6 +812,52 @@ class ClassicTCSPCEditor:
         if "dye_linker" in self.scalar_names():
             self.set_scalar("dye_linker", 1.0 if value else 0.0)
 
+    # -- acceptor density ------------------------------------------------------
+    @property
+    def dimension(self):
+        """Dimensionality of an acceptor-density model: the structure's ``dim`` axis."""
+        axes = self._structure_axes(self.structure) if self.problem is not None else {}
+        if "dim" in axes:
+            return int(axes["dim"])
+        if "dimension" in self.scalar_names():
+            return int(self.get_scalar("dimension") or 0)
+        return None
+
+    @dimension.setter
+    def dimension(self, value) -> None:
+        wanted = int(value)
+        for key in self._spec.get_structure_keys():
+            if self._structure_axes(key).get("dim") == wanted:
+                self.structure = key
+                return
+        if "dimension" in self.scalar_names():
+            self.set_scalar("dimension", float(wanted))
+
+    def _density_parameter_rows(self) -> list:
+        # R0 is shown although the decay does not read it: it turns C/C0 into the
+        # absolute density of the readout below.
+        by_id = {getattr(p, "canonical_id", None): p for p in self.parameters_all}
+        ids = ("acceptor.c_over_c0", "fret.tau0", "fret.forster_radius")
+        return [by_id[i] for i in ids if i in by_id]
+
+    def derived_html(self) -> str:
+        """E and the absolute acceptor density, as the classic editor showed them."""
+        try:
+            e = self._presented_number("fret_efficiency")
+            rho = self._presented_number("acceptor_density")
+            d = self.dimension
+        except Exception:
+            return "<i>not computed</i>"
+        return f"<b>E</b> = {e:.3f} &nbsp;&nbsp; <b>density</b> = {rho:.3e} &#8491;<sup>-{d}</sup>"
+
+    # -- a structure ensemble ------------------------------------------------------
+    def _fraction_parameter_rows(self) -> list:
+        """The per-structure fractions, one per row (the loaded files decide how many)."""
+        group = next(
+            (g for g in self.__dict__.get("_groups", {}).values() if g.key == "distances"), None
+        )
+        return group.component_parameters() if group is not None else []
+
     # -- distributions as the classic distribution plot reads them -----------
     @property
     def distance_distribution(self) -> np.ndarray:

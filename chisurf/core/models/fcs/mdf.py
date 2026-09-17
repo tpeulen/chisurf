@@ -59,13 +59,20 @@ class MdfPhysical(FittingParameterGroup):
         """Initialize the free physical parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_mdf.N"
+            value=1.0,
+            name="N",
+            lb=1e-6,
+            ub=1e9,
+            bounds_on=True,
+            fixed=False,
+            registry_id="fcs_mdf.N",
         )
         self._D = FittingParameter(
             value=300.0,
             name="D",
             lb=1e-3,
             ub=1e5,
+            bounds_on=True,
             fixed=False,
             label_text="D[µm²/s]",
             registry_id="fcs_mdf.D",
@@ -75,6 +82,7 @@ class MdfPhysical(FittingParameterGroup):
             name="w0",
             lb=10.0,
             ub=5000.0,
+            bounds_on=True,
             fixed=False,
             label_text="w<sub>0</sub>[nm]",
             registry_id="fcs_mdf.w0",
@@ -84,6 +92,7 @@ class MdfPhysical(FittingParameterGroup):
             name="wem",
             lb=10.0,
             ub=5000.0,
+            bounds_on=True,
             fixed=False,
             label_text="w<sub>em</sub>[nm]",
             registry_id="fcs_mdf.wem",

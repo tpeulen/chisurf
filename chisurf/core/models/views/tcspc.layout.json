@@ -1,7 +1,8 @@
 {
   "_comment": "How ChiSurf lays out the editor of a BFF-described TCSPC model: the panels the classic lifetime editor had (Convolution, Generic, Corrections, then the model's own groups, Anisotropy). Layout and labels only; what a family consists of is its BFF description. A family is laid out by this file when its name starts with a listed prefix. {n} in a label is the component number, counted from 1. scalar_labels shortens the description's labels for the compact panels. curves are drawn beside the model: a bound measurement at its own height, or else the node that models it. classic_editor mixes in the groups the classic view files address (chisurf.core.models.tcspc.classic_editor); names overrides the menu name of a family.",
   "applies_to": [
-    "tcspc_"
+    "tcspc_",
+    "equations_convolved"
   ],
   "labels": {
     "lifetime.amplitude": "x<sub>L,{n}</sub>",
@@ -36,7 +37,8 @@
     "maxent.log10_nu": "log&#8321;&#8320;(&nu;)",
     "maxent.grid_from": "&tau;<sub>min</sub>",
     "maxent.grid_to": "&tau;<sub>max</sub>",
-    "maxent.grid_bins": "&tau; bins"
+    "maxent.grid_bins": "&tau; bins",
+    "acceptor.c_over_c0": "C/C<sub>0</sub>"
   },
   "panels": [
     {
@@ -190,6 +192,10 @@
       "maxent.grid_from": "r<sub>min</sub>",
       "maxent.grid_to": "r<sub>max</sub>",
       "maxent.grid_bins": "r bins"
+    },
+    "tcspc_fret_acceptor_density": {
+      "fret.tau0": "&tau;<sub>D(0)</sub> [ns]",
+      "fret.forster_radius": "R<sub>0</sub> [&#8491;]"
     }
   }
 }
