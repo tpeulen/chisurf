@@ -321,7 +321,9 @@ def test_add_and_del_change_the_components_and_the_switches_write_scalars(qapp, 
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(lifetime_model)
-    buttons = {b.text(): b for b in w.findChildren(QtWidgets.QToolButton) if b.text() in ("add", "del")}
+    buttons = {
+        b.text(): b for b in w.findChildren(QtWidgets.QToolButton) if b.text() in ("add", "del")
+    }
     assert set(buttons) == {"add", "del"}
     assert lifetime_model.structure == "lifetime.components.1"
     buttons["add"].click()

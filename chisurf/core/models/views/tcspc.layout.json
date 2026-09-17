@@ -1,15 +1,15 @@
 {
-  "_comment": "How ChiSurf lays out the editor of a BFF-described TCSPC model: the panels the classic lifetime editor had (Convolution, Generic, Corrections, then the model's own groups, Anisotropy). Layout and labels only; what a family consists of is its BFF description. A family is laid out by this file when its name starts with a listed prefix. {n} in a label is the component number, counted from 1. scalar_labels shortens the description's labels for the compact panels. curves are drawn beside the model: a bound measurement at its own height, or else the node that models it.",
+  "_comment": "How ChiSurf lays out the editor of a BFF-described TCSPC model: the panels the classic lifetime editor had (Convolution, Generic, Corrections, then the model's own groups, Anisotropy). Layout and labels only; what a family consists of is its BFF description. A family is laid out by this file when its name starts with a listed prefix. {n} in a label is the component number, counted from 1. scalar_labels shortens the description's labels for the compact panels. curves are drawn beside the model: a bound measurement at its own height, or else the node that models it. classic_editor mixes in the groups the classic view files address (chisurf.core.models.tcspc.classic_editor); names overrides the menu name of a family.",
   "applies_to": [
     "tcspc_"
   ],
   "labels": {
     "lifetime.amplitude": "x<sub>L,{n}</sub>",
     "lifetime.tau": "&tau;<sub>L,{n}</sub>",
-    "donor.amplitude": "x<sub>D,{n}</sub>",
-    "donor.tau": "&tau;<sub>D,{n}</sub>",
-    "chromophore_a.amplitude": "x<sub>A,{n}</sub>",
-    "chromophore_a.tau": "&tau;<sub>A,{n}</sub>",
+    "donor.amplitude": "x<sub>L,{n}</sub>",
+    "donor.tau": "&tau;<sub>L,{n}</sub>",
+    "chromophore_a.amplitude": "x<sub>L,{n}</sub>",
+    "chromophore_a.tau": "&tau;<sub>L,{n}</sub>",
     "rotation.amplitude": "b<sub>{n}</sub>",
     "rotation.time": "&rho;<sub>{n}</sub>",
     "distance.mean": "R<sub>DA,{n}</sub>",
@@ -25,14 +25,18 @@
     "instrument.irf_width": "IRF<sub>w</sub>",
     "instrument.irf_shape": "IRF<sub>k</sub>",
     "instrument.irf_position": "IRF<sub>pos</sub>",
-    "anisotropy.r0": "r<sub>0</sub>",
+    "anisotropy.r0": "r0",
     "anisotropy.g": "g",
-    "anisotropy.l1": "l<sub>1</sub>",
-    "anisotropy.l2": "l<sub>2</sub>",
+    "anisotropy.l1": "l1",
+    "anisotropy.l2": "l2",
     "fret.forster_radius": "R<sub>0</sub>",
     "fret.tau0": "&tau;<sub>0</sub>",
     "fret.kappa2": "&kappa;<sup>2</sup>",
-    "fret.x_donly": "x<sub>DOnly</sub>"
+    "fret.x_donly": "x<sub>D,0</sub>",
+    "maxent.log10_nu": "log&#8321;&#8320;(&nu;)",
+    "maxent.grid_from": "&tau;<sub>min</sub>",
+    "maxent.grid_to": "&tau;<sub>max</sub>",
+    "maxent.grid_bins": "&tau; bins"
   },
   "panels": [
     {
@@ -174,6 +178,18 @@
     "IRF": {
       "dataset": "response",
       "node": "generated_response"
+    }
+  },
+  "classic_editor": true,
+  "names": {
+    "tcspc_polarized": "Lifetime",
+    "tcspc_lifetime": "Lifetime (magic angle only)"
+  },
+  "family_labels": {
+    "tcspc_maxent_fret": {
+      "maxent.grid_from": "r<sub>min</sub>",
+      "maxent.grid_to": "r<sub>max</sub>",
+      "maxent.grid_bins": "r bins"
     }
   }
 }

@@ -243,14 +243,12 @@ def _cmake_args(prefix: Path) -> str:
     cmake_prefix_path = str(prefix)
     if sys.platform == "win32":
         # conda-forge's Windows hdf5 package is not discoverable by CMake's
-        # traditional (module-mode) find_package(HDF5) the way tttrlib's
-        # cmake/FindHDF5.cmake uses it -- confirmed on real CI: "Could NOT
-        # find HDF5" even with HDF5_ROOT/CMAKE_PREFIX_PATH pointed at this
-        # env's prefix. CI provisions a vcpkg-built HDF5 instead (see
-        # .github/workflows/*.yml, "Install HDF5 via vcpkg (Windows)", which
-        # matches tttrlib's own CI setup); use it here when present, since
-        # HDF5_NO_FIND_PACKAGE_CONFIG_FILE below forces module mode and so
-        # cannot fall back to vcpkg's config package on its own.
+        # find_package(HDF5) the way tttrlib's cmake/FindHDF5.cmake uses it --
+        # confirmed on real CI: "Could NOT find HDF5" even with HDF5_ROOT/
+        # CMAKE_PREFIX_PATH pointed at this env's prefix. CI provisions a
+        # vcpkg-built HDF5 instead (see .github/workflows/*.yml, "Install
+        # HDF5 via vcpkg (Windows)", which matches tttrlib's own CI setup);
+        # use it here when present.
         # VCPKG_INSTALLATION_ROOT is set in the CI step that runs `vcpkg
         # install`, but this script may run several `pixi run` task-chain
         # levels deeper (test -> build-extensions -> build-tttrlib), and
@@ -271,13 +269,22 @@ def _cmake_args(prefix: Path) -> str:
                 f"falling back to {prefix}",
                 flush=True,
             )
-    return " ".join(
-        (
-            f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}",
-            f"-DHDF5_ROOT={hdf5_root}",
-            "-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE",
-        )
-    )
+    args = [
+        f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}",
+        f"-DHDF5_ROOT={hdf5_root}",
+    ]
+    if sys.platform != "win32":
+        # Forces CMake's module-mode search and skips its own internal
+        # CONFIG-mode delegation: on macOS, find_package(HDF5) without this
+        # finds Homebrew's config package (/opt/homebrew/lib/cmake/hdf5) and
+        # wins over this environment's, which is what the docstring above
+        # describes. Confirmed the opposite is true on Windows: this flag is
+        # exactly what keeps CMake from finding vcpkg's own hdf5-config.cmake
+        # (real CI, "Could NOT find HDF5" even with vcpkg's build correctly
+        # selected above) -- vcpkg has no Homebrew-style competing system
+        # install to guard against, so leave CONFIG mode available there.
+        args.append("-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE")
+    return " ".join(args)
 
 
 def _build_into(prefix: Path) -> bool:

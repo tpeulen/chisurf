@@ -34,14 +34,14 @@ FIELDS_PER_ROW = 2
 #: to tell them apart and to say which one destroys something.
 ADD_BUTTON_STYLE = (
     "QToolButton { background-color: #3d5c40; color: #e6efe6; border: 1px solid #4a6b4d; "
-    "border-radius: 0px; padding: 1px 6px; }"
+    "border-radius: 3px; padding: 1px 10px; }"
     "QToolButton:hover { background-color: #496e4d; }"
     "QToolButton:pressed { background-color: #334d36; }"
     "QToolButton:disabled { background-color: #444; color: #888; border-color: #555; }"
 )
 REMOVE_BUTTON_STYLE = (
     "QToolButton { background-color: #5c3d3d; color: #efe6e6; border: 1px solid #6b4a4a; "
-    "border-radius: 0px; padding: 1px 6px; }"
+    "border-radius: 3px; padding: 1px 10px; }"
     "QToolButton:hover { background-color: #6e4949; }"
     "QToolButton:pressed { background-color: #4d3333; }"
     "QToolButton:disabled { background-color: #444; color: #888; border-color: #555; }"
@@ -1158,7 +1158,7 @@ class AutoForm(QtWidgets.QWidget):
         # header: add/del + any registered header widgets
         header = QtWidgets.QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(2)
+        header.setSpacing(4)
         # Sized to their text and pushed together on the left by the trailing
         # stretch below. Added to a layout with no stretch they took half the
         # panel width each, so every component group carried a full-width

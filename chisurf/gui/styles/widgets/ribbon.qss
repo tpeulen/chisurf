@@ -37,13 +37,13 @@ RibbonTabBar::tab:hover:!selected {
 /* Popup widgets and menus */
 RibbonPopupWidget {
     border: 1px solid gray;
-    border-radius: 0px;
+    border-radius: 5px;
     background-color: white;
 }
 
 QMenu {
     border: none;
-    border-radius: 0px;
+    border-radius: 5px;
     background-color: white;
 }
 
@@ -54,12 +54,12 @@ QMenu:selected {
 /* Gallery styling */
 RibbonGallery {
     border: 1px solid gray;
-    border-radius: 0px;
+    border-radius: 5px;
 }
 
 RibbonGalleryButton {
     border: 1px solid gray;
-    border-radius: 0px;
+    border-radius: 5px;
 }
 
 RibbonGalleryListWidget {
@@ -74,13 +74,13 @@ RibbonBar {
 }
 
 RibbonTitleWidget {
-    border-radius: 0px;
+    border-radius: 10px;
     background-color: transparent;
 }
 
 RibbonStackedWidget {
     border: none;
-    border-radius: 0px;
+    border-radius: 10px;
     background-color: white;
 }
 
@@ -90,7 +90,7 @@ RibbonStackedWidget {
 RibbonToolButton {
     border: none !important;
     outline: none !important;
-    border-radius: 0px;
+    border-radius: 4px;
     padding: 2px;
     margin: 1px;
     background-color: transparent;
@@ -101,7 +101,7 @@ RibbonToolButton {
 RibbonBar QToolButton {
     border: none !important;
     outline: none !important;
-    border-radius: 0px;
+    border-radius: 4px;
     padding: 2px;
     margin: 1px;
     background-color: transparent;
@@ -371,7 +371,7 @@ QToolBar#quickAccessToolBar QToolButton {
     border: none !important;
     outline: none !important;
     padding: 2px;
-    border-radius: 0px;
+    border-radius: 2px;
 }
 
 QToolBar#quickAccessToolBar QToolButton:hover {

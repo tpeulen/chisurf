@@ -17,19 +17,13 @@ def set_linearization(
     if fit is None or idx is None:
         return
 
-    try:
-        lin_table = fit.model.corrections.lin_select.datasets[idx]
-    except Exception:
+    lin_table = _resolve_selected_curve(idx, curve_name)
+    if lin_table is None:
         return
 
     for f in fit[fit.selected_fit_index :]:
         f.model.corrections.lintable = cs.core.data.DataCurve(x=lin_table.x, y=lin_table.y)
         f.model.corrections.correct_dnl = True
-
-    lin_name = curve_name
-    for f in fit[fit.selected_fit_index :]:
-        f.model.corrections.lineEdit.setText(str(lin_name or ""))
-        f.model.corrections.checkBox.setChecked(True)
     fit.update()
 
 

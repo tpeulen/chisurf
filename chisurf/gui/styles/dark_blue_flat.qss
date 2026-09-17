@@ -51,7 +51,7 @@ QMenu {
 }
 
 QMenu::item {
-    padding: 2px 14px;
+    padding: 2px 18px;
 }
 
 QMenu::item:selected {
@@ -81,8 +81,8 @@ QToolTip {
     border: 1px solid #000000;
     background-color: rgba(255, 200, 80, 0.9);
     color: #000000;
-    border-radius: 0px;
-    padding: 1px 4px;
+    border-radius: 3px;
+    padding: 2px 4px;
 }
 
 /* ===== Line edits ===== */
@@ -90,7 +90,7 @@ QToolTip {
 QLineEdit {
     background-color: #2c2c2c;
     border: 1px solid #202020;
-    border-radius: 0px;
+    border-radius: 2px;
     color: #e0e0e0;
     padding: 1px 3px;
 }
@@ -111,8 +111,8 @@ QAbstractButton:hover {
 QPushButton {
     background-color: #3b3b3b;
     border: 1px solid #202020;
-    border-radius: 0px;
-    padding: 1px 5px;
+    border-radius: 2px;
+    padding: 2px 6px;
     font: 0.5em;
 }
 
@@ -145,8 +145,8 @@ QComboBox {
     background-color: #3b3b3b;
     border-style: solid;
     border: 1px solid #202020;
-    border-radius: 0px;
-    padding: 1px 16px 1px 3px;
+    border-radius: 2px;
+    padding: 1px 18px 1px 4px;
     color: #e0e0e0;
 }
 
@@ -166,8 +166,8 @@ QComboBox::drop-down {
     border-left-width: 1px;
     border-left-color: #202020;
     border-left-style: solid;
-    border-top-right-radius: 0px;
-    border-bottom-right-radius: 0px;
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
     background-color: #3b3b3b;
 }
 
@@ -190,7 +190,7 @@ QSpinBox,
 QDoubleSpinBox {
     background: #595959;
     border: 1px solid #404040;
-    border-radius: 0px;
+    border-radius: 3px;
     text-align: center;
     min-height: 13px;
     padding: 0 2px;
@@ -230,14 +230,14 @@ QDoubleSpinBox::down-button {
 /* ===== Group boxes ===== */
 
 QGroupBox {
-    margin-top: 10px;
+    margin-top: 12px;                /* was 18px – tighter */
     border: 1px solid #303030;
-    border-radius: 0px;
+    border-radius: 3px;
     background-color: #3f3f3f;
-    padding-top: 9px;
-    padding-left: 3px;
-    padding-right: 3px;
-    padding-bottom: 3px;
+    padding-top: 10px;
+    padding-left: 4px;
+    padding-right: 4px;
+    padding-bottom: 4px;
 }
 
 QGroupBox::title {
@@ -291,7 +291,7 @@ QScrollBar:horizontal {
 
 QScrollBar::handle:horizontal {
     background: #555555;
-    border-radius: 0px;
+    border-radius: 4px;
 }
 
 QScrollBar::add-line:horizontal,
@@ -315,7 +315,7 @@ QScrollBar:vertical {
 
 QScrollBar::handle:vertical {
     background: #555555;
-    border-radius: 0px;
+    border-radius: 3px;
     min-height: 18px;
 }
 
@@ -355,7 +355,7 @@ QCheckBox::indicator {
     height: 10px;
     border: 1px solid #666666;
     background: #2c2c2c;
-    border-radius: 0px;
+    border-radius: 2px;
 }
 
 QRadioButton::indicator {
@@ -405,7 +405,7 @@ QDockWidget::float-button {
     spacing: 1px;
     background-color: #cc4444;
     border: 1px solid #ffaaaa;
-    border-radius: 0px;
+    border-radius: 3px;
     width: 12px;
     height: 12px;
 }
@@ -477,7 +477,7 @@ QMenu::separator {
 
 QProgressBar {
     border: 1px solid #4c4c4c;
-    border-radius: 0px;
+    border-radius: 6px;
     text-align: center;
     padding-left: 2px;
     padding-right: 2px;
@@ -496,7 +496,7 @@ QTabBar::tab {
     border: 1px solid #444;
     border-bottom-style: none;
     background-color: #2c2c2c;
-    padding: 1px 6px;
+    padding: 2px 8px;
     margin-right: -1px;
 }
 
@@ -507,32 +507,32 @@ QTabWidget::pane {
 
 QTabBar::tab:last {
     margin-right: 0;
-    border-top-right-radius: 0px;
+    border-top-right-radius: 3px;
 }
 
 QTabBar::tab:first:!selected {
     margin-left: 0px;
-    border-top-left-radius: 0px;
+    border-top-left-radius: 3px;
 }
 
 QTabBar::tab:!selected {
     color: #b1b1b1;
     border-bottom-style: solid;
-    margin-top: 1px;
+    margin-top: 2px;
     background-color: #222222;
 }
 
 QTabBar::tab:selected {
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     margin-bottom: 0px;
     color: #fff1b1;
     background-color: #3a3a3a;
 }
 
 QTabBar::tab:!selected:hover {
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
     background-color: QLinearGradient(
         x1: 0, y1: 0, x2: 0, y2: 1,
         stop: 1 #2a2a2a,
@@ -563,7 +563,7 @@ QMdiSubWindow {
 QToolButton {
     background-color: #694545;
     border: 1px solid #000000;
-    border-radius: 0px;
+    border-radius: 3px;
     padding: 1px 3px;
 }
 

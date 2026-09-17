@@ -86,7 +86,9 @@ def _faded(colour, opacity: float) -> tuple[int, ...]:
     return (r, g, b, int(round((alpha[0] if alpha else 255) * max(opacity, 0.0))))
 
 
-_SUPERSCRIPT = str.maketrans("-0123456789", "\u207b\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079")
+_SUPERSCRIPT = str.maketrans(
+    "-0123456789", "\u207b\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079"
+)
 
 
 def _tick_labels(ticks: list[float], log: bool) -> list[str]:
@@ -103,9 +105,11 @@ def _tick_labels(ticks: list[float], log: bool) -> list[str]:
         for v in ticks:
             if abs(v - round(v)) < 1e-9:
                 n = int(round(v))
-                out.append(f"{10.0 ** n:g}" if -2 <= n <= 4 else "10" + str(n).translate(_SUPERSCRIPT))
+                out.append(
+                    f"{10.0**n:g}" if -2 <= n <= 4 else "10" + str(n).translate(_SUPERSCRIPT)
+                )
             else:
-                out.append(f"{10.0 ** v:.3g}")
+                out.append(f"{10.0**v:.3g}")
         return out
     step = min((abs(b - a) for a, b in zip(ticks, ticks[1:]) if b != a), default=0.0)
     decimals = max(0, -math.floor(math.log10(step))) if 0.0 < step < 1.0 else 0
@@ -566,8 +570,16 @@ class EmtkCanvas(base.Canvas):
 
         x_range = self._to_axis("x", self._range["x"]) or self._group_x_extent()
         y_range = self._to_axis("y", self._range["y"]) or self._fitted(1, 0.04)
-        plot = EmtkPlot(bx, by, bw, bh, x_range=x_range, y_range=y_range,
-                        show_ticks=self._grid, show_legend=self._legend)
+        plot = EmtkPlot(
+            bx,
+            by,
+            bw,
+            bh,
+            x_range=x_range,
+            y_range=y_range,
+            show_ticks=self._grid,
+            show_legend=self._legend,
+        )
         plot.y_inverted = self._y_inverted
         plot.show_y_tick_labels = False
         plot.x_tick_target = max(2, int(bw // 90))
@@ -606,15 +618,30 @@ class EmtkCanvas(base.Canvas):
             for value, text in zip(ticks, _tick_labels(ticks, self._log["y"])):
                 py = plot._y_axis.to_pixels(value)
                 if by - 1.0 <= py <= by + bh + 1.0:
-                    painter.text(bx - _Y_TICK_WIDTH - 6.0, py - row * 0.5, _Y_TICK_WIDTH, row,
-                                 ALIGN_RIGHT | ALIGN_VCENTER, text, _TICK_TEXT)
+                    painter.text(
+                        bx - _Y_TICK_WIDTH - 6.0,
+                        py - row * 0.5,
+                        _Y_TICK_WIDTH,
+                        row,
+                        ALIGN_RIGHT | ALIGN_VCENTER,
+                        text,
+                        _TICK_TEXT,
+                    )
             label = self._labels.get("left")
             if label:
                 if hasattr(painter, "text_rotated"):
                     cx = x + 2.0 + row * 0.5
                     cy = by + bh * 0.5
-                    painter.text_rotated(cx - bh * 0.5, cy - row * 0.5, bh, row,
-                                         ALIGN_HCENTER | ALIGN_VCENTER, label, _LABEL_TEXT, -90.0)
+                    painter.text_rotated(
+                        cx - bh * 0.5,
+                        cy - row * 0.5,
+                        bh,
+                        row,
+                        ALIGN_HCENTER | ALIGN_VCENTER,
+                        label,
+                        _LABEL_TEXT,
+                        -90.0,
+                    )
                 else:
                     painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, _LABEL_TEXT)
         if self._axis_visible["bottom"]:
@@ -622,15 +649,30 @@ class EmtkCanvas(base.Canvas):
             for value, text in zip(ticks, _tick_labels(ticks, self._log["x"])):
                 px = plot._x_axis.to_pixels(value)
                 if bx - 1.0 <= px <= bx + bw + 1.0:
-                    painter.text(px - 40.0, by + bh + 2.0, 80.0, row,
-                                 ALIGN_HCENTER | ALIGN_VCENTER, text, _TICK_TEXT)
+                    painter.text(
+                        px - 40.0,
+                        by + bh + 2.0,
+                        80.0,
+                        row,
+                        ALIGN_HCENTER | ALIGN_VCENTER,
+                        text,
+                        _TICK_TEXT,
+                    )
             label = self._labels.get("bottom")
             if label:
-                painter.text(bx, by + bh + 2.0 + row, bw, row,
-                             ALIGN_HCENTER | ALIGN_VCENTER, label, _LABEL_TEXT)
+                painter.text(
+                    bx,
+                    by + bh + 2.0 + row,
+                    bw,
+                    row,
+                    ALIGN_HCENTER | ALIGN_VCENTER,
+                    label,
+                    _LABEL_TEXT,
+                )
         if self._title:
-            painter.text(bx, y + 1.0, bw, row, ALIGN_HCENTER | ALIGN_VCENTER,
-                         self._title, _LABEL_TEXT)
+            painter.text(
+                bx, y + 1.0, bw, row, ALIGN_HCENTER | ALIGN_VCENTER, self._title, _LABEL_TEXT
+            )
 
     def _extent(self, axis: int) -> tuple[tuple[float, float] | None, tuple[float, float] | None]:
         """What is drawn along *axis*, in axis coordinates (log10 on a log axis).
@@ -676,7 +718,9 @@ class EmtkCanvas(base.Canvas):
                 exact.append(placed)
         spans = []
         if series:
-            spans.append(self._padded((min(a for a, _ in series), max(b for _, b in series)), fraction))
+            spans.append(
+                self._padded((min(a for a, _ in series), max(b for _, b in series)), fraction)
+            )
         spans.extend(exact)
         if not spans:
             return None
@@ -703,8 +747,13 @@ class EmtkCanvas(base.Canvas):
         if entry.kind == "curve":
             xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
             if xs.size:
-                plot.line(label, xs, ys, colour=_faded(state.get("color"), opacity),
-                          width=state.get("width", 1.5))
+                plot.line(
+                    label,
+                    xs,
+                    ys,
+                    colour=_faded(state.get("color"), opacity),
+                    width=state.get("width", 1.5),
+                )
             if state.get("symbol") is not None and xs.size:
                 marked = np.isfinite(xs) & np.isfinite(ys)
                 plot.scatter(
@@ -835,8 +884,15 @@ class EmtkCanvas(base.Canvas):
                 painter.stroke_rect(left, top, width, height, border)
             colour = state.get("color", (220, 220, 220))
             for index, line in enumerate(lines):
-                painter.text(left + pad, top + pad + index * row, width - 2.0 * pad, row,
-                             ALIGN_LEFT | ALIGN_VCENTER, line, colour)
+                painter.text(
+                    left + pad,
+                    top + pad + index * row,
+                    width - 2.0 * pad,
+                    row,
+                    ALIGN_LEFT | ALIGN_VCENTER,
+                    line,
+                    colour,
+                )
             state["_box"] = (left, top, left + width, top + height)
 
     def _draw_roi(self, painter, plot, entry: _Entry) -> None:
@@ -1008,7 +1064,11 @@ class EmtkCanvas(base.Canvas):
             left, right = plot._x_axis.to_pixels(x0), plot._x_axis.to_pixels(x1)
             at = plot._y_axis.to_pixels(y0)
             painter.fill_rect(
-                min(left, right), min(at, floor), max(abs(right - left), 1.0), abs(floor - at), colour
+                min(left, right),
+                min(at, floor),
+                max(abs(right - left), 1.0),
+                abs(floor - at),
+                colour,
             )
 
     def _draw_band(self, painter, plot, entry: _Entry) -> None:
@@ -1408,8 +1468,10 @@ class EmtkCanvas(base.Canvas):
     def _view(self):
         """The visible range in axis units, what a pan or zoom moves."""
         return tuple(
-            self._to_axis(axis, self._range[axis]) or self._drawn[axis]
-            or self._to_axis(axis, self._data_range(index)) or (0.0, 1.0)
+            self._to_axis(axis, self._range[axis])
+            or self._drawn[axis]
+            or self._to_axis(axis, self._data_range(index))
+            or (0.0, 1.0)
             for index, axis in enumerate(("x", "y"))
         )
 

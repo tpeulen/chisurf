@@ -233,23 +233,24 @@ def test_state_round_trips_without_rebuilding_twice():
 
 
 def test_the_editor_is_derived_from_the_description():
+    """A TCSPC view's editor is the classic lifetime editor, over the view's own parameters."""
     _, model = _view()
     model.problem
     spec = model.view_spec()
-    targets = spec.section_targets()
-    assert "lifetimes" in targets
-    # The instrument's parameters are split over the Convolution and Generic
-    # panels, each a table of the ones that panel names.
+    assert [s.title for s in spec.sections][:4] == [
+        "Convolution",
+        "Generic",
+        "Corrections",
+        "Lifetimes",
+    ]
     shown = {
-        p.canonical_id
-        for target in targets
+        getattr(p, "canonical_id", None)
+        for target in spec.section_targets()
         for p in getattr(getattr(model, target, None), "parameters_all", ())
     }
     assert {p.canonical_id for p in model.instrument.visible_parameters()} <= shown
-    titles = [getattr(s, "title", None) for s in spec.sections]
-    assert titles[:3] == ["Convolution", "Generic", "Corrections"]
     labels = [getattr(s, "label", None) for s in spec.flat_sections()]
-    assert "IRF" in labels and "Period [ns]" in labels
+    assert "IRF" in labels and "Type" in labels
 
 
 def test_the_view_reproduces_the_classic_lifetime_model_with_its_irf_preparation():

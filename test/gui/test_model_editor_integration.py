@@ -147,7 +147,9 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
         for t in editor.findChildren(PairedParameterTableWidget)
         for p in t._model._params
     }
-    shown |= {getattr(w, "parameter", None) and w.parameter.canonical_id for w in editor.parameter_widgets}
+    shown |= {
+        getattr(w, "parameter", None) and w.parameter.canonical_id for w in editor.parameter_widgets
+    }
     missing = set(model.structure_parameter_ids()) - shown
     assert not {m for m in missing if not m.startswith("output.")}, f"not on screen: {missing}"
 

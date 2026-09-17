@@ -532,8 +532,9 @@ def test_an_anchored_label_is_a_box_inside_the_plot_area(plot):
     """The fit-quality readout: pinned to the panel, several lines, draggable."""
     x, y = _decay()
     plot.line(x, y)
-    label = plot.text("range 1–9\nχ² 1.0", (10, 10), fill=(0, 0, 0, 200),
-                      anchored=True, draggable=True)
+    label = plot.text(
+        "range 1–9\nχ² 1.0", (10, 10), fill=(0, 0, 0, 200), anchored=True, draggable=True
+    )
     _paint(plot)
     left, top, right, bottom = label.native["_box"]
     assert right - left > 20.0 and bottom - top > 20.0, "two lines get a two-line box"
@@ -565,7 +566,14 @@ def test_a_log_axis_takes_its_limits_in_data_units_and_ticks_on_decades(plot):
     assert (low, high) == pytest.approx((-1.0, np.log10(counts.max())))
     assert plot.get_range()[1] == pytest.approx((0.1, counts.max()))
     ticks = [v for v in range(-1, 5)]
-    assert _tick_labels([float(v) for v in ticks], log=True) == ["0.1", "1", "10", "100", "1000", "10000"]
+    assert _tick_labels([float(v) for v in ticks], log=True) == [
+        "0.1",
+        "1",
+        "10",
+        "100",
+        "1000",
+        "10000",
+    ]
 
 
 def test_a_log_axis_fits_only_the_positive_samples(plot):

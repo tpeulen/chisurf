@@ -59,7 +59,8 @@ tcspc:
   models:
     # Owned by BFF and described in data (IMP.bff data/model_search/); ChiSurf
     # shows a view on it.
-    - chisurf.core.models.description.tcspc_lifetime
+    # "Lifetime": the classic lifetime fit, anisotropy included -- BFF's
+    # polarised description, which at magic angle is tcspc_lifetime exactly.
     - chisurf.core.models.description.tcspc_polarized
     # Mixes the lifetimes other described fits publish.
     - chisurf.core.models.description.tcspc_mixture

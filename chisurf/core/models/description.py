@@ -95,14 +95,18 @@ def _component_index(canonical_id: str) -> typing.Optional[int]:
 
 def _component_base(canonical_id: str) -> str:
     """A per-component parameter's id without its index (``lifetime.tau``)."""
-    return canonical_id.rpartition(".")[0] if _component_index(canonical_id) is not None else canonical_id
+    return (
+        canonical_id.rpartition(".")[0]
+        if _component_index(canonical_id) is not None
+        else canonical_id
+    )
 
 
 #: ChiSurf's editor layouts for described families: ``views/*.layout.json``.
 _VIEWS = pathlib.Path(__file__).parent / "views"
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _layout_for(family: str) -> typing.Optional[dict]:
     """The editor layout that applies to *family*, or ``None`` for the generic one."""
     for path in sorted(_VIEWS.glob("*.layout.json")):
@@ -146,10 +150,15 @@ class DescriptionGroup(FittingParameterGroup):
     def component_parameters(self):
         """The per-component parameters the topology reads, one component after another."""
         bases = self.component_bases()
-        rows = [p for p in self.visible_parameters() if _component_index(p.canonical_id) is not None]
+        rows = [
+            p for p in self.visible_parameters() if _component_index(p.canonical_id) is not None
+        ]
         return sorted(
             rows,
-            key=lambda p: (_component_index(p.canonical_id), bases.index(_component_base(p.canonical_id))),
+            key=lambda p: (
+                _component_index(p.canonical_id),
+                bases.index(_component_base(p.canonical_id)),
+            ),
         )
 
     def static_parameters(self):
@@ -237,7 +246,7 @@ class _Selection:
     never finds the same parameter twice through a panel.
     """
 
-    def __init__(self, view: "DescriptionModel", ids: typing.Tuple[str, ...]):
+    def __init__(self, view: DescriptionModel, ids: typing.Tuple[str, ...]):
         self._view = view
         self.ids = ids
         self.name = ""
@@ -255,7 +264,7 @@ class _Selection:
 class _Datasets:
     """The curves bound to a model's measurement slots, as attributes (for the editor)."""
 
-    def __init__(self, view: "DescriptionModel"):
+    def __init__(self, view: DescriptionModel):
         self._view = view
 
     def __getattr__(self, slot: str):
@@ -678,7 +687,11 @@ class DescriptionModel(ModelCurve):
         """Wrap the model's ports once; a rebuild keeps them, so this is idempotent."""
         document = self._document
         labels = self.presentation.get("groups", {})
-        symbols = (_layout_for(self.family) or {}).get("labels", {})
+        layout = _layout_for(self.family) or {}
+        symbols = {
+            **layout.get("labels", {}),
+            **layout.get("family_labels", {}).get(self.family, {}),
+        }
         by_group: typing.Dict[str, list] = {}
         known = {p.canonical_id: p for g in self._groups.values() for p in g.parameters_all}
         for canonical in problem.get_parameter_ids():
@@ -724,7 +737,7 @@ class DescriptionModel(ModelCurve):
         return _Scalars(self)
 
     @property
-    def datasets(self) -> "_Datasets":
+    def datasets(self) -> _Datasets:
         """``model.datasets.<slot>``: the curve bound to a measurement slot, or ``None``."""
         return _Datasets(self)
 
@@ -952,8 +965,11 @@ class DescriptionModel(ModelCurve):
         scalars = self.scalar_names()
         visible = set(self.structure_parameter_ids())
         attribute_of = {group.key: attribute for attribute, group in self._groups.items()}
-        claimed_groups = {g for panel in layout.get("panels", ()) for g in (
-            panel.get("groups") if isinstance(panel.get("groups"), list) else ())}
+        claimed_groups = {
+            g
+            for panel in layout.get("panels", ())
+            for g in (panel.get("groups") if isinstance(panel.get("groups"), list) else ())
+        }
         claimed_groups |= {g for panel in layout.get("panels", ()) for g in panel.get("except", ())}
         claimed_scalars = {
             name
@@ -991,7 +1007,15 @@ class DescriptionModel(ModelCurve):
                         target=attribute_of[key],
                         parameters_source="static_parameters",
                         collapsible=False,
-                        columns=("name", "value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
+                        columns=(
+                            "name",
+                            "value",
+                            "fixed",
+                            "bounds_lo",
+                            "bounds_hi",
+                            "bounds_on",
+                            "error",
+                        ),
                     )
                 )
             bases = group.component_bases()
@@ -1018,7 +1042,8 @@ class DescriptionModel(ModelCurve):
                 if slot in slots:
                     children.append(curve(slot))
             toggles = [
-                name for name in panel.get("toggles", ())
+                name
+                for name in panel.get("toggles", ())
                 if name in scalars and scalar_info.get(name, {}).get("kind") == "flag"
             ]
             if toggles:
@@ -1053,7 +1078,15 @@ class DescriptionModel(ModelCurve):
                     vs.ParameterGroupTableSection(
                         target=name,
                         collapsible=False,
-                        columns=("name", "value", "fixed", "bounds_lo", "bounds_hi", "bounds_on", "error"),
+                        columns=(
+                            "name",
+                            "value",
+                            "fixed",
+                            "bounds_lo",
+                            "bounds_hi",
+                            "bounds_on",
+                            "error",
+                        ),
                     )
                 )
             groups = panel.get("groups", ())
@@ -1087,10 +1120,14 @@ class DescriptionModel(ModelCurve):
                     continue
                 info = scalar_info.get(name, {})
                 if info.get("kind") == "flag":
-                    children.append(vs.ToggleSection(label=scalar_label(name), attr=f"scalars.{name}"))
+                    children.append(
+                        vs.ToggleSection(label=scalar_label(name), attr=f"scalars.{name}")
+                    )
                 else:
                     children.append(
-                        vs.ValueSection(label=scalar_label(name), kind="float", attr=f"scalars.{name}")
+                        vs.ValueSection(
+                            label=scalar_label(name), kind="float", attr=f"scalars.{name}"
+                        )
                     )
             if panel.get("custom") and has_group:
                 children.extend(
@@ -1104,7 +1141,9 @@ class DescriptionModel(ModelCurve):
             if switch:
                 collapsed = not (self.get_scalar(switch) or 0.0)
             sections.append(
-                vs.PanelSection(title=panel.get("title", ""), collapsed=collapsed, sections=tuple(children))
+                vs.PanelSection(
+                    title=panel.get("title", ""), collapsed=collapsed, sections=tuple(children)
+                )
             )
         return sections
 
@@ -1622,7 +1661,9 @@ class DescriptionModel(ModelCurve):
         for label, info in ((_layout_for(self.family) or {}).get("curves") or {}).items():
             source = self.__dict__.get("_sources", {}).get(info.get("dataset", ""))
             if source is not None:
-                curves[label] = Curve(x=np.asarray(source.x), y=np.asarray(source.y), copy_array=copy_curves)
+                curves[label] = Curve(
+                    x=np.asarray(source.x), y=np.asarray(source.y), copy_array=copy_curves
+                )
                 continue
             problem = self.problem
             node = info.get("node")
@@ -1745,10 +1786,19 @@ def for_family(family: str) -> type:
     cls = _FAMILIES.get(family)
     if cls is None:
         document = json.loads(_bff.ModelSearchSpec.from_name(family).get_description_json())
+        layout = _layout_for(family) or {}
+        bases: typing.Tuple[type, ...] = (DescriptionModel,)
+        if layout.get("classic_editor"):
+            # The groups the classic editor's view files address (convolve,
+            # generic, lifetimes, anisotropy, ...), over this view's parameters.
+            from chisurf.core.models.tcspc.classic_editor import ClassicTCSPCEditor
+
+            bases = (ClassicTCSPCEditor, DescriptionModel)
+        name = layout.get("names", {}).get(family) or document.get("title", family)
         cls = type(
             f"DescriptionModel_{family}",
-            (DescriptionModel,),
-            {"family": family, "name": document.get("title", family), "__module__": __name__},
+            bases,
+            {"family": family, "name": name, "__module__": __name__},
         )
         _FAMILIES[family] = cls
         globals()[cls.__name__] = cls

@@ -1433,24 +1433,6 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
 
 
 # --- custom sections -------------------------------------------------------
-#: Sharp-cornered, minimal-padding toggle for the lifetime header's Abs./Norm.
-#: switches -- boxy to match the add/del buttons above it, and compact enough
-#: that the whole header strip stays on one line in a narrow dock.
-_TOGGLE_BUTTON_STYLE = (
-    "QToolButton { background-color: #3a3a3a; color: #cfcfcf; border: 1px solid #555555; "
-    "border-radius: 0px; padding: 1px 4px; }"
-    "QToolButton:hover { background-color: #454545; }"
-    "QToolButton:checked { background-color: #3d5266; color: #e6eef5; border-color: #4d6b85; }"
-)
-#: Same boxy treatment for the read/link menu buttons.
-_MENU_BUTTON_STYLE = (
-    "QToolButton { background-color: #3a3a3a; color: #cfcfcf; border: 1px solid #555555; "
-    "border-radius: 0px; padding: 1px 4px; }"
-    "QToolButton:hover { background-color: #454545; }"
-    "QToolButton::menu-indicator { width: 0px; }"
-)
-
-
 @register_section("lifetime_amplitude_options")
 class LifetimeAmplitudeOptions(QtWidgets.QWidget):
     """Header controls for a lifetime group: normalize / absolute amplitudes.
@@ -1467,20 +1449,14 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
+        layout.setSpacing(0)
 
-        self.absolute = QtWidgets.QToolButton()
-        self.absolute.setText("Abs.")
-        self.absolute.setCheckable(True)
-        self.absolute.setStyleSheet(_TOGGLE_BUTTON_STYLE)
+        self.absolute = QtWidgets.QCheckBox("Abs.")
         self.absolute.setToolTip("Take absolute value of amplitudes (no negative amplitudes).")
         self.absolute.setChecked(bool(getattr(self._group, "absolute_amplitudes", True)))
         self.absolute.clicked.connect(self._on_changed)
 
-        self.normalize = QtWidgets.QToolButton()
-        self.normalize.setText("Norm.")
-        self.normalize.setCheckable(True)
-        self.normalize.setStyleSheet(_TOGGLE_BUTTON_STYLE)
+        self.normalize = QtWidgets.QCheckBox("Norm.")
         self.normalize.setToolTip("Normalize amplitudes so they sum to one.")
         self.normalize.setChecked(bool(getattr(self._group, "normalize_amplitudes", True)))
         self.normalize.clicked.connect(self._on_changed)
@@ -1488,7 +1464,6 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         # read/link menus (port of the legacy LifetimeWidget header controls).
         self.read_btn = QtWidgets.QToolButton()
         self.read_btn.setText("read")
-        self.read_btn.setStyleSheet(_MENU_BUTTON_STYLE)
         self.read_btn.setToolTip("Copy parameter values from another lifetime group.")
         self.read_menu = QtWidgets.QMenu(self.read_btn)
         self.read_menu.aboutToShow.connect(
@@ -1499,7 +1474,6 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
 
         self.link_btn = QtWidgets.QToolButton()
         self.link_btn.setText("link")
-        self.link_btn.setStyleSheet(_MENU_BUTTON_STYLE)
         self.link_btn.setToolTip("Link this lifetime group to another (shared spectrum).")
         self.link_menu = QtWidgets.QMenu(self.link_btn)
         self.link_menu.aboutToShow.connect(
@@ -1507,9 +1481,6 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         )
         self.link_btn.setMenu(self.link_menu)
         self.link_btn.setPopupMode(QtWidgets.QToolButton.InstantPopup)
-
-        for btn in (self.absolute, self.normalize, self.read_btn, self.link_btn):
-            btn.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         layout.addWidget(self.absolute)
         layout.addWidget(self.normalize)
@@ -1535,7 +1506,18 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         idx = 0
         for fg in fit_groups:
             for fit in fg:
-                for a in getattr(fit.model, "aggregated_parameters", []):
+                candidates = list(getattr(fit.model, "aggregated_parameters", []))
+                # A described TCSPC view's lifetimes are the classic editor's group.
+                for name in ("lifetimes", "fa", "fb"):
+                    try:
+                        candidates.append(getattr(fit.model, name))
+                    except Exception:
+                        pass
+                seen = set()
+                for a in candidates:
+                    if id(a) in seen:
+                        continue
+                    seen.add(id(a))
                     if hasattr(a, "_amplitudes") and hasattr(a, "_lifetimes"):
                         yield idx, fit, a
             idx += 1
@@ -1574,6 +1556,15 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         if group is None:
             return
         fit_index = self._own_fit_index()
+        if not hasattr(group, "parameter_dict"):
+            # Component rows: the i-th amplitude and lifetime of each group.
+            try:
+                for mine, theirs in zip(group.parameters_all, target.parameters_all):
+                    mine.value = float(theirs.value)
+                _dispatch_fit_update(fit_index)
+            except Exception as exc:
+                logging.warning(f"Failed to read lifetime values: {exc}")
+            return
         try:
             target_params = target.parameters_all_dict
             for key in group.parameter_dict:
@@ -1602,25 +1593,19 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
             logging.warning(f"Failed to link lifetime group: {exc}")
 
     def _on_changed(self, *_):
-        """Push amplitude-option changes to the model via the dispatcher."""
+        """Set the group's amplitude options and recompute the fit.
+
+        The options are the group's own switches. They used to be sent as the
+        ``model.normalize_amplitudes`` / ``model.absolute_amplitudes`` actions,
+        which drop their payload and look for a model attribute nothing has, so
+        ticking either box changed nothing.
+        """
         group = self._group
         if group is None:
             return
-        name = str(getattr(group, "name", "lifetimes"))
-        try:
-            cs.core.actions.dispatch(
-                name="model.normalize_amplitudes",
-                payload={"component_name": name, "normalize": bool(self.normalize.isChecked())},
-            )
-            cs.core.actions.dispatch(
-                name="model.absolute_amplitudes",
-                payload={"component_name": name, "absolute": bool(self.absolute.isChecked())},
-            )
-        except Exception as exc:  # pragma: no cover - dispatcher optional in tests
-            logging.warning(f"Failed to dispatch amplitude options: {exc}")
-            # Fallback: set directly on the model group.
-            group.normalize_amplitudes = bool(self.normalize.isChecked())
-            group.absolute_amplitudes = bool(self.absolute.isChecked())
+        group.normalize_amplitudes = bool(self.normalize.isChecked())
+        group.absolute_amplitudes = bool(self.absolute.isChecked())
+        _dispatch_fit_update(self._own_fit_index())
 
 
 class PlotWidget(QtWidgets.QWidget):

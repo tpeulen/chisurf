@@ -786,10 +786,9 @@ class _ContentSizedTable:
     #: real panel, so it means "not laid out yet" rather than "very narrow".
     _RESPONSIVE_MIN_VIEWPORT = 120
 
-    #: Spare room a dropped tier needs before it comes back, in pixels. Keeping a
-    #: tier needs the columns to fit exactly -- an overflow of even one pixel is a
-    #: horizontal scroll bar -- and the margin on the way back is what stops a
-    #: tier flickering on and off as a dock is dragged across the boundary.
+    #: Slack allowed before a tier is dropped, in pixels -- Qt's per-column size
+    #: hints are a few pixels optimistic against the painted grid, and dropping a
+    #: whole tier over one pixel makes the table flicker as a dock is dragged.
     _RESPONSIVE_SLACK = 8
 
     def set_scrollable(self, min_visible_rows: typing.Optional[int]) -> None:
@@ -882,13 +881,6 @@ class _ContentSizedTable:
             return
 
         header = table.horizontalHeader()
-        # How many tiers are dropped now: bringing one of those back needs the
-        # slack as spare room, keeping what is shown only needs an exact fit.
-        was_dropped = 0
-        for _, cols in tiers:
-            if not all(table.isColumnHidden(c) for c in cols):
-                break
-            was_dropped += 1
 
         def _apply(dropped: int) -> None:
             hidden = {c for _, cols in tiers[:dropped] for c in cols}
@@ -896,29 +888,9 @@ class _ContentSizedTable:
                 for col in cols:
                     table.setColumnHidden(col, col in hidden)
 
-        def _needed() -> int:
-            # A stretching column is laid out as wide as the room left over, so
-            # the header is exactly the viewport's width whenever the columns fit
-            # and says nothing about how much room is to spare. Count such a
-            # column at what its content needs instead.
-            width = 0
-            for col in range(header.count()):
-                if header.isSectionHidden(col):
-                    continue
-                if header.sectionResizeMode(col) == QtWidgets.QHeaderView.Stretch:
-                    width += max(
-                        header.minimumSectionSize(),
-                        header.sectionSizeHint(col),
-                        table.sizeHintForColumn(col),
-                    )
-                else:
-                    width += header.sectionSize(col)
-            return width
-
         for dropped in range(len(tiers) + 1):
             _apply(dropped)
-            spare = self._RESPONSIVE_SLACK if dropped < was_dropped else 0
-            if header.length() <= viewport and _needed() + spare <= viewport:
+            if header.length() <= viewport + self._RESPONSIVE_SLACK:
                 return
         # Nothing optional left: the table scrolls rather than hide a value.
 
