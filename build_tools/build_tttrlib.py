@@ -292,6 +292,18 @@ def _cmake_args(prefix: Path) -> str:
         # selected above) -- vcpkg has no Homebrew-style competing system
         # install to guard against, so leave CONFIG mode available there.
         args.append("-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE")
+    else:
+        # Confirmed via a standalone --debug-find-pkg=HDF5 probe on real CI
+        # (run 35255607034): the exact same find_package(HDF5 REQUIRED
+        # COMPONENTS C) call, same CMAKE_PREFIX_PATH/HDF5_ROOT, succeeds
+        # under the runner's system CMake but still fails under pixi's own
+        # cmake package ("Could NOT find HDF5") -- different FindHDF5.cmake
+        # internals (different line numbers for the same failure), not an
+        # arguments problem. CMAKE_FIND_PACKAGE_PREFER_CONFIG makes
+        # find_package() try CONFIG mode first regardless of what a given
+        # CMake's bundled FindHDF5.cmake does internally, sidestepping
+        # whatever pixi's version lacks rather than depending on it.
+        args.append("-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE")
     return " ".join(args)
 
 
