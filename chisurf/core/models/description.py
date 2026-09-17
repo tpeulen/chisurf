@@ -987,6 +987,53 @@ class DescriptionModel(ModelCurve):
         self.y = np.array(problem.get_structure_output(active, node), dtype=float)
         self._update_statistics()
 
+    def evaluate_lifetime_spectrum(self, lifetime_spectrum) -> np.ndarray:
+        """The model's decay for an interleaved ``[a0, tau0, a1, tau1, ...]``.
+
+        Evaluated at that spectrum with everything else as fitted -- instrument,
+        background, scatter -- and then put back exactly as it was: the active
+        structure, the lifetime parameters and the curve. The filter calculator
+        uses this to turn a fit into detector patterns for a spectrum it chose.
+
+        Raises
+        ------
+        ValueError
+            If the family has no ``lifetime.components.{n}`` structure for the
+            spectrum's number of components.
+        """
+        spectrum = np.asarray(lifetime_spectrum, dtype=float).ravel()
+        n = spectrum.size // 2
+        problem = self.problem
+        key = f"lifetime.components.{n}"
+        if problem is None or n == 0 or key not in set(problem.get_structure_keys()):
+            raise ValueError(f"{type(self).__name__} has no {n}-component lifetime structure")
+        ids = set(problem.get_parameter_ids())
+        names = [f"lifetime.{kind}.{i}" for i in range(n) for kind in ("amplitude", "tau")]
+        if not set(names) <= ids:
+            raise ValueError(f"{type(self).__name__} does not name its lifetime components")
+        active = str(problem.get_active_structure())
+        saved = {name: float(problem.get_parameter(name).value) for name in names}
+        saved_y = np.array(self.y, dtype=float, copy=True)
+        try:
+            problem.select_structure(key)
+            for name, value in zip(names, spectrum):
+                port = problem.get_parameter(name)
+                was = port.fixed
+                port.fixed = False
+                port.value = float(value)
+                port.fixed = was
+            node = problem.get_structure_curve_node(key, self.primary_dataset)
+            return np.array(problem.get_structure_output(key, node), dtype=float)
+        finally:
+            problem.select_structure(active)
+            for name, value in saved.items():
+                port = problem.get_parameter(name)
+                was = port.fixed
+                port.fixed = False
+                port.value = value
+                port.fixed = was
+            self.y = saved_y
+
     # --- persistence -----------------------------------------------------------
     def get_state(self) -> dict:
         problem = self.problem

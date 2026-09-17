@@ -397,9 +397,9 @@ def test_central_decay_adapter_uses_all_fit_group_detector_models():
             self.scale = scale
             self.y = np.array([99.0, 99.0, 99.0])
 
-        def _update_model(self, lifetime_spectrum=None):
+        def evaluate_lifetime_spectrum(self, lifetime_spectrum):
             spectrum = np.asarray(lifetime_spectrum, dtype=float)
-            self.y = self.scale * sum(
+            return self.scale * sum(
                 amplitude * np.exp(-np.arange(3) / lifetime)
                 for amplitude, lifetime in zip(spectrum[0::2], spectrum[1::2])
             )

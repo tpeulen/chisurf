@@ -645,36 +645,23 @@ def lifetime_spectrum_from_model(model: Any) -> np.ndarray:
 
 
 def compute_model_decay(model: Any, lifetime_spectrum: Any | None = None) -> np.ndarray:
-    """Compute one decay through a model while restoring its visible state.
+    """Compute one decay through a model at a lifetime spectrum.
 
-    The model's own ``update_model`` implementation is deliberately used. This
-    keeps detector- and experiment-specific corrections authoritative and avoids
-    duplicating TCSPC forward-model mathematics in callers.
+    The model evaluates it (``evaluate_lifetime_spectrum``) and restores its own
+    state, so detector- and experiment-specific corrections stay authoritative
+    and no TCSPC forward model is duplicated here. This used to call
+    ``update_model(lifetime_spectrum=...)``, which no model has had since the
+    TCSPC models moved to BFF, so every real fit raised.
     """
     spectrum = (
         lifetime_spectrum_from_model(model)
         if lifetime_spectrum is None
         else validate_lifetime_spectrum(lifetime_spectrum)
     )
-    update_model = getattr(model, "update_model", None)
-    if not callable(update_model):
+    evaluate = getattr(model, "evaluate_lifetime_spectrum", None)
+    if not callable(evaluate):
         raise ValueError(f"{type(model).__name__} cannot compute a decay")
-
-    original_y = np.asarray(getattr(model, "y", []), dtype=float).copy()
-    n0_parameter = getattr(getattr(model, "convolve", None), "_n0", None)
-    n0_value = getattr(n0_parameter, "value", None)
-    n0_fixed = getattr(n0_parameter, "fixed", None)
-    try:
-        update_model(lifetime_spectrum=spectrum)
-        decay = np.asarray(getattr(model, "y"), dtype=float).ravel().copy()
-    finally:
-        if n0_parameter is not None and n0_value is not None:
-            n0_parameter.value = n0_value
-            if n0_fixed is not None:
-                n0_parameter.fixed = n0_fixed
-        if original_y.size:
-            model.y = original_y
-
+    decay = np.asarray(evaluate(spectrum), dtype=float).ravel()
     if decay.size == 0 or np.any(~np.isfinite(decay)):
         raise ValueError("model produced an empty or non-finite decay")
     return np.maximum(decay, 0.0)

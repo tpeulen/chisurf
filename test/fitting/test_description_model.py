@@ -537,3 +537,29 @@ def test_only_a_model_that_publishes_lifetimes_can_be_mixed():
         mixture.append_model(object())
     mixture.pop_model()
     assert mixture.problem is None and mixture.missing == ["lifetime_spectrum.0"]
+
+
+def test_a_lifetime_spectrum_is_evaluated_and_the_model_put_back():
+    """What the FCS filter calculator asks of a fit: its decay at a spectrum it chose."""
+    from chisurf.core.fluorescence.decay import compute_model_decay
+
+    truth = _simulated()
+    fit, model = _view(truth)
+    model.structure = "lifetime.components.1"
+    for canonical in ("instrument.background", "instrument.n0"):
+        port = model.problem.get_parameter(canonical)
+        port.fixed = False
+        port.value = TRUTH[canonical]
+    model.update()
+    before_y = np.array(model.y, copy=True)
+    before = {p.canonical_id: p.value for p in model.parameters_all}
+
+    amplitude_0 = _view()[1].problem.get_parameter("lifetime.amplitude.0").value
+    spectrum = [amplitude_0, TRUTH["lifetime.tau.0"],
+                TRUTH["lifetime.amplitude.1"], TRUTH["lifetime.tau.1"]]
+    decay = compute_model_decay(model, spectrum)
+
+    np.testing.assert_allclose(decay, np.maximum(truth, 0.0), rtol=1e-9, atol=1e-9)
+    assert model.problem.get_active_structure() == "lifetime.components.1"
+    assert np.array_equal(model.y, before_y)
+    assert {p.canonical_id: p.value for p in model.parameters_all} == before

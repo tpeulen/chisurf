@@ -364,10 +364,10 @@ def test_read_from_fit_populates_spectrum_and_model_patterns(qapp, qtbot, monkey
         def __init__(self):
             self.y = np.ones(32)
 
-        def _update_model(self, lifetime_spectrum=None):
+        def evaluate_lifetime_spectrum(self, lifetime_spectrum):
             spectrum = np.asarray(lifetime_spectrum, dtype=float)
             time = np.arange(32) * 0.05
-            self.y = sum(
+            return sum(
                 amplitude * np.exp(-time / lifetime)
                 for amplitude, lifetime in zip(spectrum[0::2], spectrum[1::2])
             )
