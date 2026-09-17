@@ -219,7 +219,7 @@ version = {attr = "chisurf.core.info.__version__"}
 # Coverage is opt-in (use `pixi run test-cov`); keeping it off by default avoids
 # dumping .coverage*/htmlcov into the repo root on every test run.
 addopts = ""
-norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro"]
+norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro", "manual"]
 testpaths = ["test", "chisurf/plugins/burst/burst_selection/tests"]
 markers = [
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",
