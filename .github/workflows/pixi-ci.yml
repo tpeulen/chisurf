@@ -69,12 +69,22 @@ jobs:
             "$GITHUB_WORKSPACE/../quest"
 
       # chimol is built from source (build-chimol), same sibling-checkout
-      # pattern -- modules/chimol is a symlink to ../../chimol.
+      # pattern -- modules/chimol is a symlink to ../../chimol. Private (not
+      # released yet), so the clone needs the read-only deploy key
+      # (CHIMOL_DEPLOY_KEY, added to tpeulen/chimol 2026-09-17) rather than
+      # an anonymous HTTPS clone.
+      - name: Set up chimol deploy key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CHIMOL_DEPLOY_KEY }}
+
       - name: Checkout chimol (sibling for the modules/chimol symlink)
         shell: bash
         run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
           git clone --depth 1 --branch "${CHIMOL_REF:-development}" \
-            "${CHIMOL_REPO:-https://github.com/tpeulen/chimol.git}" \
+            "${CHIMOL_REPO:-git@github.com:tpeulen/chimol.git}" \
             "$GITHUB_WORKSPACE/../chimol"
 
       - name: Install system dependencies (Linux)
