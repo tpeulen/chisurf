@@ -270,7 +270,21 @@ def test_dynamic_pda_recovers_exchange_and_rejects_the_static_model(qapp):
     assert st.R1 == pytest.approx(40.0, abs=1.0)
     assert st.R2 == pytest.approx(62.0, abs=1.0)
     assert st.x1 == pytest.approx(0.5, abs=0.05)
-    assert fit_dyn.chi2r < 1.5, f"dynamic fit did not converge (chi2r={fit_dyn.chi2r:.2f})"
+    # Converged means at least as good as the truth on this realisation. An
+    # absolute bound (chi2r < 1.5) measured the noise instead: at the true
+    # parameters this dataset's chi2r is 1.62, and across seeds it spans
+    # 0.8-1.7.
+    chi2r_fit = fit_dyn.chi2r
+    fitted = [p.value for p in (st._R1, st._R2, st._x1, st._kex)]
+    st._R1.value, st._R2.value, st._x1.value = 40.0, 62.0, 0.5
+    st._kex.value = true_kex / m_dyn.observation_time
+    fit_dyn.update()
+    chi2r_truth = fit_dyn.chi2r
+    for parameter, value in zip((st._R1, st._R2, st._x1, st._kex), fitted):
+        parameter.value = value
+    fit_dyn.update()
+    assert chi2r_fit <= chi2r_truth + 1e-9, (
+        f"the fit stopped above the truth (chi2r {chi2r_fit:.3f} > {chi2r_truth:.3f})")
 
     # (2) the static limit cannot follow, even re-optimising both distances:
     # it pulls them together to imitate dynamic averaging and still fails.

@@ -1269,27 +1269,32 @@ class Fit(cs.core.base.Base):
         self.__dict__.pop("_cpp_covariance", None)
         self.__dict__.pop("_graph_cache", None)
         try:
-            # The structure is fixed for the whole optimisation -- parameters
-            # are not linked, freed or rediscovered between two evaluations --
-            # so resolve the free-parameter list and the bounds once.
-            with cs.core.fitting.factorgraph.frozen_structure(self):
-                # The optimiser runs in C++, on the same side of the
-                # boundary as the residual: one crossing per evaluation
-                # instead of one per parameter plus one per part. Same
-                # MINPACK lmdif, same bounds transform, same tolerances --
-                # pinned against this module's own leastsqbound in
-                # IMP.bff's test/minimizer.
-                cs.core.fitting.minimizer.minimize(
-                    get_wres,
-                    self.model.parameter_values,
-                    args=(self.model, True),
-                    bounds=self.model.parameter_bounds,
-                    progress_callback=progress_callback,
-                    n_free=self.model.n_free,
-                    fit=self,
-                    model=self.model,
-                    **fitting_options
-                )
+            # Nothing free is nothing to optimise, and BFF's minimiser refuses an
+            # empty parameter vector. A support-plane scan of a one-parameter fit
+            # pins that parameter at every point, so the refusal ended the scan at
+            # its first step, with no interval. The evaluation below is the answer.
+            if self.model.n_free > 0:
+                # The structure is fixed for the whole optimisation -- parameters
+                # are not linked, freed or rediscovered between two evaluations --
+                # so resolve the free-parameter list and the bounds once.
+                with cs.core.fitting.factorgraph.frozen_structure(self):
+                    # The optimiser runs in C++, on the same side of the
+                    # boundary as the residual: one crossing per evaluation
+                    # instead of one per parameter plus one per part. Same
+                    # MINPACK lmdif, same bounds transform, same tolerances --
+                    # pinned against this module's own leastsqbound in
+                    # IMP.bff's test/minimizer.
+                    cs.core.fitting.minimizer.minimize(
+                        get_wres,
+                        self.model.parameter_values,
+                        args=(self.model, True),
+                        bounds=self.model.parameter_bounds,
+                        progress_callback=progress_callback,
+                        n_free=self.model.n_free,
+                        fit=self,
+                        model=self.model,
+                        **fitting_options
+                    )
         except OptimizationCancelled:
             cancelled = True
         self._last_run_cancelled = cancelled
