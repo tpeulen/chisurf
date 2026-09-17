@@ -178,7 +178,7 @@ class AlignTrajectoryViewModel:
                                if chunk.n_frames > 1 else 1.0)
                     writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
                                        delta=spacing or 1.0)
-                writer.write(chunk.xyz * 10.0)     # nm in memory, Angstrom on disk
+                writer.write(chunk.xyz)
         finally:
             if writer is not None:
                 writer.close()

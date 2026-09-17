@@ -36,7 +36,7 @@
           "maximum": 100.0,
           "step": 0.1,
           "decimals": 2,
-          "description": "Minimum allowed atom-atom distance (shown in Ångström). Frames with any selected atom pair closer than this (after a /10 conversion to the trajectory length unit) are removed."
+          "description": "Minimum allowed atom-atom distance in Ångström. Frames with any selected atom pair closer than this are removed."
         },
         {
           "type": "info",

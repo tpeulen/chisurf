@@ -103,9 +103,8 @@ class RotateTranslateViewModel:
 
         The trajectory is read in chunks (so it need not fit in memory); each
         chunk is rotated by :attr:`rotation_matrix` and translated by
-        :attr:`translation_vector` divided by ``10.0`` (matching the historic
-        Angstrom-to-nanometre convention of this tool), and the transformed
-        coordinates are appended to a fresh HDF5 trajectory.
+        :attr:`translation_vector` (Ångström, like the coordinates), and the
+        transformed coordinates are appended to a fresh DCD trajectory.
 
         A rigid-body transform changes coordinates, not time: each chunk's own
         ``time`` array is carried through unchanged, so a strided read keeps the
@@ -129,7 +128,7 @@ class RotateTranslateViewModel:
             return
 
         rotation_matrix = np.asarray(self.rotation_matrix, dtype=np.float32)
-        translation_vector = np.asarray(self.translation_vector, dtype=np.float32) / 10.0
+        translation_vector = np.asarray(self.translation_vector, dtype=np.float32)
         stride = int(self.stride)
         chunk_size = 1000
 
@@ -151,7 +150,7 @@ class RotateTranslateViewModel:
                                    if chunk.n_frames > 1 else 1.0)
                         writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
                                            delta=spacing or 1.0)
-                    writer.write(xyz * 10.0)      # nm in memory, Angstrom on disk
+                    writer.write(xyz)
                     if (i + 1) % 10 == 0:
                         self.append_log(f"Processed {i + 1} chunks")
             finally:

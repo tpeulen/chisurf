@@ -127,16 +127,6 @@ class RemoveClashesViewModel:
         lines = "<br>".join(html.escape(line) for line in self._log)
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
-    # ── derived state ───────────────────────────────────────────────────
-    def min_distance_nm(self) -> float:
-        """Return the consumed clash threshold: the raw spin value divided by ten.
-
-        The GUI shows the raw spin value (historically labelled in Ångström);
-        the kernel consumes it after a ``/ 10.0`` conversion, matching the
-        former widget's ``min_distance`` getter.
-        """
-        return float(self.min_distance) / 10.0
-
     # ── file wiring ─────────────────────────────────────────────────────
     def set_topology(self, filename: str) -> None:
         """Set the topology (PDB) that names the atoms, and notify observers."""
@@ -156,7 +146,7 @@ class RemoveClashesViewModel:
 
         The trajectory is read in chunks (so it need not fit in memory). For each
         chunk, :func:`below_min_distance` flags frames whose selected atoms come
-        closer than :meth:`min_distance_nm`; frames with a flag ``< 1`` are kept
+        closer than :attr:`min_distance` (Å); frames with a flag ``< 1`` are kept
         and appended to a fresh HDF5 trajectory.
 
         The kept frames carry their **own** source times rather than a running
@@ -179,7 +169,8 @@ class RemoveClashesViewModel:
             return
 
         stride = int(self.stride)
-        min_distance = self.min_distance_nm()
+        # Ångström, as the coordinates are (fix(structure) 7c4bce932).
+        min_distance = float(self.min_distance)
         chunk_size = 1000
 
         self.append_log(f"Removing clashes: {filename} (stride={stride})")
@@ -206,7 +197,7 @@ class RemoveClashesViewModel:
                     writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
                                        delta=spacing or 1.0)
                 if len(xyz_clash_free):
-                    writer.write(xyz_clash_free * 10.0)
+                    writer.write(xyz_clash_free)
                     kept_times.extend(
                         np.asarray(chunk.time, dtype=np.float64)[selection].tolist())
         finally:

@@ -35,7 +35,7 @@ def _tiny_trajectory(path: str, n_frames: int = 5, spacing: float = 1.0) -> str:
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
-    write_dcd(path, xyz * 10.0, delta=spacing)
+    write_dcd(path, xyz, delta=spacing)
     pdb = str(path).replace(".dcd", ".pdb")
     trajectory[0].save_pdb(pdb)
     return pdb
@@ -157,6 +157,11 @@ def test_save_aligned_with_empty_selection_is_finite(tmp_path):
     xyz, _, _ = read_dcd(str(target))
     assert xyz.shape[0] == 5
     assert np.isfinite(xyz).all()
+    # Frame 0 is the reference, so aligning leaves it where it was -- in the
+    # file's own unit. The writer multiplied by ten after coordinates moved to
+    # Ångström, and a finite check alone let that through.
+    source_xyz, _, _ = read_dcd(str(source))
+    np.testing.assert_allclose(xyz[0], source_xyz[0], atol=1e-3)
 
 
 def test_save_aligned_rejects_malformed_selection(tmp_path):

@@ -31,7 +31,7 @@ def test_widget_properties_delegate_to_model(qapp, qtbot):
     assert widget.model.trajectory_filename == "/data/example.h5"
     assert widget.atom_list == "name CA"
     assert widget.stride == 4
-    assert widget.min_distance == pytest.approx(0.285)
+    assert widget.min_distance == pytest.approx(2.85)
 
 
 def test_form_renders_with_live_log(qapp, qtbot):

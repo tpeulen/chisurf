@@ -55,12 +55,7 @@ class RotateTranslateTrajectoryWidget(QtWidgets.QWidget):
 
     @property
     def translation_vector(self) -> np.ndarray:
-        """The raw 3-vector translation as entered (delegates to the view-model).
-
-        Unlike the historic widget, this returns the raw entered values; the
-        ``/10.0`` Angstrom convention is applied only where the vector is consumed
-        in :meth:`~.view_model.RotateTranslateViewModel.save_rotated_translated`.
-        """
+        """The translation in Ångström, as entered (delegates to the view-model)."""
         return self.model.translation_vector
 
     @translation_vector.setter

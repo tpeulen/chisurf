@@ -10,7 +10,7 @@ def _read(path):
     from chisurf.core.structure import trajectory_data as md
 
     xyz, _, _ = read_dcd(path)
-    return md.Trajectory(xyz / 10.0, time=read_time_axis(path)[:len(xyz)])
+    return md.Trajectory(xyz, time=read_time_axis(path)[:len(xyz)])
 
 
 def _tiny_trajectory(path: str, n_frames: int = 4, spacing: float = 1.0) -> str:
@@ -37,7 +37,7 @@ def _tiny_trajectory(path: str, n_frames: int = 4, spacing: float = 1.0) -> str:
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
-    write_dcd(path, xyz * 10.0, delta=spacing)
+    write_dcd(path, xyz, delta=spacing)
     pdb = str(path).replace('.dcd', '.pdb')
     trajectory[0].save_pdb(pdb)
     return pdb
@@ -114,7 +114,8 @@ def test_save_writes_all_frames(tmp_path):
     assert "Rotated/translated trajectory saved" in model.log_html()
 
 
-def test_save_applies_translation_divided_by_ten(tmp_path):
+def test_save_applies_the_translation_as_entered(tmp_path):
+    """Ångström in, Ångström out: the /10 this tool once applied was a nm conversion."""
     from chisurf.plugins.traj.traj_rotate_translate.view_model import RotateTranslateViewModel
 
     source = tmp_path / "traj.dcd"
@@ -125,12 +126,12 @@ def test_save_applies_translation_divided_by_ten(tmp_path):
     model = RotateTranslateViewModel()
     model.set_trajectory(str(source))
     model.set_topology(topology)
-    # identity rotation, translate x by an entered 10 -> +1.0 nm after /10.0
+    # identity rotation, translate x by an entered 10 Å
     model.translation_vector = np.array([10.0, 0.0, 0.0], dtype=np.float32)
     model.save_rotated_translated(str(target))
 
     out = _read(str(target))
-    np.testing.assert_allclose(out.xyz[:, :, 0], src.xyz[:, :, 0] + 1.0, atol=1e-4)
+    np.testing.assert_allclose(out.xyz[:, :, 0], src.xyz[:, :, 0] + 10.0, atol=1e-4)
     np.testing.assert_allclose(out.xyz[:, :, 1:], src.xyz[:, :, 1:], atol=1e-4)
 
 

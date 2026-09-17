@@ -218,8 +218,9 @@ def evaluate_trajectory(
         vdw_radii.append(_av.VDW_RADII.get(atomic_number, _av._DEFAULT_VDW))
     vdw_radii = np.array(vdw_radii, dtype=np.float64)
 
-    # Trajectories are in nanometres; this module works in Angstrom
-    xyz_angstrom = t.xyz * 10.0
+    # Trajectories are read in Ångström (fix(structure) 7c4bce932), the unit
+    # this module works in.
+    xyz_angstrom = t.xyz
 
     for f_idx in range(t.n_frames):
         coords = xyz_angstrom[f_idx]

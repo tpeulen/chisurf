@@ -44,12 +44,8 @@ class RemoveClashedFrames(QtWidgets.QWidget):
 
     @property
     def min_distance(self) -> float:
-        """Consumed clash threshold, i.e. the raw spin value divided by ten.
-
-        Mirrors the former widget's ``min_distance`` getter (delegates to the
-        view-model's :meth:`~.view_model.RemoveClashesViewModel.min_distance_nm`).
-        """
-        return self.model.min_distance_nm()
+        """Clash threshold in Ångström (delegates to the view-model)."""
+        return float(self.model.min_distance)
 
     @property
     def trajectory_filename(self) -> str:

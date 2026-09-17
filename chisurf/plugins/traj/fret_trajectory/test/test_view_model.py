@@ -148,6 +148,13 @@ def test_calc_without_dipoles_uses_fixed_kappa2(tmp_path):
     result = model.calc(output_file=str(tmp_path / "transfer.csv"))
 
     assert result.shape == (n_frames, 6)
+    # RDA is the donor-acceptor distance in the coordinates' own unit (Å); a
+    # ×10 left from the nanometre days inflated it and every rate after it.
+    from chisurf.core.fio.trajectory import read_dcd
+
+    xyz, _, _ = read_dcd(str(source))
+    np.testing.assert_allclose(
+        result[:, 2], np.linalg.norm(xyz[:, 2] - xyz[:, 0], axis=1), rtol=1e-5)
     # kappa2 is the engine's isotropic constant, and kappa its square root ...
     np.testing.assert_allclose(result[:, 4], 2.0 / 3.0, rtol=1e-6)
     np.testing.assert_allclose(result[:, 3] ** 2, result[:, 4], rtol=1e-6)

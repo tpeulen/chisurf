@@ -158,7 +158,7 @@ class JoinTrajectoriesViewModel:
 
                 if writer is None:
                     writer = DCDWriter(target_filename, n_atoms=traj_join.n_atoms)
-                writer.write(xyz * 10.0)          # nm in memory, Angstrom on disk
+                writer.write(xyz)
                 if (i + 1) % 10 == 0:
                     self.append_log(f"Joined {i + 1} chunks")
         finally:

@@ -12,22 +12,22 @@ def _read(path):
     from chisurf.core.fio.trajectory import read_times
 
     xyz, _, _ = read_dcd(path)
-    return md.Trajectory(xyz / 10.0, time=read_times(path))
+    return md.Trajectory(xyz, time=read_times(path))
 
 
 def _clash_trajectory(path: str, spacing: float = 1.0) -> str:
     """Write a four-frame three-atom trajectory to *path* (.dcd).
 
-    Frames 0 and 2 are clash-free (all atoms ~1 nm apart); frames 1 and 3 each
-    contain a pair of atoms only 0.01 nm apart (a clash).
+    Frames 0 and 2 are clash-free (all atoms ~10 Å apart); frames 1 and 3 each
+    contain a pair of atoms only 0.1 Å apart (a clash). Coordinates are
+    Ångström, in memory and on disk.
 
     Parameters
     ----------
     path : str
         Destination ``.dcd`` path.
-    times : numpy.ndarray, optional
-        Frame times. Defaults to mdtraj's own ``0, 1, 2, 3``; pass an explicit
-        array to tell a carried-through time axis apart from a write counter.
+    spacing : float, optional
+        Frame interval written to the DCD header.
     """
     from chisurf.core.structure import trajectory_data as md
 
@@ -38,17 +38,13 @@ def _clash_trajectory(path: str, spacing: float = 1.0) -> str:
         topology.add_atom(name, md.element.carbon, residue)
 
     xyz = np.zeros((4, 3, 3), dtype=np.float32)
-    # frame 0 – well separated
-    xyz[0] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
-    # frame 1 – atoms 0 and 1 clash (0.01 nm apart)
-    xyz[1] = [[0.0, 0.0, 0.0], [0.01, 0.0, 0.0], [2.0, 0.0, 0.0]]
-    # frame 2 – well separated
-    xyz[2] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
-    # frame 3 – atoms 1 and 2 clash (0.01 nm apart)
-    xyz[3] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.01, 0.0, 0.0]]
+    xyz[0] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]
+    xyz[1] = [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [20.0, 0.0, 0.0]]   # 0-1 clash
+    xyz[2] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [20.0, 0.0, 0.0]]
+    xyz[3] = [[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [10.1, 0.0, 0.0]]  # 1-2 clash
     trajectory = md.Trajectory(xyz=xyz, topology=topology)
     from chisurf.core.fio.trajectory import write_dcd
-    write_dcd(path, xyz * 10.0, delta=spacing)
+    write_dcd(path, xyz, delta=spacing)
     pdb = str(path).replace('.dcd', '.pdb')
     trajectory[0].save_pdb(pdb)
     return pdb
@@ -76,14 +72,13 @@ def test_stride_round_trips():
     assert model.stride == 7
 
 
-def test_min_distance_applies_tenth():
-    from chisurf.plugins.traj.traj_remove_clashes.view_model import RemoveClashesViewModel
+def test_the_threshold_is_the_frames_own_unit():
+    """Ångström, like the coordinates: a /10 here survived the move off nanometres."""
+    from chisurf.plugins.traj.traj_remove_clashes.view_model import below_min_distance
 
-    model = RemoveClashesViewModel()
-    model.min_distance = 2.85
-    assert model.min_distance_nm() == pytest.approx(0.285)
-    model.min_distance = 5.0
-    assert model.min_distance_nm() == pytest.approx(0.5)
+    xyz = np.array([[[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+                    [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0]]], dtype=np.float32)
+    assert list(below_min_distance(xyz, min_distance=3.0)) == [1, 0]
 
 
 def test_set_trajectory_notifies():
@@ -118,8 +113,7 @@ def test_save_clash_free_drops_clashing_frames(tmp_path):
     model.set_trajectory(str(source))
     model.set_topology(topology)
     model.atom_selection = "all"
-    # consumed threshold = 0.5 / 10 = 0.05 nm: drops the two 0.01-nm clash frames,
-    # keeps the two well-separated frames.
+    # 0.5 Å drops the two 0.1-Å clash frames and keeps the two 10-Å ones.
     model.min_distance = 0.5
     model.save_clash_free(str(target))
 

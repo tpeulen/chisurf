@@ -348,11 +348,11 @@ class CalculateTransfer(object):
                 [
                     i * stride,  # frame number
                     time,  # time
-                    ds * 10.0,  # RDA-distance in Angstrom
+                    ds,  # RDA-distance in Angstrom, as the coordinates are
                     ks,  # kappa
                     k2,  # kappa2
                     chisurf.core.fluorescence.general.distance_to_fret_rate_constant(
-                        ds * 10.0,
+                        ds,
                         self.forster_radius,
                         self.tau0,
                         k2
