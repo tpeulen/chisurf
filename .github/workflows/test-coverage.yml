@@ -112,6 +112,28 @@ jobs:
             "${CHIMOL_REPO:-git@github.com:tpeulen/chimol.git}" \
             "$GITHUB_WORKSPACE/../chimol"
 
+      # `git config core.symlinks true` (above) is not enough on GitHub's
+      # stock windows-2022 runner: creating a real symlink additionally needs
+      # SeCreateSymbolicLinkPrivilege enabled in the process token, which
+      # even the runneradmin account doesn't have without Developer Mode.
+      # Git silently falls back to writing modules/<name> as a plain text
+      # file containing the link target, so every `pip install -e
+      # modules/<name>` then fails with "not a valid editable requirement".
+      # NTFS junctions need no special privilege, so replace each
+      # placeholder with a real junction pointing at the sibling checkout.
+      - name: Fix module symlinks as junctions (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $parent = Split-Path $env:GITHUB_WORKSPACE -Parent
+          foreach ($name in @("mmfdb", "tttrlib", "quest", "chimol")) {
+            $link = "modules/$name"
+            if ((Get-Item $link).LinkType -ne "Junction") {
+              Remove-Item $link -Force
+              New-Item -ItemType Junction -Path $link -Target (Join-Path $parent $name) | Out-Null
+            }
+          }
+
       - name: Set up Pixi
         uses: prefix-dev/setup-pixi@v0.9.4
         with:
