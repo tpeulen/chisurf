@@ -36,27 +36,19 @@ statement a global fit exists to make.
 
 The design follows the architecture of mature probabilistic graphical-model
 toolkits -- a model object separate from any inference engine, moralisation plus
-triangulation to expose blocks, and relevance pruning per query. The structural
-machinery transfers exactly, and it needs nothing beyond ``numpy`` and the
-in-tree graph layer :mod:`chisurf.core.graph`.
+triangulation to expose blocks, and relevance pruning per query. Every one of
+those algorithms runs in ``IMP.bff`` (``InferenceFactorGraph``); this module
+says what the variables and factors *are* and hands the graph over.
 
-Their *discrete-table* sum-product kernels do not transfer, since a
-fluorescence posterior is continuous. That is often stated more broadly -- that
-those toolkits' inference does not transfer at all -- and it is wrong. The
-continuous linear-Gaussian case has an exact kernel: represent each factor by
-its canonical form ``(K, h, g)`` (the precision/information parameterisation),
-and multiplication is addition of the three on aligned scopes, conditioning is a
-slice, and marginalisation is the Schur complement
-``K_xx - K_xy K_yy^-1 K_yx``. Sum-product variable elimination over the junction
-tree then runs in closed form. A fluorescence posterior *is* linear-Gaussian
-near its optimum, and exactly Gaussian in the parameters that enter linearly, so
-this applies here rather than in principle only.
-
-This module does not implement that kernel; it builds the structure the kernel
-would run on. The gap is real and recorded in ``okf/references/agrum-mining.md``
--- notably :meth:`~chisurf.core.fitting.engine.PosteriorEngine.condition`,
-which currently costs a full re-optimisation per query where the canonical form
-makes it a Schur complement.
+Their *discrete-table* kernels do not transfer, since a fluorescence posterior
+is continuous; their linear-Gaussian kernel does, exactly. Represent each factor
+by its canonical form ``(K, h, g)`` and multiplication is addition on aligned
+scopes, conditioning is a slice, and marginalisation is the Schur complement
+``K_xx - K_xy K_yy^-1 K_yx``, so variable elimination over this graph runs in
+closed form. That kernel is ``IMP.bff.InferenceCanonicalForm`` and
+``IMP.bff.InferenceGaussianElimination``; the engines in
+:mod:`chisurf.core.fitting.engine` condition through it. The comparison with
+the toolkit it came from is ``okf/references/agrum-mining.md``.
 
 Notes
 -----
@@ -72,7 +64,6 @@ import contextlib
 import dataclasses
 import functools
 import inspect
-import itertools
 
 from chisurf import typing
 from chisurf.core import graph as cg
@@ -536,14 +527,8 @@ class FactorGraph:
                     incidence[key].append(f.key)
         self._incidence = {k: tuple(v) for k, v in incidence.items()}
 
-        self._markov_graph: typing.Optional[cg.Graph] = None
         #: The graph queries themselves, in C++ -- see :attr:`engine`.
         self._engine = None
-        #: elimination order -> maximal cliques, for a *caller-supplied* order
-        #: only; the default order is the engine's and is cached there.
-        self._cliques: typing.Dict[
-            typing.Optional[typing.Tuple[str, ...]], typing.List[typing.Tuple[str, ...]]
-        ] = {}
 
     # -- the engine -------------------------------------------------------
 
@@ -564,7 +549,9 @@ class FactorGraph:
 
         Built on first use and dropped by :meth:`invalidate`. The engine
         caches its own derived structure, so this property is the whole of
-        the caching this class needs.
+        the caching this class needs. The same graph carries exact
+        linear-Gaussian inference: ``IMP.bff.InferenceGaussianElimination``
+        runs variable elimination over it.
         """
         if self._engine is None:
             self._engine = _build_engine(self.variables, self.factors)
@@ -611,40 +598,14 @@ class FactorGraph:
 
     # -- structure --------------------------------------------------------
 
-    def markov_graph(self) -> cg.Graph:
-        """Return the moralised undirected graph over the variables.
-
-        Every factor contributes a clique over its scope, because a factor
-        couples all the variables it reads. Two variables are adjacent exactly
-        when some factor depends on both — i.e. when they are *not*
-        conditionally independent given the rest.
-
-        Returns
-        -------
-        chisurf.core.graph.Graph
-            Cached; call :meth:`invalidate` after mutating the graph.
-        """
-        if self._markov_graph is not None:
-            return self._markov_graph
-        g = cg.Graph()
-        g.add_nodes_from(self.variables.keys())
-        for f in self.factors.values():
-            scope = [k for k in f.scope if k in self.variables]
-            for a, b in itertools.combinations(sorted(scope), 2):
-                g.add_edge(a, b)
-        self._markov_graph = g
-        return g
-
     def invalidate(self) -> None:
         """Drop every cached derived structure.
 
         The moral graph, the elimination orders and the cliques derived from
-        them are all cached for the lifetime of an unmutated graph; this drops
-        all of them together.
+        them are cached by :attr:`engine` for the lifetime of an unmutated
+        graph; dropping the engine drops all of them together.
         """
-        self._markov_graph = None
         self._engine = None
-        self._cliques.clear()
 
     def connected_components(self) -> typing.List[typing.Set[str]]:
         """Return the independent sub-problems of the fit.
@@ -665,10 +626,12 @@ class FactorGraph:
 
         Parameters
         ----------
-        heuristic : {"min_fill", "min_degree"}, optional
+        heuristic : {"min_fill", "min_degree", "weighted"}, optional
             ``min_fill`` repeatedly eliminates the variable whose elimination
             adds the fewest new edges; ``min_degree`` the one with the fewest
-            neighbours. ``min_fill`` gives narrower decompositions in practice
+            neighbours; ``weighted`` is a mature toolkit's default
+            triangulation (simplicial variables first, then the smallest clique
+            dimension). ``min_fill`` gives narrower decompositions in practice
             and is the default; ties break on the variable's vector index so the
             order is deterministic.
 
@@ -682,29 +645,20 @@ class FactorGraph:
         ValueError
             If ``heuristic`` is not recognised.
         """
-        if heuristic not in ("min_fill", "min_degree"):
+        if heuristic not in ("min_fill", "min_degree", "weighted"):
             raise ValueError(
-                f"unknown elimination heuristic {heuristic!r}; expected 'min_fill' or 'min_degree'"
+                f"unknown elimination heuristic {heuristic!r}; "
+                "expected 'min_fill', 'min_degree' or 'weighted'"
             )
         return list(self.engine.get_elimination_order(heuristic))
 
-    def cliques(self, order: typing.Sequence[str] = None) -> typing.List[typing.Tuple[str, ...]]:
-        """Return the maximal cliques induced by an elimination order.
+    def cliques(self) -> typing.List[typing.Tuple[str, ...]]:
+        """Return the maximal cliques induced by the elimination order.
 
         Each eliminated variable together with its then-remaining neighbours
         forms a clique of the triangulated graph. Non-maximal cliques (those
         contained in another) are dropped, which is what makes the result a
         valid clique set for a junction tree.
-
-        Parameters
-        ----------
-        order : sequence of str, optional
-            Elimination order; defaults to :meth:`elimination_order`, and that
-            default is the case :attr:`engine` answers. A *caller-supplied*
-            order is triangulated here, because it is not a query the engine
-            exposes -- nothing in the tree passes one, and an entry point in
-            C++ for a caller that does not exist would be worse than these
-            fifteen lines.
 
         Returns
         -------
@@ -712,39 +666,14 @@ class FactorGraph:
             Maximal cliques, each a sorted tuple of variable keys, largest
             first.
         """
-        if order is None:
-            # Sorted by *key*, which is this class's documented contract and
-            # what a caller using a clique as a dict key or a graph node
-            # relies on. The engine orders a clique's members by their
-            # flat-vector position instead -- also canonical, and the more
-            # useful of the two for a C++ caller lining a clique up against a
-            # parameter array. A clique is a set; both orders are answers to
-            # a question neither library needs to agree on.
-            return [tuple(sorted(c)) for c in self.engine.get_cliques()]
-        cache_key = tuple(order)
-        cached = self._cliques.get(cache_key)
-        if cached is not None:
-            return list(cached)
-        g = self.markov_graph().copy()
-        raw: typing.List[typing.Set[str]] = []
-        for node in order:
-            if node not in g:
-                continue
-            clique = {node} | set(g.neighbors(node))
-            raw.append(clique)
-            for a, b in itertools.combinations(list(g.neighbors(node)), 2):
-                g.add_edge(a, b)
-            g.remove_node(node)
+        # Sorted by *key*, which is this class's documented contract and what
+        # a caller using a clique as a dict key or a graph node relies on. The
+        # engine orders a clique's members by their flat-vector position
+        # instead -- also canonical, and the more useful of the two for a C++
+        # caller lining a clique up against a parameter array.
+        return [tuple(sorted(c)) for c in self.engine.get_cliques()]
 
-        maximal: typing.List[typing.Set[str]] = []
-        for clique in sorted(raw, key=len, reverse=True):
-            if not any(clique <= kept for kept in maximal):
-                maximal.append(clique)
-        out = [tuple(sorted(c)) for c in maximal]
-        self._cliques[cache_key] = out
-        return list(out)
-
-    def junction_tree(self, order: typing.Sequence[str] = None) -> cg.Graph:
+    def junction_tree(self) -> cg.Graph:
         """Return a junction (clique) tree of the fit.
 
         Nodes are the maximal cliques of :meth:`cliques` (as sorted tuples);
@@ -753,43 +682,22 @@ class FactorGraph:
         clique graph weighted by separator size, which is the standard
         construction guaranteeing the running-intersection property.
 
-        Parameters
-        ----------
-        order : sequence of str, optional
-            Elimination order; defaults to :meth:`elimination_order`.
-
         Returns
         -------
         chisurf.core.graph.Graph
             One node per maximal clique. Disconnected fits give a forest.
         """
-        cliques = self.cliques(order)
+        cliques = self.cliques()
         tree = cg.Graph()
         tree.add_nodes_from(cliques)
-        if order is None:
-            # The engine's tree: the maximum-weight spanning tree of the
-            # clique graph weighted by separator size, which is the
-            # construction that guarantees the running-intersection property.
-            # Its edges index into `get_cliques()`, so they are read against
-            # the engine's clique list rather than the key-sorted one above.
-            engine_cliques = [tuple(sorted(c)) for c in self.engine.get_cliques()]
-            for edge in self.engine.get_junction_tree_edges():
-                a = engine_cliques[edge.first]
-                b = engine_cliques[edge.second]
-                tree.add_edge(a, b, weight=len(edge.separator))
-                tree[a][b]["separator"] = tuple(sorted(edge.separator))
-            return tree
-        # A caller-supplied elimination order is triangulated on this side
-        # (see :meth:`cliques`), so its tree is built here too.
-        complete = cg.Graph()
-        complete.add_nodes_from(cliques)
-        for a, b in itertools.combinations(cliques, 2):
-            shared = set(a) & set(b)
-            if shared:
-                complete.add_edge(a, b, weight=len(shared))
-        tree = cg.maximum_spanning_tree(complete) if complete.number_of_edges() else complete
-        for a, b in tree.edges():
-            tree[a][b]["separator"] = tuple(sorted(set(a) & set(b)))
+        # Edges index into the engine's clique list, so they are read against
+        # it rather than against the key-sorted one above.
+        engine_cliques = [tuple(sorted(c)) for c in self.engine.get_cliques()]
+        for edge in self.engine.get_junction_tree_edges():
+            a = engine_cliques[edge.first]
+            b = engine_cliques[edge.second]
+            tree.add_edge(a, b, weight=len(edge.separator))
+            tree[a][b]["separator"] = tuple(sorted(edge.separator))
         return tree
 
     @property
@@ -983,8 +891,7 @@ def _build_engine(variables, factors):
     A factor's scope is filtered to variables the graph actually holds. The
     engine refuses a scope naming an unknown variable, and rightly; the
     Python builders have always tolerated one (a prior on a parameter that is
-    not free, say), so the filtering that used to happen implicitly in
-    :meth:`markov_graph` happens explicitly here.
+    not free, say), so they are filtered here.
     """
     import IMP.bff as _bff
 

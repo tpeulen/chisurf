@@ -1,3 +1,17 @@
+## Two fitting tests red on 2026-09-17, in files other sessions changed that day
+
+**Measured 2026-09-17** (aGrUM-to-bff session, arm64 env, `pytest test/fitting`,
+1125 passed): both also fail run alone, and neither touches the engine, the
+canonical form or `GlobalFitModel` that session changed.
+`test_parse_uses_bff.py::UpdateModelRunsInCppTests::test_the_counters_would_catch_a_regression`
+— with `_expression = None` the interpreter fallback of `ParseModel._update_model`
+raises `NameError: name 'a' is not defined` for `b+a1*exp(-x/t1)` (the fallback
+`eval(self.code)` no longer finds the parameter names), so a model whose C++
+expression is dropped cannot evaluate at all. `test_experiment.py::Tests::test_FCS_Reader`
+— the FCS reader's `__str__` now ends each row with `   \t` and the reference
+string does not. **Blocks:** the first means the documented "fallback still
+produces a curve" guarantee is gone; the second is cosmetic.
+
 ## Four repository guard tests are red, none from the change that found them
 
 **Measured 2026-09-17** (ebFRET port session, arm64 env,

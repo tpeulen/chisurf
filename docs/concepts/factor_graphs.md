@@ -83,12 +83,24 @@ no sampling and no re-fit. A fluorescence posterior *is* linear-Gaussian near
 its optimum, and exactly Gaussian in the parameters that enter linearly —
 amplitudes, offsets, scatter fractions — so this is not a hypothetical.
 
-ChiSurf does not implement that kernel yet: it builds the structure such a
-kernel would run on. The gap is concrete rather than philosophical. Conditioning
-one parameter on another currently costs a **full re-optimisation** per query,
-where the canonical form makes it a Schur complement. What a mature toolkit does
-here, and what is worth taking from it, is recorded in
-`okf/references/agrum-mining.md`.
+That kernel is in `IMP.bff`: `InferenceCanonicalForm` is the factor and its
+algebra, and `InferenceGaussianElimination` runs variable elimination over the
+same graph this page describes, dropping every factor the evidence cuts off from
+the query. Two things about the form are worth knowing:
+
+- **A singular precision is information, not an error.** A factor over a
+  parameter the data do not constrain has a singular $K$. The form still
+  multiplies, conditions and marginalises; it reports its rank and the
+  unconstrained directions, and only converting it to a mean and a covariance
+  is refused. Integrating *out* a direction nothing constrains is refused too,
+  because that integral diverges.
+- **Conditioning is exact for a Gaussian.** The constrained minimum of a
+  quadratic is its conditional mode, so holding a parameter in canonical form
+  gives what fixing it and re-fitting would — which is how
+  {src}`chisurf/core/fitting/engine.py#GaussianEngine` answers `condition`, and
+  how `LaplaceEngine` answers it once it has checked that the posterior really is
+  Gaussian between the optimum and the held value (see
+  [parameter uncertainty](parameter_uncertainty.md)).
 
 ## What the structure is for
 
@@ -123,7 +135,8 @@ standard three-step pipeline {cite}`lauritzen1988`, and ChiSurf runs exactly it:
    a factor couples all the variables it reads. Two parameters end up adjacent
    exactly when some dataset's likelihood or some prior depends on both, which is
    to say exactly when they are **not** conditionally independent given the rest.
-   This is {src}`chisurf/core/fitting/factorgraph.py#FactorGraph.markov_graph`.
+   This, like the two steps below, runs in `IMP.bff.InferenceFactorGraph`, which
+   {src}`chisurf/core/fitting/factorgraph.py#FactorGraph.engine` builds.
 2. **Triangulate.** Eliminate the variables one at a time; each eliminated
    variable together with its then-remaining neighbours becomes a clique. The
    result is a **chordal** graph, and chordality is what makes the rest cheap:
@@ -142,7 +155,9 @@ jointly), the **separators** (what the datasets genuinely share) and the
 **treewidth**.
 
 The elimination order is chosen by a greedy `min_fill` heuristic rather than
-optimally, on purpose. Finding the best one is NP-hard {cite}`arnborg1987`;
+optimally, on purpose (`weighted`, a mature toolkit's default — simplicial
+variables first, then the smallest clique dimension — is the other choice, and
+the one exact Gaussian elimination uses by default). Finding the best one is NP-hard {cite}`arnborg1987`;
 there *is* a linear-time algorithm for any fixed treewidth bound
 {cite}`bodlaender1996`, but its constant makes it theoretical, and the heuristic
 is sufficient for the shapes real global fits take.

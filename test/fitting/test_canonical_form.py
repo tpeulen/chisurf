@@ -1,10 +1,12 @@
 """Gaussians in canonical form, where conditioning is algebra not a re-fit.
 
-`LaplaceEngine.condition` fixes a parameter and runs the optimiser again -- one
-full re-fit per conditional query. For a Gaussian that is an expensive way to get
-an answer that is a matrix update: the constrained minimum of a quadratic is
-exactly its conditional mode. These tests pin the algebra against direct numpy,
-and the engine against the re-fit it replaces.
+Fixing a parameter and running the optimiser again costs one full re-fit per
+conditional query. For a Gaussian that is an expensive way to get an answer that
+is a matrix update: the constrained minimum of a quadratic is exactly its
+conditional mode. The form and its algebra live in ``IMP.bff``
+(``InferenceCanonicalForm``, pinned against aGrUM there); these tests pin the
+same algebra *through the path ChiSurf uses* against direct numpy, and the
+engines against the re-fit they replace.
 """
 
 import numpy as np
@@ -14,7 +16,21 @@ import chisurf.core.data
 import chisurf.core.fitting.fit
 import chisurf.core.models.parse
 from chisurf.core.fitting import engine as E
-from chisurf.core.fitting.canonical import CanonicalForm
+
+
+def _form(names, mean, cov, log_mass=0.0):
+    """The canonical form ChiSurf's engines build: ``IMP.bff``'s, from moments."""
+    import IMP.bff
+
+    return IMP.bff.InferenceCanonicalForm.from_moments(
+        list(names), np.asarray(mean), np.asarray(cov).ravel(), log_mass
+    )
+
+
+def _matrix(flat):
+    flat = np.asarray(flat)
+    d = int(round(np.sqrt(flat.size)))
+    return flat.reshape(d, d)
 
 
 def _gaussian(seed: int = 0, d: int = 4):
@@ -49,48 +65,49 @@ def _fit(func="c+a*x+b*x**2", seed=0):
 def test_round_trip_through_canonical_form():
     """Moments in, moments out."""
     names, mean, cov = _gaussian()
-    form = CanonicalForm.from_moments(names, mean, cov)
-    assert form.names == names
-    assert np.allclose(form.mean, mean)
-    assert np.allclose(form.covariance, cov)
+    form = _form(names, mean, cov)
+    assert tuple(form.get_names()) == names
+    assert np.allclose(form.get_mean(), mean)
+    assert np.allclose(_matrix(form.get_covariance()), cov)
     # K is the inverse covariance, and h = K mu.
-    assert np.allclose(form.K @ cov, np.eye(len(names)), atol=1e-9)
-    assert np.allclose(form.h, form.K @ mean)
+    K = _matrix(form.get_precision())
+    assert np.allclose(K @ cov, np.eye(len(names)), atol=1e-9)
+    assert np.allclose(form.get_information(), K @ mean)
 
 
 def test_the_form_integrates_to_the_mass_it_was_given():
     """``g`` is chosen so the total mass is meaningful, not a loose constant."""
     names, mean, cov = _gaussian(seed=1)
     for mass in (0.0, -12.5, 3.25):
-        form = CanonicalForm.from_moments(names, mean, cov, log_mass=mass)
-        assert form.log_mass == pytest.approx(mass, abs=1e-9)
+        form = _form(names, mean, cov, log_mass=mass)
+        assert form.get_log_normalizer() == pytest.approx(mass, abs=1e-9)
 
 
 def test_marginalising_matches_slicing_the_covariance():
     """The Schur complement must reproduce the textbook marginal."""
     names, mean, cov = _gaussian(seed=2, d=5)
-    form = CanonicalForm.from_moments(names, mean, cov)
+    form = _form(names, mean, cov)
     keep = ("x0", "x3")
     idx = [names.index(n) for n in keep]
 
-    marginal = form.marginal(keep)
-    assert marginal.names == keep
-    assert np.allclose(marginal.mean, mean[idx])
-    assert np.allclose(marginal.covariance, cov[np.ix_(idx, idx)])
+    marginal = form.marginal(list(keep))
+    assert tuple(marginal.get_names()) == keep
+    assert np.allclose(marginal.get_mean(), mean[idx])
+    assert np.allclose(_matrix(marginal.get_covariance()), cov[np.ix_(idx, idx)])
 
 
 def test_marginalising_preserves_the_mass():
     """Integrating a variable out must not change the total mass."""
     names, mean, cov = _gaussian(seed=3, d=4)
-    form = CanonicalForm.from_moments(names, mean, cov, log_mass=-7.5)
-    assert form.marginal(("x0", "x1")).log_mass == pytest.approx(-7.5, abs=1e-8)
-    assert form.marginal(("x2",)).log_mass == pytest.approx(-7.5, abs=1e-8)
+    form = _form(names, mean, cov, log_mass=-7.5)
+    assert form.marginal(["x0", "x1"]).get_log_normalizer() == pytest.approx(-7.5, abs=1e-8)
+    assert form.marginal(["x2"]).get_log_normalizer() == pytest.approx(-7.5, abs=1e-8)
 
 
 def test_conditioning_matches_the_textbook_formula():
     """``mu_A + Sigma_AB Sigma_BB^-1 (v - mu_B)``, with the Schur covariance."""
     names, mean, cov = _gaussian(seed=4, d=5)
-    form = CanonicalForm.from_moments(names, mean, cov)
+    form = _form(names, mean, cov)
     held = {"x1": 2.0, "x4": -1.5}
 
     b = [names.index(n) for n in held]
@@ -100,52 +117,51 @@ def test_conditioning_matches_the_textbook_formula():
     want_mean = mean[a] + s_ab @ np.linalg.solve(s_bb, v - mean[b])
     want_cov = cov[np.ix_(a, a)] - s_ab @ np.linalg.solve(s_bb, cov[np.ix_(b, a)])
 
-    got = form.condition(held)
-    assert got.names == tuple(names[i] for i in a)
-    assert np.allclose(got.mean, want_mean)
-    assert np.allclose(got.covariance, want_cov)
+    got = form.condition(list(held), list(held.values()))
+    assert tuple(got.get_names()) == tuple(names[i] for i in a)
+    assert np.allclose(got.get_mean(), want_mean, rtol=0, atol=1e-12)
+    assert np.allclose(_matrix(got.get_covariance()), want_cov, rtol=0, atol=1e-12)
 
 
 def test_a_product_of_forms_adds_them_on_the_union_scope():
     """What makes a factorised posterior composable."""
-    f1 = CanonicalForm(
-        names=("a", "b"), K=np.array([[2.0, 0.5], [0.5, 3.0]]), h=np.array([1.0, 2.0]), g=0.5
-    )
-    f2 = CanonicalForm(
-        names=("b", "c"), K=np.array([[1.0, 0.25], [0.25, 4.0]]), h=np.array([3.0, 1.0]), g=-0.25
-    )
-    prod = f1 * f2
-    assert prod.names == ("a", "b", "c")
-    assert prod.g == pytest.approx(0.25)
+    import IMP.bff
+
+    f1 = IMP.bff.InferenceCanonicalForm(["a", "b"], [2.0, 0.5, 0.5, 3.0], [1.0, 2.0], 0.5)
+    f2 = IMP.bff.InferenceCanonicalForm(["b", "c"], [1.0, 0.25, 0.25, 4.0], [3.0, 1.0], -0.25)
+    prod = f1.product(f2)
+    assert tuple(prod.get_names()) == ("a", "b", "c")
+    assert prod.get_log_constant() == pytest.approx(0.25)
     # 'b' is shared, so its precision and information add.
-    i = prod.names.index("b")
-    assert prod.K[i, i] == pytest.approx(3.0 + 1.0)
-    assert prod.h[i] == pytest.approx(2.0 + 3.0)
+    i = list(prod.get_names()).index("b")
+    assert _matrix(prod.get_precision())[i, i] == pytest.approx(3.0 + 1.0)
+    assert prod.get_information()[i] == pytest.approx(2.0 + 3.0)
     # And the density is the sum of the two log densities.
     x = {"a": 0.3, "b": -0.7, "c": 1.1}
-    assert prod.log_density([x[n] for n in prod.names]) == pytest.approx(
-        f1.log_density([x[n] for n in f1.names]) + f2.log_density([x[n] for n in f2.names])
+    assert prod.get_log_density([x[n] for n in prod.get_names()]) == pytest.approx(
+        f1.get_log_density([x[n] for n in f1.get_names()])
+        + f2.get_log_density([x[n] for n in f2.get_names()])
     )
 
 
 def test_conditioning_everything_leaves_only_a_constant():
     """Fully conditioned, the form is the log density at that point."""
     names, mean, cov = _gaussian(seed=5, d=3)
-    form = CanonicalForm.from_moments(names, mean, cov)
+    form = _form(names, mean, cov)
     point = mean + np.array([0.4, -0.2, 0.1])
-    fully = form.condition(dict(zip(names, point)))
-    assert len(fully) == 0
-    assert fully.g == pytest.approx(form.log_density(point))
+    fully = form.condition(list(names), list(point))
+    assert fully.get_number_of_variables() == 0
+    assert fully.get_log_constant() == pytest.approx(form.get_log_density(point))
 
 
 def test_an_unknown_name_is_refused():
     """Silently ignoring a name would answer a different question."""
     names, mean, cov = _gaussian(seed=6, d=3)
-    form = CanonicalForm.from_moments(names, mean, cov)
-    with pytest.raises(KeyError):
-        form.marginal(("x0", "nope"))
-    with pytest.raises(KeyError):
-        form.condition({"nope": 1.0})
+    form = _form(names, mean, cov)
+    with pytest.raises(ValueError, match="nope"):
+        form.marginal(["x0", "nope"])
+    with pytest.raises(ValueError, match="nope"):
+        form.condition(["nope"], [1.0])
 
 
 def test_a_repeated_name_is_refused():
@@ -157,19 +173,17 @@ def test_a_repeated_name_is_refused():
     that still contained a variable called ``'tau'``. Wrong answers, no
     exception -- so uniqueness is enforced at construction.
     """
+    import IMP.bff
+
     with pytest.raises(ValueError, match="unique"):
-        CanonicalForm.from_moments(
-            ("tau", "tau", "x"),
-            np.array([1.0, 5.0, 0.0]),
-            np.diag([0.01, 4.0, 1.0]),
-        )
+        _form(("tau", "tau", "x"), np.array([1.0, 5.0, 0.0]), np.diag([0.01, 4.0, 1.0]))
     with pytest.raises(ValueError, match="unique"):
-        CanonicalForm(names=("a", "a"), K=np.eye(2), h=np.zeros(2))
+        IMP.bff.InferenceCanonicalForm(["a", "a"], np.eye(2).ravel(), np.zeros(2))
     # Asking for the same variable twice builds such a scope, too.
     names, mean, cov = _gaussian(seed=7, d=3)
-    form = CanonicalForm.from_moments(names, mean, cov)
+    form = _form(names, mean, cov)
     with pytest.raises(ValueError, match="unique"):
-        form.marginal(("x0", "x0"))
+        form.marginal(["x0", "x0"])
 
 
 # -- the engine -----------------------------------------------------------
@@ -213,15 +227,75 @@ def test_closed_form_conditioning_matches_the_re_fit_it_replaces():
     for offset in (-2.0, 0.0, 2.0):
         value = centre + offset * sd
         refit = E.LaplaceEngine(fit)
-        refit.condition(held, value).add_target(target).run()
+        refit.condition(held, value).add_target(target).run(closed_form=False)
         closed = E.GaussianEngine(fit)
         closed.condition(held, value).add_target(target).run()
 
         a, b = refit.marginal(target), closed.marginal(target)
+        assert a.diagnostics["conditioning"] == "re_optimised"
         assert b.method == "gaussian"
+        assert b.diagnostics["conditioning"] == "closed_form"
         # Agreement to well inside the posterior width is the claim; the
         # residual difference is the optimiser's tolerance, not the algebra.
         assert b.value == pytest.approx(a.value, abs=0.05 * a.sd)
+
+
+def test_laplace_conditions_in_closed_form_when_the_model_is_linear():
+    """The certificate passes on a model linear in its parameters, and it is cheaper.
+
+    One Jacobian at the conditional mode proves the closed form is what a re-fit
+    returns: the mode is stationary there and the curvature has not moved. The
+    answer then agrees with the forced re-fit to the optimiser's tolerance, the
+    width and the evidence included, at a fraction of the model evaluations.
+    """
+    fit = _fit()
+    names = list(fit._model.parameter_names)
+    held, target = names[0], names[1]
+    base = E.LaplaceEngine(fit).add_all_targets().run()
+    value = base.marginal(held).value + 1.5 * base.marginal(held).sd
+
+    calls = [0]
+    model = fit.model
+    original = model._update_model
+
+    def counting(*a, _o=original, **k):
+        calls[0] += 1
+        return _o(*a, **k)
+
+    model._update_model = counting
+    try:
+        closed = E.LaplaceEngine(fit).condition(held, value).add_target(target).run()
+        closed_calls = calls[0]
+        calls[0] = 0
+        refit = E.LaplaceEngine(fit).condition(held, value).add_target(target).run(closed_form=False)
+        refit_calls = calls[0]
+    finally:
+        model._update_model = original
+
+    a, b = refit.marginal(target), closed.marginal(target)
+    assert b.diagnostics["conditioning"] == "closed_form", b.diagnostics
+    assert b.diagnostics["newton_step_sd"] < 1e-3
+    assert a.diagnostics["conditioning"] == "re_optimised"
+    assert b.value == pytest.approx(a.value, abs=0.01 * a.sd)
+    assert b.sd == pytest.approx(a.sd, rel=1e-4)
+    assert closed.log_evidence() == pytest.approx(refit.log_evidence(), abs=1e-3)
+    assert closed_calls < refit_calls
+    assert closed.marginal(held).method == "none"
+
+
+def test_laplace_re_optimises_where_the_posterior_is_not_gaussian():
+    """A weak exponential component is non-linear: the certificate refuses, and says why."""
+    fit = _weak_component()
+    names = list(fit._model.parameter_names)
+    held = [n for n in names if n.split(":")[-1] == "t"][0]
+    target = [n for n in names if n.split(":")[-1] == "b"][0]
+    base = E.LaplaceEngine(fit).add_all_targets().run()
+    value = base.marginal(held).value + 2.0 * base.marginal(held).sd
+
+    engine = E.LaplaceEngine(fit).condition(held, value).add_target(target).run()
+    m = engine.marginal(target)
+    assert m.diagnostics["conditioning"] == "re_optimised"
+    assert m.diagnostics["why"]
 
 
 def test_many_conditionals_cost_one_curvature_evaluation():
@@ -326,7 +400,7 @@ def test_the_sweep_agrees_exactly_with_conditioning_point_by_point():
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
     form = engine.form()
-    scan = engine.conditional_scan(form.names[0], points=9, span=2.0)
+    scan = engine.conditional_scan(list(form.get_names())[0], points=9, span=2.0)
     assert scan is not None
 
     for i, held in enumerate(scan["held"]):
@@ -341,7 +415,7 @@ def test_the_slope_in_standardised_units_is_the_correlation():
     """Why the plot is drawn that way: the picture *is* the correlation."""
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    scan = engine.conditional_scan(engine.form().names[0], points=21, span=3.0)
+    scan = engine.conditional_scan(list(engine.form().get_names())[0], points=21, span=3.0)
     for target in scan["targets"]:
         slope = np.polyfit(scan["held_z"], target["z"], 1)[0]
         assert slope == pytest.approx(target["correlation"], abs=1e-9)
@@ -352,7 +426,7 @@ def test_pinning_a_parameter_narrows_the_others_by_the_right_amount():
     """The conditional width is ``sd * sqrt(1 - r^2)``, and it is the point."""
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    scan = engine.conditional_scan(engine.form().names[0])
+    scan = engine.conditional_scan(list(engine.form().get_names())[0])
     for target in scan["targets"]:
         expected = target["marginal_sd"] * np.sqrt(1.0 - target["correlation"] ** 2)
         assert target["sd"] == pytest.approx(expected, rel=1e-9)
@@ -365,7 +439,7 @@ def test_at_the_optimum_the_conditional_is_the_marginal():
     """Fixing a parameter at its own best value must change nothing."""
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    scan = engine.conditional_scan(engine.form().names[0], points=11, span=2.0)
+    scan = engine.conditional_scan(list(engine.form().get_names())[0], points=11, span=2.0)
     centre = int(np.argmin(np.abs(scan["held_z"])))
     assert scan["held_z"][centre] == pytest.approx(0.0)
     for target in scan["targets"]:
@@ -388,7 +462,7 @@ def test_a_whole_sweep_costs_no_model_evaluations():
 
     model._update_model = counting
     try:
-        for name in engine.form().names:
+        for name in list(engine.form().get_names()):
             out = engine.conditional_scan(name, points=101, span=3.0)
             assert out is not None and out["targets"]
     finally:
@@ -400,7 +474,7 @@ def test_the_sweep_spans_the_requested_number_of_standard_deviations():
     """The axis has to mean what the label says."""
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    scan = engine.conditional_scan(engine.form().names[0], points=41, span=2.5)
+    scan = engine.conditional_scan(list(engine.form().get_names())[0], points=41, span=2.5)
     assert scan["held_z"][0] == pytest.approx(-2.5)
     assert scan["held_z"][-1] == pytest.approx(2.5)
     assert scan["held"][0] == pytest.approx(scan["centre"] - 2.5 * scan["sd"])
@@ -453,7 +527,7 @@ def test_the_exact_scan_matches_the_gaussian_one_on_a_linear_model():
     """
     fit = _fit()  # c + a*x + b*x**2 — linear in every parameter
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    name = engine.form().names[0]
+    name = list(engine.form().get_names())[0]
     approximate = engine.conditional_scan(name, points=9, span=2.0)
     exact = engine.exact_conditional_scan(name, points=9, span=2.0)
     assert exact is not None and exact["exact"] is True
@@ -468,7 +542,7 @@ def test_a_weak_component_is_caught_as_not_gaussian():
     """The case the check exists for, and the one that is common in practice."""
     fit = _weak_component()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    name = [n for n in engine.form().names if n.split(":")[-1] == "t"][0]
+    name = [n for n in list(engine.form().get_names()) if n.split(":")[-1] == "t"][0]
     approximate = engine.conditional_scan(name, points=61, span=3.0)
     exact = engine.exact_conditional_scan(name, points=13, span=3.0)
 
@@ -488,7 +562,7 @@ def test_the_grids_need_not_match():
     """
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    name = engine.form().names[0]
+    name = list(engine.form().get_names())[0]
     coarse = engine.exact_conditional_scan(name, points=7, span=2.0)
     for points in (5, 61, 200):
         approximate = engine.conditional_scan(name, points=points, span=2.0)
@@ -503,7 +577,7 @@ def test_the_exact_scan_puts_the_fit_back_exactly():
     before = [float(p.value) for p in fit.model.parameters_all]
     fixed_before = [bool(getattr(p, "fixed", False)) for p in fit.model.parameters_all]
 
-    name = [n for n in engine.form().names if n.split(":")[-1] == "t"][0]
+    name = [n for n in list(engine.form().get_names()) if n.split(":")[-1] == "t"][0]
     engine.exact_conditional_scan(name, points=9, span=2.0)
 
     after = [float(p.value) for p in fit.model.parameters_all]
@@ -516,7 +590,7 @@ def test_the_exact_scan_records_the_profile_chi2():
     """The chi² at each held value is the profile likelihood, and is worth having."""
     fit = _weak_component()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    name = [n for n in engine.form().names if n.split(":")[-1] == "t"][0]
+    name = [n for n in list(engine.form().get_names()) if n.split(":")[-1] == "t"][0]
     exact = engine.exact_conditional_scan(name, points=11, span=2.0)
     chi2 = np.asarray(exact["chi2"], dtype=float)
     finite = np.isfinite(chi2)
@@ -530,7 +604,7 @@ def test_the_exact_scan_can_be_cancelled():
     """A re-fit per point is slow enough that a caller must be able to stop it."""
     fit = _weak_component()
     engine = E.GaussianEngine(fit).add_all_targets().run()
-    name = [n for n in engine.form().names if n.split(":")[-1] == "t"][0]
+    name = [n for n in list(engine.form().get_names()) if n.split(":")[-1] == "t"][0]
 
     calls = [0]
 

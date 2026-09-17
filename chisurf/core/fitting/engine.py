@@ -24,17 +24,29 @@ Notes
 -----
 The shape of the interface is the one mature probabilistic graphical-model
 toolkits settled on -- one model, many engines, ``setEvidence`` / ``addTarget``
-/ ``makeInference`` / ``posterior``. Their discrete sum-product kernels do not
-transfer to a continuous fluorescence posterior, but the query API does.
+/ ``makeInference`` / ``posterior``. Their discrete-table kernels do not transfer
+to a continuous fluorescence posterior; their linear-Gaussian one does, and it
+is ``IMP.bff.InferenceCanonicalForm`` / ``IMP.bff.InferenceGaussianElimination``.
 :mod:`chisurf.core.fitting.factorgraph` took the model and
 :mod:`chisurf.core.fitting.sample` the inference; this is the query.
 
 **Targets are declared, not assumed.** A profile scan of one parameter should
 not scan the other nine. Nothing is computed that was not asked for.
 
-**Conditioning** (``condition``) fixes a parameter and re-optimises the rest.
-That is exactly what a profile scan does natively, and it is what the other two
-engines do by construction -- so it means the same thing everywhere.
+**Conditioning** (``condition``) holds a parameter and answers for the rest at
+their best position given it -- the same question for every engine, answered
+two ways:
+
+- in **closed form** by the engines that assume a Gaussian posterior
+  (``gaussian``, and ``laplace`` whenever the answer is certified): the
+  conditional of a Gaussian in canonical form, a Schur complement computed in
+  ``IMP.bff``, with no re-fit;
+- by **re-optimisation** -- fix the parameter, run the optimiser -- where the
+  posterior is not Gaussian in those parameters: ``profile`` and ``mcmc``
+  always, since not assuming a Gaussian is what they are for, and ``laplace``
+  when the closed-form answer fails its certificate (a bound in the way, or a
+  model visibly non-linear between the optimum and the conditional mode).
+  Every conditioned marginal says which in ``diagnostics["conditioning"]``.
 """
 
 from __future__ import annotations
@@ -291,9 +303,10 @@ class PosteriorEngine(abc.ABC):
         """Fix a parameter at a value, to be marginalised over no longer.
 
         The counterpart of setting evidence on a graphical-model engine: the
-        named parameter is held and everything else re-optimised around it.
-        That is what a profile scan does natively, and what the other engines do
-        by construction, so it means the same thing whichever engine is used.
+        named parameter is held and the rest are reported at their best position
+        given it. Engines that assume a Gaussian posterior answer in closed form
+        (a Schur complement); ``profile`` and ``mcmc`` re-optimise, because they
+        exist for posteriors that are not Gaussian. See the module notes.
 
         Parameters
         ----------
@@ -479,8 +492,9 @@ class PosteriorEngine(abc.ABC):
         Conditioning is not just pinning a value: the remaining parameters have
         to move to their best position *given* it, or the answer is the
         unconditioned one with a parameter overwritten. That re-fit is what a
-        profile scan does at each of its points, and doing it here is what makes
-        ``condition`` mean the same thing for every engine.
+        profile scan does at each of its points. It is the path for posteriors
+        that are not Gaussian in the held parameters; where they are, the
+        Gaussian engines answer the same question in closed form.
 
         A conditioned parameter is ``fixed``, so it leaves the free-parameter
         vector entirely -- and therefore has no marginal, which is the correct
@@ -537,12 +551,90 @@ class PosteriorEngine(abc.ABC):
             pass
 
 
+def _single(form, name: str) -> typing.Tuple[float, float]:
+    """Return the mean and standard deviation of one variable of a canonical form."""
+    single = form.marginal([name])
+    return float(single.get_mean()[0]), float(math.sqrt(single.get_covariance()[0]))
+
+
+def _curvature_form(engine, **options):
+    """Return the canonical form of the quadratic approximation at the optimum.
+
+    The covariance over the parameters the model responds to, held as an
+    ``IMP.bff.InferenceCanonicalForm`` whose mass is the Laplace evidence. The
+    caller holds the structure frozen.
+
+    Parameters
+    ----------
+    engine : PosteriorEngine
+        Engine whose fit and model are evaluated.
+    **options
+        Passed to :func:`chisurf.core.fitting.fit.covariance_matrix`.
+
+    Returns
+    -------
+    IMP.bff.InferenceCanonicalForm or None
+        ``None`` when the curvature is unusable.
+    """
+    import IMP.bff
+
+    names = engine.parameter_names
+    values = np.asarray(engine.model.parameter_values, dtype=np.float64)
+    try:
+        cov, used = cs.core.fitting.fit.covariance_matrix(engine.fit, model=engine.model, **options)
+    except Exception as e:
+        cs.logging.warning(f"{engine.method} engine: no covariance ({e})")
+        return None
+    cov = np.atleast_2d(np.asarray(cov, dtype=np.float64))
+    used = [int(u) for u in used]
+    if cov.size == 0 or len(used) != cov.shape[0]:
+        return None
+    # ``covariance_matrix`` drops parameters the model does not respond to;
+    # those directions carry no information and simply are not in the scope.
+    keep = [k for k, u in enumerate(used) if 0 <= u < len(names)]
+    if not keep:
+        return None
+    sub = cov[np.ix_(keep, keep)]
+    scope = [names[used[k]] for k in keep]
+    mean = np.array([values[used[k]] for k in keep], dtype=np.float64)
+    try:
+        return IMP.bff.InferenceCanonicalForm.from_moments(
+            scope, mean, np.ascontiguousarray(sub).ravel(), _laplace_log_evidence(engine, sub)
+        )
+    except ValueError as e:
+        cs.logging.warning(f"{engine.method} engine: covariance not usable ({e})")
+        return None
+
+
+def _laplace_log_evidence(engine, cov: np.ndarray) -> float:
+    r"""Return the Laplace evidence at the current parameters, or 0 when undefined.
+
+    ``-chi2/2 + (d/2) ln(2 pi) + (1/2) ln det Sigma``. As a form's mass it makes
+    ``get_log_normalizer()`` the evidence, which marginalising leaves unchanged.
+    """
+    try:
+        chi2 = float((np.asarray(engine.model.weighted_residuals, dtype=np.float64) ** 2).sum())
+        sign, logdet = np.linalg.slogdet(cov)
+        if sign <= 0 or not np.isfinite(logdet):
+            return 0.0
+        return -0.5 * chi2 + 0.5 * (cov.shape[0] * math.log(2.0 * math.pi) + logdet)
+    except Exception:
+        return 0.0
+
+
 class LaplaceEngine(PosteriorEngine):
     r"""The quadratic approximation at the optimum.
 
     Free (the covariance is computed for the error bars anyway) and right
     whenever the posterior really is close to a parabola in :math:`\\chi^2`.
     The only engine that is always available.
+
+    ``condition`` is answered in closed form -- the Gaussian conditional, a
+    Schur complement in ``IMP.bff`` -- when one Jacobian at the conditional mode
+    certifies that a re-fit would return the same answer
+    (:meth:`_closed_form_condition`); otherwise, or with ``run(closed_form=False)``,
+    the held parameter is fixed and the rest re-optimised. The marginals say
+    which in ``diagnostics["conditioning"]``, with the reason for a re-fit.
     """
 
     method = "laplace"
@@ -554,6 +646,9 @@ class LaplaceEngine(PosteriorEngine):
         ----------
         **options
             ``p_value`` sets the interval coverage (default 0.68).
+            ``closed_form`` (default ``True``) answers a conditioned query in
+            closed form when that answer is certified; ``False`` always
+            re-optimises.
 
         Returns
         -------
@@ -563,6 +658,16 @@ class LaplaceEngine(PosteriorEngine):
         from chisurf.core.fitting import factorgraph
 
         p_value = float(options.get("p_value", 0.68))
+        conditioning = {}
+        if self._evidence:
+            if options.get("closed_form", True):
+                refused = self._closed_form_condition(p_value)
+                if refused is None:
+                    self._ran = True
+                    return self
+                conditioning = {"conditioning": "re_optimised", "why": refused}
+            else:
+                conditioning = {"conditioning": "re_optimised", "why": "closed_form=False"}
         restore = self._apply_evidence()
         try:
             with factorgraph.frozen_structure(self.fit, self.model):
@@ -593,7 +698,7 @@ class LaplaceEngine(PosteriorEngine):
                         low=value - z * sd,
                         high=value + z * sd,
                         p_value=p_value,
-                        diagnostics=self._symmetry_diagnostics(name, p_value),
+                        diagnostics={**self._symmetry_diagnostics(name, p_value), **conditioning},
                     )
 
                 self._joints = {}
@@ -612,6 +717,151 @@ class LaplaceEngine(PosteriorEngine):
             self._restore_evidence(restore)
         self._ran = True
         return self
+
+    #: Largest Newton step, in conditional standard deviations, that still
+    #: certifies the closed-form conditional mode as the optimum a re-fit finds.
+    CERTIFY_STEP = 1e-3
+
+    #: Largest relative change of the conditional curvature between the optimum
+    #: and the conditional mode that still certifies the closed-form width.
+    CERTIFY_CURVATURE = 1e-6
+
+    def _closed_form_condition(self, p_value: float) -> typing.Optional[str]:
+        """Answer the conditioned query in closed form, if that answer is certified.
+
+        The closed form is the conditional of the Gaussian at the optimum: a
+        Schur complement of its canonical form, computed in ``IMP.bff``. It is
+        the answer a re-fit gives exactly when the objective is quadratic in the
+        parameters between the optimum and the conditional mode -- a model linear
+        in them, with no bound in the way. That is checked rather than assumed,
+        with one Jacobian at the conditional mode instead of a fit:
+
+        - the mode is inside every bound;
+        - it is stationary: the Newton step there is below
+          :attr:`CERTIFY_STEP` conditional standard deviations, so a re-fit
+          would not move;
+        - the curvature there equals the conditional precision to
+          :attr:`CERTIFY_CURVATURE`, so a re-fit's covariance would not change.
+
+        Parameters
+        ----------
+        p_value : float
+            Interval coverage of the marginals.
+
+        Returns
+        -------
+        str or None
+            ``None`` when the query was answered (marginals, joints and evidence
+            are set); otherwise why not, and the caller re-optimises.
+        """
+        from chisurf.core.fitting import factorgraph
+
+        with factorgraph.frozen_structure(self.fit, self.model):
+            form = _curvature_form(self)
+            if form is None:
+                return "no usable curvature at the optimum"
+            scope = list(form.get_names())
+            held = dict(self._evidence)
+            unknown = sorted(k for k in held if k not in scope)
+            if unknown:
+                return f"not in the curvature: {unknown}"
+            conditional = form.condition(list(held), [float(v) for v in held.values()])
+            free = list(conditional.get_names())
+            if not free:
+                return "nothing is left free"
+            if not conditional.get_is_proper():
+                return "the conditional precision is singular"
+            mean = np.asarray(conditional.get_mean(), dtype=np.float64)
+            d = len(free)
+            cov = np.asarray(conditional.get_covariance(), dtype=np.float64).reshape(d, d)
+            precision = np.asarray(conditional.get_precision(), dtype=np.float64).reshape(d, d)
+            sd = np.sqrt(np.diag(cov))
+
+            point = dict(zip(free, mean))
+            point.update({k: float(v) for k, v in held.items()})
+            for name, value in point.items():
+                p = self._parameter(name)
+                if p is not None and getattr(p, "bounds_on", False):
+                    lb, ub = p.bounds
+                    if (lb is not None and value < lb) or (ub is not None and value > ub):
+                        return f"{name} = {value:.6g} at the conditional mode is outside its bounds"
+
+            before = [(p, float(p.value)) for p in self.model.parameters_all if hasattr(p, "value")]
+            try:
+                for name, value in point.items():
+                    self._parameter(name).value = value
+                xk = np.asarray(self.model.parameter_values, dtype=np.float64)
+                f0, jacobian = cs.core.fitting.fit.approx_grad(xk, self.fit, model=self.model)
+            finally:
+                for p, value in before:
+                    try:
+                        p.value = value
+                    except (TypeError, ValueError):
+                        continue
+                try:
+                    self.fit.update()
+                except Exception:
+                    pass
+            residuals = np.asarray(f0, dtype=np.float64).ravel()
+            index = {n: i for i, n in enumerate(self.parameter_names)}
+            j_free = np.asarray(jacobian, dtype=np.float64)[[index[n] for n in free]]
+            step = cov @ (j_free @ residuals)
+            worst_step = float(np.max(np.abs(step) / sd))
+            curvature = j_free @ j_free.T
+            change = float(np.linalg.norm(curvature - precision) / np.linalg.norm(precision))
+            if not (worst_step <= self.CERTIFY_STEP):
+                return f"not stationary at the conditional mode (Newton step {worst_step:.3g} sd)"
+            if not (change <= self.CERTIFY_CURVATURE):
+                return f"the curvature changes by {change:.3g} between optimum and conditional mode"
+
+        certificate = {
+            "conditioning": "closed_form",
+            "newton_step_sd": worst_step,
+            "curvature_change": change,
+        }
+        z = _normal_quantile(0.5 + 0.5 * p_value)
+        self._marginals = {}
+        for name in self._targets:
+            if name in free:
+                k = free.index(name)
+                value, width = float(mean[k]), float(sd[k])
+                self._marginals[name] = Marginal(
+                    name=name,
+                    value=value,
+                    sd=width,
+                    method=self.method,
+                    low=value - z * width,
+                    high=value + z * width,
+                    p_value=p_value,
+                    diagnostics={**self._symmetry_diagnostics(name, p_value), **certificate},
+                )
+            elif name in held or self._parameter(name) is None:
+                # Held, so no marginal of its own -- or not a parameter at all.
+                self._marginals[name] = Marginal(name=name, p_value=p_value)
+            else:
+                # Free but outside the curvature: the model does not respond to it.
+                value = float(self._parameter(name).value)
+                self._marginals[name] = Marginal(
+                    name=name, value=value, method=self.method, p_value=p_value,
+                    diagnostics=dict(certificate),
+                )
+        self._joints = {}
+        for key in self._joint_targets:
+            if any(n not in free for n in key):
+                continue
+            block = conditional.marginal(list(key))
+            self._joints[key] = Joint(
+                names=key,
+                mean=np.asarray(block.get_mean(), dtype=np.float64),
+                covariance=np.asarray(block.get_covariance(), dtype=np.float64).reshape(len(key), len(key)),
+                method=self.method,
+            )
+        chi2 = float(residuals @ residuals)
+        sign, logdet = np.linalg.slogdet(cov)
+        self._log_evidence = (
+            -0.5 * chi2 + 0.5 * (d * math.log(2.0 * math.pi) + logdet) if sign > 0 else float("nan")
+        )
+        return None
 
     def _laplace_evidence(self, cov: np.ndarray) -> float:
         r"""Return the Laplace approximation to :math:`\ln p(D)`.
@@ -642,13 +892,16 @@ class GaussianEngine(PosteriorEngine):
     This engine builds the canonical form :math:`(K, h, g)` **once** and then
     answers every marginal, joint and conditional in closed form. Ask for twenty
     conditionals and it costs one curvature evaluation, not twenty fits.
+    ``LaplaceEngine`` answers ``condition`` the same way when it can certify
+    that the answer is the re-fit's; this engine does not check -- it is the
+    Gaussian's answer by definition.
 
     The approximation is the Gaussian, not the algebra. Where the posterior is
     not close to quadratic this is wrong in exactly the way ``laplace`` is wrong,
     and a chain remains the way to find out -- but the two now disagree only
     about the *model*, never about the arithmetic.
 
-    See :mod:`chisurf.core.fitting.canonical`.
+    The form and its algebra are ``IMP.bff.InferenceCanonicalForm``.
     """
 
     method = "gaussian"
@@ -668,64 +921,15 @@ class GaussianEngine(PosteriorEngine):
 
         Returns
         -------
-        chisurf.core.fitting.canonical.CanonicalForm or None
+        IMP.bff.InferenceCanonicalForm or None
             The form, or ``None`` when the curvature is unusable.
         """
-        if self._form is not None:
-            return self._form
-        from chisurf.core.fitting import factorgraph
-        from chisurf.core.fitting.canonical import CanonicalForm
+        if self._form is None:
+            from chisurf.core.fitting import factorgraph
 
-        with factorgraph.frozen_structure(self.fit, self.model):
-            names = self.parameter_names
-            values = np.asarray(self.model.parameter_values, dtype=np.float64)
-            try:
-                cov, used = cs.core.fitting.fit.covariance_matrix(
-                    self.fit, model=self.model, **options
-                )
-            except Exception as e:
-                cs.logging.warning(f"gaussian engine: no covariance ({e})")
-                return None
-            cov = np.atleast_2d(np.asarray(cov, dtype=np.float64))
-            used = [int(u) for u in used]
-            if cov.size == 0 or len(used) != cov.shape[0]:
-                return None
-            # ``covariance_matrix`` drops parameters the model does not respond
-            # to; those directions carry no information and simply are not in
-            # the form's scope.
-            keep = [k for k, u in enumerate(used) if 0 <= u < len(names)]
-            if not keep:
-                return None
-            sub = cov[np.ix_(keep, keep)]
-            scope = [names[used[k]] for k in keep]
-            mean = np.array([values[used[k]] for k in keep], dtype=np.float64)
-            try:
-                self._form = CanonicalForm.from_moments(
-                    scope, mean, sub, log_mass=self._log_evidence_at(mean, sub)
-                )
-            except np.linalg.LinAlgError as e:
-                cs.logging.warning(f"gaussian engine: covariance not usable ({e})")
-                return None
+            with factorgraph.frozen_structure(self.fit, self.model):
+                self._form = _curvature_form(self, **options)
         return self._form
-
-    def _log_evidence_at(self, mean: np.ndarray, cov: np.ndarray) -> float:
-        r"""Return the Laplace evidence, so ``g`` carries the right mass.
-
-        ``-chi2/2 + (d/2) ln(2 pi) + (1/2) ln det Sigma`` at the optimum. With
-        this as the form's mass, marginalising variables out leaves
-        :attr:`~chisurf.core.fitting.canonical.CanonicalForm.log_mass`
-        unchanged, which is what makes it the evidence rather than a bookkeeping
-        constant.
-        """
-        try:
-            chi2 = float((np.asarray(self.model.weighted_residuals, dtype=np.float64) ** 2).sum())
-            sign, logdet = np.linalg.slogdet(cov)
-            if sign <= 0 or not np.isfinite(logdet):
-                return 0.0
-            d = cov.shape[0]
-            return -0.5 * chi2 + 0.5 * (d * math.log(2.0 * math.pi) + logdet)
-        except Exception:
-            return 0.0
 
     def run(self, **options) -> GaussianEngine:
         """Build the form and answer every declared target from it.
@@ -751,21 +955,23 @@ class GaussianEngine(PosteriorEngine):
 
         # Conditioning is a closed-form update, so the evidence is applied here
         # rather than by re-fitting the model.
+        conditioning = {}
         if self._evidence:
-            known = {k: v for k, v in self._evidence.items() if k in form.names}
+            names = list(form.get_names())
+            known = {k: float(v) for k, v in self._evidence.items() if k in names}
             if known:
-                form = form.condition(known)
+                form = form.condition(list(known), list(known.values()))
+            conditioning = {"conditioning": "closed_form"}
 
+        scope = list(form.get_names())
         self._marginals = {}
         for name in self._targets:
-            if name not in form.names:
+            if name not in scope:
                 # Either unknown, or conditioned -- a held parameter has no
                 # marginal of its own, which is the correct answer.
                 self._marginals[name] = Marginal(name=name, p_value=p_value)
                 continue
-            single = form.marginal([name])
-            mean = float(single.mean[0])
-            sd = float(math.sqrt(single.covariance[0, 0]))
+            mean, sd = _single(form, name)
             z = _normal_quantile(0.5 + 0.5 * p_value)
             self._marginals[name] = Marginal(
                 name=name,
@@ -775,22 +981,24 @@ class GaussianEngine(PosteriorEngine):
                 low=mean - z * sd,
                 high=mean + z * sd,
                 p_value=p_value,
-                diagnostics=self._symmetry_diagnostics(name, p_value),
+                diagnostics={**self._symmetry_diagnostics(name, p_value), **conditioning},
             )
 
         self._joints = {}
         for key in self._joint_targets:
-            if any(n not in form.names for n in key):
+            if any(n not in scope for n in key):
                 continue
             block = form.marginal(list(key))
             self._joints[key] = Joint(
                 names=key,
-                mean=block.mean,
-                covariance=block.covariance,
+                mean=np.asarray(block.get_mean(), dtype=np.float64),
+                covariance=np.asarray(block.get_covariance(), dtype=np.float64).reshape(
+                    len(key), len(key)
+                ),
                 method=self.method,
             )
 
-        self._log_evidence = form.log_mass
+        self._log_evidence = form.get_log_normalizer()
         self._ran = True
         return self
 
@@ -818,17 +1026,16 @@ class GaussianEngine(PosteriorEngine):
         form = self.form()
         if form is None:
             return []
-        known = {k: v for k, v in assignments.items() if k in form.names}
-        conditioned = form.condition(known) if known else form
-        wanted = list(targets) if targets else list(conditioned.names)
+        known = {k: float(v) for k, v in assignments.items() if k in list(form.get_names())}
+        conditioned = form.condition(list(known), list(known.values())) if known else form
+        scope = list(conditioned.get_names())
+        wanted = list(targets) if targets else scope
         out = []
         for name in wanted:
-            if name not in conditioned.names:
+            if name not in scope:
                 out.append(Marginal(name=name))
                 continue
-            single = conditioned.marginal([name])
-            mean = float(single.mean[0])
-            sd = float(math.sqrt(single.covariance[0, 0]))
+            mean, sd = _single(conditioned, name)
             out.append(
                 Marginal(
                     name=name,
@@ -887,11 +1094,12 @@ class GaussianEngine(PosteriorEngine):
             curvature is unusable or ``name`` is not in it.
         """
         form = self.form()
-        if form is None or name not in form.names:
+        if form is None or name not in list(form.get_names()):
             return None
-        index = form.names.index(name)
-        covariance = form.covariance
-        mean = form.mean
+        scope = list(form.get_names())
+        index = scope.index(name)
+        covariance = np.asarray(form.get_covariance(), dtype=np.float64).reshape(len(scope), len(scope))
+        mean = np.asarray(form.get_mean(), dtype=np.float64)
         centre = float(mean[index])
         sd = float(math.sqrt(max(covariance[index, index], 0.0)))
         if not (sd > 0.0) or not np.isfinite(sd):
@@ -902,7 +1110,7 @@ class GaussianEngine(PosteriorEngine):
         held = centre + sd * held_z
 
         targets = []
-        for j, other in enumerate(form.names):
+        for j, other in enumerate(scope):
             if other == name:
                 continue
             sd_other = float(math.sqrt(max(covariance[j, j], 0.0)))
@@ -1338,6 +1546,10 @@ class ProfileEngine(PosteriorEngine):
     Copes with asymmetric and skewed intervals that the quadratic approximation
     cannot, at the cost of a full re-fit per scan point, and only one parameter
     at a time -- so it has no joint answer and no evidence.
+
+    ``condition`` re-optimises, deliberately: a closed-form conditional assumes
+    the posterior is Gaussian in the held parameters, and not assuming that is
+    this engine's reason to exist.
     """
 
     method = "profile"
@@ -1418,6 +1630,10 @@ class SamplingEngine(PosteriorEngine):
     failed its R-hat / effective-sample-size checks is **refused** rather than
     returned, because a quantile of an unconverged chain is a number without a
     meaning.
+
+    ``condition`` fixes the parameter and samples the rest, for the reason
+    :class:`ProfileEngine` re-optimises: the chain is for posteriors that are not
+    Gaussian, where a closed-form conditional would be the wrong answer.
     """
 
     method = "mcmc"

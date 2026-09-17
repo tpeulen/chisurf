@@ -19,7 +19,6 @@ import chisurf.core.fitting.fit
 import chisurf.core.fitting.sample
 import chisurf.core.models.parse
 from chisurf.core.fitting import reweight as rw
-from chisurf.core.fitting.canonical import CanonicalForm
 from chisurf.core.fitting.priors import NormalPrior
 
 
@@ -58,15 +57,16 @@ def _exact_posterior(fit, name, prior):
     cov = np.atleast_2d(np.asarray(cov, dtype=float))
     used_names = [names[i] for i in used]
     mean = np.array([float(params[i].value) for i in used])
-    form = CanonicalForm.from_moments(used_names, mean, cov)
-    j = used_names.index(name)
-    K = form.K.copy()
-    h = form.h.copy()
-    K[j, j] += 1.0 / prior.sigma**2
-    h[j] += prior.mu / prior.sigma**2
-    updated = CanonicalForm(names=form.names, K=K, h=h, g=0.0)
-    i = updated.names.index(name)
-    return float(updated.mean[i]), float(np.sqrt(updated.covariance[i, i]))
+    import IMP.bff
+
+    form = IMP.bff.InferenceCanonicalForm.from_moments(used_names, mean, cov.ravel())
+    # The prior is one more factor, N(mu, sigma^2) over ``name``: multiplying
+    # adds 1/sigma^2 to that diagonal of K and mu/sigma^2 to h.
+    prior_factor = IMP.bff.InferenceCanonicalForm.from_linear_gaussian(
+        name, [], prior.mu, prior.sigma, []
+    )
+    updated = form.product(prior_factor).marginal([name])
+    return float(updated.get_mean()[0]), float(np.sqrt(updated.get_covariance()[0]))
 
 
 # -- the generalised-Pareto fit -------------------------------------------

@@ -483,38 +483,49 @@ joint chain.
 
 # Gaussians in canonical form
 
-`chisurf/core/fitting/canonical.py` holds a Gaussian as `(K, h, g)` with
-`K = Σ⁻¹` and `h = Kμ` — the information parameterisation — because the two
-operations an engine performs are linear in it:
+The form and its algebra are in bff: `IMP.bff.InferenceCanonicalForm` holds a
+Gaussian as `(K, h, g)` with `K = Σ⁻¹` and `h = Kμ` — the information
+parameterisation — because the operations an engine performs are linear in it
+(imp.bff `okf/prds/prd-151.md`; ChiSurf's own `canonical.py` was deleted when it
+moved):
 
 - **conditioning** on `x_B = v` drops those rows/columns and shifts
   `h_A ↦ h_A − K_AB v`. Nothing is inverted, nothing is re-optimised: for a
   Gaussian this *is* the answer that fixing those parameters and re-minimising
   gives, because the constrained minimum of a quadratic is its conditional mode;
 - **marginalising** `x_B` out is the Schur complement `K_A − K_AB K_BB⁻¹ K_BA`,
-  and it preserves `log_mass`, so a form built with the evidence as its mass
-  keeps reporting the evidence;
+  and it preserves the log normaliser, so a form built with the evidence as its
+  mass keeps reporting the evidence;
 - **multiplying** two forms adds `(K, h, g)` on the union scope, which is what
-  makes a factorised posterior composable — a global fit's form is the *sum* of
-  its per-dataset ones and eliminating a variable touches only the factors it
-  appears in.
+  makes a factorised posterior composable; `IMP.bff.InferenceGaussianElimination`
+  runs variable elimination over the factor graph with such factors.
 
-All three address the scope **by name**, so the name is the identity of the
-variable and a form refuses a scope that repeats one: a duplicate would resolve
-to its last occurrence and quietly report another variable's moments.
+The scope is addressed **by name** and a repeated name is refused. A singular
+`K` (a parameter the data do not constrain) is carried, not refused: the form
+reports its rank and null space, and only the moments refuse it.
 
-`GaussianEngine` builds the form once and answers every marginal, joint and
-conditional from it. `LaplaceEngine.condition` costs a full re-fit *per query*;
-`GaussianEngine.conditional` costs a matrix update, so 25 conditional queries
-add **zero** model evaluations. The approximation is the Gaussian, not the
-algebra: the two engines now disagree only about the model, never the
-arithmetic, and there is a test pinning that the closed-form conditional matches
-the re-fit it replaces.
+`GaussianEngine` builds the form once (`_curvature_form`, the covariance at the
+optimum with the Laplace evidence as its mass) and answers every marginal, joint
+and conditional from it, so 25 conditional queries add **zero** model
+evaluations. `LaplaceEngine.condition` uses the same closed form when **one
+Jacobian at the conditional mode certifies it** — the mode inside every bound,
+a Newton step under 1e-3 conditional sd, the curvature unchanged to 1e-6 — and
+re-fits otherwise, recording `diagnostics["conditioning"]` (`closed_form` or
+`re_optimised` with `why`). On `c + a·x + b·x²` the certified answer and a forced
+re-fit (`run(closed_form=False)`) agree to 8e-9 sd; on a weak second exponential
+held 2 sd out the certificate refuses (Newton step 3.3 sd). `ProfileEngine` and
+`SamplingEngine` always re-optimise: they exist for posteriors that are not
+Gaussian.
+
+Building the certificate exposed a `GlobalFitModel` bug, fixed: its
+`parameter_values` setter derived the dirty set from the values it *found*, so a
+value written on a parameter object and then assigned as part of a vector looked
+unchanged and its dataset was skipped (stale residuals, a Jacobian 1e11 too
+large). It now diffs against the vector the local models were last computed at.
 
 This is the representation graphical-model toolkits use for continuous
-linear-Gaussian networks. [PRD-68](/prds/prd-68.md) claimed their inference
-kernels "do not transfer to a continuous fluorescence posterior"; that was wrong,
-and this is the part that does.
+linear-Gaussian networks; the comparison is
+[agrum-mining](../references/agrum-mining.md).
 
 # One query API over the estimators
 

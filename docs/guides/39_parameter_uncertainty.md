@@ -494,7 +494,8 @@ r = api.posterior(engine='laplace', joint=['tau1', 'x1'])
 print(r['joint']['correlation'])
 print(r['log_evidence'])
 
-# Fix a parameter and re-optimise the rest, then ask about another.
+# Hold a parameter, then ask about another. `laplace` answers in closed form
+# when it can certify that a re-fit would agree, and re-fits otherwise.
 r = api.posterior(engine='laplace', condition={'tau2': 4.0}, targets=['tau1'])
 ```
 

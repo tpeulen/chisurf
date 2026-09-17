@@ -142,12 +142,12 @@ class ConditionalScanPlot(Plot):
         except Exception as e:
             self._degrade(f"<i>no usable curvature: {e}</i>")
             return
-        if form is None or len(form.names) < 2:
+        if form is None or form.get_number_of_variables() < 2:
             self._degrade("<i>needs a converged fit with at least two free parameters</i>")
             return
 
         self._engine = engine
-        names = [str(n) for n in form.names]
+        names = [str(n) for n in form.get_names()]
         current = self.parameter_box.currentText()
         self.parameter_box.blockSignals(True)
         self.parameter_box.clear()

@@ -115,7 +115,7 @@ wants to know and reads the answer without knowing which estimator produced it:
 from chisurf.core.fitting import engine
 
 eng = engine.get_engine('mcmc', fit)
-eng.condition('tau2', 4.0)        # fix a parameter, re-optimise the rest
+eng.condition('tau2', 4.0)        # hold a parameter; the rest at their best given it
 eng.add_target('tau1')            # only declared targets are computed
 eng.add_joint_target(('tau1', 'x1'))
 eng.run(steps=5000, n_runs=2)
@@ -125,9 +125,17 @@ print(m.value, m.interval(0.68), m.method)
 print(eng.joint(('tau1', 'x1')).correlation)
 ```
 
-- **`condition(name, value)`** fixes a parameter and re-optimises the rest. That
-  is what a profile scan *is*, and what the other engines do by construction, so
-  it means the same thing whichever engine is used.
+- **`condition(name, value)`** holds a parameter and reports the rest at their
+  best position given it -- the same question for every engine, answered two
+  ways. Where the posterior is Gaussian in those parameters it is a closed-form
+  update: the conditional of the Gaussian, a Schur complement of its canonical
+  form ([factor graphs](factor_graphs.md)), no re-fit. `gaussian` always answers
+  that way; `laplace` does when one Jacobian at the conditional mode certifies
+  that a re-fit would return the same thing (the mode is inside the bounds and
+  stationary, and the curvature has not changed), and re-fits otherwise.
+  `profile` and `mcmc` always re-optimise, because not assuming a Gaussian is
+  what they are for. Each conditioned marginal says which in
+  `diagnostics["conditioning"]`, and why when it re-fitted.
 - **Targets are declared, not assumed** — a profile scan of one parameter should
   not scan the other nine.
 - **`joint`** returns a covariance and a `correlation` matrix. Only a chain has

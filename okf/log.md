@@ -2,6 +2,33 @@
 
 ## 2026-09-17
 
+* **aGrUM's linear-Gaussian inference lives in imp.bff; ChiSurf conditions
+  through it.** Owner: "agrum is bff domain, the algos." imp.bff PRD-151 adds
+  `IMP.bff.InferenceCanonicalForm` (aGrUM's `(K, h, g)` algebra plus what
+  `core/fitting/canonical.py` had; a singular K is carried and explained, not
+  refused), `IMP.bff.InferenceGaussianElimination` (variable elimination over the
+  factor graph, with relevance pruning) and aGrUM's default triangulation as the
+  `"weighted"` elimination order. A/B against a pyagrum-free transcription:
+  algebra 2.2e-16, posteriors 2.5e-14; against the brute-force joint, 3.6e-14.
+  Here:
+  - `core/fitting/canonical.py` deleted; `GaussianEngine` holds the bff form;
+  - `LaplaceEngine.condition` is a closed-form Schur complement when one
+    Jacobian at the conditional mode certifies it (bounds, stationarity,
+    curvature), else a re-fit with the reason in `diagnostics["conditioning"]`;
+    8e-9 sd from a forced re-fit on a linear model; `profile`/`mcmc` re-optimise
+    by design;
+  - bug fixed on the way: `GlobalFitModel.parameter_values` diffed against the
+    values it found, so a value written on a parameter object and then assigned
+    in a vector skipped its dataset (stale residuals); it now diffs against the
+    vector last computed, guardrail test added;
+  - `FactorGraph` drops its Python triangulation for a caller-supplied order and
+    `markov_graph` (no callers); the algorithms are bff's.
+
+  [aGrUM mining](references/agrum-mining.md) is re-homed to imp.bff, every
+  "not taken" item re-evaluated for bff, and its "Where to pick this up" filled
+  (per-dataset Gaussian factors next; `junk/aGrUM` deletable). Docs:
+  `concepts/factor_graphs.md`, `concepts/parameter_uncertainty.md`, guide 39.
+
 * **emtk 2-D: ImPlot ported whole (PRD-104 Phase 2).** `junk/implot` read and
   annotated (implot.h, implot_internal.h, implot.cpp, implot_items.cpp,
   implot_demo.cpp). emtk's `implot` shim (refit every frame, step-outline

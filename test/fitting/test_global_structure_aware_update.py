@@ -135,6 +135,33 @@ def test_an_unchanged_vector_recomputes_nothing(monkeypatch):
     assert all(counts[i] == 0 for i in range(3))
 
 
+def test_a_value_written_on_the_parameter_object_is_not_skipped(monkeypatch):
+    """A direct write, then the same vector assigned, must still reach its model.
+
+    The dirty set used to be the difference between the new vector and the
+    values the setter *found* -- so ``p.value = v`` followed by assigning a vector
+    holding ``v`` looked like no change, and ``update`` skipped the dataset that
+    had not seen ``v``. Every caller that holds a parameter by writing it and
+    then evaluates (conditioning, a sweep, the optimiser's first call) read the
+    old residuals: a Jacobian taken that way came out 1e11 times too large.
+    """
+    fit = _global_fit(3)
+    gm = fit._model
+    graph = gm.factor_graph
+    local_c = [v for v in graph.variables.values() if v.name == "2:c"][0]
+    _prime(gm)
+
+    counts = _count_updates(fit, monkeypatch)
+    gm.parameters[local_c.index].value = float(gm.parameters[local_c.index].value) + 0.5
+    gm.parameter_values = list(gm.parameter_values)
+    gm.update()
+    assert counts[1] == 1
+    selective = np.array(gm.weighted_residuals, dtype=float)
+
+    gm.update()  # a bare update recomputes everything
+    np.testing.assert_array_equal(selective, np.array(gm.weighted_residuals, dtype=float))
+
+
 def test_a_bare_update_recomputes_everything(monkeypatch):
     """Without a preceding vector assignment nothing may be skipped."""
     fit = _global_fit(3)

@@ -315,6 +315,12 @@ class GlobalFitModel(model.Model, Curve):
         self._current_at_version = None
         #: Members whose cached weighted residuals are stale. ``None`` means all.
         self._residual_dirty = None
+        #: The free-parameter vector every local model was last computed at, or
+        #: ``None`` before the first update. The dirty set is the difference
+        #: from *this*, not from the values the setter found: a value written on
+        #: a parameter object directly is already "found", and diffing against
+        #: it would skip the model that still has to see it.
+        self._values_at_update = None
         super().__init__(fit, *args, **kwargs)
 
     # -- posterior structure ----------------------------------------------
@@ -361,6 +367,9 @@ class GlobalFitModel(model.Model, Curve):
             New parameter values, in the order of :attr:`parameters`.
         """
         ps = self.parameters
+        reference = self._values_at_update
+        if reference is not None and len(reference) != len(ps):
+            reference = None
         changed = []
         for i, v in enumerate(vs):
             if i >= len(ps):
@@ -375,19 +384,26 @@ class GlobalFitModel(model.Model, Curve):
             # many. Reading is unavoidable -- a value may have been set
             # elsewhere -- but writing and reading back are not.
             if before is not None and before == v:
-                continue
-            p.value = v
-            # Compare the *readback*, not the requested value: a bound or a
-            # transform can leave the effective value where it was, and a
-            # parameter that did not move needs no work.
-            try:
-                after = float(p.value)
-            except (TypeError, ValueError):
-                after = None
-            if before is None or after is None or before != after:
+                after = before
+            else:
+                p.value = v
+                # Compare the *readback*, not the requested value: a bound or a
+                # transform can leave the effective value where it was, and a
+                # parameter that did not move needs no work.
+                try:
+                    after = float(p.value)
+                except (TypeError, ValueError):
+                    after = None
+            # Moved relative to what the local models last saw -- not relative
+            # to `before`, which already holds a value written on the
+            # parameter object since then (an edit, a held parameter), and
+            # would skip the model that has not seen it yet.
+            if after is None or reference is None or reference[i] != after:
                 changed.append(i)
 
-        self._pending_dirty_fits = self._dirty_fits_for(changed)
+        self._pending_dirty_fits = (
+            self._dirty_fits_for(changed) if reference is not None else None
+        )
 
     def _dirty_fits_for(self, changed_indices) -> typing.Optional[typing.List[int]]:
         """Map changed parameter positions onto the local fits to recompute.
@@ -736,6 +752,8 @@ class GlobalFitModel(model.Model, Curve):
             # Nothing moved, so every local model is already current.
             return
 
+        # Unknown until the recomputation has succeeded.
+        self._values_at_update = None
         if cs.core.settings.cs_settings["optimization"]["global_threaded_model_update"]:
             threads = [threading.Thread(target=f.model.update) for f in targets]
             for thread in threads:
@@ -745,3 +763,7 @@ class GlobalFitModel(model.Model, Curve):
         else:
             for f in targets:
                 f.model.update()
+        try:
+            self._values_at_update = [float(p.value) for p in self.parameters]
+        except (TypeError, ValueError):
+            self._values_at_update = None
