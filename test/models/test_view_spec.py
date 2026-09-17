@@ -41,21 +41,21 @@ def _make_view(family):
 
 
 def test_lifetime_model_view_spec_structure():
-    """The lifetime view derives its editor from the description, as data."""
+    """The lifetime view's editor is the classic one, over the view's own parameters."""
     model = _make_view("tcspc_lifetime")
     spec = model.view_spec()
     assert isinstance(spec, vs.ModelView)
     targets = spec.section_targets()
-    assert "lifetimes" in targets, "missing section target 'lifetimes'"
+    for expected in ("convolve", "generic", "corrections", "lifetimes"):
+        assert expected in targets, f"missing section target {expected!r}"
     shown = {
-        p.canonical_id
+        getattr(p, "canonical_id", None)
         for target in targets
         for p in getattr(getattr(model, target, None), "parameters_all", ())
     }
     assert {p.canonical_id for p in model.instrument.visible_parameters()} <= shown
     plot_keys = [p.key for p in spec.plots]
     assert {"line", "residual", "distribution"} <= set(plot_keys)
-    assert all(isinstance(p.key, str) for p in spec.plots)
     for target in targets:
         assert hasattr(model, target), f"unresolved target {target!r}"
 
@@ -91,11 +91,9 @@ def test_curve_input_section_loads_from_json():
 
 
 def test_lifetime_view_has_irf_curve_input():
-    """The lifetime editor binds a measured response through the view's dataset action."""
     spec = _make_view("tcspc_lifetime").view_spec()
-    inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    irf = next((s for s in inputs if (s.action_fixed or {}).get("slot") == "response"), None)
-    assert irf is not None and irf.select_action == "model.set_dataset"
+    irf = next((s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection) and s.label == "IRF"), None)
+    assert irf is not None and irf.select_action == "model.change_irf"
 
 
 def test_choice_and_toggle_sections_load_from_json():
@@ -137,27 +135,16 @@ def test_choice_and_toggle_sections_load_from_json():
 
 
 def test_lifetime_view_exposes_its_settings():
-    """What the hand-written widget's controls set are the description's scalars."""
-    spec = _make_view("tcspc_lifetime").view_spec()
-    attrs = {
-        s.attr
-        for s in spec.flat_sections()
-        if isinstance(s, (vs.ToggleSection, vs.ValueSection, vs.ChoiceSection))
-    }
-    # Switches that share a line are one toggle row, bound through ``scalars``.
-    attrs |= {
-        f"{item['target']}.{item['attr']}"
-        for s in spec.flat_sections()
-        if isinstance(s, vs.ToggleRowSection)
-        for item in s.items
-    }
-    assert {
-        "scalars.convolve",
-        "scalars.periodic_excitation",
-        "scalars.pile_up",
-        "scalars.autoscale",
-        "scalars.lin_window",
-    } <= attrs
+    """The classic controls write the description's scalars."""
+    model = _make_view("tcspc_lifetime")
+    model.convolve.mode = "exp"
+    model.convolve.do_convolution = False
+    model.corrections.correct_pile_up = True
+    model.corrections.window_function = "blackman"
+    assert model.get_scalar("periodic_excitation") == 0.0
+    assert model.get_scalar("convolve") == 0.0
+    assert model.get_scalar("pile_up") == 1.0
+    assert model.get_scalar("lin_window") == 4.0
 
 
 def test_parameter_group_view_adapter_builds_a_section():

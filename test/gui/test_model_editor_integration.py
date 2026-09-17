@@ -141,14 +141,14 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
 
     # (b) every parameter of the active structure is on screen
     tables = editor.findChildren(ParameterGroupTableWidget)
-    shown = {p.canonical_id for t in tables for p in t.table_model._params}
+    shown = {getattr(p, "canonical_id", None) for t in tables for p in t.table_model._params}
     shown |= {
-        p.canonical_id
+        getattr(p, "canonical_id", None)
         for t in editor.findChildren(PairedParameterTableWidget)
         for p in t._model._params
     }
     shown |= {
-        getattr(w, "parameter", None) and w.parameter.canonical_id for w in editor.parameter_widgets
+        getattr(getattr(w, "parameter", None), "canonical_id", None) for w in editor.parameter_widgets
     }
     missing = set(model.structure_parameter_ids()) - shown
     assert not {m for m in missing if not m.startswith("output.")}, f"not on screen: {missing}"
@@ -174,19 +174,17 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     assert not view.isColumnHidden(COL_ERROR) and not view.isColumnHidden(COL_BOUNDS_ON)
     editor.setMaximumWidth(16777215)
 
-    # (b3) nothing in the editor refuses a narrow dock: the form fields shrink
-    # and a row of switches wraps, so the tables are what give way (their bounds
-    # first). Two unbounded number fields per row used to ask for ~590 px.
-    assert editor.minimumSizeHint().width() <= 300, editor.minimumSizeHint().width()
+    # (b3) the form fields shrink, so the tables are what give way in a narrow
+    # dock (their bounds first). Two unbounded number fields per row used to ask
+    # for ~590 px; the classic Type / Convolve row itself needs under 400.
+    assert editor.minimumSizeHint().width() <= 400, editor.minimumSizeHint().width()
 
-    # (c) the IRF input binds the view's response slot
+    # (c) the IRF input is the classic editor's
     spec = model.view_spec()
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), (
-        "no IRF curve input"
-    )
+    assert any(s.select_action == "model.change_irf" for s in curve_inputs), "no IRF curve input"
 
-    # (d) the switches the hand-written widget had are the description's scalars
+    # (d) the classic switches are there, and each writes the description's scalar
     toggles = {s.attr for s in spec.flat_sections() if isinstance(s, vs.ToggleSection)}
     toggles |= {
         f"{item['target']}.{item['attr']}"
@@ -194,12 +192,9 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
         if isinstance(s, vs.ToggleRowSection)
         for item in s.items
     }
-    assert {
-        "scalars.convolve",
-        "scalars.periodic_excitation",
-        "scalars.pile_up",
-        "scalars.reverse_linearization",
-    } <= toggles, toggles
+    assert {"do_convolution", "corrections.correct_pile_up", "corrections.reverse"} <= toggles, toggles
+    model.corrections.reverse = True
+    assert model.get_scalar("reverse_linearization") == 1.0
 
     # (e) plots resolve and the model computes a finite, non-empty curve
     assert model_plot_specs(model), "no plot specs resolved"
@@ -245,9 +240,7 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
 
     # (d) the IRF input is declared so the model can be convolved
     curve_inputs = [s for s in spec.flat_sections() if isinstance(s, vs.CurveInputSection)]
-    assert any((s.action_fixed or {}).get("slot") == "response" for s in curve_inputs), (
-        "no IRF curve input"
-    )
+    assert any(s.select_action == "model.change_irf" for s in curve_inputs), "no IRF curve input"
 
     # (e) plots resolve
     assert model_plot_specs(model), "no plot specs resolved"

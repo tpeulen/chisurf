@@ -136,7 +136,7 @@ def test_registered_auto_lifetime_model_wires_live(qapp):
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     # resolve exactly as main_helper._resolve_class would from the yaml entry
-    path = "chisurf.core.models.description.tcspc_lifetime"
+    path = "chisurf.core.models.description.tcspc_polarized"
     mod, cls = path.rsplit(".", 1)
     model_class = getattr(importlib.import_module(mod), cls)
     assert model_class.name == "Lifetime"
@@ -288,11 +288,7 @@ def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_mod
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     w = AutoModelWidget(registered_lifetime_model)
-    irf = next(
-        c
-        for c in w.findChildren(CurveInputWidget)
-        if (c._section.action_fixed or {}).get("slot") == "response"
-    )
+    irf = next(c for c in w.findChildren(CurveInputWidget) if c._section.label == "IRF")
 
     dispatched = []
     monkeypatch.setattr(
@@ -308,9 +304,9 @@ def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_mod
     irf._selector = _Sel()
     irf._on_change()
 
-    name, payload = next((n, p) for n, p in dispatched if n == "model.set_dataset")
-    assert payload.get("idx") == 3 and payload.get("name") == "irf_curve.txt"
-    assert payload.get("slot") == "response" and "fit_index" in payload
+    name, payload = next((n, p) for n, p in dispatched if n == "model.change_irf")
+    assert payload.get("irf_idx") == 3 and payload.get("irf_name") == "irf_curve.txt"
+    assert "fit_index" in payload
 
 
 def test_add_and_del_change_the_components_and_the_switches_write_scalars(qapp, lifetime_model):
@@ -331,14 +327,17 @@ def test_add_and_del_change_the_components_and_the_switches_write_scalars(qapp, 
     buttons["del"].click()
     assert lifetime_model.structure == "lifetime.components.1"
 
+    from chisurf.gui.autoform.sections.builtin import ToggleWidget
+
     switches = {
         cb.text(): cb
         for row in w.findChildren(ToggleRowWidget)
         for cb in row.findChildren(QtWidgets.QCheckBox)
     }
-    assert {"Convolve", "Periodic", "Pile-up"} <= set(switches)
+    assert {"Pile-up", "DNL", "Reverse"} <= set(switches)
+    convolve = next(t for t in w.findChildren(ToggleWidget) if t._section.attr == "do_convolution")
     before = bool(lifetime_model.get_scalar("convolve"))
-    switches["Convolve"].setChecked(not before)
+    convolve.checkbox.setChecked(not before)
     assert bool(lifetime_model.get_scalar("convolve")) == (not before)
 
 

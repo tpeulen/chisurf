@@ -3,7 +3,7 @@
 QToolButton {
     background-color: rgba(255, 255, 255, 0.10) !important;
     border: 1px solid rgba(255, 255, 255, 0.35) !important;
-    border-radius: 3px;
+    border-radius: 0px;
     padding: 1px 3px;
 }
 
@@ -22,14 +22,22 @@ QToolButton#button_fit {
     /* Fit button: muted red, non-flashy */
     background-color: #b33b3b;
     color: #ffffff;
-    border-radius: 2px;
-    padding: 2px 6px;
+    border-radius: 0px;
+    padding: 1px 5px;
+}
+
+QToolButton#button_mcts {
+    /* Model search: baby blue, distinct from direct fit and sampling. */
+    background-color: #89cff0;
+    color: #10212b;
+    border-radius: 0px;
+    padding: 1px 5px;
 }
 
 QToolButton#button_sample {
     /* Sample button: orange accent */
     background-color: #f57c00;
     color: #ffffff;
-    border-radius: 2px;
-    padding: 2px 6px;
+    border-radius: 0px;
+    padding: 1px 5px;
 }
