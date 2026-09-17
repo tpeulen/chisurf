@@ -21,7 +21,6 @@ import logging
 import os
 import sys
 
-import yaml
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf.core.settings as _cs_settings_mod
@@ -336,20 +335,19 @@ class UpdaterWidget(QtWidgets.QWidget):
         """Persist updater startup settings into settings_chisurf.yaml.
         Returns True on success, False otherwise."""
         try:
-            # Ensure plugin settings path exists in cs_settings
+            values = {
+                'ignore_updates_on_startup': bool(self._ignore_updates),
+                'check_on_startup': bool(self._check_on_startup),
+            }
             all_settings = _cs_settings_mod.cs_settings
-            if 'plugins' not in all_settings or not isinstance(all_settings['plugins'], dict):
-                all_settings['plugins'] = {}
-            if 'updater' not in all_settings['plugins'] or not isinstance(all_settings['plugins']['updater'], dict):
-                all_settings['plugins']['updater'] = {}
-            all_settings['plugins']['updater']['ignore_updates_on_startup'] = bool(self._ignore_updates)
-            all_settings['plugins']['updater']['check_on_startup'] = bool(self._check_on_startup)
+            plugins = all_settings.setdefault('plugins', {})
+            plugins.setdefault('updater', {}).update(values)
+            # Only this section, merged into the user's file: dumping the live
+            # settings wrote every merged default into it, pinning them all.
+            updater = dict(plugins['updater'])
+            from chisurf.core.settings.settings_utils import update_settings_section
 
-            # Write back to yaml file
-            settings_file = _cs_settings_mod.chisurf_settings_file
-            with open(settings_file, 'w', encoding='utf-8') as f:
-                yaml.safe_dump(all_settings, f, default_flow_style=False)
-            return True
+            return update_settings_section('plugins', {'updater': updater})
         except Exception:
             return False
 

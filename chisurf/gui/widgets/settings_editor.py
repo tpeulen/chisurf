@@ -1024,27 +1024,10 @@ def _overrides_only(filename, settings: dict) -> dict:
             defaults = yaml.safe_load(handle) or {}
     except (OSError, yaml.YAMLError):
         return settings
-    pruned = _prune_defaults(settings, defaults)
+    from chisurf.core.settings.settings_utils import prune_defaults
+
+    pruned = prune_defaults(settings, defaults)
     return pruned if isinstance(pruned, dict) else settings
-
-
-def _prune_defaults(values, defaults):
-    """Recursively drop entries of *values* that match *defaults*."""
-    if not isinstance(values, dict) or not isinstance(defaults, dict):
-        return values
-    out = {}
-    for key, value in values.items():
-        if key not in defaults:
-            out[key] = value
-            continue
-        default = defaults[key]
-        if isinstance(value, dict) and isinstance(default, dict):
-            nested = _prune_defaults(value, default)
-            if nested:
-                out[key] = nested
-        elif value != default:
-            out[key] = value
-    return out
 
 
 def _load_settings_for_editing(filename) -> dict:

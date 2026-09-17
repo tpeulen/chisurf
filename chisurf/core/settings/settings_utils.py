@@ -26,18 +26,83 @@ def _deep_merge(base: dict, override: dict) -> dict:
     return merged
 
 
+def prune_defaults(values, defaults):
+    """Recursively drop entries of *values* that match *defaults*.
+
+    Parameters
+    ----------
+    values, defaults : dict
+        A user settings mapping and the packaged defaults it overlays.
+
+    Returns
+    -------
+    dict
+        Only what differs; a section left empty is dropped.
+
+    Examples
+    --------
+    >>> prune_defaults({"a": 1, "b": {"c": 2, "d": 3}}, {"a": 1, "b": {"c": 2}})
+    {'b': {'d': 3}}
+    """
+    if not isinstance(values, dict) or not isinstance(defaults, dict):
+        return values
+    out = {}
+    for key, value in values.items():
+        if key not in defaults:
+            out[key] = value
+            continue
+        default = defaults[key]
+        if isinstance(value, dict) and isinstance(default, dict):
+            nested = prune_defaults(value, default)
+            if nested:
+                out[key] = nested
+        elif value != default:
+            out[key] = value
+    return out
+
+
+#: Settings whose shipped default changed, with the values it used to have. A
+#: user file holding one of those was, as far as anyone can tell, holding the
+#: old default -- files were seeded with a full copy of the defaults until
+#: 26.1 -- so the value is dropped and the new default applies.
+FORMER_DEFAULTS: dict[tuple, tuple] = {
+    ("gui", "plot", "backend"): ("pyqtgraph",),
+}
+
+
+def _drop_former_defaults(user: dict) -> dict:
+    """Remove the values :data:`FORMER_DEFAULTS` lists from a user mapping."""
+    for path, former in FORMER_DEFAULTS.items():
+        parent = user
+        for key in path[:-1]:
+            parent = parent.get(key) if isinstance(parent, dict) else None
+        if isinstance(parent, dict) and parent.get(path[-1]) in former:
+            del parent[path[-1]]
+    return user
+
+
 def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = False) -> dict:
-    """Return the content of a settings file from the user settings path.
+    """Return a settings file's content: packaged defaults, overlaid by the user's.
 
-    If the user file does not exist it is copied from the package folder. The
-    packaged (source) settings are always deep-merged *underneath* the user file,
-    so keys added in newer releases resolve with their defaults on existing
-    installs while any value the user has set still wins. Pass
-    ``use_source_folder=True`` to read the packaged defaults directly.
+    The packaged (source) settings are deep-merged *underneath* the user file,
+    so the user file needs to hold only what the user changed -- and it is not
+    seeded any more. A file seeded by an older ChiSurf holds a copy of every
+    default of its day, which froze each of them as if chosen; on load such a
+    file is migrated once: values equal to the current defaults, or to a
+    former default (:data:`FORMER_DEFAULTS`), are removed and the file is
+    rewritten with what remains. Pass ``use_source_folder=True`` to read the
+    packaged defaults directly.
 
-    :param setting_file: path to settings file
-    :param use_source_folder: if true use settings file in source code folder
-    :return:
+    Parameters
+    ----------
+    setting_file : pathlib.Path
+        The user's settings file. It need not exist.
+    use_source_folder : bool
+        Read the packaged defaults only.
+
+    Returns
+    -------
+    dict
     """
     package_path = pathlib.Path(__file__).parent
     original_settings = package_path / setting_file.parts[-1]
@@ -50,15 +115,23 @@ def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = F
             error_message=f"Error opening settings file {path}",
         )
 
-    if use_source_folder:
+    if use_source_folder or not setting_file.is_file():
         return _read(original_settings)
-    if not setting_file.is_file():
-        shutil.copyfile(original_settings, setting_file)
     defaults = _read(original_settings)
     user = _read(setting_file)
-    if isinstance(defaults, dict) and isinstance(user, dict):
-        return _deep_merge(defaults, user)
-    return user if user else defaults
+    if not (isinstance(defaults, dict) and isinstance(user, dict)):
+        return user if user else defaults
+    if setting_file.name == "settings_chisurf.yaml":
+        migrated = prune_defaults(_drop_former_defaults(copy.deepcopy(user)), defaults)
+        if migrated != user:
+            try:
+                with open(setting_file, "w", encoding="utf-8") as fh:
+                    yaml.safe_dump(migrated, fh, default_flow_style=False, sort_keys=False)
+            except OSError:
+                logging.getLogger(__name__).warning(
+                    "could not rewrite %s without its copied defaults", setting_file)
+            user = migrated
+    return _deep_merge(defaults, user)
 
 
 def copy_settings_to_user_folder():
@@ -73,8 +146,10 @@ def copy_settings_to_user_folder():
             continue
         # Help mappings are considered part of the application resources and are
         # not meant to be edited per-user, so we do not copy help_mappings.yaml
-        # into the user settings directory.
-        if file.name == "help_mappings.yaml":
+        # into the user settings directory. The main settings file is not copied
+        # either: it is read as defaults overlaid by the user's file, and a copy
+        # would pin every default of this release (see get_chisurf_settings).
+        if file.name in ("help_mappings.yaml", "settings_chisurf.yaml"):
             continue
         destination_file = user_settings_path / file.name
         if not destination_file.exists():  # Avoid overwriting existing files
@@ -442,19 +517,12 @@ def set_use_ribbon_interface(use_ribbon: bool) -> bool:
     try:
         settings_file = get_path('settings') / 'settings_chisurf.yaml'
         
-        # Create settings file if it doesn't exist
+        # Create an empty settings file if it doesn't exist: it holds only what
+        # the user changed, over the packaged defaults.
         if not settings_file.is_file():
-            # Copy from package settings if available
-            package_path = pathlib.Path(__file__).parent
-            original_settings = package_path / 'settings_chisurf.yaml'
-            if original_settings.is_file():
-                import shutil
-                shutil.copyfile(original_settings, settings_file)
-            else:
-                # Create empty settings file
-                settings_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(settings_file, 'w', encoding='utf-8') as fh:
-                    yaml.safe_dump({}, fh)
+            settings_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(settings_file, 'w', encoding='utf-8') as fh:
+                yaml.safe_dump({}, fh)
         
         data = safe_open_file(
             file_path=settings_file,
@@ -498,17 +566,12 @@ def set_language(code: str) -> bool:
     try:
         settings_file = get_path('settings') / 'settings_chisurf.yaml'
 
-        # Create settings file if it doesn't exist
+        # Create an empty settings file if it doesn't exist: it holds only what
+        # the user changed, over the packaged defaults.
         if not settings_file.is_file():
-            package_path = pathlib.Path(__file__).parent
-            original_settings = package_path / 'settings_chisurf.yaml'
-            if original_settings.is_file():
-                import shutil
-                shutil.copyfile(original_settings, settings_file)
-            else:
-                settings_file.parent.mkdir(parents=True, exist_ok=True)
-                with open(settings_file, 'w', encoding='utf-8') as fh:
-                    yaml.safe_dump({}, fh)
+            settings_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(settings_file, 'w', encoding='utf-8') as fh:
+                yaml.safe_dump({}, fh)
 
         data = safe_open_file(
             file_path=settings_file,
