@@ -39,7 +39,8 @@ external software.
 
 1. Launch the plugin from the ChiSurf menu: Structure > Potential Energy Calculator
 2. Load a molecular structure or trajectory:
-   - Click "Open trajectory" to load an H5 trajectory file
+   - Click "…" beside Trajectory to load a DCD trajectory, and beside Topology
+     to load the PDB that names its atoms (DCD stores coordinates only)
 3. Configure potential energy calculations:
    - Select potential energy terms from the dropdown menu
    - Adjust parameters for each potential term

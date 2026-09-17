@@ -4,13 +4,15 @@ import numpy as np
 import pytest
 
 
-def _peptide_trajectory(path: str, n_res: int = 3, n_frames: int = 4) -> None:
-    """Write a small *n_res*-residue ALA peptide trajectory (*n_frames*) to *path* (.h5).
+def _peptide_trajectory(path: str, n_res: int = 3, n_frames: int = 4) -> str:
+    """Write a small *n_res*-residue ALA peptide trajectory to *path* (.dcd).
 
     Uses real backbone atom names/elements so the chisurf structure reader can
-    parse it and the potentials have a genuine structure to score.
+    parse it and the potentials have a genuine structure to score. Returns the
+    topology PDB written beside it, since a DCD names no atoms.
     """
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.fio.trajectory import write_dcd
+    from chisurf.core.structure import trajectory_data as md
     elements = {
         "N": md.element.nitrogen,
         "CA": md.element.carbon,
@@ -25,9 +27,12 @@ def _peptide_trajectory(path: str, n_res: int = 3, n_frames: int = 4) -> None:
             topology.add_atom(name, elements[name], residue)
     n_atoms = 4 * n_res
     rng = np.random.default_rng(0)
-    # nm-scale coordinates spread over ~1 nm so the radius of gyration is nonzero.
-    xyz = rng.random((n_frames, n_atoms, 3)).astype(np.float32)
-    md.Trajectory(xyz=xyz, topology=topology).save(path)
+    # Ångström, spread over ~10 Å so the radius of gyration is nonzero.
+    xyz = (10.0 * rng.random((n_frames, n_atoms, 3))).astype(np.float32)
+    write_dcd(path, xyz)
+    pdb = str(path).replace(".dcd", ".pdb")
+    md.Trajectory(xyz=xyz, topology=topology)[0].save_pdb(pdb)
+    return pdb
 
 
 class _RadiusGyrationPotential:
@@ -93,16 +98,16 @@ def test_add_and_remove_potential_updates_table_and_universe():
 
 
 def test_process_writes_csv_end_to_end(tmp_path):
-    pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.potential_energy.view_model import PotentialEnergyViewModel
 
-    source = tmp_path / "peptide.h5"
+    source = tmp_path / "peptide.dcd"
     csv_path = tmp_path / "energies.txt"
     n_frames = 4
-    _peptide_trajectory(str(source), n_res=3, n_frames=n_frames)
+    topology = _peptide_trajectory(str(source), n_res=3, n_frames=n_frames)
 
     model = PotentialEnergyViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.add_potential(_RadiusGyrationPotential(), 1.0)
 
     seen = []
@@ -125,7 +130,28 @@ def test_process_writes_csv_end_to_end(tmp_path):
         float(cells[0])
         energy = float(cells[1])
         assert energy > 0.0  # radius of gyration of a spread-out peptide is positive
+        # Coordinates within a 10-Å cube: a radius of gyration beyond that means
+        # the frame was scaled on the way in (the old nm -> Å ×10).
+        assert energy < 10.0
     assert "Processed" in model.log_html()
+
+
+def test_process_reads_with_the_stride_it_numbers_by(tmp_path):
+    from chisurf.plugins.traj.potential_energy.view_model import PotentialEnergyViewModel
+
+    source = tmp_path / "peptide.dcd"
+    csv_path = tmp_path / "energies.txt"
+    topology = _peptide_trajectory(str(source), n_res=3, n_frames=4)
+
+    model = PotentialEnergyViewModel()
+    model.set_trajectory(str(source))
+    model.set_topology(topology)
+    model.stride = 2
+    model.add_potential(_RadiusGyrationPotential(), 1.0)
+
+    assert model.process(str(csv_path)) == 2
+    rows = [line.split("\t")[0] for line in csv_path.read_text().splitlines()[1:] if line.strip()]
+    assert rows == ["1", "3"]
 
 
 def test_process_without_trajectory_is_noop(tmp_path):

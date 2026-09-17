@@ -4,7 +4,7 @@ Two bespoke Qt widgets are registered here and referenced by ``custom`` sections
 in ``calculate_potential.view.json``:
 
 ``potential_energy_setup``
-    The trajectory picker (``…`` browse + drag-drop, H5 filter), the
+    The trajectory and topology pickers (``…`` browse + drag-drop), the
     potential-type combo, the *dynamic* parameter editor (the selected
     :data:`chisurf.gui.widgets.structure.potentialDict` widget, rebuilt on every
     combo change — a direct port of the legacy ``onSelectedPotentialChanged``),
@@ -110,15 +110,36 @@ class _SetupSection(QtWidgets.QWidget):
         traj_row.addWidget(QtWidgets.QLabel("Trajectory"))
         self._traj_edit = QtWidgets.QLineEdit()
         self._traj_edit.setReadOnly(True)
-        self._traj_edit.setPlaceholderText("Drop an H5 trajectory here or browse…")
+        self._traj_edit.setPlaceholderText("Drop a DCD trajectory here or browse…")
         self._traj_edit.setText(self._model.trajectory_file)
         traj_row.addWidget(self._traj_edit, 1)
         browse = QtWidgets.QToolButton()
         browse.setText("…")
-        browse.setToolTip("Open an H5 trajectory file.")
+        browse.setToolTip("Open a DCD trajectory.")
         browse.clicked.connect(self._browse_trajectory)
         traj_row.addWidget(browse)
         layout.addLayout(traj_row)
+
+        # DCD holds coordinates and nothing else, so the atom names -- which
+        # every potential scores by -- have to come from a structure file.
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(2)
+        top_row.addWidget(QtWidgets.QLabel("Topology"))
+        self._top_edit = QtWidgets.QLineEdit()
+        self._top_edit.setReadOnly(True)
+        self._top_edit.setPlaceholderText("PDB naming the atoms — required for DCD")
+        self._top_edit.setText(self._model.topology_filename)
+        top_row.addWidget(self._top_edit, 1)
+        top_browse = QtWidgets.QToolButton()
+        top_browse.setText("…")
+        top_browse.setToolTip(
+            "Open the PDB that names the atoms. DCD stores coordinates "
+            "only, so this is required for them."
+        )
+        top_browse.clicked.connect(self._browse_topology)
+        top_row.addWidget(top_browse)
+        layout.addLayout(top_row)
 
         # -- potential-type combo + Add -------------------------------------
         combo_row = QtWidgets.QHBoxLayout()
@@ -161,22 +182,42 @@ class _SetupSection(QtWidgets.QWidget):
         self._rebuild_editor()
 
         _enable_file_drop(self._traj_edit, self._load_trajectory)
+        _enable_file_drop(self._top_edit, self._load_topology)
         self._model.add_observer(self._on_model_event)
 
     # ── model wiring ────────────────────────────────────────────────────
     def _on_model_event(self, event: str) -> None:
-        if event == "loaded" and self._traj_edit.text() != self._model.trajectory_file:
+        if event != "loaded":
+            return
+        if self._traj_edit.text() != self._model.trajectory_file:
             self._traj_edit.setText(self._model.trajectory_file)
+        if self._top_edit.text() != self._model.topology_filename:
+            self._top_edit.setText(self._model.topology_filename)
 
     # ── trajectory ──────────────────────────────────────────────────────
     def _browse_trajectory(self) -> None:
         import chisurf.gui.widgets
 
         filename = chisurf.gui.widgets.get_filename(
-            "Open Trajectory-File", "H5-Trajectory-Files (*.h5)"
+            "Open trajectory", "Trajectories (*.dcd)"
         )
         if filename:
             self._load_trajectory(str(filename))
+
+    def _browse_topology(self) -> None:
+        import chisurf.gui.widgets
+
+        filename = chisurf.gui.widgets.get_filename(
+            "Open topology", "Structures (*.pdb *.cif *.ent)"
+        )
+        if filename:
+            self._load_topology(str(filename))
+
+    def _load_topology(self, path: str) -> None:
+        if not path or not pathlib.Path(path).is_file():
+            return
+        self._model.set_topology(path)
+        _refresh_host_form(self)
 
     def _load_trajectory(self, path: str) -> None:
         if not path or not pathlib.Path(path).is_file():

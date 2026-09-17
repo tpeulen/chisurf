@@ -1,7 +1,7 @@
 """Qt-free view-model backing the Potential-Energy calculator.
 
-:class:`PotentialEnergyViewModel` holds the interactive state (the source H5
-trajectory, the read stride, the selected potential type and weight, and a
+:class:`PotentialEnergyViewModel` holds the interactive state (the source DCD
+trajectory and its topology, the read stride, the selected potential type and weight, and a
 :class:`~chisurf.core.structure.Universe` collecting the configured potentials)
 and performs the actual work — iterating a trajectory frame by frame, scoring
 every configured potential for each frame and writing the per-potential energies
@@ -42,8 +42,10 @@ class PotentialEnergyViewModel:
     def __init__(self) -> None:
         import chisurf.core.structure
 
-        #: Source H5 trajectory path.
+        #: Source DCD trajectory path.
         self.trajectory_file: str = ""
+        #: Structure (PDB/mmCIF) naming the atoms; DCD stores coordinates only.
+        self.topology_filename: str = ""
         #: Read every ``stride``-th frame; also seeds the emitted frame numbers.
         self.stride: int = 1
         #: Index of the currently selected potential type (into :meth:`potential_names`).
@@ -103,6 +105,12 @@ class PotentialEnergyViewModel:
         self.append_log(f"Trajectory: {self.trajectory_file}")
         self._notify("loaded")
 
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     # ── potentials ──────────────────────────────────────────────────────
     def add_potential(self, potential_obj, weight: float, name: str | None = None) -> None:
         """Add *potential_obj* (weight *weight*) to the universe and the table.
@@ -159,7 +167,7 @@ class PotentialEnergyViewModel:
         """Score every frame of the trajectory and write the energies to *energy_file*.
 
         Iterates the trajectory frame by frame (ports ``onProcessTrajectory``),
-        setting the structure coordinates to the frame's ``xyz * 10.0``, updating
+        setting the structure coordinates to the frame's ``xyz`` (Å), updating
         the C-alpha distance matrix when the structure supports it, and writing one
         CSV row per frame (``FrameNbr`` followed by one column per configured
         potential of :meth:`Universe.getEnergies`).
@@ -192,17 +200,22 @@ class PotentialEnergyViewModel:
         with io.zipped.open_maybe_zipped(filename=energy_file, mode="w") as handle:
             handle.write(header)
 
+        topology = self.topology_filename or None
         self.structure = chisurf.core.structure.TrajectoryFile(
-            mdtraj.load_frame(self.trajectory_file, 0)
+            mdtraj.load_frame(self.trajectory_file, 0, top=topology)
         )[0]
 
         i = 0
         with open(energy_file, "a") as handle:
-            for chunk in mdtraj.iterload(self.trajectory_file):
+            # The stride was used to number the rows but never to read, so a
+            # strided run labelled every frame as if it had been skipped.
+            for chunk in mdtraj.iterload(self.trajectory_file, stride=int(self.stride),
+                                         top=topology):
                 for frame in chunk:
-                    # A single-frame trajectory's xyz is (1, n_atoms, 3); take the
-                    # frame and scale nm → Å, matching the legacy widget.
-                    self.structure.xyz = frame.xyz[0] * 10.0
+                    # A single-frame trajectory's xyz is (1, n_atoms, 3). Ångström
+                    # already, like the structure's: the ×10 here was a nm → Å
+                    # conversion left behind when trajectories moved to Å.
+                    self.structure.xyz = frame.xyz[0]
                     update_dist = getattr(self.structure, "update_dist", None)
                     if callable(update_dist):
                         update_dist()
