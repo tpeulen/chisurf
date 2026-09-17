@@ -100,7 +100,19 @@ def _load_yaml_config(path: pathlib.Path) -> dict:
 
 
 def _deep_merge_dicts(base: dict, override: dict) -> dict:
-    """Recursively merge override into base without mutating the inputs."""
+    """Recursively merge override into base without mutating the inputs.
+
+    Lists replace, except ``models``: the shipped models always stay, and a
+    model the user file adds is appended. The user file starts as a copy of
+    the packaged one, so replacing the list froze the model set at the day of
+    that copy -- a model added since never appeared, and one renamed since
+    silently vanished.
+
+    Examples
+    --------
+    >>> _deep_merge_dicts({'t': {'models': ['a', 'b']}}, {'t': {'models': ['old', 'a']}})
+    {'t': {'models': ['a', 'b', 'old']}}
+    """
     result = copy.deepcopy(base)
     for key, value in (override or {}).items():
         if (
@@ -108,6 +120,8 @@ def _deep_merge_dicts(base: dict, override: dict) -> dict:
             and isinstance(result.get(key), dict)
         ):
             result[key] = _deep_merge_dicts(result[key], value)
+        elif key == 'models' and isinstance(value, list) and isinstance(result.get(key), list):
+            result[key] = result[key] + [m for m in value if m not in result[key]]
         else:
             result[key] = copy.deepcopy(value)
     return result
