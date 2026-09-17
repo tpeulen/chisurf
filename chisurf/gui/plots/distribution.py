@@ -110,8 +110,12 @@ class DistributionPlotControl(QtWidgets.QWidget):
 
         for distribution_type in options.keys():
             d = options[distribution_type]
+            # ``getattr``, not ``__getattribute__``: a described model serves
+            # its distributions from ``__getattr__``, which ``__getattribute__``
+            # never reaches -- every lifetime fit's Distribution tab found no
+            # distribution and failed with ``KeyError: ''``.
             try:
-                model.__getattribute__(d["attribute"])
+                getattr(model, d["attribute"])
                 items.append(distribution_type)
             except AttributeError:
                 pass
@@ -270,7 +274,7 @@ class DistributionPlot(plotbase.Plot):
         if self.residual_plot is not None:
             self.residual_plot.set_log(x=log_x, y=False)
         r = ds["accessor"](
-            self.fit.model.__getattribute__(ds["attribute"]), **ds.get("accessor_kwargs", {})
+            getattr(self.fit.model, ds["attribute"]), **ds.get("accessor_kwargs", {})
         )
 
         # Helper to drop curves with no finite support. This prevents
