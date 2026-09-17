@@ -260,7 +260,15 @@ def _cmake_args(prefix: Path) -> str:
             vcpkg_hdf5 = Path(vcpkg_root) / "installed" / "x64-windows"
             if (vcpkg_hdf5 / "include" / "H5public.h").is_file():
                 hdf5_root = vcpkg_hdf5
-                cmake_prefix_path = f"{prefix};{vcpkg_hdf5}"
+                # vcpkg_hdf5 FIRST: a standalone find_package(HDF5 REQUIRED
+                # COMPONENTS C) against vcpkg's tree alone succeeds (real CI,
+                # --debug-find-pkg probe), but the real build still failed
+                # with prefix listed first. hdf5 is still a conda dependency
+                # (other consumers may want it), so CMAKE_PREFIX_PATH search
+                # order matters: CONFIG mode uses the first match, and conda's
+                # own hdf5-config.cmake in `prefix` -- the one confirmed
+                # broken here -- would otherwise be found before vcpkg's.
+                cmake_prefix_path = f"{vcpkg_hdf5};{prefix}"
                 print(f"build-tttrlib: using vcpkg HDF5 at {vcpkg_hdf5}", flush=True)
                 break
         else:
