@@ -218,41 +218,28 @@ def test_the_host_lends_its_own_device_rather_than_making_a_second(qapp):
 # -- what is shipped ------------------------------------------------------
 
 def test_the_shipped_archives_hold_what_the_credits_say():
-    """Every shipped clip is named in the credits, or the credits file is wrong.
-
-    Four Ninja Adventure tracks went into music.zip without a line in
-    CREDITS.md; a count of five kept failing without saying that. Checking
-    the names catches the next addition too.
-    """
+    """Five music loops and 512 sound effects, or the credits file is wrong."""
     music = audio.clip_names("music")
     effects = audio.clip_names("sfx")
     if not music and not effects:
         pytest.skip("audio assets are not installed in this checkout")
-    assert set(music) == {"level_1", "level_2", "level_3", "title_screen", "ending",
-                          "ninja_plain", "ninja_lost_village", "ninja_dream", "ninja_swamp"}
+    assert len(music) == 5, music
+    assert set(music) == {"level_1", "level_2", "level_3", "title_screen", "ending"}
     assert len(effects) == 512, len(effects)
 
     credits = (audio.ASSET_DIR / "CREDITS.md")
     assert credits.is_file(), "redistributed work has to say whose it is"
     text = credits.read_text(encoding="utf-8")
-    assert "Juhani Junkala" in text and "pixel-boy" in text and "CC0" in text
-    for name in music:
-        if name.startswith("ninja_"):
-            assert f"`{name}`" in text, f"{name} is shipped but not credited"
+    assert "Juhani Junkala" in text and "CC0" in text
 
 
 def test_the_whole_soundtrack_is_smaller_than_the_screenshots():
-    """The size budget that decided the format.
-
-    9 MB held the first five loops and the effects (6.7 MB). The four Ninja
-    Adventure tracks brought it to 9.3 MB; the budget moved to 10 MB with
-    them, on purpose, and stays a budget -- another soundtrack needs a reason.
-    """
+    """The size budget that decided the format."""
     if not (audio.ASSET_DIR / "music.zip").is_file():
         pytest.skip("audio assets are not installed in this checkout")
     total = sum(path.stat().st_size
                 for path in audio.ASSET_DIR.glob("*.zip"))
-    assert total < 10_000_000, f"{total / 1e6:.1f} MB"
+    assert total < 9_000_000, f"{total / 1e6:.1f} MB"
 
 
 def test_the_archives_are_stored_not_deflated():

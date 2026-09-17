@@ -31,11 +31,9 @@ def test_the_gamespace_survives_the_demo_flag():
     assert hub.menu_hidden is False, "the hub must stay in the menus"
 
     names = [p["name"] for p in GAME_PANELS]
-    assert names == ["Number Quest", "Minesweeper", "Tetris", "Pong",
-                     "Breakout", "Ninja Adventure"]
+    assert names == ["Number Quest", "Minesweeper", "Tetris", "Pong", "Breakout"]
 
-    for game_dir in ("number_quest", "minesweeper", "tetris", "pong",
-                     "breakout", "ninja_adventure"):
+    for game_dir in ("number_quest", "minesweeper", "tetris", "pong", "breakout"):
         m = load_manifest(Path(__file__).parents[1] / game_dir / "manifest.json")
         assert m.demo or m.menu_hidden, (
             f"{game_dir} would appear in the production menus"

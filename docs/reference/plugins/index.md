@@ -292,7 +292,6 @@ Of the **134 plugins**, **63** build their interface from declarative AutoForm s
 | --- | --- |
 | [Imaging Common](imaging_common.md) *(hidden)* | Shared base classes for the per-pixel imaging tools: the common tool shell, the image/frame plumbing and the MMFDB bridge they all reuse. |
 | [Mle Common](mle_common.md) *(hidden)* | Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the estimator contract, the fitting base class and its tool shell. |
-| [Ninja Adventure](ninja_adventure.md) *(hidden)* | The CC0 Ninja Adventure reference map, playable on the chigame engine: explore the village, break the crates, cross the teleporter, fight the swamp samurai. |
 
 ## {{ cookiecutter.plugin_category }}
 

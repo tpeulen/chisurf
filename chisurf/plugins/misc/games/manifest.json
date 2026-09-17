@@ -17,7 +17,6 @@
   "optional_requires": {
     "breakout": "*",
     "minesweeper": "*",
-    "ninja_adventure": "*",
     "number_quest": "*",
     "pong": "*",
     "tetris": "*"

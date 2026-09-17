@@ -9,6 +9,14 @@ timestamp: '2026-08-10T00:00:00Z'
 
 # Where to pick this up
 
+**Ninja Adventure and the top-down port left for Lumis Quest (2026-09-17).**
+The game, `actors`/`behavior`/`tilemap`/`camera`/`fx`/`atlas`/`pack`, the
+`assets/pixel` pack, the four `ninja_*` music tracks and the map/art importers
+now live in `~/dev/lumis_quest` (game: `lumis_quest/ninja_adventure/`; engine:
+its vendored `chigame/`). Everything below about those modules describes that
+copy. ChiSurf's chigame keeps the scene, batcher, input, audio, particles and
+the procedural pack its five small games use.
+
 **Cloud zoom artifacts closed (2026-08-17, night).** Two residual cloud bugs
 after the screen-space pass. (1) `Weather.update` respawned clouds at a fixed
 ±60 world units past the box edge -- fine at the old zoom, but a zoomed cloud

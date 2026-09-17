@@ -40,13 +40,6 @@ GAME_PANELS = [
         "class_path": "chisurf.plugins.misc.games.breakout.breakout",
         "class_name": "Breakout",
     },
-    {
-        "name": "Ninja Adventure",
-        "icon": "🥷",
-        "description": "The CC0 Ninja Adventure village map, playable on the chigame engine: walk the author's tiles, break the crates, cross the teleporter, fight the swamp samurai.",
-        "class_path": "chisurf.plugins.misc.games.ninja_adventure.tool",
-        "class_name": "NinjaAdventureWidget",
-    },
 ]
 
 

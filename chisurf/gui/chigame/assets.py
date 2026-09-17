@@ -433,46 +433,53 @@ SOUNDS: dict[str, str] = {
 #: is eight bars with a phrase structure and somewhere to breathe, so a loop is
 #: twelve to twenty seconds and arrives back at its own tonic.
 TRACKS: dict[str, dict] = {
-    # The open ground: D Phrygian, a driving ostinato that never quite
-    # resolves -- out here nothing is watching over you. Cities get the calm
-    # tune; the wilderness (and the dark manifold below it) does not.
+    # The road: D major, walking pace, a lead that leans on its long notes.
     "overworld": {
-        "clip": "ninja_plain",
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_1",
         "root": 293.66,
-        "tempo": 132,
+        "tempo": 104,
         "loop": True,
-        "tone": 0.58,
+        "tone": 0.62,
         "melody": {
-            "wave": "square", "gain": 0.22, "vibrato": 0.012, "sustain": 0.42,
+            "wave": "triangle", "gain": 0.30, "vibrato": 0.006, "sustain": 0.74,
             "notes": [
-                [0, 1], [1, 1], [3, 1], [0, 1], [5, 1], [3, 1], [7, 2],
-                [8, 1], [7, 1], [5, 1], [3, 1], [1, 2], [0, 2],
-                [12, 1], [10, 1], [8, 1], [7, 1], [5, 1], [3, 1], [1, 2],
-                [0, 2], [3, 2], [1, 2], [0, 2],
-                [0, 1], [1, 1], [3, 1], [0, 1], [5, 1], [3, 1], [7, 2],
-                [8, 1], [7, 1], [5, 1], [3, 1], [1, 2], [0, 2],
-                [12, 1], [10, 1], [8, 1], [7, 1], [5, 1], [3, 1], [1, 2],
-                [0, 2], [3, 2], [1, 2], [0, 2],
+                [0, 2], [4, 1], [7, 1], [9, 2], [7, 2],
+                [4, 2], [2, 1], [4, 1], [7, 3], None,
+                [9, 2], [11, 1], [12, 1], [11, 2], [9, 2],
+                [7, 3], [5, 1], [4, 2], [2, 2],
+                [0, 2], [4, 1], [7, 1], [12, 3], None,
+                [11, 2], [9, 1], [7, 1], [4, 4],
+                [5, 2], [7, 2], [9, 2], [11, 2],
+                [12, 4], [7, 2], [4, 2],
             ],
         },
         "pad": {
-            "wave": "sine", "gain": 0.08, "octave": -1, "detune": 18.0,
-            "sustain": 0.95,
-            "notes": [[0, 16], [1, 16], [0, 16], [1, 16]],
+            "wave": "sine", "gain": 0.09, "octave": -1, "detune": 8.0,
+            "sustain": 0.85,
+            "notes": [[0, 8], [7, 8], [9, 8], [5, 8],
+                      [0, 8], [7, 8], [5, 8], [7, 8]],
         },
         "bass": {
-            "wave": "triangle", "gain": 0.24, "octave": -1, "sustain": 0.35,
+            "wave": "triangle", "gain": 0.26, "octave": -1, "sustain": 0.55,
             "notes": [
-                [0, 1], [None, 1], [0, 1], [None, 1],
-                [7, 1], [None, 1], [7, 1], [None, 1],
-            ] * 8,
+                [0, 2], [7, 2], [0, 2], [4, 2],
+                [7, 2], [2, 2], [7, 2], [11, 2],
+                [9, 2], [4, 2], [9, 2], [12, 2],
+                [5, 2], [0, 2], [5, 2], [9, 2],
+                [0, 2], [7, 2], [0, 2], [4, 2],
+                [7, 2], [2, 2], [7, 2], [11, 2],
+                [5, 2], [0, 2], [5, 2], [9, 2],
+                [7, 2], [7, 2], [11, 2], [12, 2],
+            ],
         },
-        "drums": "k-h-k-h-",
-        "drum_gain": 0.20,
+        "drums": "k-h-s-hh",
+        "drum_gain": 0.22,
     },
     # Inside the walls: a slow waltz in G, no kit, close and domestic.
     "town": {
-        "clip": "ninja_lost_village",
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "title_screen",
         "root": 392.00,
         "tempo": 96,
         "loop": True,
@@ -511,7 +518,8 @@ TRACKS: dict[str, dict] = {
     },
     # A fight: A minor, driving, the only track with a full kit under it.
     "battle": {
-        "clip": "ninja_dream",
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_2",
         "root": 220.00,
         "tempo": 150,
         "loop": True,
@@ -545,33 +553,29 @@ TRACKS: dict[str, dict] = {
         "drums": "k-h-s-h-k-hks-hh",
         "drum_gain": 0.34,
     },
-    # Underneath: low and dark still, but a pulse now instead of held rests --
-    # the dark manifold is where the dungeons are, and standing in one should
-    # not feel like standing in an empty room.
+    # Underneath: slow, low, mostly rests. Nothing here is in a hurry and
+    # nothing here resolves.
     "underworld": {
-        "clip": "ninja_swamp",
+        # Recorded first, synthesised if the pack is not installed.
+        "clip": "level_3",
         "root": 174.61,
-        "tempo": 120,
+        "tempo": 66,
         "loop": True,
-        "tone": 0.34,
+        "tone": 0.26,
         "melody": {
-            "wave": "square", "gain": 0.18, "vibrato": 0.010, "sustain": 0.4,
+            "wave": "triangle", "gain": 0.20, "vibrato": 0.010, "sustain": 0.8,
             "notes": [
-                [0, 1], [None, 1], [0, 1], [1, 1], [0, 1], [None, 1], [3, 1], [1, 1],
-                [0, 1], [None, 1], [0, 1], [1, 1], [3, 1], [1, 1], [0, 1], [None, 1],
-            ] * 4,
+                [0, 4], [None, 2], [1, 2], [None, 4],
+                [-2, 4], [None, 2], [0, 2], [None, 4],
+                [3, 4], [1, 2], [0, 2], [None, 4],
+                [-4, 6], [None, 2], [0, 4], [None, 4],
+            ],
         },
         "pad": {
-            "wave": "sine", "gain": 0.12, "octave": -1, "detune": 22.0,
+            "wave": "sine", "gain": 0.13, "octave": -1, "detune": 14.0,
             "sustain": 0.95,
-            "notes": [[0, 16], [1, 16], [0, 16], [-1, 16]],
+            "notes": [[0, 12], [-2, 12], [3, 12], [-4, 16]],
         },
-        "bass": {
-            "wave": "triangle", "gain": 0.20, "octave": -1, "sustain": 0.3,
-            "notes": [[0, 1], [None, 1]] * 32,
-        },
-        "drums": "k--k--k-",
-        "drum_gain": 0.16,
     },
     # A win: eight bars would be a victory lap. This is a fanfare.
     "victory": {
