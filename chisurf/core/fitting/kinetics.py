@@ -195,18 +195,6 @@ class RateMatrixMixin:
         """Return the ``n x n`` rate matrix ``K[target, source]`` (Hz)."""
         return rate_matrix_from_rates(self.flat_rates, getattr(self, "_n_states", 0))
 
-    @property
-    def matrix(self) -> list[float]:
-        """Return the N*N flat row-major matrix entries for AutoForm grids."""
-        return self.rate_matrix().ravel().tolist()
-
-    @matrix.setter
-    def matrix(self, value: list[float]):
-        n = getattr(self, "_n_states", 0)
-        if n > 0 and len(value) == n * n:
-            arr = np.array(value, dtype=float).reshape((n, n))
-            self.set_rate_matrix(arr)
-
     def set_rate_matrix(self, matrix) -> None:
         """Write an ``n x n`` ``K[target, source]`` matrix onto the parameters.
 
@@ -235,7 +223,13 @@ class RateMatrixMixin:
 
         The view the editable rate-matrix grid binds to — a *full* ``n x n``
         row-major read, not the off-diagonal-only flat order of
-        :attr:`flat_rates`. The entries are the fitting parameters themselves,
+        :attr:`flat_rates`. Row ``i``, column ``j`` is ``k_ij``, the rate from
+        state ``i`` to state ``j``, so entry ``i*n + j``.
+
+        It is the only such view. A second property, ``matrix``, returned the
+        same numbers untransposed (``K[target, source]``); the one grid widget
+        cannot be right for both, and flipping it to suit one made the other
+        show every rate mirrored. The entries are the fitting parameters themselves,
         so editing the grid moves the parameters and their fixed/free state is
         still controlled from the table.
         """

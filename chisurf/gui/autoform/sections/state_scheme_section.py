@@ -370,7 +370,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
                         return
 
                 # Check if an active transition arrow arc / rate badge was clicked to drag arrow curve
-                dark_m = np.asarray(sat.dark.rate_matrix()).ravel()
+                dark_m = np.asarray(sat.dark.rate_values)
                 for (i, j), mid_pt in self._get_active_midpoints(n, dark_m).items():
                     if math.hypot(pos.x() - mid_pt.x(), pos.y() - mid_pt.y()) <= 28.0:
                         self._dragged_arrow = (i, j)
@@ -427,12 +427,12 @@ class StateSchemeWidget(QtWidgets.QWidget):
             return
         n = sat.n_states
         self._init_coords(n)
-        dark_m = np.asarray(sat.dark.rate_matrix()).ravel()
+        dark_m = np.asarray(sat.dark.rate_values)
 
         pos = self._scene_pos(event.pos())
         for (i, j), mid_pt in self._get_active_midpoints(n, dark_m).items():
             if abs(pos.x() - mid_pt.x()) <= 28 and abs(pos.y() - mid_pt.y()) <= 16:
-                idx = j * n + i
+                idx = i * n + j
                 val = float(dark_m[idx]) if idx < len(dark_m) else 0.0
                 self._editing_pair = (i, j)
                 # A real child widget, so it is positioned in *canvas* pixels
@@ -459,11 +459,11 @@ class StateSchemeWidget(QtWidgets.QWidget):
         if sat is None or not hasattr(sat, "dark"):
             return
         n = sat.n_states
-        dark_m = list(np.asarray(sat.dark.rate_matrix()).ravel())
-        idx = j * n + i
+        dark_m = list(sat.dark.rate_values)
+        idx = i * n + j
         if idx < len(dark_m):
             dark_m[idx] = val
-            sat.dark.matrix = dark_m
+            sat.dark.rate_values = dark_m
 
         host_form = self._find_host_form()
         if host_form is not None:
@@ -495,7 +495,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
             for j in range(n):
                 if i == j:
                     continue
-                idx_ij = j * n + i
+                idx_ij = i * n + j
                 rate_ij = float(dark_m[idx_ij]) if idx_ij < len(dark_m) else 0.0
                 is_excitation = excitation is not None and (i, j) == excitation
 
@@ -530,7 +530,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
         n = sat.n_states
         self._init_coords(n)
-        dark_m = np.asarray(sat.dark.rate_matrix()).ravel()
+        dark_m = np.asarray(sat.dark.rate_values)
         raw_labels = getattr(sat, "state_labels", None) or [f"S{i}" for i in range(n)]
         short_labels = [l.split(" ")[0] for l in raw_labels]
         r_node = 26.0
@@ -543,7 +543,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
             for j in range(n):
                 if i == j:
                     continue
-                idx_ij = j * n + i
+                idx_ij = i * n + j
                 rate = float(dark_m[idx_ij]) if idx_ij < len(dark_m) else 0.0
                 is_excitation = excitation is not None and (i, j) == excitation
 

@@ -84,8 +84,8 @@ def test_state_change_updates_rate_matrices(qapp):
     tool.form.refresh_plots()
 
     assert tool.saturation.n_states == 4
-    assert len(tool.saturation.dark.matrix) == 16  # 4x4
-    assert len(tool.saturation.exc.matrix) == 16  # 4x4
+    assert len(tool.saturation.dark.rate_values) == 16  # 4x4
+    assert len(tool.saturation.exc.rate_values) == 16  # 4x4
     for m in matrices:
         assert m.table.rowCount() == 4
         assert m.table.columnCount() == 4

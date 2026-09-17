@@ -41,7 +41,7 @@
         {
           "type": "custom",
           "key": "rate_matrix",
-          "target": "saturation.dark.matrix",
+          "target": "saturation.dark.rate_values",
           "options": {
             "size_attr": "saturation.n_states",
             "labels_attr": "saturation.state_labels",
@@ -55,7 +55,7 @@
         {
           "type": "custom",
           "key": "rate_matrix",
-          "target": "saturation.exc.matrix",
+          "target": "saturation.exc.rate_values",
           "options": {
             "size_attr": "saturation.n_states",
             "maximum": 1.0,

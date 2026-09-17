@@ -128,8 +128,8 @@ def test_the_grid_agrees_with_the_shared_rate_convention(qapp):
     grid = form.findChildren(RateMatrixWidget)[0]
 
     # Row 1, column 2 of the grid is k_12: the rate from state 1 to state 2.
-    grid.table.cellWidget(0, 1).setValue(250.0)
-    grid.table.cellWidget(2, 1).setValue(70.0)      # k_32
+    grid._spins[(0, 1)].setValue(250.0)
+    grid._spins[(2, 1)].setValue(70.0)      # k_32
 
     rates = host.kinetics.rates_by_name()
     assert rates["k1_2"].value == pytest.approx(250.0)
@@ -196,13 +196,13 @@ def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
     assert list(host.rate_values) == pytest.approx(before)
     assert host.kinetics.rates_by_name()["k1_2"].value == pytest.approx(5.0e6)
     # The clamped cell still says what it can, and says that it is clamped.
-    assert grid.table.cellWidget(0, 1).value() == pytest.approx(1.0e6)
-    assert "outside the range" in grid.table.cellWidget(0, 1).toolTip()
+    assert grid._spins[(0, 1)].value() == pytest.approx(1.0e6)
+    assert "outside the range" in grid._spins[(0, 1)].toolTip()
     # A cell that merely rounds is not flagged — that is what a grid does.
-    assert "outside the range" not in grid.table.cellWidget(0, 2).toolTip()
+    assert "outside the range" not in grid._spins[(0, 2)].toolTip()
 
     # Editing one cell commits that cell only.
-    grid.table.cellWidget(2, 1).setValue(70.0)      # k_32
+    grid._spins[(2, 1)].setValue(70.0)      # k_32
     after = host.kinetics.rates_by_name()
     assert after["k3_2"].value == pytest.approx(70.0)
     assert after["k1_2"].value == pytest.approx(5.0e6)
@@ -212,7 +212,7 @@ def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
     # A refresh reloads the display; the values behind it are still intact
     # after the next edit.
     grid.refresh()
-    grid.table.cellWidget(1, 2).setValue(5.0)       # k_23
+    grid._spins[(1, 2)].setValue(5.0)       # k_23
     after = host.kinetics.rates_by_name()
     assert after["k2_3"].value == pytest.approx(5.0)
     assert after["k1_2"].value == pytest.approx(5.0e6)
@@ -263,7 +263,7 @@ def test_popup_mode_keeps_the_grid_behind_a_button(qapp):
     assert grid.table.isVisibleTo(grid._dialog)
 
     # An edit in the popup reaches the model and updates the summary.
-    grid.table.cellWidget(0, 1).setValue(4.0)
+    grid._spins[(0, 1)].setValue(4.0)
     assert model.k[1] == pytest.approx(4.0)
     assert "1 set" in grid.button.text()
 

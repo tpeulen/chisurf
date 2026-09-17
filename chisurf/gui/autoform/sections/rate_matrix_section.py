@@ -267,8 +267,8 @@ class RateMatrixWidget(QtWidgets.QWidget):
         for (i, j), spin in self._spins.items():
             if i < n and j < n:
                 # Table cell (i, j) has row i = source, col j = target.
-                # Model matrix holds K[target, source], so index in flat array is j * n + i.
-                flat[j * n + i] = self._cell_value(i, j, spin)
+                # The bound list is row-major in (source, target): k_ij at i*n + j.
+                flat[i * n + j] = self._cell_value(i, j, spin)
         if self._attr:
             _set_resolved(self._model, self._attr, flat)
         self._update_button()
@@ -341,6 +341,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     "QCheckBox::indicator:checked:disabled { background-color: #552222; border: 1px solid #444444; }"
                 )
 
+                pending_load = None
                 spin = QtWidgets.QDoubleSpinBox(cell_w)
                 spin.setFont(t_font)
                 spin.setRange(self._min, self._max)
@@ -348,7 +349,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 spin.setKeyboardTracking(False)
                 spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
                 spin.setAlignment(QtCore.Qt.AlignCenter)
-                idx = j * n + i
+                idx = i * n + j
                 raw = flat[idx] if idx < len(flat) else 0.0
 
                 is_disabled_cell = (i == 0 and self._disable_row0) or (i == j and not self._diagonal)
@@ -403,7 +404,12 @@ class RateMatrixWidget(QtWidgets.QWidget):
                     _update_cell_style()
                 else:
                     tt_desc = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (f" ({self._unit})" if self._unit else "")
-                    self._load(i, j, spin, raw)
+                    # Loaded once the cell's tooltips are set, below: _load
+                    # warns through the tooltip when a stored rate is outside
+                    # the range the grid can show, and the description written
+                    # after it used to replace that warning, so a clamped rate
+                    # looked like any other.
+                    pending_load = (i, j, spin, raw)
                     spin.valueChanged.connect(lambda _v, ni=n: self._write_back(ni))
 
                     if param is not None:
@@ -488,6 +494,9 @@ class RateMatrixWidget(QtWidgets.QWidget):
                         spin.setToolTip(tt_desc)
                         chk_fix.setToolTip(tt_desc)
 
+                if pending_load is not None:
+                    self._load(*pending_load)
+                    pending_load = None
                 c_layout.addWidget(chk_fix)
                 c_layout.addWidget(spin, 1)
 
@@ -536,7 +545,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
             flat = self._flat()
             n = self.table.rowCount()
             for (i, j), spin in self._spins.items():
-                idx = j * n + i
+                idx = i * n + j
                 raw = flat[idx] if idx < len(flat) else 0.0
                 if i == 0 and self._disable_row0:
                     raw = 0.0
