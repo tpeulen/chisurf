@@ -239,10 +239,28 @@ def _cmake_args(prefix: Path) -> str:
     -------
     str
     """
+    hdf5_root = prefix
+    cmake_prefix_path = str(prefix)
+    if sys.platform == "win32":
+        # conda-forge's Windows hdf5 package is not discoverable by CMake's
+        # traditional (module-mode) find_package(HDF5) the way tttrlib's
+        # cmake/FindHDF5.cmake uses it -- confirmed on real CI: "Could NOT
+        # find HDF5" even with HDF5_ROOT/CMAKE_PREFIX_PATH pointed at this
+        # env's prefix. CI provisions a vcpkg-built HDF5 instead (see
+        # .github/workflows/*.yml, "Install HDF5 via vcpkg (Windows)", which
+        # matches tttrlib's own CI setup); use it here when present, since
+        # HDF5_NO_FIND_PACKAGE_CONFIG_FILE below forces module mode and so
+        # cannot fall back to vcpkg's config package on its own.
+        vcpkg_root = os.environ.get("VCPKG_INSTALLATION_ROOT")
+        if vcpkg_root:
+            vcpkg_hdf5 = Path(vcpkg_root) / "installed" / "x64-windows"
+            if (vcpkg_hdf5 / "include" / "H5public.h").is_file():
+                hdf5_root = vcpkg_hdf5
+                cmake_prefix_path = f"{prefix};{vcpkg_hdf5}"
     return " ".join(
         (
-            f"-DCMAKE_PREFIX_PATH={prefix}",
-            f"-DHDF5_ROOT={prefix}",
+            f"-DCMAKE_PREFIX_PATH={cmake_prefix_path}",
+            f"-DHDF5_ROOT={hdf5_root}",
             "-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE",
         )
     )
