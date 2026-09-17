@@ -2,6 +2,21 @@
 
 ## 2026-09-17
 
+* **emtk 2-D: ImPlot ported whole (PRD-104 Phase 2).** `junk/implot` read and
+  annotated (implot.h, implot_internal.h, implot.cpp, implot_items.cpp,
+  implot_demo.cpp). emtk's `implot` shim (refit every frame, step-outline
+  bars, horizontal-only inf lines, pre-mapped log, no interaction) is now a
+  port: `implot.py` / `implot_internal.py` / `implot_items.py` /
+  `implot_demo.py` — every item (stems, stairs, error bars, bar groups and
+  stacks, digital, pie, heatmap, 2-D histogram, image, text, annotations,
+  tags, dummy…), six axes with time/log/symlog/custom scales and inversion,
+  subplots with linking and shared legends, pan/zoom/box-select/fit/axis-drag,
+  legend toggles, context menus, drag tools, all 16 colormaps and the
+  colormap widgets. Enum values now match the reference. 71 new tests (IO-
+  driven interaction included), the ImPlot demo gallery rendered headless and
+  read, full emtk suite green; ebFRET and lightpath emtk tests green. emtk
+  `00a3b3b` (local). Record and open items: [PRD-104](prds/prd-104.md).
+
 * **emtk3d: ImPlot3D ported onto emtk (PRD-104 Phase 3).** `junk/implot3d`
   read whole and annotated (all six files); the port lives in the emtk repo:
   `implot3d.py` / `implot3d_items.py` / `implot3d_meshes.py` (extracted, not
