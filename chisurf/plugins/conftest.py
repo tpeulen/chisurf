@@ -25,3 +25,18 @@ def qapp():
     if app is None:
         app = QApplication([])
     yield app
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Run pyqtgraph's exit cleanup before pytest's final garbage collection.
+
+    Every ViewBox connects its ``destroyed`` signal to a Python lambda.
+    pyqtgraph disconnects them in ``pyqtgraph.cleanup()``, registered with
+    ``atexit`` and ``aboutToQuit`` -- but a test session never quits the
+    application, and pytest collects garbage *before* ``atexit`` runs. Any plot
+    still alive then is destroyed through a slot whose Python callable is
+    already gone, and the process segfaults after every test has passed.
+    """
+    pyqtgraph = sys.modules.get("pyqtgraph")
+    if pyqtgraph is not None:
+        pyqtgraph.cleanup()

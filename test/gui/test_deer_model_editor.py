@@ -181,7 +181,7 @@ def test_deer_pr_confidence_band(qapp, model_path):
     plot = DeerPrCIPlot(fit=fit, n_boot=20)
     plot.show()
     plot.update()
-    assert plot._best.getData()[0] is not None and len(plot._best.getData()[0]) > 0
+    assert plot._best.get_data()[0] is not None and len(plot._best.get_data()[0]) > 0
 
 
 def test_deer_gaussian_fit_recovers_distance(qapp):
