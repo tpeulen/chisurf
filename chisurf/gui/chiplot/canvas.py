@@ -594,6 +594,14 @@ class Plot(QtWidgets.QWidget):
         self._series.clear()
         self._canvas.clear()
 
+    def series(self) -> list:
+        """The drawn line and scatter series, as ``(name, handle)`` pairs.
+
+        What the plot shows, asked without reaching into a backend's own
+        objects; ``handle.get_data()`` returns each series' ``(x, y)``.
+        """
+        return list(self._series)
+
     # -- context menu / export ------------------------------------------
     def set_context_menu_enabled(self, enabled: bool) -> Plot:
         """Enable/disable chiplot's right-click menu. Returns ``self``."""

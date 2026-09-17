@@ -36,7 +36,7 @@ def test_saturation_calculator_tool_instantiation(qapp):
     plot_widgets = tool.form.findChildren(PlotWidget)
     assert len(plot_widgets) == 5, f"Expected 5 PlotWidgets in form, found {len(plot_widgets)}."
     for pw in plot_widgets:
-        assert len(pw.plot._canvas.native.items) >= 1, "Expected plot curves to be drawn."
+        assert pw.plot.series(), "Expected plot curves to be drawn."
 
     # Ensure toolbar buttons (Compute, Guide & Help) exist
     assert tool.toolbar is not None
