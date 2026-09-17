@@ -23,11 +23,17 @@ from mmfdb.samples.sample_manager import create_sample
 def db():
     """Create a temporary MFDatabase for each test."""
     with tempfile.TemporaryDirectory() as tmpdir:
+        from mmfdb.security.session import configured_default_user_id
+
         database = MFDatabase(os.path.join(tmpdir, "test.db"))
-        if not any(user.get("user_id") == "admin" for user in database.get_users()):
-            # The application default is now ``admin``; keep the fixture's
-            # first-admin bootstrap scenarios intact by satisfying only the FK.
-            database.add_user("admin", "Configured test user", is_admin=0)
+        # Writes stamp ownership with the configured default user, so that row
+        # has to exist. Asked rather than named: this fixture hard-coded
+        # ``admin`` after the default moved to ``user`` (e5d06d58e), and every
+        # owned write then failed its foreign key. It is created unprivileged,
+        # which keeps the first-admin bootstrap scenarios intact.
+        default_user = configured_default_user_id()
+        if not any(user.get("user_id") == default_user for user in database.get_users()):
+            database.add_user(default_user, "Configured test user", is_admin=0)
         try:
             yield database
         finally:
@@ -56,6 +62,11 @@ def patch_db(db):
             patch("mmfdb.admin.backend.services.resolve_database_path")
         )
         mock.return_value = db.db_path
+        # A server registered earlier in the process pins its database path,
+        # and the handlers prefer the pin to resolve_database_path.
+        stack.enter_context(
+            patch("mmfdb.admin.backend.services._resolved_db_path", str(db.db_path))
+        )
         for target in (
             "mmfdb.admin.backend.auth_services.resolve_database_path",
             "mmfdb.admin.backend.measurement_services.resolve_database_path",
