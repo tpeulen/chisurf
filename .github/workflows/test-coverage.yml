@@ -134,6 +134,52 @@ jobs:
             }
           }
 
+      # conda-forge's Windows hdf5 package is not discoverable by CMake's
+      # traditional find_package(HDF5) the way tttrlib's cmake/FindHDF5.cmake
+      # uses it -- confirmed on real CI even with HDF5_ROOT and
+      # CMAKE_PREFIX_PATH pointed at the conda env ("Could NOT find HDF5").
+      # tttrlib's own CI hits the same wall and works around it with a
+      # vcpkg-built HDF5 instead; mirroring that here. windows-2022/-latest
+      # runners ship vcpkg pre-installed, with VCPKG_INSTALLATION_ROOT
+      # already set.
+      - name: Resolve the vcpkg root into the env context
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "VCPKG_ROOT_RESOLVED=$env:VCPKG_INSTALLATION_ROOT" >> $env:GITHUB_ENV
+
+      - name: Cache vcpkg HDF5
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_ROOT_RESOLVED }}\installed
+          key: vcpkg-hdf5-core-zlib-x64-windows-${{ runner.os }}-v1
+
+      - name: Install HDF5 via vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vcpkg = "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe"
+          $attempts = 3
+          for ($i = 1; $i -le $attempts; $i++) {
+            & $vcpkg install hdf5[core,zlib]:x64-windows --recurse --no-print-usage
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq $attempts) { exit 1 }
+            Write-Host "vcpkg install failed (attempt $i of $attempts); retrying in 90 s"
+            Start-Sleep -Seconds 90
+          }
+          $root = "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows"
+          # A partially restored cache reports "already installed" and the
+          # install above short-circuits without actually completing it, so
+          # verify the tree is real rather than trust the exit code alone.
+          foreach ($f in @("bin\hdf5.dll", "lib\hdf5.lib", "include\hdf5.h")) {
+            if (-not (Test-Path "$root\$f")) {
+              Write-Host "::error::vcpkg reported success but $root\$f is missing."
+              Write-Host "The cached vcpkg tree is incomplete. Bump the key suffix"
+              Write-Host "(vcpkg-hdf5-...-v1) to force a clean rebuild."
+              exit 1
+            }
+          }
+
       - name: Set up Pixi
         uses: prefix-dev/setup-pixi@v0.9.4
         with:

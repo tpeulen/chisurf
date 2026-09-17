@@ -245,15 +245,18 @@ ninja = "*"
 # Covering both possible layouts rather than guessing further at which one
 # noarch packages actually use; still unverified on a real Windows runner.
 [target.win-64.activation.env]
-CMAKE_PREFIX_PATH = "%CONDA_PREFIX%;%CONDA_PREFIX%\\Library"
-# CMAKE_PREFIX_PATH alone wasn't enough for tttrlib's `find_package(HDF5
-# REQUIRED COMPONENTS C)` (traditional, non-config-mode finder) on Windows --
-# confirmed failing on real CI ("Could NOT find HDF5 (missing: HDF5_LIBRARIES
-# HDF5_INCLUDE_DIRS C)") even with hdf5 installed and CMAKE_PREFIX_PATH set.
-# HDF5_ROOT is the variable CMake's traditional FindHDF5 module actually
-# searches first; same fix already known needed for tttrlib's own arm64
-# build (see this session's local dev notes).
-HDF5_ROOT = "%CONDA_PREFIX%\\Library"
+CMAKE_PREFIX_PATH = "%CONDA_PREFIX%;%CONDA_PREFIX%\\Library;%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows"
+# conda-forge's Windows hdf5 package is not discoverable by tttrlib's
+# `find_package(HDF5 REQUIRED COMPONENTS C)` (traditional, non-config-mode
+# finder) -- confirmed failing on real CI ("Could NOT find HDF5") even with
+# hdf5 installed and both HDF5_ROOT and CMAKE_PREFIX_PATH pointed at the
+# conda env. tttrlib's own CI hits the same wall and works around it with a
+# vcpkg-built HDF5 (see the "Install HDF5 via vcpkg (Windows)" CI step,
+# which installs to %VCPKG_INSTALLATION_ROOT%\installed\x64-windows).
+# windows-2022/-latest runners ship vcpkg pre-installed with
+# VCPKG_INSTALLATION_ROOT already set.
+HDF5_ROOT = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows"
+PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
 
 # tttrlib is NOT a conda dependency. The published package (bioconda/PyPI, both
 # capped at 0.26.2) lags the source by enough to be wrong rather than merely old:
