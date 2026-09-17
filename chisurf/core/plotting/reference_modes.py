@@ -1,4 +1,4 @@
-"""Plot reference modes that need nothing from a model but its curves.
+"""Plot reference modes: a curve normalised by its photons, a reference or its parameters.
 
 A line plot can show a curve normalised to something -- its total photons, its
 peak, its donor-only reference -- or show r(t) from a VV/VH pair. The modes
@@ -185,6 +185,63 @@ def _donor_reference_mode(model=None) -> plot_transforms.PlotReferenceMode:
         applies_to=("data", "model"), y_label="counts / donor reference", y_range=(0, 1.0), y_padding=0.05)
 
 
+def _model_value(model, name: str, default: float) -> float:
+    """A model parameter's current value, or *default* when it has none."""
+    try:
+        value = float(model.parameters_all_dict[name].value)
+    except Exception:
+        return default
+    return value if np.isfinite(value) else default
+
+
+def _fcs_value(context: plot_transforms.PlotReferenceContext, name: str, default: float) -> float:
+    """What the plot controller set for *name*, else the model's current value."""
+    if name in context.parameters:
+        return float(context.parameters[name])
+    return _model_value(context.model, name, default)
+
+
+def fcs_diffusion(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+    """``(G - b) / Gdiff``: the curve with the baseline off, over the diffusion term alone."""
+    from chisurf.core.fluorescence.fcs import fcs_diffusion_reference, normalize_fcs_curve
+
+    params = {name: _fcs_value(context, name, default)
+              for name, default in (("N", 1.0), ("td", float("nan")), ("s", float("nan")))}
+    reference = fcs_diffusion_reference(context.x, params)
+    if reference is None:
+        raise ValueError("FCS diffusion reference is unavailable")
+    return plot_transforms.PlotReferenceResult(
+        x=context.x, y=normalize_fcs_curve(context.y, reference, _fcs_value(context, "b", 1.0)),
+        y_label="(G - b) / Gdiff")
+
+
+def fcs_molecules(context: plot_transforms.PlotReferenceContext) -> plot_transforms.PlotReferenceResult:
+    """``N * (G - b)``: the amplitude per molecule."""
+    n = _fcs_value(context, "N", 1.0)
+    b = _fcs_value(context, "b", 1.0)
+    return plot_transforms.PlotReferenceResult(
+        x=context.x, y=n * (np.asarray(context.y, dtype=float) - b), y_label="N * (G - b)")
+
+
+def _fcs_parameter(model, key: str, **kw) -> plot_transforms.PlotReferenceParameter:
+    return plot_transforms.PlotReferenceParameter(
+        key=key, label=key, kind="float", default=_model_value(model, key, 1.0), **kw)
+
+
+def _fcs_diffusion_mode(model=None) -> plot_transforms.PlotReferenceMode:
+    return plot_transforms.PlotReferenceMode(
+        key="fcs_diffusion", label="FCS diffusion", callback=fcs_diffusion,
+        parameters=(_fcs_parameter(model, "b", step=0.01),),
+        applies_to=("data", "model"), y_label="(G - b) / Gdiff", y_range=(0, 1.0), y_padding=0.05)
+
+
+def _fcs_molecules_mode(model=None) -> plot_transforms.PlotReferenceMode:
+    return plot_transforms.PlotReferenceMode(
+        key="fcs_molecules", label="FCS molecules", callback=fcs_molecules,
+        parameters=(_fcs_parameter(model, "N", minimum=1e-12, step=0.1), _fcs_parameter(model, "b", step=0.01)),
+        applies_to=("data", "model"), y_label="N * (G - b)", y_range=(0, 1.05), y_padding=0.05)
+
+
 #: Name -> factory of a reference mode. The photon modes read only curves and
 #: the fit; r(t) reads the fit group's VV and VH members, and the donor
 #: reference re-evaluates a described FRET model with its donor-only fraction at one.
@@ -193,9 +250,11 @@ REFERENCE_MODES: typing.Dict[str, typing.Callable[..., plot_transforms.PlotRefer
     "tcspc_peak_photons": _peak_photons_mode,
     "tcspc_anisotropy_rt": _anisotropy_rt_mode,
     "tcspc_donor_reference": _donor_reference_mode,
+    "fcs_diffusion": _fcs_diffusion_mode,
+    "fcs_molecules": _fcs_molecules_mode,
 }
 
-_MODEL_AWARE = {"tcspc_anisotropy_rt", "tcspc_donor_reference"}
+_MODEL_AWARE = {"tcspc_anisotropy_rt", "tcspc_donor_reference", "fcs_diffusion", "fcs_molecules"}
 
 
 def photon_modes() -> typing.List[plot_transforms.PlotReferenceMode]:

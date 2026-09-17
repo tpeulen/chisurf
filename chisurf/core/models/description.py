@@ -170,6 +170,8 @@ class DescriptionModel(ModelCurve):
     family: str = ""
     #: A ChiSurf equation catalogue this model is built from, if any.
     catalogue_path = None
+    #: Plot normalisations offered beside the description's own (see `for_catalogue`).
+    reference_modes: typing.Tuple[str, ...] = ()
     name = "BFF model"
 
     @property
@@ -968,7 +970,8 @@ class DescriptionModel(ModelCurve):
     def get_plot_reference_modes(self):
         from chisurf.core.plotting.reference_modes import modes_named
 
-        return modes_named(self.presentation.get("reference_modes", []), model=self)
+        names = [*self.presentation.get("reference_modes", []), *type(self).reference_modes]
+        return modes_named(dict.fromkeys(names), model=self)
 
     # --- the curve -------------------------------------------------------------
     def _update_model(self, **kwargs):
@@ -1051,7 +1054,7 @@ def for_family(family: str) -> type:
 
 
 def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Optional[str] = None,
-                  frame: str = "equations") -> type:
+                  frame: str = "equations", reference_modes: typing.Sequence[str] = ()) -> type:
     """The model class ChiSurf lists for one equation catalogue.
 
     The catalogue is ChiSurf's (YAML beside the experiment's models); BFF
@@ -1059,13 +1062,18 @@ def for_catalogue(path, name: typing.Optional[str] = None, module: typing.Option
     the equations describe. *frame* names the BFF frame the equations sit in:
     ``equations`` compares them to the data directly, ``equations_convolved``
     convolves them with a measured response and a counting instrument first.
+    *reference_modes* names the plot normalisations of
+    :mod:`chisurf.core.plotting.reference_modes` the curves support -- the
+    catalogue's meaning is ChiSurf's, so they are declared here rather than
+    in a BFF presentation.
     """
     import pathlib
 
     path = pathlib.Path(path).resolve()
     cls = _FAMILIES.get(f"{frame}:{path}")
     if cls is None:
-        attributes = {"catalogue_path": path, "family": frame, "__module__": module or __name__}
+        attributes = {"catalogue_path": path, "family": frame, "__module__": module or __name__,
+                      "reference_modes": tuple(reference_modes)}
         if name:
             attributes["name"] = name
         cls = type(f"EquationModel_{path.parent.name}", (DescriptionModel,), attributes)
