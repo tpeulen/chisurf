@@ -120,6 +120,10 @@ class CurveInputWidget(QtWidgets.QWidget):
     so those inputs stay authorable in ``.view.json``.
     """
 
+    #: Re-read on every form sync: a curve loaded or unloaded by an action, a
+    #: macro or a project shows its name (and the IRF its FWHM) without a rebuild.
+    AUTOFORM_REFRESH = True
+
     def __init__(self, model, section, parent=None):
         super().__init__(parent)
         self._model = model
@@ -236,6 +240,11 @@ class CurveInputWidget(QtWidgets.QWidget):
         self.name_edit.clear()
         self._refresh_fwhm()
 
+    def sync(self):
+        """Show the curve the model holds now."""
+        self._refresh_name()
+        self._refresh_fwhm()
+
     def _refresh_name(self):
         section = self._section
         if not (section.name_attr and section.target):
@@ -245,6 +254,8 @@ class CurveInputWidget(QtWidgets.QWidget):
         name = getattr(curve, "name", None) or getattr(curve, "filename", None)
         if name:
             self.name_edit.setText(str(name))
+        elif curve is None:
+            self.name_edit.clear()
 
     def _refresh_fwhm(self):
         if self.fwhm_label is None:

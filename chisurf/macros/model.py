@@ -7,6 +7,26 @@ import chisurf.core.data
 import chisurf.core.experiments
 
 
+def _sync_editors(fit) -> None:
+    """Show a curve an action loaded or unloaded in the fit's open editors.
+
+    The classic hand-built widgets were told directly (``lineEdit.setText``);
+    a generated editor re-reads its model, and nothing else asks it to.
+    """
+    try:
+        from chisurf.gui.widgets.models.model_editor import model_editor_widget
+    except Exception:
+        return
+    for f in fit:
+        editor = model_editor_widget(getattr(f, "model", None))
+        sync = getattr(editor, "sync_fields", None)
+        if callable(sync):
+            try:
+                sync()
+            except Exception:
+                pass
+
+
 def set_linearization(
     idx: int = None, curve_name: str = None, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
@@ -25,6 +45,7 @@ def set_linearization(
         f.model.corrections.lintable = cs.core.data.DataCurve(x=lin_table.x, y=lin_table.y)
         f.model.corrections.correct_dnl = True
     fit.update()
+    _sync_editors(fit)
 
 
 def unload_lintable(fit: cs.core.fitting.fit.FitGroup = None) -> None:
@@ -41,6 +62,7 @@ def unload_lintable(fit: cs.core.fitting.fit.FitGroup = None) -> None:
         except Exception:
             pass
     fit.update()
+    _sync_editors(fit)
 
 
 def set_correction(
@@ -212,6 +234,7 @@ def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGrou
         f.model.convolve._irf = cs.core.data.DataCurve(x=irf_curve.x, y=irf_curve.y)
 
     fit.update()
+    _sync_editors(fit)
     for f in fit[fit.selected_fit_index :]:
         # Presentation only: pure (Qt-free) models have no line edit, and a
         # missing one must not undo the IRF that was just attached above.
@@ -240,6 +263,7 @@ def unload_irf(fit: cs.core.fitting.fit.FitGroup = None) -> None:
             pass
     try:
         fit.update()
+        _sync_editors(fit)
     except Exception:
         pass
 
@@ -279,6 +303,7 @@ def set_background_curve(
         f.model.generic.background_curve = cs.core.data.DataCurve(x=curve.x, y=curve.y)
 
     fit.update()
+    _sync_editors(fit)
 
 
 def unload_background_curve(fit: cs.core.fitting.fit.FitGroup = None) -> None:
@@ -295,6 +320,7 @@ def unload_background_curve(fit: cs.core.fitting.fit.FitGroup = None) -> None:
         # ``except`` below and unloading silently did nothing.
         f.model.generic.unload_background_curve()
     fit.update()
+    _sync_editors(fit)
 
 
 def _update_model(fit: cs.core.fitting.fit.FitGroup = None) -> None:
