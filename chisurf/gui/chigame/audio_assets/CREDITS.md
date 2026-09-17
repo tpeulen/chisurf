@@ -1,7 +1,9 @@
 # Audio credits
 
-The music and sound effects chigame ships are by **Juhani Junkala**
-(SubspaceAudio), released under **CC0 1.0 Universal (public domain)**.
+The sound effects and five of the music loops chigame ships are by **Juhani
+Junkala** (SubspaceAudio); four more loops come from the **Ninja Adventure**
+asset pack by **pixel-boy**, the pack the Ninja Adventure game ports. All of it
+is released under **CC0 1.0 Universal (public domain)**.
 
 CC0 requires nothing of us. This file exists anyway: a package that
 redistributes somebody's work should say whose it is, in their own words, and
@@ -26,15 +28,17 @@ keep the licence statement it was given under next to the files.
 | File | Contents | Source |
 |---|---|---|
 | `music.zip` | 5 seamlessly looping tracks -- Level 1, Level 2, Level 3, Title Screen, Ending | [5 Chiptunes (Action)](https://opengameart.org/content/5-chiptunes-action) |
+| `music.zip` | 4 tracks -- `ninja_plain`, `ninja_lost_village`, `ninja_dream`, `ninja_swamp` | [Ninja Adventure asset pack](https://pixel-boy.itch.io/ninja-adventure-asset-pack) |
 | `sfx.zip` | 512 retro sound effects in five categories: death screams, explosions, general, movement, weapons | [512 Sound Effects (8-bit style)](https://opengameart.org/content/512-sound-effects-8-bit-style) |
 
-Both are CC0 on OpenGameArt. The author's wider catalogue is at
-<https://opengameart.org/users/subspaceaudio>.
+Junkala's two collections are CC0 on OpenGameArt; his wider catalogue is at
+<https://opengameart.org/users/subspaceaudio>. The Ninja Adventure pack is CC0
+on itch.io.
 
 ## What we changed
 
 The sources are 44.1 kHz 16-bit WAV, 27 MB in total. They are shipped here as
 mono, 22.05 kHz, IMA ADPCM (see `chisurf/gui/chigame/adpcm.py`), which is
-**6.7 MB** -- the difference between a soundtrack that lives in the repository
+**9.3 MB** with the four Ninja Adventure tracks (6.7 MB before them) -- the difference between a soundtrack that lives in the repository
 and one that is a download step. The conversion is
 `build_tools/dev_utils/pack_game_audio.py`; nothing was edited musically.
