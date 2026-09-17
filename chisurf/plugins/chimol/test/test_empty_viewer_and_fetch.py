@@ -18,13 +18,13 @@ In the same session ``fetch`` failed with a raw
 ``CERTIFICATE_VERIFY_FAILED ... unable to get local issuer certificate``, which
 tells the person at the keyboard nothing about what to do.
 """
+
 from __future__ import annotations
 
 import ssl
 import urllib.error
 
 import pytest
-
 from chimol.commands.builtin.selection import _NOTHING_LOADED
 
 
@@ -150,14 +150,12 @@ def test_a_certificate_failure_is_explained(session, scratch_downloads, monkeypa
     from chimol.commands.builtin import loader as loader_mod
 
     def _boom(*_args, **_kwargs):
-        raise urllib.error.URLError(
-            ssl.SSLCertVerificationError("certificate verify failed")
-        )
+        raise urllib.error.URLError(ssl.SSLCertVerificationError("certificate verify failed"))
 
     monkeypatch.setattr(loader_mod.urllib.request, "urlopen", _boom)
     _win, shared, errors, _messages = session
     errors.clear()
-    shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    shared.do("fetch PDBDEV_00000010, type=pdb-ihm")
     assert errors, "a failed fetch must say something"
     assert "certificate" in errors[0].lower()
     assert "certifi" in errors[0]
@@ -174,7 +172,7 @@ def test_a_missing_entry_is_not_reported_as_a_network_problem(
     monkeypatch.setattr(loader_mod.urllib.request, "urlopen", _missing)
     _win, shared, errors, _messages = session
     errors.clear()
-    shared.do("fetch 9zzz, pdb-ihm")
+    shared.do("fetch 9zzz, type=pdb-ihm")
     assert errors and "no entry" in errors[0]
 
 
@@ -255,8 +253,9 @@ def test_the_repository_url_is_the_one_that_serves_the_file():
     )
 
 
-def test_a_downloaded_entry_is_not_downloaded_again(session, scratch_downloads,
-                                                    monkeypatch, tmp_path):
+def test_a_downloaded_entry_is_not_downloaded_again(
+    session, scratch_downloads, monkeypatch, tmp_path
+):
     """The eight-spoke pore is 31.5 MB; the demo should not re-fetch it each run."""
     from chimol.commands.builtin import loader as loader_mod
 
@@ -270,7 +269,7 @@ def test_a_downloaded_entry_is_not_downloaded_again(session, scratch_downloads,
     _win, shared, errors, messages = session
     errors.clear()
     messages.clear()
-    shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    shared.do("fetch PDBDEV_00000010, type=pdb-ihm")
     assert errors == []
     assert any("cached" in m for m in messages), messages
 
@@ -291,14 +290,13 @@ def test_an_empty_cached_file_is_not_trusted(session, scratch_downloads, tmp_pat
     try:
         _win, shared, errors, _messages = session
         errors.clear()
-        shared.do("fetch PDBDEV_00000010, pdb-ihm")
+        shared.do("fetch PDBDEV_00000010, type=pdb-ihm")
     finally:
         loader_mod.urllib.request.urlopen = original
     assert calls, "an empty file must not stand in for the entry"
 
 
-def test_a_failed_download_leaves_nothing_behind(session, scratch_downloads,
-                                                 monkeypatch, tmp_path):
+def test_a_failed_download_leaves_nothing_behind(session, scratch_downloads, monkeypatch, tmp_path):
     """A half-written entry in the cache is worse than no cache at all.
 
     Writing straight to the destination left a zero-byte file wherever a
@@ -317,11 +315,9 @@ def test_a_failed_download_leaves_nothing_behind(session, scratch_downloads,
         def read(self, *_args):
             raise OSError("connection reset half way through")
 
-    monkeypatch.setattr(
-        loader_mod.urllib.request, "urlopen", lambda *a, **k: _HalfResponse()
-    )
+    monkeypatch.setattr(loader_mod.urllib.request, "urlopen", lambda *a, **k: _HalfResponse())
     _win, shared, errors, _messages = session
     errors.clear()
-    shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    shared.do("fetch PDBDEV_00000010, type=pdb-ihm")
     assert errors, "the failure must be reported"
     assert list(tmp_path.iterdir()) == [], "no debris, not even an empty file"
