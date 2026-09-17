@@ -132,9 +132,9 @@ def test_apply_settings_updates_cs_settings(qapp):
     from chisurf.plugins.core.plot_settings.gui.tool import PlotSettingsWidget
     import chisurf.core.settings as css
     w = PlotSettingsWidget()
-    w.backend_combo.setCurrentText("opengl")
+    w.backend_combo.setCurrentText("pyqtgraph")
     w._apply_settings()
-    assert css.cs_settings["gui"]["plot"]["backend"] == "opengl"
+    assert css.cs_settings["gui"]["plot"]["backend"] == "pyqtgraph"
 
 
 def test_grab_non_null(qapp):

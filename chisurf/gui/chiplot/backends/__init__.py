@@ -4,7 +4,7 @@ The active backend is chosen once, lazily. The resolution order is:
 
 1. ``CHISURF_PLOT_BACKEND`` environment variable.
 2. ``gui.plot.backend`` from the ChiSurf settings (``settings_chisurf.yaml``).
-3. ``"pyqtgraph"`` (the default).
+3. ``"emtk"`` (the default).
 
 A new backend registers here via :func:`register_backend` and becomes
 selectable with no call-site change.
@@ -18,23 +18,12 @@ from chisurf.gui.chiplot.backends import base
 
 _REGISTRY: dict[str, str] = {
     # name -> "module:ClassName"
-    # The two supported options: pyqtgraph (the engine) and
-    # emtk (chimol's ImPlot-style toolkit), the designated native
-    # renderer / primary plotting widget. Target state of _REGISTRY.
-    "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
-    # emtk, the designated native renderer: chimol's own toolkit, drawn
-    # through its painter. Curves, scatter, markers, the legend, labels,
-    # ranges and log scaling are drawn today; the remaining families (images,
-    # regions, ROIs, error bars, bars, bands, text, arrows, grids and the
-    # image view) raise a NotImplementedError that names them, and land with
-    # the rest of PRD-104. It becomes the default when they do.
+    # emtk, the native renderer and the default: chimol's own toolkit, drawn
+    # through its painter. What it does not draw yet raises a
+    # NotImplementedError naming the family and PRD-104; pyqtgraph stays
+    # selectable for those (CHISURF_PLOT_BACKEND=pyqtgraph).
     "emtk": "chisurf.gui.chiplot.backends.emtk_backend:EmtkBackend",
-    # wgpu/opengl stay registered so the backend seam is exercisable. Both are
-    # superseded experiment backends and retire when emtk is complete.
-    "wgpu": "chisurf.gui.chiplot.backends.wgpu:WgpuBackend",
-    # Superseded by the emtk direction; kept until the emtk backend has been
-    # through the plot families, then removed.
-    "opengl": "chisurf.gui.chiplot.backends.opengl:OpenGLBackend",
+    "pyqtgraph": "chisurf.gui.chiplot.backends.pyqtgraph_backend:PyQtGraphBackend",
 }
 
 _active: base.Backend | None = None
@@ -52,7 +41,7 @@ def _resolve_backend_name() -> str:
             return name
     except Exception:
         pass
-    return "pyqtgraph"
+    return "emtk"
 
 
 def register_backend(name: str, dotted_path: str) -> None:

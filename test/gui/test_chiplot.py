@@ -9,7 +9,7 @@ call sites working, and it is pyqtgraph's by definition.
 So the backend is pinned here rather than taken from the environment: with
 ``CHISURF_PLOT_BACKEND`` set to a native renderer these would fail on the
 absence of pyqtgraph internals, which says nothing about that renderer. The
-native backend has its own suite in ``test_chiplot_wgpu.py``.
+native backend has its own suite in ``test_chiplot_emtk.py``.
 """
 
 from __future__ import annotations
@@ -993,8 +993,8 @@ def test_backend_contract_matches_implementation():
     without an implementation for abstract method 'add_arrow'"), taking every
     chiplot panel in the application down with it.
 
-    Both the pyqtgraph backend and the OpenGL backend are checked here, so a
-    half-landed contract breaks the test, not every plot panel.
+    Both backends are checked here, so a half-landed contract breaks the
+    test, not every plot panel.
     """
     import inspect
 
@@ -1008,16 +1008,14 @@ def test_backend_contract_matches_implementation():
         (base.Backend, pgb.PyQtGraphBackend),
     ]
 
-    try:
-        from chisurf.gui.chiplot.backends import opengl as glb
-        pairs.extend([
-            (base.Canvas, glb._GlCanvas),
-            (base.GridCanvas, glb._GlGrid),
-            (base.ImageViewCanvas, glb._GlImageView),
-            (base.Backend, glb.OpenGLBackend),
-        ])
-    except Exception:
-        pass
+    from chisurf.gui.chiplot.backends import emtk_backend as eb
+
+    pairs.extend([
+        (base.Canvas, eb.EmtkCanvas),
+        (base.GridCanvas, eb.EmtkGrid),
+        (base.ImageViewCanvas, eb.EmtkImageView),
+        (base.Backend, eb.EmtkBackend),
+    ])
 
     for abstract, concrete in pairs:
         unimplemented = sorted(getattr(concrete, "__abstractmethods__", ()))

@@ -135,11 +135,10 @@ gui:
     - 350
   fit_progress_close_delay_ms: 200
   plot:
-    # Plotting backend: "pyqtgraph" (default, CPU/QPainter) or "wgpu" (the
-    # native GPU renderer; WebGPU, not OpenGL, which macOS caps at a 2.1
-    # feature set emulated over Metal). The env var CHISURF_PLOT_BACKEND
-    # overrides this at startup.
-    backend: pyqtgraph
+    # Plotting backend: "emtk" (default, the native renderer) or "pyqtgraph"
+    # (for the few plot families emtk does not draw yet; they raise and say
+    # so). The env var CHISURF_PLOT_BACKEND overrides this at startup.
+    backend: emtk
     # Base point size for axis chrome (ticks, labels, title, legend). 0 derives
     # it from the application font, which is what keeps a plot from looking
     # like a screenshot pasted into the window. Ticks are drawn 3 pt smaller,

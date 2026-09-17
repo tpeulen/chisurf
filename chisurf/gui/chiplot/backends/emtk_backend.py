@@ -1466,7 +1466,7 @@ class EmtkBackend(base.Backend):
         """Create an image view."""
         return EmtkImageView(**opts)
 
-    def configure(self, **_: Any) -> None:
+    def configure(self, **global_opts: Any) -> None:
         """Nothing process-wide to set: emtk draws through its own painter."""
 
     def raw_module(self):

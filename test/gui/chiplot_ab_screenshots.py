@@ -3,20 +3,16 @@
 Renders the same example plots through each backend and saves paired PNGs so
 the output can be compared side by side::
 
-    renders/ab_decay_pg.png     renders/ab_decay_wgpu.png
-    renders/ab_scatter_pg.png   renders/ab_scatter_wgpu.png
+    renders/ab_decay_pg.png     renders/ab_decay_emtk.png
+    renders/ab_scatter_pg.png   renders/ab_scatter_emtk.png
     ...
 
 Usage::
 
-    python test/gui/chiplot_ab_screenshots.py                # pyqtgraph + wgpu
-    python test/gui/chiplot_ab_screenshots.py pyqtgraph wgpu opengl
+    python test/gui/chiplot_ab_screenshots.py                # pyqtgraph + emtk
 
-The WebGPU backend renders offscreen and blits the result with ``QPainter``, so
-it grabs headlessly like any other widget and this script needs no display.
-The legacy OpenGL backend does need a real GL context, so naming it switches
-the Qt platform back to the native one — run that variant from a logged-in
-session, not over bare ssh.
+Both backends paint through QPainter, so they grab headlessly like any other
+widget and this script needs no display.
 
 The recipes are deliberately *realistic*: the decay carries a constant
 background, because an IRF modelled as a bare Gaussian falls to ``exp(-2304)``
@@ -30,14 +26,10 @@ import pathlib
 import sys
 
 RENDER_DIR = pathlib.Path("renders")
-SUFFIX = {"pyqtgraph": "pg", "wgpu": "wgpu", "opengl": "gl"}
+SUFFIX = {"pyqtgraph": "pg", "emtk": "emtk"}
 
-_backends = [a for a in sys.argv[1:] if not a.startswith("-")] or ["pyqtgraph", "wgpu"]
-if "opengl" in _backends:
-    # The GL backend cannot create a context on the offscreen platform.
-    os.environ.pop("QT_QPA_PLATFORM", None)
-else:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+_backends = [a for a in sys.argv[1:] if not a.startswith("-")] or ["pyqtgraph", "emtk"]
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from qtpy import QtCore, QtGui, QtWidgets  # noqa: E402
 
@@ -49,17 +41,11 @@ def _settle(app, rounds=15):
 
 
 def _grab_widget(widget: QtWidgets.QWidget, backend: str) -> QtGui.QImage:
-    """Grab a widget to a QImage, reading the framebuffer for GL surfaces."""
+    """Grab a widget to a QImage."""
     widget.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
     widget.resize(480, 360)
     widget.show()
     _settle(QtWidgets.QApplication.instance())
-    if backend == "opengl":
-        gl = widget.findChildren(QtWidgets.QOpenGLWidget)
-        if gl:
-            img = gl[0].grabFramebuffer()
-            if img is not None and not img.isNull():
-                return img
     return widget.grab().toImage()
 
 

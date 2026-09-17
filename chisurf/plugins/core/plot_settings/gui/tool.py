@@ -464,7 +464,7 @@ class PlotSettingsWidget(QtWidgets.QWidget):
         """Set every control from the settings dict (see :meth:`_load_settings`)."""
         ps = self._plot_settings()
         colors = ps.get("colors", {})
-        self.backend_combo.setCurrentText(ps.get("backend", "pyqtgraph"))
+        self.backend_combo.setCurrentText(ps.get("backend", "emtk"))
         for key, btn in self._color_buttons.items():
             btn.color = colors.get(key, "#ffffff")
         self.alpha_slider.setValue(int(colors.get("region_selector_alpha", 100)))
