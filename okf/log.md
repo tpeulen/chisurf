@@ -2,6 +2,8 @@
 
 ## 2026-09-17
 
+* **ebFRET's MATLAB GUI ported onto emtk as the `burst_ebfret` plugin.** A plain port of `junk/ebFRET`: the MainWindow's panels, menus (File/Analysis/View incl. Export), dialogs and defaults in an emtk window (`gui/app.py`, controls and dialogs declared in `gui/*.view.json`, Qt only hosting it with Load demo, Guide and ?), the callbacks as `core/session.py`, the analysis transcribed from `+analysis/+hmm` and `+dist` (`core/hmm.py`, `core/dist.py`, `core/ebayes.py`, `core/plots.py`) and run in a backend thread behind `burst_ebfret.session.*` RPC methods, ebFRET's formats in `io.py` (session .mat, raw .dat, SF-Tracer .tsv, SMD .mat/.json/.json.gz, summary .csv, traces). A/B: ≤1e-11 against ebFRET under Octave, ≤1.9e-8 against MATLAB's saved lower bounds, traces export byte-identical to ebFRET's. The old reinterpreted core (`vbem.py`, `viterbi.py`, quantile priors) is gone. The prior-mixture path is not ported: nothing in the GUI reaches it and it calls functions missing upstream. emtk gained dashed lines, marker styles, tick-label flags, a file dialog, `view_form` and two fixes (emtk 88b00f7, 0a2f840, 2eb8919, 5de0258). `reference_coverage` counts `.m` files now. Record and resume point: [plugins/burst-ebfret.md](plugins/burst-ebfret.md).
+
 * **ndX ranks the views: Orange3's VizRank ported as *Find informative
   projections*.** ndxplorer repo: Qt-free framework (`analysis/vizrank.py`),
   scores (`analysis/projection_scores.py` — kNN class separation and correlation
