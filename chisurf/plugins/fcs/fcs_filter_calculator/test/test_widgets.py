@@ -584,7 +584,9 @@ def test_a_masked_residual_range_is_not_drawn_across(qapp, qtbot):
     qtbot.addWidget(plot)
     y = np.array([1.0, 2.0, np.nan, 4.0])
     handle = plot.line(np.arange(y.size), y)
-    assert handle.native.opts["connect"] == "finite"
+    _, drawn = handle.get_data()
+    assert np.isnan(drawn[2]) and np.isfinite(drawn[[0, 1, 3]]).all(), (
+        "the missing sample must stay a gap, not be dropped and joined across")
 
 
 def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
@@ -859,14 +861,14 @@ def test_fit_range_change_auto_updates_filters_without_refit(qapp, qtbot):
         e = next(x for x in widget._result_multi_detector if x["detector"] == dets[0])
         return np.asarray(e["result"].filters)
 
-    widget._fit_region.setRegion((60.0, 180.0))
+    widget._fit_region.set_bounds(60.0, 180.0)
     widget._fit_region_initialized = True
     widget._on_fit_range_committed()
     f = green_filters()
     assert np.all(f[:, :60] == 0.0) and np.all(f[:, 180:] == 0.0)
 
     # Widen: columns that were zeroed must come back (proves cache, not refit-loss).
-    widget._fit_region.setRegion((10.0, 250.0))
+    widget._fit_region.set_bounds(10.0, 250.0)
     widget._on_fit_range_committed()
     f = green_filters()
     assert np.any(f[:, 10:60] != 0.0)
@@ -899,7 +901,7 @@ def test_residuals_masked_to_fit_range(qapp, qtbot):
 
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
-    widget._fit_region.setRegion((30.0, 200.0))
+    widget._fit_region.set_bounds(30.0, 200.0)
     widget._fit_region_initialized = True
     masked = widget._mask_to_fit_range(np.ones(256, dtype=float))
     assert np.isnan(masked[:30]).all()
@@ -954,7 +956,7 @@ def test_fit_range_resets_on_new_data_and_spinboxes_sync(qapp, qtbot, tmp_path):
     # Editing a spinbox drives the plot region.
     widget.sb_fit_start.setValue(80)
     widget.sb_fit_stop.setValue(1900)
-    l2, h2 = widget._fit_region.getRegion()
+    l2, h2 = widget._fit_region.bounds
     assert int(round(l2)) == 80 and int(round(h2)) == 1900
 
 
@@ -995,7 +997,7 @@ def test_auto_fit_settings_drive_kind_and_bounds(qapp, qtbot, tmp_path):
     widget.detector_selection.refresh(["green"])
     widget._set_total_paths([p])
     widget._update_plots()
-    widget._fit_region.setRegion((10.0, 1000.0))
+    widget._fit_region.set_bounds(10.0, 1000.0)
     widget._fit_region_initialized = True
 
     # Persistent settings default to 2 lifetime components.

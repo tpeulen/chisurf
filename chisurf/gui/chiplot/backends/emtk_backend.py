@@ -67,8 +67,13 @@ def _orientation(value) -> str:
     return str(getattr(value, "value", value)).lower()
 
 
-def _finite_pairs(x, y) -> tuple[np.ndarray, np.ndarray]:
-    """Return ``(x, y)`` as float arrays with the non-finite samples dropped."""
+def _finite_pairs(x, y, gaps: bool = False) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(x, y)`` as float arrays without their non-finite samples.
+
+    Dropped, or with ``gaps`` kept as NaN in both arrays: a curve that skips
+    missing samples breaks there, and dropping them would join the neighbours
+    across data that is not there.
+    """
     xs = np.asarray(x, dtype=float).ravel()
     ys = np.asarray(y, dtype=float).ravel()
     if xs.size and ys.size and xs.size != ys.size:
@@ -77,6 +82,8 @@ def _finite_pairs(x, y) -> tuple[np.ndarray, np.ndarray]:
     if xs.size == 0:
         return xs, ys
     keep = np.isfinite(xs) & np.isfinite(ys)
+    if gaps:
+        return np.where(keep, xs, np.nan), np.where(keep, ys, np.nan)
     return xs[keep], ys[keep]
 
 
@@ -197,7 +204,7 @@ class _Entry:
         if y is None and x is not None and len(np.shape(x)) == 2:
             data = np.asarray(x, dtype=float)
             x, y = data[:, 0], data[:, 1]
-        self.state["x"], self.state["y"] = _finite_pairs(x, y)
+        self.state["x"], self.state["y"] = _finite_pairs(x, y, gaps=self.state.get("gaps", False))
         self._canvas.refresh()
 
     def get_data(self) -> tuple[np.ndarray, np.ndarray]:
@@ -482,12 +489,13 @@ class EmtkCanvas(base.Canvas):
         state = entry.state
         label = state.get("name") or ""
         if entry.kind == "curve":
-            xs, ys = self._scaled(state["x"], state["y"])
+            xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
             if xs.size:
                 plot.line(label, xs, ys, colour=state.get("color"),
                           width=state.get("width", 1.5))
             if state.get("symbol") is not None and xs.size:
-                plot.scatter(label, xs, ys,
+                marked = np.isfinite(xs) & np.isfinite(ys)
+                plot.scatter(label, xs[marked], ys[marked],
                              colour=state.get("symbol_color", state.get("color")),
                              radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0))
         elif entry.kind == "scatter":
@@ -791,18 +799,25 @@ class EmtkCanvas(base.Canvas):
         plot._images = getattr(plot, "_images", [])
         plot._images.append((state["texture"], x0, y0, width, height))
 
-    def _scaled(self, xs, ys) -> tuple[np.ndarray, np.ndarray]:
-        """Apply the log scaling the panel is set to, dropping what it kills."""
+    def _scaled(self, xs, ys, gaps: bool = False) -> tuple[np.ndarray, np.ndarray]:
+        """Apply the log scaling the panel is set to, dropping what it kills.
+
+        With ``gaps`` a killed sample becomes a NaN instead, so a curve breaks
+        there rather than joining across it.
+        """
         if not (self._log["x"] or self._log["y"]):
             return xs, ys
         xs = np.asarray(xs, dtype=float)
         ys = np.asarray(ys, dtype=float)
         keep = np.ones(xs.shape, dtype=bool)
         if self._log["x"]:
-            keep &= xs > 0
+            keep &= ~(xs <= 0)
         if self._log["y"]:
-            keep &= ys > 0
-        xs, ys = xs[keep], ys[keep]
+            keep &= ~(ys <= 0)
+        if gaps:
+            xs, ys = np.where(keep, xs, np.nan), np.where(keep, ys, np.nan)
+        else:
+            xs, ys = xs[keep], ys[keep]
         if self._log["x"]:
             xs = np.log10(xs)
         if self._log["y"]:
@@ -825,9 +840,10 @@ class EmtkCanvas(base.Canvas):
                 "emtk: a filled curve is not drawn yet (PRD-104); use the "
                 "pyqtgraph backend for filled series"
             )
-        xs, ys = _finite_pairs(x, y)
+        gaps = bool(skip_missing)
+        xs, ys = _finite_pairs(x, y, gaps=gaps)
         return self._add(
-            "curve", x=xs, y=ys, name=name, color=_rgb(pen),
+            "curve", x=xs, y=ys, gaps=gaps, name=name, color=_rgb(pen),
             width=float(getattr(pen, "width", 1.0) or 1.0), symbol=symbol,
             symbol_size=symbol_size,
             symbol_color=_rgb(symbol_brush, _rgb(pen)) if symbol is not None else None,

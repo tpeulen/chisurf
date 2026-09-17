@@ -609,12 +609,15 @@ class Plot(QtWidgets.QWidget):
         return self
 
     def set_menu_enabled(self, enabled: bool) -> Plot:
-        """Enable/disable the backend's own right-click menu. Returns ``self``.
+        """Enable/disable the right-click menu. Returns ``self``.
 
-        For the pyqtgraph backend this toggles the native viewbox/plot menu;
-        backends without one treat it as a no-op.
+        The backend's own menu where it has one (pyqtgraph), chiplot's menu
+        otherwise -- whichever a right-click would show.
         """
-        self._canvas.set_menu_enabled(bool(enabled))
+        if self._native_menu:
+            self._canvas.set_menu_enabled(bool(enabled))
+        else:
+            self._context_menu_enabled = bool(enabled)
         return self
 
     def menu_enabled(self) -> bool:
@@ -623,7 +626,9 @@ class Plot(QtWidgets.QWidget):
         The read side of :meth:`set_menu_enabled` — ask this rather than
         reaching for the renderer's own spelling through the seam.
         """
-        return bool(self._canvas.menu_enabled())
+        if self._native_menu:
+            return bool(self._canvas.menu_enabled())
+        return self._context_menu_enabled
 
     def add_menu_action(self, label: str, callback) -> Plot:
         """Add a custom entry to the right-click menu. Returns ``self``.

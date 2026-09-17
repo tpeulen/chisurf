@@ -30,7 +30,7 @@ def test_lfcs_widget_refresh_plot(qapp, qtbot):
     ]
     widget._refresh_plot(datasets)
     # three curves plotted (two autos + one cross)
-    assert len(widget._plot.plotItem.listDataItems()) == 3
+    assert len(widget._plot.series()) == 3
 
 
 def test_lfcs_widget_simulate(qapp, qtbot):
@@ -49,4 +49,4 @@ def test_lfcs_widget_simulate(qapp, qtbot):
     pairs = {(d["species_a"], d["species_b"]) for d in datasets}
     assert pairs == {(0, 0), (1, 1), (0, 1)}
     assert np.isfinite(widget._model.condition_number)
-    assert len(widget._plot.plotItem.listDataItems()) == 3
+    assert len(widget._plot.series()) == 3
