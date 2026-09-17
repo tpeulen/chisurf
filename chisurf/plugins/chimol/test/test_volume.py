@@ -809,10 +809,12 @@ def test_an_identifier_names_its_repository():
 def test_every_repository_is_reachable():
     from chimol.commands.command import Cmd
 
-    assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm", "alphafold"}
+    assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm", "alphafold", "shareloc", "npc"}
     for spec in Cmd.REPOSITORIES.values():
         assert spec["url"].startswith("http")
-        assert spec["suffix"].startswith(".")
+        # Appended to the downloaded file's name: ".cif", or "_sml.csv" for
+        # the NPC tables whose files are named "<cell>_sml.csv".
+        assert "." in spec["suffix"]
 
 
 def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_path):

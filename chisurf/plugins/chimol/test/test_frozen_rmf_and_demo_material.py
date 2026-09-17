@@ -102,7 +102,13 @@ def test_the_biofilm_resolves_to_the_frozen_copy_without_the_simulator(monkeypat
 
 
 def test_every_file_a_demo_names_ships_with_the_demos():
-    """Own material, no checkout to walk to -- what a page (or a bare install) has."""
+    """Own material, no checkout to walk to -- what a page (or a bare install) has.
+
+    Or is published: the bulk data (chimol/data/registry.json) and the PetWorld
+    models are fetched on first use from a recorded URL, not committed.
+    """
+    from chimol.plugins.demos.fetch import url_for
+
     named = set()
     for key, _t, _d in DEMOS:
         for line in read_demo(key).splitlines():
@@ -112,8 +118,9 @@ def test_every_file_a_demo_names_ships_with_the_demos():
     missing = [
         name for name in sorted(named)
         if not (DATA / name).is_file() and not (DATA / f"{name}.npz").is_file()
+        and url_for(name) is None
     ]
-    assert not missing, f"not shipped in plugins/demos/data: {missing}"
+    assert not missing, f"neither shipped in plugins/demos/data nor published: {missing}"
 
 
 def test_the_shipped_trajectory_fits_its_topology():

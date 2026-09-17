@@ -161,7 +161,13 @@ def test_the_bar_installs_and_acts(qapp):
     issued: list[str] = []
     window = QtWidgets.QMainWindow()
     bar = build_menu_bar(window, issued.append)
-    assert [a.text() for a in bar.actions()] == [t for t, _ in MENU_BAR]
+    # What a host installs is the shipped bar plus what plugins contribute
+    # (density's "Density" menu, for one), in that order.
+    from chimol.ui.menus.bar import menu_bar
+
+    installed = [t for t, _ in menu_bar()]
+    assert [a.text() for a in bar.actions()] == installed
+    assert installed[:len(MENU_BAR)] == [t for t, _ in MENU_BAR]
 
     setting = next(a.menu() for a in bar.actions() if a.text() == "Setting")
     occlusion = next(

@@ -221,9 +221,8 @@ class TestWgslSource:
         # prelude for the camera matrices and calls no shading function.
         "marker.wgsl": "render",
         "line.wgsl": "render",
-        # The chrome's quads. Also a render shader that shades nothing: it
-        # samples the glyph atlas and writes the colour it was given.
-        "ui.wgsl": "render",
+        # (The chrome's quads, ui.wgsl, are emtk's shader now; chimol's
+        # load_wgsl still prepends the render prelude when it reads it.)
         "overlay.wgsl": "render",
         "silhouette.wgsl": "render",
         "gauss_splat.wgsl": "render",
@@ -250,6 +249,18 @@ class TestWgslSource:
         "volume_ops.wgsl": "compute",
         "raytrace.wgsl": "ray",
         "bvh_probe.wgsl": "ray",
+        # A container's splat levels and their data-mode reduction.
+        "chunk_splat.wgsl": "render",
+        "gauss_max.wgsl": "render",
+        # The `.tomo.pto` volume: orthoplanes, the raymarch (composite and
+        # MIP), and the resolve of its accumulation.
+        "vol_slice.wgsl": "render",
+        "vol_ray.wgsl": "render",
+        "vol_composite.wgsl": "render",
+        # The hierarchical depth buffer the container culls chunks against.
+        # Read raw: its compute layout has no room for the render prelude's
+        # uniform block at group 0.
+        "hiz.wgsl": "raw",
     }
 
     def test_every_shader_is_classified(self):

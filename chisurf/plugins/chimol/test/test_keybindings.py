@@ -44,10 +44,13 @@ def test_every_action_ships_with_a_key_and_a_label():
 
 def test_the_defaults_are_the_shortcuts_that_always_shipped():
     """Muscle memory: these six were hard-coded comparisons before the table,
-    and moving them into configuration must not have moved the keys."""
+    and moving them into configuration must not have moved the keys. The
+    volume keys (PRD-126) came later and are pinned alongside."""
     assert kb.default_keys() == {
         "cartoon": "r", "ca_trace": "c", "atoms": "b",
         "dots": "d", "sidechains": "s", "close": "q",
+        "slice_down": "[", "slice_up": "]",
+        "volume_slices": "1", "volume_mip": "2", "volume_composite": "3",
     }
 
 

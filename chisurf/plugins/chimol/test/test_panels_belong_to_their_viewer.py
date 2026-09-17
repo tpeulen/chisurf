@@ -124,4 +124,5 @@ def test_each_panel_command_finds_its_panel(command, key):
 
 def test_register_core_is_what_puts_the_shipped_panels_in():
     registry = register_core(PanelRegistry())
-    assert registry.keys() == ["settings"]
+    # Settings, and the section (clip) panel core gained with containers.
+    assert registry.keys() == ["section", "settings"]

@@ -22,15 +22,22 @@ def test_the_bar_has_a_demo_menu():
     assert "Demo" in [title for title, entries in MENU_BAR if entries]
 
 
+def _walk(entries):
+    """Every entry, submenus included (the PetWorld demos have one)."""
+    for entry in entries:
+        yield entry
+        yield from _walk(getattr(entry, "children", None) or ())
+
+
 def test_every_shipped_demo_is_on_the_menu():
     """Generated, not transcribed, so this cannot drift."""
-    commands = {entry.command for entry in DEMO_MENU if entry.command}
+    commands = {entry.command for entry in _walk(DEMO_MENU) if entry.command}
     for key, _title, _note in DEMOS:
         assert f"demo {key}" in commands, f"{key} ships and is unreachable"
 
 
 def test_each_entry_carries_its_description():
-    notes = {entry.label: entry.note for entry in DEMO_MENU if entry.command}
+    notes = {entry.label: entry.note for entry in _walk(DEMO_MENU) if entry.command}
     for _key, title, note in DEMOS:
         assert notes.get(title) == note
 

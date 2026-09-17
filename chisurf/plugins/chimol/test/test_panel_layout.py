@@ -135,12 +135,12 @@ def test_the_info_panel_is_chrome_not_a_stacked_widget(window):
 
     win, qapp = window
     win.button_info.setChecked(True)
-    _settle(win.viewer._container, 900, 600, qapp)
+    _settle(win.viewer._view_container, 900, 600, qapp)
 
     assert not hasattr(win.viewer, "_info_overlay"), (
         "the info panel is a stacked Qt widget again"
     )
-    container = win.viewer._container
+    container = win.viewer._view_container
     renderer = win.viewer.renderer.widget()
     stacked = [
         child for child in container.children()
@@ -159,7 +159,7 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
     win, qapp = window
     win.button_info.setChecked(True)
     win.viewer.set_system_info_text("System: coordinates\nAtoms: 1363")
-    _settle(win.viewer._container, 900, 600, qapp)
+    _settle(win.viewer._view_container, 900, 600, qapp)
 
     from chimol.hosts.qt.overlay import refresh_gui_state
 

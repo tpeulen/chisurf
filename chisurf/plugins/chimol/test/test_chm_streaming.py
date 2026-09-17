@@ -127,7 +127,8 @@ def test_the_cut_is_the_whole_structure_at_every_distance(view, renderer):
         # progress -- but their weights *share* the pixel rather than doubling
         # it: along any root-to-leaf path the weights sum to one.
         table = view.index.table
-        weights = {int(c): float(w) for c, w in zip(chosen, view.weight)}
+        # `weight` rows are (weight, dither base); the weight is column 0.
+        weights = {int(c): float(w) for c, w in zip(chosen, view.weight[:, 0])}
         for chunk, weight in weights.items():
             assert 0.0 < weight <= 1.0 + 1e-6, weight
             total = weight

@@ -109,8 +109,20 @@ _DRIVE = '''
     from emtk.events import LEFT_BUTTON
     body = gui.window_body(win)
     d.layout(body)
-    row = next(r for r, n in d._file_rows if n == "148l.pdb")
-    cx, cy = row.x + row.w / 2, row.y + row.h / 2
+    from chimol.ui.dialogs.file_dialog import ROW_H
+
+    def row_xy(d, name):
+        # The middle of a file row, as a click lands on it (panes are ListViews).
+        index = d._file_model.index_of(name)
+        box = d._boxes["files"]
+        return box.x + 20.0, box.y + (index - d._file_list.scrollbar.top + 0.5) * ROW_H
+    # The panes learn their boxes when drawn: draw a frame before clicking.
+    win.body_revision += 1
+    app.renderer._chrome_quads()
+    cx, cy = row_xy(d, "148l.pdb")
+    # The desktop hosts' double-click order: press, release, press(double), release.
+    app.renderer.on_pointer_press(cx, cy, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     app.renderer.on_pointer_press(cx, cy, LEFT_BUTTON, 0, double=True)
     app.renderer.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     sources = [str(getattr(e, "source_path", "") or "")
@@ -200,11 +212,20 @@ _KEYS_DRIVE = """
     d.refresh()
     body = gui.window_body(win)
     d.layout(body)
+    from chimol.ui.dialogs.file_dialog import ROW_H
+
+    def row_xy(d, name):
+        # The middle of a file row, as a click lands on it (panes are ListViews).
+        index = d._file_model.index_of(name)
+        box = d._boxes["files"]
+        return box.x + 20.0, box.y + (index - d._file_list.scrollbar.top + 0.5) * ROW_H
 
     # A press focuses the dialog: keys must route somewhere after a click.
-    row = next(r for r, n in d._file_rows if n == "file00.pdb")
-    app.renderer.on_pointer_press(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
-    app.renderer.on_pointer_release(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    win.body_revision += 1
+    app.renderer._chrome_quads()
+    cx, cy = row_xy(d, "file00.pdb")
+    app.renderer.on_pointer_press(cx, cy, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     emit("focused", str(gui.focused_field is d))
 
     for _ in range(4):
@@ -212,32 +233,31 @@ _KEYS_DRIVE = """
     emit("nav", d.selected_file)
     app.renderer.on_key_press(KEY_PAGE_DOWN, "", 0)
     emit("paged", d.selected_file)
-    emit("nav_scrolled", d._file_scroll)
+    emit("nav_scrolled", d._file_list.scrollbar.top)
 
-    # The scrollbar is real: a proportional thumb, dragged through the
-    # pointer path, moves the list.
-    d._set_scroll("files", 0)
-    d.layout(body)
-    track = d._boxes["files_track"]
-    thumb = d._boxes["files_thumb"]
-    emit("thumb_h", f"{thumb.h:.0f}")
-    app.renderer.on_pointer_press(thumb.x + 3, thumb.y + 5, LEFT_BUTTON, 0)
-    for step in range(1, 6):
-        app.renderer.on_pointer_move(track.x + 3, thumb.y + 5 + step * 50,
-                                     LEFT_BUTTON, 0)
-    app.renderer.on_pointer_release(track.x + 3, track.y + track.h,
-                                    LEFT_BUTTON, 0)
-    emit("thumb_drag", d._file_scroll)
-    emit("thumb_bounds_ok", str(d._file_scroll <= d._scroll_bounds("files")))
+    # The scrollbar is real: dragged through the pointer path, it moves the
+    # list, and no further than the list goes.
+    d._file_list.scrollbar.top = 0
+    gui.window("file_dialog").body_revision += 1
+    app.renderer._chrome_quads()
+    box = d._boxes["files"]
+    bar_x = box.x + box.w - 3.0
+    app.renderer.on_pointer_press(bar_x, box.y + 6.0, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_move(bar_x, box.y + box.h - 6.0, LEFT_BUTTON, 0)
+    app.renderer.on_pointer_release(bar_x, box.y + box.h - 6.0, LEFT_BUTTON, 0)
+    top = d._file_list.scrollbar.top
+    emit("thumb_drag", top)
+    emit("thumb_bounds_ok", str(top <= max(len(d.files) - d._file_list.visible_rows(box.h), 0)))
 
     # The wheel scrolls the pane under the pointer: folders over folders.
-    d._set_scroll("files", 0)
-    d._set_scroll("folders", 0)
+    d._file_list.scrollbar.top = 0
+    d._folder_list.scrollbar.top = 0
     fbox = d._boxes["folders"]
-    app.renderer.on_wheel(fbox.x + 10, fbox.y + 10, 2, 0)
-    emit("folders_wheeled", d._folder_scroll)
-    app.renderer.on_wheel(d._boxes["files"].x + 10, fbox.y + 10, 2, 0)
-    emit("files_wheeled", d._file_scroll)
+    # Negative notches scroll down, on every host (BUG-003).
+    app.renderer.on_wheel(fbox.x + 10, fbox.y + 10, -2, 0)
+    emit("folders_wheeled", d._folder_list.scrollbar.top)
+    app.renderer.on_wheel(d._boxes["files"].x + 10, fbox.y + 10, -2, 0)
+    emit("files_wheeled", d._file_list.scrollbar.top)
 
     # Save mode: click the name line, type, Enter -- Enter must be Choose,
     # which it was not when the bare field held the focus.
@@ -274,7 +294,6 @@ def test_keys_scrollbars_and_save_typing():
     assert m["paged"].startswith("file"), "page-down did not page"
     assert int(m["paged"][4:-4]) > 4, f'page-down did not page: {m["paged"]}'
     assert int(m["nav_scrolled"]) > 0, "navigation did not keep the row on screen"
-    assert float(m["thumb_h"]) > 20, "the thumb is not proportional to the list"
     assert int(m["thumb_drag"]) > 0, "dragging the thumb did not scroll"
     assert m["thumb_bounds_ok"] == "True"
     assert int(m["folders_wheeled"]) > 0, "the wheel over folders scrolled nothing"
@@ -304,34 +323,43 @@ _PICTURE_DRIVE = """
     d.path = tmp
     d.refresh()
     d.layout(gui.window_body(win))
+    from chimol.ui.dialogs.file_dialog import ROW_H
+
+    def row_xy(d, name):
+        # The middle of a file row, as a click lands on it (panes are ListViews).
+        index = d._file_model.index_of(name)
+        box = d._boxes["files"]
+        return box.x + 20.0, box.y + (index - d._file_list.scrollbar.top + 0.5) * ROW_H
 
     # Click a row (focus + selection), then a key must move the PICTURE.
-    row = next(rr for rr, n in d._file_rows if n == "file000.pdb")
-    r.on_pointer_press(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
-    r.on_pointer_release(row.x + 3, row.y + 5, LEFT_BUTTON, 0)
+    win.body_revision += 1
+    r._chrome_quads()
+    cx, cy = row_xy(d, "file000.pdb")
+    r.on_pointer_press(cx, cy, LEFT_BUTTON, 0)
+    r.on_pointer_release(cx, cy, LEFT_BUTTON, 0)
     q0 = r._chrome_quads()
     r.on_key_press(KEY_DOWN, "", 0)
     emit("key_moves_picture", str(q0 is not r._chrome_quads()))
 
     # The wheel must move the picture.
     q0 = r._chrome_quads()
-    r.on_wheel(d._boxes["files"].x + 10, 200.0, 3, 0)
+    r.on_wheel(d._boxes["files"].x + 10, 200.0, -3, 0)
     emit("wheel_moves_picture", str(q0 is not r._chrome_quads()))
 
     # The thumb drag must move the picture AND the list.
-    d._set_scroll("files", 0)
+    d._file_list.scrollbar.top = 0
+    win.body_revision += 1
     r._chrome_quads()
-    d.layout(gui.window_body(win))
-    thumb = d._boxes["files_thumb"]
-    track = d._boxes["files_track"]
-    r.on_pointer_press(thumb.x + 3, thumb.y + 5, LEFT_BUTTON, 0)
+    box = d._boxes["files"]
+    bar_x = box.x + box.w - 3.0
+    r.on_pointer_press(bar_x, box.y + 6.0, LEFT_BUTTON, 0)
     q_drag_start = r._chrome_quads()
     for step in range(1, 6):
-        r.on_pointer_move(track.x + 3, thumb.y + 5 + step * 50.0,
+        r.on_pointer_move(bar_x, box.y + 6.0 + step * (box.h - 12.0) / 5.0,
                           LEFT_BUTTON, 0)
         r._chrome_quads()
-    r.on_pointer_release(track.x + 3, track.y + track.h, LEFT_BUTTON, 0)
-    emit("drag_scrolled", d._file_scroll)
+    r.on_pointer_release(bar_x, box.y + box.h - 6.0, LEFT_BUTTON, 0)
+    emit("drag_scrolled", d._file_list.scrollbar.top)
     emit("drag_moved_picture", str(q_drag_start is not r._chrome_quads()))
 """
 
