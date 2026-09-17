@@ -48,6 +48,16 @@ import pytest
 #: so a caller who pinned a directory keeps it -- including the one CI uses.
 _SETTINGS_TMP = tempfile.mkdtemp(prefix="chimol-test-settings-")
 _OWNED = []
+# Demo material is not a preference: downloaded models and the containers built
+# from them are checked for staleness and shared across runs. Resolved *before*
+# the settings directory moves, or every run rebuilt each container (minutes
+# apiece) inside the throwaway directory. Only the path is read; the display
+# config is not loaded.
+if not os.environ.get("CHIMOL_DEMO_CACHE"):
+    from chimol.core.settings.dirs import settings_dir as _settings_dir
+
+    os.environ["CHIMOL_DEMO_CACHE"] = str(_settings_dir() / "chimol_demos")
+    _OWNED.append("CHIMOL_DEMO_CACHE")
 for _var in ("CHIMOL_SETTINGS_DIR", "CHISURF_SETTINGS_DIR"):
     if not os.environ.get(_var):
         os.environ[_var] = _SETTINGS_TMP
