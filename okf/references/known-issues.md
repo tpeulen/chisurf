@@ -1,3 +1,19 @@
+## The image section still draws with raw pyqtgraph, and can crash on teardown
+
+**2026-09-17.** chiplot's default backend is emtk now, but
+`chisurf/gui/autoform/sections/builtin.py::ImageMapWidget` (the `image` custom
+section: 11 view specs -- colour/channel pickers, movie playback, brush
+painting, point picks, rectangle gates) builds `pyqtgraph.ImageView`s directly
+and never went through chiplot. With emtk drawing the tool's other plots, the
+flc_2d plugin tests crash in about two of three runs (bus error in
+`QGraphicsScene::itemsBoundingRect` under `processEvents`); with
+`gc.disable()` 5/5 pass and under the pyqtgraph backend 5/5 pass, so it is a
+cyclic-GC collection destroying part of the widget tree while its scene still
+has events queued. The real fix is porting `ImageMapWidget` onto
+`chiplot.ImageView` (PRD-104): emtk has the image, overlay, ROI, picking and
+inverted-axis pieces; a z/frame slider and brush painting are what it would
+need to gain.
+
 ## `_flr_fret_calibration_parameters.phi_donor` is uncommitted
 
 **2026-09-08.** IHM-FLR defines `phi_acceptor` and no donor counterpart,
