@@ -356,8 +356,11 @@ catalogue is considered complete at 22 of 26 (19 FCS + 3 PCF).
   `Models/fcs/*.m`, `functions/BurstBrowser/Calc_fFCS_Filters.m`, `PAM.m`
   `Update_fFCS_GUI`. Filter fixture: `test/data/flcs/`.
 - Image correlation: `chisurf/core/experiments/ics/`,
-  `chisurf/core/models/ics/`; MIA reference `junk/PAM/functions/MIA/`,
-  `junk/PAM/Models/miafit/*.miafit`.
+  `chisurf/core/models/ics/`; MIA reference (upstream PAM) `functions/MIA/`,
+  `Models/miafit/*.miafit`. Number & Brightness:
+  `chisurf/core/fluorescence/imaging/number_brightness.py`, plugin
+  `chisurf/plugins/microscopy/img_pixel_nb/`, test
+  `test/microscopy/test_number_brightness.py`, fixture `test/data/nb/`.
 - Tests: `test/fitting/test_fcs_pam_ab.py`, `test_fcs_2ffcs.py`,
   `test_fcs_filters.py` (PAM filter A/B); `test/experiments/test_ics_unification.py`,
   `test_ics_vs_pam.py`.
