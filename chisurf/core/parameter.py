@@ -318,9 +318,11 @@ class Parameter(chisurf.core.base.Base):
         # out-of-bounds assignment should return the clamped value.
         if self.bounds_on:
             lb, ub = self.bounds
-            if np.isfinite(lb):
+            # An unset side is None -- one bound can be edited while the other
+            # has not been given -- and None is unbounded, not an error.
+            if lb is not None and np.isfinite(lb):
                 v = max(lb, v)
-            if np.isfinite(ub):
+            if ub is not None and np.isfinite(ub):
                 v = min(ub, v)
 
         # Write the clamped value back to the port when the parameter is not
