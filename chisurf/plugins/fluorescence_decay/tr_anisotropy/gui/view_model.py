@@ -371,7 +371,7 @@ class AnisotropyViewModel:
         chisurf.core.actions.dispatch(
             name="fit.add",
             payload={
-                "model_name": "Lifetime fit",
+                "model_name": "Lifetime",
                 "dataset_indices": [n - 2, n - 1],
                 "model_kw": dict(self._corrections),
             },

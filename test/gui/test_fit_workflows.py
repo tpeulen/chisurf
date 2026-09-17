@@ -61,21 +61,26 @@ def test_tcspc_lifetime_fit():
     before = len(cs.fits)
     cs.core.actions.dispatch(
         name="fit.add",
-        payload={"dataset_indices": [0], "model_name": "Lifetime "},
+        payload={"dataset_indices": [0], "model_name": "Lifetime"},
     )
     assert len(cs.fits) == before + 1
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", [
-    "Lifetime ",
-    "FRET: FD (Discrete)",
-    "FRET: FD (Gaussian)",
-    "FRET: PDDEM",
-    "FRET: FD (Worm-like chain)",
+    "Lifetime",
+    "Lifetime: polarized",
+    "Lifetime mixture",
+    "FRET: Gaussian distances",
+    "FRET: discrete distances",
+    "FRET: worm-like chain",
+    "FRET: self-avoiding chain (SAW-ν)",
+    "FRET: Ising two-state chain",
+    "PDDEM: partial donor-donor energy migration",
+    "FRET: acceptor density (1, 2 or 3 dimensions)",
     "Parse-Model",
-    "Lifetime mixer",
-    "Et-Model free",
+    "Lifetime: MaxEnt",
+    "FRET: MaxEnt distances",
 ])
 def test_tcspc_each_model(model_name):
     """Create a fit for each registered TCSPC model."""
@@ -93,6 +98,7 @@ def test_tcspc_each_model(model_name):
         payload={"dataset_indices": [0], "model_name": model_name},
     )
     assert len(cs.fits) == before + 1
+    assert cs.fits[-1].name.startswith(model_name), cs.fits[-1].name
 
 
 def test_fcs_parse_model_fit():

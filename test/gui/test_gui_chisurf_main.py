@@ -147,7 +147,7 @@ class Tests(unittest.TestCase):
             filename=filename_irf
         )
         data_set_name = "Decay_577D.txt"
-        for model_name in ('Lifetime', 'FRET: FD (Gaussian)'):
+        for model_name in ('Lifetime', 'FRET: Gaussian distances'):
             fit = add_fit(
                 data_set_name=data_set_name,
                 dataset_selector=gui.dataset_selector,

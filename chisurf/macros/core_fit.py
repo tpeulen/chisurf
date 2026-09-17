@@ -1114,7 +1114,12 @@ def add_fit(
     # specific name requested. Filtered by the dataset: one experiment can hold
     # data of more than one shape (PDA reads two-colour histograms and
     # three-colour burst tables), and the first model overall may be one that
-    # cannot fit this dataset at all.
+    # cannot fit this dataset at all. A name that was asked for and matched
+    # nothing is an error, not a request for the default: a renamed model
+    # used to come back as whatever model happened to be first.
+    if model_class is None and wanted and wanted != "None":
+        cs.logging.warning(f"add_fit: no model named '{model_name}'; aborting")
+        return {"ok": False, "error": f"no model named '{model_name}'"}
     if model_class is None:
         applicable = exp.get_model_classes(data_sets[0]) or exp.model_classes
         if applicable:
