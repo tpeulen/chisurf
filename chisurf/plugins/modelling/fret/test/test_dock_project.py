@@ -110,11 +110,20 @@ def test_v1_project_loads_without_poses():
     assert "initial_poses" not in proj.to_dock_request()
 
 
-def test_ensure_fps_json_accepts_csharp_txt():
-    """A legacy C# LPs .txt is converted to a usable fps.json (FPS-native input)."""
-    lps = os.path.join(_EX, "LPs_no_template_old_protein.txt")
-    if not os.path.exists(lps):
+def test_ensure_fps_json_accepts_csharp_txt(tmp_path):
+    """A legacy C# LPs .txt is converted to a usable fps.json (FPS-native input).
+
+    On a copy: the conversion is written beside the legacy file, and beside
+    the shipped example it left an untracked file in the source tree.
+    """
+    import shutil
+
+    if not os.path.exists(os.path.join(_EX, "LPs_no_template_old_protein.txt")):
         pytest.skip("C# LPs example missing")
+    for name in ("LPs_no_template_old_protein.txt", "Distances.txt"):
+        if os.path.exists(os.path.join(_EX, name)):
+            shutil.copy(os.path.join(_EX, name), tmp_path / name)
+    lps = str(tmp_path / "LPs_no_template_old_protein.txt")
     pdbs = [os.path.join(_EX, "protein_1R0A.pdb"), os.path.join(_EX, "dna.pdb")]
     out = imp_engine.ensure_fps_json(lps, pdbs)
     assert out.endswith(".json") and os.path.exists(out)

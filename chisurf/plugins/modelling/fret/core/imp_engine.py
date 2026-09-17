@@ -737,24 +737,19 @@ def ensure_fps_json(fps_path: str, pdb_paths: Sequence[str] = ()) -> str:
     path = str(fps_path)
     if path.lower().endswith(".json"):
         return path
-    # read_fps_json converts a legacy file beside itself and reads the result;
-    # the conversion is the point here and the document is discarded.
+    # read_fps_json reads a legacy file into a document and writes nothing; it
+    # once converted beside itself as a side effect, and this waited for that
+    # file. The document is written here, beside the legacy file.
     converted = os.path.splitext(path)[0] + ".fps.json"
     try:
-        bff.read_fps_json(path, [str(p) for p in pdb_paths], False)
+        document = bff.read_fps_json(path, [str(p) for p in pdb_paths], False)
+        bff.write_fps_json(converted, document.positions, document.distances,
+                           document.score_sets or "{}", document.extra or "{}", False)
     except Exception as exc:
         raise RuntimeError(
-            f"could not read the labelling file {path}: {exc}"
+            f"could not convert the labelling file {path}: {exc}"
         ) from exc
-    if os.path.exists(converted):
-        return converted
-    plain = os.path.splitext(path)[0] + ".json"
-    if os.path.exists(plain):
-        return plain
-    raise RuntimeError(
-        f"{path} was read but no .json was written beside it; the engine "
-        "needs one"
-    )
+    return converted
 
 
 __all__ = [
