@@ -93,7 +93,7 @@ class TestAISettingsModel:
         # ["requests"]`` for years after the tree moved to chisurf.core.support.http, so
         # the stub was inert and the test reached the network for
         # example.invalid.
-                from chisurf.core.support import http
+        from chisurf.core.support import http
 
         monkeypatch.setattr(http, "get", lambda *a, **k: Response())
 

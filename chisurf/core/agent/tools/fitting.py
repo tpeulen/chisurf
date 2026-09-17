@@ -24,7 +24,7 @@ def refresh_gui() -> None:
     # Through the presentation seam, not `import chisurf.gui`: the model must
     # not need a widget toolkit to be importable. Headless there is no
     # presenter and this is a no-op on a `gui` that is already None.
-        from chisurf.core.runtime import presentation
+    from chisurf.core.runtime import presentation
 
     presentation.notify(gui.update)
 
