@@ -128,7 +128,13 @@ latexify-py = "*"
 # PRD-137). The FRET docking plugin still needs an imp-bff build linked
 # against IMP (`get_build() == "core+imp"`) for its workflow layer; that is a
 # build-time choice of the imp-bff wheel, not a separate chisurf dependency.
-imp-bff = "*"
+#
+# Not on PyPI yet (still alpha, 2026-09-17 owner's call: GitHub only for now,
+# no PyPI publish). Built from source at solve time from tpeulen's fork --
+# the toolchain this needs (cmake, ninja, swig, scikit-build-core) is already
+# in every environment here for tttrlib's own from-source build. Once a real
+# PyPI release exists, drop back to `imp-bff = "*"`.
+imp-bff = { git = "https://github.com/tpeulen/IMP.bff.git", branch = "independent-core" }
 
 [pypi-options]
 dependency-overrides = { "numpy" = {} }
