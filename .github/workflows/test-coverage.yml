@@ -39,6 +39,15 @@ jobs:
   tests:
     name: Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # No prior run of this job has ever completed in CI (each failed earlier
+    # in the pipeline before this fix round), so 30 min is a generous first
+    # guess, not a measured baseline. It exists so a hang fails the job with
+    # a log ending at whatever was running -- pytest-timeout's per-test cap
+    # doesn't cover collection-phase hangs (e.g. --doctest-modules importing
+    # every module in the tree), which multiple runs stuck 30-70+ min with
+    # no failure suggest is exactly where this is stuck. Revisit once a real
+    # green run exists to measure against.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
