@@ -175,6 +175,11 @@ cmake-build-extension = ">=0.6.1,<0.7"
 pytest = "*"
 pytest-cov = "*"
 pytest-qt = "*"
+# The Linux/macOS CI test jobs hang somewhere in the suite (runs 35209068091,
+# 35211975593, 35215662404: stuck 30-55+ min with no configured timeout,
+# each cancelled rather than let run for hours). Per-test timeout turns a
+# silent multi-hour hang into a fast, specific failure naming the stuck test.
+pytest-timeout = "*"
 # Test-only: a handful of tests use pandas as an independent oracle (compare
 # chisurf's own CSV writer against pandas.DataFrame.to_csv) or to simulate a
 # file an external tool wrote. The shipped package imports it nowhere
@@ -313,14 +318,14 @@ test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment
 # defined in pyproject and excluded from nothing, so a file marked slow still
 # ran in every default sweep. The slow ones build whole windows and grab them --
 # a minute against seconds for the rest -- and `test-slow` is how to ask for them.
-test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow'", depends-on = ["build-extensions"] }
+test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow' --timeout=120 --timeout-method=thread", depends-on = ["build-extensions"] }
 test-slow = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') -m slow", depends-on = ["build-extensions"] }
 test-gui = { cmd = "pytest $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'widget or gui'", depends-on = ["build-extensions"] }
 test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-extensions"] }
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }
 fmt = { cmd = "ruff format chisurf/ test/ && ruff check --fix chisurf/ test/" }
 typecheck = { cmd = "mypy chisurf/" }
-test-cov = { cmd = "pytest test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -m 'not slow' --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"] }
+test-cov = { cmd = "pytest test --doctest-modules $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -m 'not slow' --timeout=120 --timeout-method=thread --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"] }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
 # PRD-46: run the shipped example scripts + their public-API unit tests. These
