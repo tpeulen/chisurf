@@ -1,7 +1,7 @@
 ---
 type: Reference
 title: "FCS model catalogue & FLCS filters: PAM port status and gaps"
-description: PAM parity status — what ChiSurf's FCS fit-model catalogue, FLCS lifetime filters and image correlation (MIA) gained from using PAM as reference (A/B verified), what is deliberately out of scope, and what is still missing.
+description: PAM parity status — what ChiSurf's FCS fit-model catalogue, FLCS lifetime filters, image correlation and Number & Brightness (MIA) gained from using PAM as reference (A/B verified), what is deliberately out of scope, and what is still missing.
 tags: [reference, fcs, flcs, mia, image-correlation, diffusion, roadmap]
 timestamp: '2026-09-17T00:00:00Z'
 ---
@@ -11,7 +11,7 @@ timestamp: '2026-09-17T00:00:00Z'
 PAM (Schrimpf et al. 2018) is used as the reference implementation for ChiSurf's
 Fluorescence Correlation Spectroscopy (FCS) fit models and its filtered-FCS
 (FLCS) lifetime-filter maths. Ports are **A/B-verified**: each PAM model's MATLAB
-`fit` lambda (`junk/PAM/Models/fcs/*.m`) is transcribed verbatim as the reference
+`fit` lambda (`Models/fcs/*.m`, gitlab.com/PAM-PIE/PAM at `7319d15d`) is transcribed verbatim as the reference
 and asserted equal, over random parameters, to the ChiSurf implementation.
 
 ## Where to pick this up
@@ -28,6 +28,18 @@ and asserted equal, over random parameters, to the ChiSurf implementation.
    `detector_selection.get_selected()` comes back empty, so `test/conftest.py`
    evidently changes the detector/settings state the widget reads. Pre-existing
    (same result with the pre-change `filtered.py`); not fixed.
+3. **N&B cross channel with a moment filter.** PAM smooths √covariance (complex
+   where the covariance is negative) and smooths the already-smoothed auto means a
+   second time; ChiSurf smooths the covariance and the geometric mean once. Only
+   the unfiltered cross channel is pinned (`test/microscopy/test_number_brightness.py`,
+   `ddof=0` because PAM's covariance divides by K). If a user needs PAM's filtered
+   cross numbers bit-for-bit, the recorded `cross_gaussian__*` arrays in
+   `test/data/nb/pam_nb_reference.npz` already hold them — add a `pam_cross_filter`
+   mode rather than changing the default.
+4. **The PAM checkout is gone.** Everything above runs from recorded fixtures. To
+   extend an A/B, `junk/clone.sh` re-clones PAM (upstream
+   https://gitlab.com/PAM-PIE/PAM, harvested at `7319d15d`) and every generator
+   takes `--pam junk/PAM`; the table under "PAM checkout retired" lists them.
 
 ## What is there (implemented / ported)
 
@@ -158,6 +170,59 @@ lag-time identity.
 `Read_CZI` is **deliberately skipped**, and `FRAP_MEM` (the maximum-entropy FRAP
 variant) is deferred; `rFRAP`'s closed form covers the ordinary case.
 
+### Number & Brightness (MIA `Do_NB`) — harvested 2026-09-17
+
+PAM's N&B is `functions/MIA/Analysis/Do_NB.m` (123 lines, at `7319d15d`), fed by
+the stack corrections of `functions/MIA/Mia_Correct.m` and displayed/gated by
+`functions/MIA/Mia_Update_Plots.m` mode 3 (lines 583–728). ChiSurf's N&B lives in
+`chisurf/core/fluorescence/imaging/number_brightness.py` (plugin
+`img_pixel_nb`); before this harvest it computed only apparent B and N and
+ε = B − 1 with the population variance.
+
+**Taken, A/B-verified** (`test/data/nb/gen_pam_nb_reference.py` extracts
+`Do_NB.m` lines 14–121 verbatim, rewrites only the GUI handle reads, runs it in
+Octave + image package; fixture `pam_nb_reference.npz`, 69 KB; test
+`test/microscopy/test_number_brightness.py`, agreement ≤ 1e-10 relative):
+
+| PAM (`Do_NB.m`) | ChiSurf |
+|---|---|
+| l. 26–27 dead-time correction `I/(1 − I·τ_ns/(T_µs·1000))` | `dead_time_correct` |
+| l. 29–31 PCH `histc(I(:), 0:ceil(max))` | `photon_counting_histogram` |
+| l. 32–33 `nanmean` / `nanstd(…,0,3)` (K − 1) | `nb_maps(ddof=1)` — the **default changed** from population variance |
+| l. 34–53 `fspecial` average / disk(r−1) / gaussian(2r, r/2), `imfilter(…,'symmetric')` on mean **and σ** | `smoothing_kernel`, `smooth_map`, `nb_maps(smoothing=, radius=)` (kernels equal Octave's `fspecial` to 2e-16) |
+| l. 54–55 `Num = I²/(σ²−I)/√8`, `Eps = (σ²−I)/I·√8` | `nb_maps` `n`, `epsilon` with `gamma=GAMMA_3D_GAUSSIAN`; default γ = 1 (Digman) |
+| l. 56–60 `medfilt2([3 3])`, zero padding | `nb_maps(median=True)` |
+| l. 63–68, 88–89 cross: `Int = √(I₁I₂)`, `Std² = mean((a−⟨a⟩)(b−⟨b⟩))`, `Num = Int²/Std²`, `Eps = Std²/Int` (no −1) | `ccnb_maps` (`B_cross`, `N_cross`), pinned unfiltered with `ddof=0` |
+| l. 98–117 starting thresholds: intensity ⟨I⟩ ± 3⟨σ⟩ clipped to min/max; N, ε mean ± 3 sd of the 5–95 % trimmed values | `nb_default_ranges` (the parameter-plane extent) |
+| `Mia_Correct.m` l. 56–155: add total/frame/pixel mean or box average, subtract frame/pixel mean or box average (`imfilter(…,ones(Box)/prod(Box),'replicate')`, even box centred early), NaN → 0, constant background | `correct_stack`, `moving_average` (2-D box A/B'd frame by frame; Octave's `imfilter` is 2-D only) |
+| `Mia_Update_Plots.m` l. 612–621 `NB.Use` rectangular thresholds on I, N, ε (each switchable), exported as a mask by `Export_ROI.m` l. 19 | `nb_threshold_mask`; generalised to any drawn region on a chosen parameter plane by `nb_gate_mask` + the tool's gate regions |
+
+**Added beyond PAM** (from the second reference, pysimfcs `analysis_utils.py`,
+and the literature): analog-detector N&B with gain/offset/read variance and the
+static-gradient calibration fit (`analog_calibration`, Dalal 2008 — note pysimfcs
+divides by the *raw* mean, `var/(S·avg) − 1`, ignoring the offset; ChiSurf uses
+`⟨k⟩ − offset`); segmented closed-form detrending with mean restoration
+(`detrend_segmented`, `stack_trends`) **with the 2·segments degrees-of-freedom
+correction** neither reference makes (without it B is biased low by
+`(K − 2·segments)/(K − 1)`, 20 % for ten-frame segments — found on real data);
+NaN-aware map smoothing (`gaussian_filter_nan`, normalised by the valid-pixel
+weight instead of pysimfcs' zero-fill, which darkens mask edges); a simulated
+monomer/dimer demo written as a real PTU (`img_pixel_nb/demo.py`).
+
+**Skipped, deliberately:**
+- PAM's filtering of σ rather than σ² — kept for parity (it is what the A/B pins),
+  documented as a slight underestimate of σ² where it varies in the kernel.
+- PAM's inconsistent estimators (auto K − 1, cross K; cross covariance from the
+  *un*-dead-time-corrected stack while its mean is corrected; double smoothing of
+  the cross means; filtering complex √covariance) — ChiSurf uses one `ddof`, one
+  dead-time correction and one smoothing pass for both channels.
+- single-precision storage of corrected stacks (MIA casts to `single`); display
+  in kHz (`/PixelTime·1e3`), colormap and log-z choices of the 2-D histogram
+  (`Mia_Update_Plots.m` l. 650–728) — presentation, not analysis.
+- Arbitrary-region (AROI) frame/pixel rejection (`Mia_Arbitrary_Region.m`): `Do_NB`
+  never reads `MIAData.AR`; AROI only enters N&B through the correction means,
+  which ChiSurf computes over the whole field.
+
 ### RICSPE parity — verified to double precision, with one deliberate deviation
 
 The precision predictor was A/B'd against the unmodified reference kernels run
@@ -218,6 +283,29 @@ motor, an ATP-consuming machine); every reversible scheme is unaffected. Both
 the parity and the disagreement are pinned by
 `test/fluorescence/test_gopich_szabo.py`, so a future change that "restores
 agreement with PAM" is caught as the regression it would be.
+
+## PAM checkout retired (2026-09-17)
+
+`junk/PAM` was deleted after this harvest; nothing reads it at runtime. Every A/B
+that used it runs from a recorded fixture, and each fixture has a generator that
+names the upstream file and regenerates it after `junk/clone.sh` re-clones PAM:
+
+| A/B | fixture | generator |
+|---|---|---|
+| N&B (`Do_NB.m`, `Mia_Correct.m` box average) | `test/data/nb/pam_nb_reference.npz` | `test/data/nb/gen_pam_nb_reference.py` |
+| three-colour PDA C kernel (`functions/tcPDA/C Files/src/eval_prob_3c_bg_lib.c`) | `test/data/pda3c/pam_eval_prob_3c_bg_lib_reference.npz` | `test/data/pda3c/gen_pam_pda3c_reference.py` |
+| Gopich–Szabo `GP_logL.m` | `test/data/gopich_szabo/pam_gs_reference.npz` | `test/data/gopich_szabo/gen_pam_gs_reference.py` |
+| FLCS filter routines | `test/data/flcs/` | `test/data/flcs/gen_pam_ffcs_filters_reference.py` |
+| RICSPE | `test/data/rics/pam_ricspe_reference.npz` | `test/data/rics/pam_ricspe_reference.m` |
+| tttrlib `Pda.s1s2` vs `PDA_histogram.cpp` | tttrlib `test/data/reference/pda_pam_histogram_reference.npz` | tttrlib `test/python/pda/gen_ab_pda_pam_reference.py` |
+| tttrlib CUSUM/SPRT vs `PAM.m` `CUSUM_burstsearch` | tttrlib `test/data/reference/cusum_pam_reference.npz` | tttrlib `test/python/burstfilter/gen_ab_cusum_pam_reference.py` |
+
+The FCS / PCF model A/Bs (`test/fitting/test_fcs_pam_ab.py`,
+`test_pcf_pam_ab.py`) are verbatim transcriptions and never read the checkout.
+tttrlib's `benchmarks/competitors/bench_fret.py` still *times* PAM's PDA and CUSUM
+code when a checkout is present and otherwise skips, saying to re-clone. The
+three-colour PDA A/B had been skipping silently before the harvest — upstream moved
+its sources from `functions/PDA3c` to `functions/tcPDA`.
 
 ## What is missing (not implemented)
 

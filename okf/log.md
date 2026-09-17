@@ -2,6 +2,25 @@
 
 ## 2026-09-17
 
+* **Number & Brightness harvested from PAM; the PAM checkout is retired.**
+  `core/fluorescence/imaging/number_brightness.py` replaces the old three-line
+  `nb_maps` (apparent B/N, ε = B − 1, population variance): dead-time correction,
+  PCH, unbiased variance (default changed), γ-corrected ε and n, box/disk/Gaussian
+  moment smoothing, 3×3 median, cross N&B without the −1, PAM's starting ranges,
+  the MIA stack corrections, analog N&B with a static-gradient calibration,
+  segmented detrending with mean restoration and a 2·segments degrees-of-freedom
+  correction (without it B read 0.8 on real data with ten-frame segments),
+  NaN-aware smoothing, and threshold / drawn-region gating back-mapped to pixels.
+  A/B against PAM's own `Do_NB.m` text run in Octave (fixture `test/data/nb/`,
+  ≤ 1e-10); known-answer tests on simulated stacks. The `img_pixel_nb` view.json
+  gains the settings panels, ε / n / parameter-plane / gated / cross maps, a
+  monomer–dimer demo PTU, `help.md` and `guide.json`; docs concept
+  `number_and_brightness` and guide 67; PRD-51 N&B, ccN&B and detrending boxes
+  ticked. `fcs-pam-port.md` records what was taken and skipped (file, lines,
+  commit `7319d15d`) and lists every recorded PAM fixture, so `junk/PAM` can go.
+  Found on the way: the flow-map demo reconstructs to an empty image
+  (known-issues).
+
 * **CTBN amalgamation is harvested into imp.bff; the aGrUM lead is closed.** The
   lead in [aGrUM mining](references/agrum-mining.md) said to check real schemes
   first. Product schemes do occur:

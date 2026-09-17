@@ -1,3 +1,24 @@
+## The flow-map demo PTU reconstructs to an empty image
+
+**Measured 2026-09-17.** `chisurf/plugins/microscopy/img_flow/demo.py::create_demo`
+writes a scan whose frame, line-stop and line-start markers share macro-time
+ticks with each other and with the first pixel's photons (that is the layout the
+tttrlib scanner simulator emits). Read back through `load_image_stack` /
+`CLSMImage` (tttrlib 0.27.0 in the `arm64` env) the stack is **all zeros**, one
+frame short: `create_demo('tiny.ptu', n_pixel=16, n_frames=3, n_molecules=900)`
+has 17 790 photons and `load_image_stack('tiny.ptu').data.sum() == 0`. Two reader
+behaviours cause it, both found while building the N&B demo: a line-stop marker
+on the same tick as the next line start is paired with that start (every line
+zero ticks long, `get_start_stop_time` → `(2304, 2304)`), and photons on the tick
+of their line-start marker are dropped. An in-memory TTTR with the same arrays
+fills correctly, so it is the marker-to-line pairing on a file-backed stream, not
+the arrays. The N&B demo (`img_pixel_nb/demo.py`) sidesteps it with two ticks per
+dwell and no shared marker ticks, and round-trips bit-exactly
+(`test_demo_photon_stream_round_trips_and_carries_its_truth`). **Blocks:** the
+flow tool's demo and guided tour show nothing. Fix either the simulator's marker
+layout or the CLSM line pairing in tttrlib; not done here (outside the PAM
+harvest).
+
 ## The image section still draws with raw pyqtgraph, and can crash on teardown
 
 **2026-09-17.** chiplot's default backend is emtk now, but

@@ -188,7 +188,8 @@ Port from the 2015 package; keep the 2006 tutorial as the fixture.
 | `junk/pysimfcs/` | The N&B and RICS reference, in Python. Formulas below. |
 | `junk/ipcf/` | Pair-correlation (pCF) over multi-gigabyte series in overlapping chunks — the out-of-core/chunking reference if vector-map cost becomes the problem. pCF itself is [PRD-54](prd-54.md). |
 | `junk/Imaging_FCS/` | Arbitrary pixel binning + ROI for imaging FCS/ICCS, TIRF/SPIM fit models, and **FCS diffusion laws** (the `tau_D` vs area intercept that distinguishes free / meshwork / domain diffusion) — a distinct readout none of the above provides. |
-| `junk/Correlescence/`, `junk/FCSlib/`, `junk/PAM/`, `junk/quickfit3/` | Not yet surveyed for this PRD; check before implementing N&B or the diffusion laws. |
+| `junk/Correlescence/`, `junk/FCSlib/`, `junk/quickfit3/` | Not yet surveyed for this PRD; check before implementing the diffusion laws. |
+| PAM (MIA) | Surveyed and harvested for N&B on 2026-09-17 (`Do_NB.m`, `Mia_Correct.m`); checkout deleted. What was taken and skipped: [fcs-pam-port](/references/fcs-pam-port.md). |
 
 ## What pysimfcs pins down — the formulas to port
 
@@ -354,20 +355,30 @@ equal size, batch the per-lag fits) land before any language change would.
 - [ ] STICCS: four vector maps per time window (auto 1, auto 2, cross 12, cross 21)
       with the inter-channel delay carried explicitly, and a test that 12 and 21 are
       **not** forced equal.
-- [ ] N&B: `B = var/avg - 1`, `N = avg/B` maps; recovers a known brightness on a
+- [x] N&B: `B = var/avg - 1`, `N = avg/B` maps; recovers a known brightness on a
       simulated stack; **analog** variant `B = var/(S*avg) - 1` with `S`/`offset` from a
       gradient calibration (a workflow, not a settable number); B-vs-N histogram gating
       that back-maps a selected region onto pixels.
-- [ ] ccN&B cross-brightness `covar/sqrt(avg_a*avg_b)`, with a test pinning that the
+- [x] ccN&B cross-brightness `covar/sqrt(avg_a*avg_b)`, with a test pinning that the
       `-1` shot-noise term is **absent** from the cross channel — copying the auto
       formula here is the obvious mistake and silently biases every result.
-- [ ] Segmented per-pixel detrending with mean restoration, closed-form and vectorised
+- [x] Segmented per-pixel detrending with mean restoration, closed-form and vectorised
       over the stack; test on a bleaching stack that `B` is recovered only after
       detrending, and that omitting the mean restoration breaks `B` — pinning that it
       is not interchangeable with the immobile filter.
 - [ ] Map smoothing is NaN-aware (threshold to NaN, then smooth without leaking
       background across the mask edge); shared with the STICS vector maps' rejected
       vectors.
+      *(2026-09-17: the N&B half landed — `gaussian_filter_nan` in
+      `core/fluorescence/imaging/number_brightness.py`, tested for no leak across
+      the mask; the STICS vector maps do not use it yet, so the box stays open.)*
+      *(N&B, ccN&B and detrending landed 2026-09-17 in
+      `core/fluorescence/imaging/number_brightness.py` + the `img_pixel_nb` tool:
+      A/B against PAM's `Do_NB.m` (fixture `test/data/nb/`), known-answer tests in
+      `test/microscopy/test_number_brightness.py`; analog variant with the
+      gradient calibration, gating on a parameter plane back-mapped to pixels,
+      detrending with the 2·segments degrees-of-freedom correction. Record:
+      [fcs-pam-port](/references/fcs-pam-port.md).)*
 - [ ] `avgquadrants` quadrant averaging available for isotropic RICS/ICS and **blocked
       for STICS**, with a test that it is not applied where the peak is off-centre.
 - [ ] RICS profile fit (horizontal + vertical concatenated, `G(0)` skipped) with a

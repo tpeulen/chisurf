@@ -2,7 +2,7 @@
   "id": "img_pixel_nb",
   "version": "1.0.0",
   "display_name": "Imaging:Number & Brightness",
-  "description": "Per-pixel Number (N) and Brightness (B) maps from TTTR imaging data.",
+  "description": "Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecular brightness and number, cross N&B, analog-detector calibration, bleaching detrending, and gating a brightness population back onto the image.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],

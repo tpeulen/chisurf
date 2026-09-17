@@ -1,0 +1,49 @@
+{
+  "_comment": "Guided tour for the Number & Brightness tool. Steps point at real controls and wait for the user to press them; the demo is a simulated scan with monomers (left) and dimers (right) at the same intensity, so every number can be checked against the truth. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What N&B measures",
+      "text": "Number &amp; Brightness reads the <b>size of the photon packets</b> from how much each pixel's intensity fluctuates from frame to frame. A few bright molecules and many dim ones can give the same intensity — they do not give the same fluctuations.<br/><br/>Per pixel: apparent brightness <b>B = σ²/⟨k⟩</b>, molecular brightness <b>ε = B − 1</b> (the −1 removes shot noise) and molecule number <b>n = ⟨k⟩/ε</b>. A dimer is twice as bright as its monomer, which is what makes oligomerisation visible.<br/><br/>Eight steps; you press the buttons.",
+      "target": {}
+    },
+    {
+      "title": "Start with data whose answer is known",
+      "text": "The demo is a simulated confocal scan written as an ordinary PTU file: <b>monomers</b> (ε = 0.5 counts per dwell, n = 6) on the left half, <b>dimers</b> (ε = 1.0, n = 3) on the right. Both halves have the same mean intensity.",
+      "target": {"action": "Load demo"},
+      "await": {"hint": "Press <b>🧪 Load demo</b>. It writes the file once and runs the analysis."}
+    },
+    {
+      "title": "The intensity cannot tell them apart",
+      "text": "The two halves are equally bright on average — an intensity image shows one uniform square. Keep that in mind for the next map.",
+      "target": {"tab": "Intensity"},
+      "await": {"hint": "Open the <b>Intensity</b> tab."}
+    },
+    {
+      "title": "The brightness can",
+      "text": "ε is about 0.5 on the left and 1.0 on the right: the factor of two of a dimer. The number map shows the mirror image (6 versus 3).<br/><br/>Each pixel's value is noisy — the precision grows with the number of frames — so read populations, not single pixels.",
+      "target": {"tab": "Brightness ε"},
+      "await": {"hint": "Open the <b>Brightness ε</b> tab."}
+    },
+    {
+      "title": "Pick a population on the parameter plane",
+      "text": "The plane is a 2-D histogram of every pixel, intensity horizontally and B vertically. The two species sit at B ≈ 1.5 and B ≈ 2.0 at the same intensity.<br/><br/>Draw a rectangle over the upper cloud with the rectangle button of <b>Gate regions</b>.",
+      "target": {"title": "Gate regions"}
+    },
+    {
+      "title": "…and see where it is in the image",
+      "text": "<b>Gated pixels</b> shows the intensity of the pixels inside the gate. Gating the bright cloud lights up the right half: the dimers, found from brightness alone. The status box lists how many pixels were picked and their median ε and n.",
+      "target": {"tab": "Gated pixels"},
+      "await": {"hint": "Open the <b>Gated pixels</b> tab."}
+    },
+    {
+      "title": "Real data needs corrections first",
+      "text": "Anything else that fluctuates adds to σ² and masquerades as brightness. <b>Detrend segments</b> removes photobleaching (and keeps each pixel's mean, which B divides by); <b>Subtract</b> / <b>Add back</b> remove immobile structure and slow drifts. Set them before you trust ε.",
+      "target": {"title": "Stack corrections"}
+    },
+    {
+      "title": "Know your detector",
+      "text": "The −1 in ε = B − 1 is only right for a photon-counting detector. An analog detector (PMT in current mode, camera) has a gain S and an offset: image a static intensity gradient, run, and press <b>📐 Calibrate analog</b> to read them from the variance-versus-mean line. Dead time shrinks the variance of bright pixels and needs the pixel dwell.",
+      "target": {"title": "Detector"}
+    }
+  ]
+}
