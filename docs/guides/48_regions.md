@@ -261,12 +261,12 @@ any other image-analysis pipeline, and code written for one transfers.
 For the molecule-wise workflow specifically:
 
 ```python
-from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import (
-    MoleculeMleSettings, fit_molecules_from_files,
+from chisurf.plugins.microscopy.region_mle.core.region_mle import (
+    RegionMleSettings, fit_regions_from_files,
 )
 
-settings = MoleculeMleSettings(roi=patch)     # a ROI, or its serialised dict
-result = fit_molecules_from_files("scan_001.ptu", "irf.ptu", settings)
+settings = RegionMleSettings(roi=patch)       # a ROI, or its serialised dict
+result = fit_regions_from_files("scan_001.ptu", "irf.ptu", settings)
 
 result.molecule_rois()                        # one region per molecule
 result.foreground_roi()                       # all of them as one
