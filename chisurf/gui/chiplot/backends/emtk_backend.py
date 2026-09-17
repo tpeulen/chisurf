@@ -16,12 +16,14 @@ What is drawn here today: curves (with symbols), scatter clouds, images and
 heatmaps, draggable regions (the fit range is one), markers in both
 orientations, the legend, axis labels and title, ranges (explicit, queried and
 auto), log scaling, grid and background, bar graphs, filled bands, error bars
-and text labels, the multi-panel grid and the image view. What is left -- ROIs,
-arrows and the colour bar -- raises :class:`NotImplementedError` naming what is missing, because a
-plot that silently omits half of what it was asked to draw is worse than one
-that says so. Those families are the rest of PRD-104.
+and text labels, rectangle/ellipse/polygon ROIs, an inverted y-axis, the colour
+bar, the multi-panel grid and the image view. What is left -- arrows, filled
+curves, horizontal regions -- raises :class:`NotImplementedError` naming what is
+missing, because a plot that silently omits half of what it was asked to draw
+is worse than one that says so. Those are the rest of PRD-104.
 
-Select it with ``CHISURF_PLOT_BACKEND=emtk`` or ``gui.plot.backend: emtk``.
+It is the default backend; ``CHISURF_PLOT_BACKEND=pyqtgraph`` or
+``gui.plot.backend: pyqtgraph`` selects the other one.
 """
 
 from __future__ import annotations
@@ -45,12 +47,15 @@ def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[i
         inner = getattr(color, attribute, None)
         if inner is not None and inner is not color:
             return _rgb(inner, default)
+    if all(hasattr(color, channel) for channel in ("r", "g", "b")):
+        return (int(color.r), int(color.g), int(color.b))
     if isinstance(color, (tuple, list)) and len(color) >= 3:
         return tuple(int(component) for component in color[:3])
-    text = str(color).strip()
-    if text.startswith("#") and len(text) >= 7:
-        return (int(text[1:3], 16), int(text[3:5], 16), int(text[5:7], 16))
-    return default
+    try:
+        parsed = S.to_color(color)
+    except Exception:
+        return default
+    return default if parsed is None else (int(parsed.r), int(parsed.g), int(parsed.b))
 
 
 def _orientation(value) -> str:
@@ -199,8 +204,9 @@ class _Entry:
         """Return the samples as ``(x, y)``."""
         return self.state["x"], self.state["y"]
 
-    def set_pen(self, pen: S.Pen) -> None:
-        """Set the line colour and width."""
+    def set_pen(self, pen, **overrides: Any) -> None:
+        """Set the line or outline colour and width."""
+        pen = S.to_pen(pen, **overrides) if overrides or not isinstance(pen, S.Pen) else pen
         self.state["color"] = _rgb(pen)
         self.state["width"] = float(getattr(pen, "width", 1.0) or 1.0)
         self._canvas.refresh()
@@ -238,11 +244,30 @@ class _Entry:
         self.state["texture"] = None
         self._canvas.refresh()
 
-    def set_levels(self, levels) -> None:
+    def set_levels(self, low: float, high: float) -> None:
         """Set the ``(low, high)`` the colours span."""
-        self.state["levels"] = None if levels is None else (float(levels[0]), float(levels[1]))
+        self.state["levels"] = (float(low), float(high))
         self.state["texture"] = None
         self._canvas.refresh()
+
+    def auto_levels(self) -> None:
+        """Span the colours over the data's own finite range again."""
+        self.state["levels"] = None
+        self.state["texture"] = None
+        self._canvas.refresh()
+
+    def get_image(self) -> np.ndarray:
+        """The image data as last set."""
+        return self.state["data"]
+
+    def get_levels(self) -> tuple[float, float]:
+        """The ``(low, high)`` the colours span: the set levels, or the data's range."""
+        levels = self.state.get("levels")
+        if levels is not None:
+            return (float(levels[0]), float(levels[1]))
+        values = np.asarray(self.state.get("data", []), dtype=float)
+        finite = values[np.isfinite(values)]
+        return (float(finite.min()), float(finite.max())) if finite.size else (0.0, 1.0)
 
     def set_colormap(self, colormap) -> None:
         """Set the colormap the samples are mapped through."""
@@ -250,9 +275,15 @@ class _Entry:
         self.state["texture"] = None
         self._canvas.refresh()
 
-    def set_rect(self, rect) -> None:
-        """Place the image in data coordinates: ``(x, y, width, height)``."""
-        self.state["rect"] = tuple(float(v) for v in rect)
+    def set_rect(self, x: float, y: float, w: float, h: float) -> None:
+        """Place the image in data coordinates."""
+        self.state["rect"] = (float(x), float(y), float(w), float(h))
+        self._canvas.refresh()
+
+    def clear(self) -> None:
+        """Show nothing until the next :meth:`set_image`."""
+        self.state["data"] = np.zeros((0, 0))
+        self.state["texture"] = None
         self._canvas.refresh()
 
     # -- Roi -----------------------------------------------------------
@@ -267,6 +298,21 @@ class _Entry:
         """The shape's ``(width, height)`` in data coordinates."""
         w, h = self.state.get("size", (1.0, 1.0))
         return (float(w), float(h))
+
+    @property
+    def angle(self) -> float:
+        """Degrees counter-clockwise the shape is turned about its centre."""
+        return float(self.state.get("angle", 0.0))
+
+    @property
+    def movable(self) -> bool:
+        """Whether the user can drag the shape."""
+        return bool(self.state.get("movable", True))
+
+    @property
+    def pen_color(self) -> str:
+        """The outline colour as ``"#rrggbb"``."""
+        return "#%02x%02x%02x" % tuple(self.state.get("color", (200, 200, 200)))
 
     @property
     def points(self) -> list[tuple[float, float]]:
@@ -378,6 +424,7 @@ class EmtkCanvas(base.Canvas):
         self._legend = False
         self._background = _rgb(background, (30, 32, 38))
         self._interactive = True
+        self._y_inverted = False
         self._click_callbacks: list[Callable] = []
         self._move_callbacks: list[Callable] = []
         self._range_callbacks: list[Callable] = []
@@ -412,6 +459,7 @@ class EmtkCanvas(base.Canvas):
             show_ticks=True,
             show_legend=self._legend,
         )
+        plot.y_inverted = self._y_inverted
         for entry in sorted(self._entries, key=lambda e: e.z):
             if not entry.visible:
                 continue
@@ -516,6 +564,9 @@ class EmtkCanvas(base.Canvas):
 
         x, y = entry.pos
         width, height = entry.size
+        if entry.angle:
+            self._draw_rotated_roi(painter, plot, entry, kind, colour)
+            return
         left = plot._x_axis.to_pixels(x)
         right = plot._x_axis.to_pixels(x + width)
         top = plot._y_axis.to_pixels(y + height)
@@ -536,6 +587,34 @@ class EmtkCanvas(base.Canvas):
         else:
             painter.stroke_rect(*box, colour, (*colour, 40))
         entry.state["_box"] = (box[0], box[1], box[0] + box[2], box[1] + box[3])
+
+    def _draw_rotated_roi(self, painter, plot, entry: _Entry, kind: str, colour) -> None:
+        """A rectangle or ellipse turned about its centre, as pyqtgraph turns one.
+
+        Rotated in data coordinates and only then mapped to pixels, so an
+        inverted or non-square axis shows the same gate the data describes.
+        """
+        x, y = entry.pos
+        width, height = entry.size
+        cx, cy = x + width / 2.0, y + height / 2.0
+        theta = math.radians(entry.angle)
+        cos, sin = math.cos(theta), math.sin(theta)
+        if kind == "ellipse":
+            steps = 36
+            local = [(width / 2.0 * math.cos(2.0 * math.pi * k / steps),
+                      height / 2.0 * math.sin(2.0 * math.pi * k / steps)) for k in range(steps)]
+        else:
+            local = [(-width / 2.0, -height / 2.0), (width / 2.0, -height / 2.0),
+                     (width / 2.0, height / 2.0), (-width / 2.0, height / 2.0)]
+        outline = [(plot._x_axis.to_pixels(cx + u * cos - v * sin),
+                    plot._y_axis.to_pixels(cy + u * sin + v * cos)) for u, v in local]
+        centre = (plot._x_axis.to_pixels(cx), plot._y_axis.to_pixels(cy))
+        alpha = 60 if kind == "ellipse" else 40
+        for index, point in enumerate(outline):
+            painter.fill_triangle(centre, point, outline[(index + 1) % len(outline)],
+                                  (*colour, alpha))
+        xs, ys = [p[0] for p in outline], [p[1] for p in outline]
+        entry.state["_box"] = (min(xs), min(ys), max(xs), max(ys))
 
     def _draw_bars(self, painter, plot, entry: _Entry) -> None:
         """A bar per sample, from the axis floor up to its height."""
@@ -689,9 +768,19 @@ class EmtkCanvas(base.Canvas):
         slideshow.
         """
         state = entry.state
-        if state.get("texture") is None:
+        if np.asarray(state["data"]).size == 0:
+            return
+        # A texture's first row is painted at the top of its rectangle, and an
+        # image's row 0 belongs at y0 -- the bottom of an upright panel, the top
+        # of an inverted one. Upright, the rows are handed over reversed.
+        upright = not self._y_inverted
+        if state.get("texture") is None or state.get("_upright") != upright:
+            data = np.asarray(state["data"])
+            if state.get("col_major"):
+                data = data.T
             state["texture"], rows, columns = _texture(
-                state["data"], state.get("colormap"), state.get("levels"))
+                data[::-1] if upright else data, state.get("colormap"), state.get("levels"))
+            state["_upright"] = upright
             state.setdefault("rect", (0.0, 0.0, float(columns), float(rows)))
         # The axes have to know the image is there, or a panel holding nothing
         # else auto-fits to an empty range and the image lands outside it.
@@ -893,9 +982,9 @@ class EmtkCanvas(base.Canvas):
         chiplot asks both backends for."""
 
     def invert_y(self, invert: bool = True) -> None:
-        """Not offered yet (PRD-104): the y-axis always runs upwards."""
-        if invert:
-            raise NotImplementedError("emtk: an inverted y-axis is not drawn yet (PRD-104)")
+        """Run the y-axis downwards, as image rows do."""
+        self._y_inverted = bool(invert)
+        self.refresh()
 
     # -- input ---------------------------------------------------------
     def on_click(self, callback) -> None:
@@ -978,13 +1067,13 @@ class EmtkCanvas(base.Canvas):
             raise ValueError(f"an image is 2-D; got shape {values.shape}")
         if str(axis_order or "row-major") not in ("row-major", "col-major"):
             raise ValueError(f"unknown axis order {axis_order!r}")
-        if str(axis_order) == "col-major":
-            values = values.T
+        col_major = str(axis_order) == "col-major"
+        rows, columns = values.shape[::-1] if col_major else values.shape
         return self._add(
-            "image", data=values, colormap=colormap,
+            "image", data=values, col_major=col_major, colormap=colormap,
             levels=None if levels is None else (float(levels[0]), float(levels[1])),
             rect=tuple(float(v) for v in rect) if rect is not None
-            else (0.0, 0.0, float(values.shape[1]), float(values.shape[0])),
+            else (0.0, 0.0, float(columns), float(rows)),
             texture=None,
         )
 
@@ -1007,8 +1096,9 @@ class EmtkCanvas(base.Canvas):
         """Draw a region of interest and return its handle.
 
         Rectangles, ellipses, polygons and polylines are drawn and can be
-        dragged. Resize grips and rotation are not: a shape is moved whole,
-        and its size is set programmatically (PRD-104).
+        dragged; a rectangle or ellipse is turned ``angle`` degrees about its
+        centre. Resize and rotation grips are not drawn: a shape is moved whole,
+        and its size and angle are set programmatically (PRD-104).
         """
         shape = str(getattr(kind, "value", kind)).lower()
         if shape not in ("rect", "rectangle", "ellipse", "circle", "polygon", "polyline"):
@@ -1077,7 +1167,7 @@ class EmtkImageView(base.ImageViewCanvas):
         else:
             self._image.set_image(frame)
             if auto_levels:
-                self._image.set_levels(None)
+                self._image.auto_levels()
 
     def set_frame(self, index: int) -> None:
         """Show frame *index* of a stack (a no-op for a single image)."""
@@ -1116,18 +1206,10 @@ class EmtkImageView(base.ImageViewCanvas):
 
     def add_roi(self, *, kind="rect", pos=None, size=None, pen=None, movable=True,
                 rotatable=False, points=None, angle=0.0) -> H.Roi:
-        """Add a region of interest to the view and return its handle.
-
-        ``angle`` is accepted and kept on the handle, but a rotated shape is
-        drawn upright: the painter's shapes are axis-aligned, and turning one
-        is part of what is left of PRD-104. A caller that rotates an ROI and
-        reads its angle back gets what it set.
-        """
-        roi = self._canvas.add_roi(kind=kind, pos=pos, size=size, pen=pen,
-                                   movable=movable, rotatable=rotatable,
-                                   points=points)
-        roi.state["angle"] = float(angle)
-        return roi
+        """Add a region of interest to the view and return its handle."""
+        return self._canvas.add_roi(kind=kind, pos=pos, size=size, pen=pen,
+                                    movable=movable, rotatable=rotatable,
+                                    points=points, angle=angle)
 
     def on_click(self, callback) -> None:
         """Register ``callback(x, y)`` for clicks in image coordinates."""
@@ -1136,6 +1218,149 @@ class EmtkImageView(base.ImageViewCanvas):
     def native(self) -> Any:
         """The canvas the view draws through."""
         return self._canvas
+
+
+class _ColorBar:
+    """A colour ramp bound to an image, drawn by emtk; the ColorBar handle.
+
+    The ramp spans the image's levels, labelled at both ends. Dragging in the
+    upper half moves the high level and in the lower half the low one, as the
+    handles of pyqtgraph's level editor do; there is no histogram beside it.
+    """
+
+    #: Pixels kept free above and below the ramp for its two labels.
+    LABEL_H = 14.0
+
+    def __init__(self, image: _Entry, colormap=None) -> None:
+        from emtk.qt_host import ControlHost
+
+        self._image = image
+        self._callbacks: list[Callable] = []
+        self._drag: tuple[str, float, tuple[float, float]] | None = None
+        self._box = (0.0, 0.0, 1.0, 1.0)
+        self._alive = True
+        self._visible = True
+        self._z = 0.0
+        if colormap is not None:
+            image.set_colormap(colormap)
+        self._widget = ControlHost(self, background=(30, 32, 38))
+        self._widget.setMinimumWidth(56)
+        self._widget.setMaximumWidth(80)
+
+    # -- the control emtk draws ----------------------------------------
+    def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
+        """The ramp, high at the top, with the levels written at its ends."""
+        self._box = (x, y, w, h)
+        if not self._visible:
+            return
+        top, height = y + self.LABEL_H, max(h - 2.0 * self.LABEL_H, 1.0)
+        table = _lut(self._image.state.get("colormap"), size=64)
+        step = height / len(table)
+        for index, colour in enumerate(table[::-1]):
+            painter.fill_rect(x + 4.0, top + index * step, max(w - 8.0, 1.0), step + 0.5,
+                              tuple(int(c) for c in colour))
+        low, high = self.get_levels()
+        painter.text(x, y, w, self.LABEL_H, 0, f"{high:.3g}", (220, 220, 220))
+        painter.text(x, y + h - self.LABEL_H, w, self.LABEL_H, 0, f"{low:.3g}", (220, 220, 220))
+
+    def press(self, px: float, py: float, *_args: Any) -> None:
+        """Pick the level the press is nearer: high above the middle, low below."""
+        x, y, w, h = self._box
+        self._drag = ("high" if py < y + h / 2.0 else "low", py, self.get_levels())
+
+    def drag(self, px: float, py: float, *_args: Any) -> None:
+        """Move the picked level; the ramp's height spans the current range."""
+        if self._drag is None:
+            return
+        which, start, (low, high) = self._drag
+        span = (high - low) or 1.0
+        height = max(self._box[3] - 2.0 * self.LABEL_H, 1.0)
+        delta = (start - py) / height * span
+        if which == "high":
+            self.set_levels(low, max(high + delta, low + span * 1e-6), notify=True)
+        else:
+            self.set_levels(min(low + delta, high - span * 1e-6), high, notify=True)
+
+    def release(self, *_args: Any) -> None:
+        """End a drag."""
+        self._drag = None
+
+    def hover(self, *_args: Any) -> None:
+        """Nothing changes under the pointer."""
+
+    def scroll(self, *_args: Any) -> None:
+        """The ramp does not zoom."""
+
+    # -- ColorBar ------------------------------------------------------
+    def widget(self) -> QtWidgets.QWidget:
+        """The Qt widget the grid places."""
+        return self._widget
+
+    def set_colormap(self, colormap) -> None:
+        """Map the image, and the ramp, through ``colormap``."""
+        self._image.set_colormap(colormap)
+        self._widget.update()
+
+    def set_levels(self, low: float, high: float, *, notify: bool = False) -> None:
+        """Set the image's mapped range; a drag also tells the listeners."""
+        self._image.set_levels(low, high)
+        self._widget.update()
+        if notify:
+            for callback in self._callbacks:
+                callback(float(low), float(high))
+
+    def get_levels(self) -> tuple[float, float]:
+        """The image's mapped ``(low, high)``."""
+        return self._image.get_levels()
+
+    def set_histogram_visible(self, visible: bool) -> None:
+        """No histogram is drawn, so there is nothing to show or hide."""
+
+    def on_levels_changed(self, callback) -> None:
+        """Call ``callback(low, high)`` when the user drags a level."""
+        self._callbacks.append(callback)
+
+    # -- Handle --------------------------------------------------------
+    @property
+    def visible(self) -> bool:
+        """Whether the ramp is drawn."""
+        return self._visible
+
+    @visible.setter
+    def visible(self, value: bool) -> None:
+        self._visible = bool(value)
+        self._widget.setVisible(self._visible)
+
+    @property
+    def z(self) -> float:
+        """Stacking order; a colour bar has its own cell, so it is only kept."""
+        return self._z
+
+    @z.setter
+    def z(self, value: float) -> None:
+        self._z = float(value)
+
+    def hide(self) -> None:
+        """Stop drawing the ramp."""
+        self.visible = False
+
+    def show(self) -> None:
+        """Draw the ramp again."""
+        self.visible = True
+
+    def remove(self) -> None:
+        """Take the ramp out of its grid."""
+        self._alive = False
+        self._widget.setParent(None)
+
+    def is_alive(self) -> bool:
+        """Whether the ramp still belongs to a grid."""
+        return self._alive
+
+    @property
+    def native(self) -> Any:
+        """The Qt widget hosting the ramp."""
+        return self._widget
 
 
 class EmtkGrid(base.GridCanvas):
@@ -1171,11 +1396,15 @@ class EmtkGrid(base.GridCanvas):
 
     def add_colorbar(self, image, *, colormap=None, row=None, col=None, rowspan=1,
                      colspan=1) -> H.ColorBar:
-        """Not drawn yet (PRD-104): levels are set through the image handle."""
-        raise NotImplementedError(
-            "emtk: a colour bar is not drawn yet (PRD-104); set levels through "
-            "the image handle, or use CHISURF_PLOT_BACKEND=pyqtgraph"
-        )
+        """Add a colour ramp bound to ``image`` at the given cell, or at the cursor."""
+        if row is None:
+            row = self._row
+        if col is None:
+            col = self._column
+        bar = _ColorBar(image, colormap)
+        self._layout.addWidget(bar.widget(), int(row), int(col), int(rowspan), int(colspan))
+        self._column = int(col) + int(colspan)
+        return bar
 
     def next_row(self) -> None:
         """Move the insertion cursor to the start of the next row."""

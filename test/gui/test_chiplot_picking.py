@@ -107,7 +107,7 @@ def test_a_drawn_region_is_not_movable_by_default(view):
     """A region from a measurement is a result; dragging it would claim to edit it."""
     handle = view.add_region(EllipseROI(24.0, 20.0, 3.0, 3.0))
 
-    assert not handle.native.translatable
+    assert not handle.movable
 
 
 def test_a_click_is_refined_by_the_fit_before_it_becomes_a_pick(view, qapp):
@@ -170,11 +170,11 @@ def test_a_rotated_ellipse_is_drawn_rotated(view):
 
     handle = view.add_region(EllipseROI(24.0, 20.0, 8.0, 3.0, angle=np.pi / 4))
 
-    assert handle.native.angle() == pytest.approx(45.0, abs=1e-6)
-    # And the centre has not wandered: pyqtgraph rotates about `pos`, so the
-    # rotation has to hold the centre still by hand.
-    centre = handle.native.pos() + handle.native.size() * 0.5
-    assert (centre.x(), centre.y()) == pytest.approx((24.0, 20.0), abs=1e-6)
+    assert handle.angle == pytest.approx(45.0, abs=1e-6)
+    # And the centre has not wandered (pyqtgraph rotates about `pos`, so its
+    # backend has to hold the centre still by hand).
+    (x, y), (w, h) = handle.pos, handle.size
+    assert (x + w / 2.0, y + h / 2.0) == pytest.approx((24.0, 20.0), abs=1e-6)
 
 
 def test_a_cluster_picked_from_points_becomes_that_ellipse(view):

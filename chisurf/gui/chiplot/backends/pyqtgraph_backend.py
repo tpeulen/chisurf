@@ -428,6 +428,15 @@ class _Image(_Item):
         """Set the intensity range mapped to the colormap ends."""
         self._native.setLevels((float(low), float(high)))
 
+    def get_levels(self) -> tuple[float, float]:
+        """The intensity range mapped to the colormap ends."""
+        low, high = self._native.getLevels()
+        return (float(low), float(high))
+
+    def get_image(self) -> np.ndarray:
+        """The image data as last set."""
+        return self._native.image
+
     def set_colormap(self, colormap) -> None:
         """Recolour the image; ``None`` restores the grayscale ramp."""
         self._native.setLookupTable(_lut(S.to_colormap(colormap)))
@@ -684,6 +693,21 @@ class _Roi(_Item):
             (lambda p: (float(p.x()), float(p.y())))(self._native.mapToParent(local))
             for _, local in self._native.getLocalHandlePositions()
         ]
+
+    @property
+    def angle(self) -> float:
+        """Degrees counter-clockwise the ROI is turned about its centre."""
+        return float(self._native.angle())
+
+    @property
+    def movable(self) -> bool:
+        """Whether the user can drag the ROI."""
+        return bool(self._native.translatable)
+
+    @property
+    def pen_color(self) -> str:
+        """The outline colour as ``"#rrggbb"``."""
+        return self._native.pen.color().name()
 
     def set_pen(self, pen, **overrides) -> None:
         """Restyle the ROI's outline (colour, width).

@@ -155,7 +155,7 @@ def test_an_image_is_mapped_through_its_colormap(plot):
     colours = {rendered.pixel(i, j) for i in range(0, 300, 5) for j in range(0, 220, 5)}
     assert len(colours) > 8, "a mapped heatmap is not one flat colour"
 
-    image.set_levels((0.0, 5.0))
+    image.set_levels(0.0, 5.0)
     image.set_image(data * 2.0)
     assert image.native["texture"] is None, "the texture is rebuilt, not reused"
 

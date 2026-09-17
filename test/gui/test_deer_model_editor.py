@@ -151,7 +151,7 @@ def test_deer_lcurve_plot_and_compute(qapp, model_path):
     assert any(cls is LCurvePlot for cls, _ in model_plot_specs(model))
     plot = LCurvePlot(fit=fit)
     plot.update()
-    xs = plot._curve.getData()[0]
+    xs = plot._curve.get_data()[0]
     assert xs is not None and len(xs) > 2
 
 

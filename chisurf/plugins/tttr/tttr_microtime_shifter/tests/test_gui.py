@@ -113,7 +113,7 @@ def test_tool_reset_button_and_logy() -> None:
     tool._channel_shifts = {0: 10}
     tool._routing_channels = [0]
     tool._trigger_level = 200
-    tool.trigger_level_line.setValue(200)
+    tool.trigger_level_line.set_value(200)
 
     # Build controls for the manually configured state
     tool._build_shift_controls()

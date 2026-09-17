@@ -305,6 +305,17 @@ class Image(Handle, Protocol):
         """
         ...
 
+    def get_levels(self) -> tuple[float, float]:
+        """The intensity range mapped to the colormap ends.
+
+        The levels set, or the range the backend chose for autoscaled data.
+        """
+        ...
+
+    def get_image(self) -> np.ndarray:
+        """The image data as last set."""
+        ...
+
     def set_colormap(self, colormap) -> None:
         """Recolour an image already on the canvas.
 
@@ -499,6 +510,21 @@ class Roi(Handle, Protocol):
         so they stay correct after the whole shape is dragged. For the box-like
         kinds they are the four corners.
         """
+        ...
+
+    @property
+    def angle(self) -> float:
+        """Degrees counter-clockwise the ROI is turned about its centre."""
+        ...
+
+    @property
+    def movable(self) -> bool:
+        """Whether the user can drag the ROI."""
+        ...
+
+    @property
+    def pen_color(self) -> str:
+        """The outline colour as ``"#rrggbb"``."""
         ...
 
     def set_pos(self, x: float, y: float) -> None:

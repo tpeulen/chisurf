@@ -295,7 +295,7 @@ def test_a_disabled_region_is_drawn_greyed_rather_than_hidden(canvas, host):
     overlay.refresh()
 
     assert overlay._names == ["cell", "spot"]
-    pens = [h.native.pen.color().name() for h in overlay._handles]
+    pens = [h.pen_color for h in overlay._handles]
     assert pens[0].lower() == PALETTE[0].lower()
     assert pens[1].lower() == DISABLED_PEN.lower()
 
@@ -316,8 +316,8 @@ def test_selecting_a_region_does_not_change_its_colour(canvas, host):
 
     overlay = RegionOverlay(canvas, lambda: host.regions)
     overlay.refresh()
-    before = [h.native.pen.color().name() for h in overlay._handles]
+    before = [h.pen_color for h in overlay._handles]
 
     overlay.select("spot")
-    after = [h.native.pen.color().name() for h in overlay._handles]
+    after = [h.pen_color for h in overlay._handles]
     assert before == after
