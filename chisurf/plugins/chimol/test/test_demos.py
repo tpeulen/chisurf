@@ -233,7 +233,15 @@ def test_every_demo_has_a_menu_entry(window):
     win, _shared, _errors, _qapp = window
     entries = _demo_menu_of(win)
     assert entries is not None, "no Demo menu on the viewport menu bar"
-    labels = [str(getattr(e, "label", "")) for e in entries if getattr(e, "label", "")]
+    # The PetWorld models sit in a submenu of their own; an entry there is as
+    # reachable as one at the top.
+    def walk(items):
+        for item in items:
+            if getattr(item, "label", ""):
+                yield str(item.label)
+            yield from walk(getattr(item, "children", None) or ())
+
+    labels = list(walk(entries))
     for _key, title, _description in DEMOS:
         assert title in labels, f"{title} is not in the Demo menu"
     assert any("Edit" in label for label in labels)
