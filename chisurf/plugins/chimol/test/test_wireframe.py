@@ -119,7 +119,7 @@ def qapp():
 
 
 @pytest.fixture
-def view(qapp):
+def view(qapp, bond_family):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")

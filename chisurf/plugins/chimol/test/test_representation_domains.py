@@ -35,32 +35,7 @@ from chimol.core.services.representations import (
 from toolkit_free import probe
 
 
-@pytest.fixture(scope="module", autouse=True)
-def _bond_family_registered():
-    """The bond family registers with the registry like any plugin's now.
-
-    `sticks`, `lines` and `nonbonded` are built by the in-tree
-    `representations` plugin, so the alias and domain assertions below ask a
-    registry that plugin has loaded into -- the same load a live viewer's
-    `Cmd` performs at startup.
-    """
-    from chimol.plugins import load_plugins
-
-    class _CmdStub:
-        """No commands to unregister: the plugin adds representations only."""
-
-        def unregister(self, owner):
-            pass
-
-        class panels:
-            @staticmethod
-            def unregister_owner(owner):
-                pass
-
-    from chimol.plugins.representations import plugin as _bond_plugin
-    loaded = load_plugins(_CmdStub(), [_bond_plugin])
-    yield
-    loaded.unload("representations")
+pytestmark = pytest.mark.usefixtures("bond_family")
 
 
 # --------------------------------------------------------------------------- #

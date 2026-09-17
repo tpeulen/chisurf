@@ -39,32 +39,7 @@ def _qt_app():
     return app
 
 
-class _PluginHostStub:
-    """Just enough of a command object for a plugin that only registers reps."""
-
-    def unregister(self, owner):  # noqa: D401 - plugin API contract
-        pass
-
-    class panels:
-        @staticmethod
-        def unregister_owner(owner):
-            pass
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _bond_family_registered():
-    """A bare ``Viewer()`` has no ``Cmd``, and plugins load with the ``Cmd``.
-
-    The bond family (sticks/lines/nonbonded) is built by the representations
-    plugin, so a test that assembles the viewer the way a notebook would --
-    no host, no command object -- must load that plugin itself, exactly the
-    way a host's ``Cmd.__init__`` would have.
-    """
-    from chimol.plugins import load_plugins
-    from chimol.plugins.representations import plugin as _bond_plugin
-
-    load_plugins(_PluginHostStub(), [_bond_plugin])
-    yield
+pytestmark = pytest.mark.usefixtures("bond_family")
 
 
 def _load_fallback(view: Viewer) -> int:

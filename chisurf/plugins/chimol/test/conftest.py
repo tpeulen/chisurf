@@ -82,3 +82,32 @@ def _settings_isolation_actually_took(_isolated_chisurf_settings):
         "directory. Every assertion about a default is now a statement about "
         "whoever ran them last."
     )
+
+
+@pytest.fixture(scope="module")
+def bond_family():
+    """Register the bond family (sticks, lines, nonbonded) for a bare viewer.
+
+    Those representations are built by chimol's in-tree ``representations``
+    plugin, and plugins load with a ``Cmd``. A test that builds a ``Viewer()``
+    the way a notebook would -- no host, no command object -- loads the plugin
+    itself, exactly as ``Cmd.__init__`` would. Without it such a test passes
+    only when an earlier test in the process happened to build a ``Cmd``.
+    """
+    from chimol.plugins import load_plugins
+    from chimol.plugins.representations import plugin as _bond_plugin
+
+    class _CmdStub:
+        """No commands to unregister: the plugin adds representations only."""
+
+        def unregister(self, owner):
+            pass
+
+        class panels:
+            @staticmethod
+            def unregister_owner(owner):
+                pass
+
+    loaded = load_plugins(_CmdStub(), [_bond_plugin])
+    yield
+    loaded.unload("representations")
