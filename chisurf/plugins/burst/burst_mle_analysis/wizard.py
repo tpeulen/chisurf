@@ -4454,7 +4454,7 @@ class MLELifetimeAnalysisWizard(ChisurfDockTool):
                 self._ensure_channel_state(det)
         except Exception:
             pass
-            from chisurf.core.runtime import analysis_cache
+        from chisurf.core.runtime import analysis_cache
 
         x0, fixed = self.fit_parameters
         return {
