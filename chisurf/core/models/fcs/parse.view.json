@@ -44,7 +44,13 @@
   "plots": [
     {
       "key": "line",
-      "options": {}
+      "options": {
+        "scale_x": "log",
+        "d_scaley": "lin",
+        "r_scaley": "lin",
+        "x_label": "t_c (ms)",
+        "y_label": "G_c(t_c)"
+      }
     },
     {
       "key": "fit_table",
