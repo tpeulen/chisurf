@@ -50,8 +50,8 @@ The GUI is an adapter over `GlobalViewClient`; graph behavior belongs in `api/` 
 - Python packages:
   - PyQt5
   - numpy
-  - chinet (`chinet.graph` — graph container and layout algorithms; the drawing
-    is ChiSurf's own, on `chisurf.gui.widgets.graph_canvas`)
+  - chinet (`chinet.graph` — graph container and layout algorithms)
+  - emtk (draws the network: `gui/network_widget.py`)
 
 ## Usage
 

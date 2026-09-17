@@ -1,11 +1,10 @@
 """The Global View parameter network: what it draws, and what a gesture does.
 
-The graph used to be a ``pyqtgraph.GraphItem`` whose nodes were sized in data
-coordinates; it is now painted directly on the shared node-link canvas
-(:mod:`chisurf.gui.widgets.graph_canvas`). These tests cover the parts that were
-silently wrong before and would be silently wrong again: which way a link arrow
-points, whether an edge survives a node being filtered out, and whether the
-gestures reach the fitting layer at all.
+The network is drawn by emtk (``gui/network_widget.py``); what it draws and
+how a drag becomes a link is covered by the plugin's ``tests/test_emtk_view.py``.
+These tests cover the parts that were silently wrong before and would be
+silently wrong again: which way a link arrow points, whether an edge survives a
+node being filtered out, and what the window does with a selection.
 """
 from __future__ import annotations
 
@@ -74,100 +73,6 @@ def test_the_link_edge_points_from_follower_to_master():
     assert not by_idx[edge.target].is_linked      # master
 
 
-# ── the canvas ───────────────────────────────────────────────────────
-
-
-@pytest.fixture
-def canvas(qapp):
-    from chisurf.plugins.core.globalview.gui.graph_canvas import ParameterGraphCanvas
-
-    widget = ParameterGraphCanvas()
-    widget.resize(600, 400)
-    return widget
-
-
-def _simple_graph(canvas):
-    """One fit with two parameters, the second following the first."""
-    from chisurf.plugins.core.globalview.gui import graph_canvas as gcv
-
-    canvas.set_graph(
-        positions=[(0.0, 0.0), (-1.0, 1.0), (1.0, 1.0)],
-        edges=[(1, 0), (2, 0), (2, 1)],
-        names=["Fit A", "tau", "tau"],
-        kinds=[gcv.NODE_FIT, gcv.NODE_PARAM_FREE, gcv.NODE_PARAM_LINKED],
-    )
-
-
-def test_the_canvas_separates_ownership_from_links(canvas):
-    """Only parameter→parameter edges are links; the rest is scaffolding."""
-    _simple_graph(canvas)
-    assert canvas._link_edges == [(2, 1)]
-    assert sorted(canvas._owner_edges) == [(1, 0), (2, 0)]
-    # The fit owns both parameters, so dragging it moves them.
-    assert sorted(canvas._owned[0]) == [1, 2]
-
-
-def test_dropping_a_parameter_on_another_asks_for_a_link(canvas, qapp):
-    """The drag gesture reaches the tool as ``linkRequested(follower, master)``."""
-    from qtpy import QtCore, QtGui
-
-    _simple_graph(canvas)
-    canvas.show()
-    qapp.processEvents()
-
-    seen = []
-    canvas.linkRequested.connect(lambda a, b: seen.append((a, b)))
-
-    def _press(kind, node, buttons=QtCore.Qt.LeftButton):
-        pos = canvas.view.transform().map(canvas._pos[node])
-        return QtGui.QMouseEvent(
-            kind, QtCore.QPointF(pos), QtCore.Qt.LeftButton, buttons,
-            QtCore.Qt.NoModifier,
-        )
-
-    canvas.mousePressEvent(_press(QtCore.QEvent.MouseButtonPress, 1))
-    canvas.mouseMoveEvent(_press(QtCore.QEvent.MouseMove, 2))
-    canvas.mouseReleaseEvent(_press(QtCore.QEvent.MouseButtonRelease, 2, QtCore.Qt.NoButton))
-
-    assert seen == [(1, 2)]
-
-
-def test_selecting_keeps_only_the_last_two(canvas):
-    """Linking needs two nodes, so the oldest selection is dropped, in order."""
-    _simple_graph(canvas)
-    seen = []
-    canvas.selectionChanged.connect(seen.append)
-    canvas._select(1)
-    canvas._select(2)
-    canvas._select(0)
-    assert canvas.selected_nodes_idx == [2, 0]
-    assert seen[-1] == [2, 0]
-
-
-def test_a_resize_refits_the_graph_until_the_user_moves_something(canvas, qapp):
-    """The layout is fitted to the panel — but a hand arrangement is kept.
-
-    ``set_graph`` runs before the widget has its real size, so without the
-    re-fit the network stays clumped in the corner of whatever panel it lands
-    in. Once the user drags a node, re-fitting would throw their work away.
-    """
-    _simple_graph(canvas)
-    canvas.show()
-    canvas.resize(1200, 800)
-    qapp.processEvents()
-    wide = max(p.x() for p in canvas._pos.values())
-    assert wide > 600         # the graph grew into the wider panel
-
-    frozen = {k: (v.x(), v.y()) for k, v in canvas._pos.items()}
-    canvas._user_moved = True
-    canvas.resize(600, 400)
-    qapp.processEvents()
-    assert {k: (v.x(), v.y()) for k, v in canvas._pos.items()} == frozen
-
-    canvas.refit()            # …until asked for it explicitly
-    assert max(p.x() for p in canvas._pos.values()) < wide
-
-
 # ── the window ───────────────────────────────────────────────────────
 
 
@@ -205,18 +110,24 @@ def test_the_window_is_built_from_dock_panels(tool):
 def test_edges_are_reindexed_when_a_node_is_filtered_out(tool):
     """Hiding fixed parameters must not shift an edge onto the wrong node.
 
-    The canvas indexes nodes by position in the arrays it is handed; the graph
+    The network indexes nodes by position in the arrays it is handed; the graph
     names them by node id. The two diverge the moment ``include_fixed`` drops a
     node, and an un-reindexed edge then joins two unrelated parameters.
     """
-    canvas = tool.graph_widget
+    def link_ends():
+        document = tool.graph_widget.control.document
+        return [(int(e.source), int(e.target)) for e in document.edges
+                if e.config.get("kind") == "link"]
+
     names = tool.node_data["names"]
-    for a, b in canvas._link_edges:
+    assert link_ends()
+    for a, b in link_ends():
         assert names[a] == "tau" and names[b] == "tau"
 
     tool._check_include_fixed.setChecked(False)
     names = tool.node_data["names"]
-    for a, b in canvas._link_edges:
+    assert link_ends()
+    for a, b in link_ends():
         assert names[a] == "tau" and names[b] == "tau"
 
 
@@ -224,9 +135,13 @@ def test_every_parameter_editor_says_which_fit_it_belongs_to(tool, qapp):
     """Two fits of one model name their parameters identically."""
     from qtpy import QtWidgets
 
+    from emtk import nodes
+
+    widget = tool.graph_widget
     taus = [i for i, n in enumerate(tool.node_data["names"]) if n == "tau"]
     for i in taus[:2]:
-        tool.graph_widget._select(i)
+        nodes.select_node(widget.control.editor, widget.control.document.node_number(str(i)))
+    widget._on_select("node", {})
     qapp.processEvents()
 
     captions = [
