@@ -339,9 +339,14 @@ decides only whether its range filters.
 
 ## Find informative projections: the views are ranked, not hunted
 
-Under the y picker, **🔎 Find informative projections…** ranks every x/y pair;
-in the z panel, **🔎 Find informative z parameters…** ranks the third axis.
-Clicking a row sets the axes. It is Orange3's VizRank
+**View ▸ Find informative projections…** ranks every x/y pair and **View ▸ Find
+informative projections (z axis)…** the third axis; both sit directly below
+*UMAP* and, like it, are disabled while no table is loaded. Clicking a row sets
+the axes. They started as buttons under the y picker and in the z panel; the
+user found that position bad, so they became two `QAction`s declared in
+`plotting/plot_main.ui` beside `actionUMAP` (one action per panel, as UMAP is one
+action) -- which also puts them under `update_ui_enabled_state`, the same
+data-gating UMAP gets, with no enable logic of their own. It is Orange3's VizRank
 ([what was taken and how it departs](../references/orange3-adopted.md)); the
 theory of the three scores is `docs/concepts/multidimensional_exploration.md`
 (*ranking the views*), the workflow `docs/guides/46_ndxplorer.md`.
@@ -351,7 +356,7 @@ theory of the three scores is `docs/concepts/multidimensional_exploration.md`
 | framework | `ndxplorer/analysis/vizrank.py` | Qt-free `Ranker` / `AttrRanker` / `AttrPairRanker`, `run_vizrank` (score, then check cancel; throttled batches), `ScoreList`, `RunState` |
 | scores | `ndxplorer/analysis/projection_scores.py` | `RankingTable` (one shared subsample, displayed coordinates), `knn_separation`, `correlation`, `cluster_index`, `ProjectionRanker`, `ParameterRanker` |
 | panel | `ndxplorer/ui/vizrank.view.json` + `ui/vizrank_panel.py` | the spec (drawn by `emtk.view_form`, the table a `data_table` section) and `VizRankModel`, which runs on `chisurf.gui.task.run_in_background` and hosts its own progress |
-| wiring | `ndxplorer/ui/projection_rank.py` | `collect_context` (numeric columns, axis settings as views, gates → rows, classes), `ProjectionRankModel`, the controller (buttons, apply, auto-select) |
+| wiring | `ndxplorer/ui/projection_rank.py` | `collect_context` (numeric columns, axis settings as views, gates → rows, classes), `ProjectionRankModel`, the controller (menu entries, apply, auto-select) |
 
 **What the classes are.** The gate (inside vs outside; all rows ranked), each
 gate as its own population (bursts in exactly one gate), the clusters (noise
@@ -373,7 +378,7 @@ separation by it.
 **A data change discards the panel.** Its settings carry a key over the table
 (`data_version`, columns, axis settings, gate keys); the z parameter and the
 clustering only matter to a ranking separating by them. A stale panel is rebuilt
-when its button is pressed.
+when its View-menu entry is chosen again.
 
 ## Playing a measurement back
 

@@ -261,7 +261,9 @@ one axis are uncorrelated.
 parameters have values (Orange3's correlation ranking). Duplicated quantities — a
 count and its rate over a similar window — rank first, correctly.
 
-Clicking a row sets the axes (and the scale they were scored on); choosing axes by
+In ndX the panel opens from **View ▸ Find informative projections…** (and its
+*z axis* entry), below *UMAP*. Clicking a row sets the axes (and the scale they
+were scored on); choosing axes by
 hand marks the matching row. The workflow is in the
 {ref}`guide <ndx-find-projections>`.
 

@@ -2,6 +2,12 @@
 
 ## 2026-09-17
 
+* **ndX's ranking moves to the View menu.** *Find informative projections…* and
+  *… (z axis)…* are `QAction`s below *UMAP* in `plot_main.ui` (disabled without
+  data by the same `update_ui_enabled_state` rule); the buttons under the y
+  picker and in the z panel are gone. Guide 46 gains the menu figure; concept and
+  [ndX](plugins/ndxplorer.md) follow.
+
 * **App did not start: `'NoneType' object has no attribute 'show'`.** The lint
   commit `4c21a578b` ran ruff's F401 autofix before F401 was ignored, and it
   deleted imports kept only for their side effects. `gui_imports()` in

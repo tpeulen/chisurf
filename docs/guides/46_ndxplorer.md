@@ -397,9 +397,18 @@ unchanged at 0.74) while everything else was optimised onto the data.
 Instead of paging through the axis combos, let ndX rank the views
 (theory: {ref}`concept-md-ranking`).
 
-1. Load the burst table. Under the **y** picker press
-   **🔎 Find informative projections…** (the z panel has
-   **🔎 Find informative z parameters…** for the third axis).
+1. Load the burst table and choose **View ▸ Find informative projections…**,
+   directly below *UMAP*; **View ▸ Find informative projections (z axis)…**
+   ranks the third axis instead. Both entries are greyed out until a table is
+   loaded, as *UMAP* is.
+
+   ```{figure} figures/ndxplorer_view_menu_rank.png
+   :name: fig-ndxplorer-view-menu-rank
+   :width: 50%
+
+   The two ranking entries in ndX's View menu, below UMAP.
+   ```
+
 2. The panel opens and starts at once. With no gate and no clustering it ranks by
    **Population structure** — which pairs split into more than one population.
    Draw a range gate, paint a mask or run *Cluster* first, and it opens on
