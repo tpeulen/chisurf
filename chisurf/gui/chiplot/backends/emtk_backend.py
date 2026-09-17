@@ -782,6 +782,9 @@ class EmtkCanvas(base.Canvas):
         """
         top, height = plot.y, plot.h
         for entry in self._entries:
+            if entry.visible and entry.kind == "curve" and entry.state.get("fill") is not None:
+                self._draw_curve_fill(painter, plot, entry)
+        for entry in self._entries:
             if not entry.visible or entry.kind != "region":
                 continue
             low, high = entry.bounds
@@ -983,6 +986,29 @@ class EmtkCanvas(base.Canvas):
                 abs(right - left),
                 abs(floor - top),
                 entry.state.get("brush", (120, 150, 200)),
+            )
+
+    def _draw_curve_fill(self, painter, plot, entry: _Entry) -> None:
+        """The area between a filled curve and zero (the axis floor on a log axis).
+
+        pyqtgraph's ``fillLevel=0``: a distribution drawn as a filled histogram.
+        One column per sample, under the series, so the line stays on top.
+        """
+        state = entry.state
+        xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
+        if xs.size < 2:
+            return
+        colour = _faded(state["fill"], float(state.get("opacity", 1.0)))
+        bottom = plot.y + plot.h
+        floor = bottom if self._log["y"] else min(max(plot._y_axis.to_pixels(0.0), plot.y), bottom)
+        for index in range(xs.size - 1):
+            x0, x1, y0 = xs[index], xs[index + 1], ys[index]
+            if not (np.isfinite(x0) and np.isfinite(x1) and np.isfinite(y0)):
+                continue
+            left, right = plot._x_axis.to_pixels(x0), plot._x_axis.to_pixels(x1)
+            at = plot._y_axis.to_pixels(y0)
+            painter.fill_rect(
+                min(left, right), min(at, floor), max(abs(right - left), 1.0), abs(floor - at), colour
             )
 
     def _draw_band(self, painter, plot, entry: _Entry) -> None:
@@ -1237,12 +1263,7 @@ class EmtkCanvas(base.Canvas):
         symbol_pen=None,
         skip_missing=True,
     ) -> H.Curve:
-        """Draw a line curve (optionally with markers) and return its handle."""
-        if fill is not None:
-            raise NotImplementedError(
-                "emtk: a filled curve is not drawn yet (PRD-104); use the "
-                "pyqtgraph backend for filled series"
-            )
+        """Draw a line curve (optionally with markers, or filled down to zero) and return its handle."""
         gaps = bool(skip_missing)
         xs, ys = _finite_pairs(x, y, gaps=gaps)
         return self._add(
@@ -1257,6 +1278,7 @@ class EmtkCanvas(base.Canvas):
             symbol_size=symbol_size,
             symbol_color=_rgb(symbol_brush, _rgb(pen)) if symbol is not None else None,
             step=step,
+            fill=None if fill is None else _rgba(fill, (*_rgb(pen), 90)),
         )
 
     def add_scatter(

@@ -341,20 +341,29 @@ def test_an_arrow_is_drawn_where_it_points(plot):
     assert max(ys) - min(ys) > max(xs) - min(xs), "the head is not along +y"
 
 
-@pytest.mark.parametrize(
-    "call, wanted",
-    [
-        (lambda p: p.line([0.0, 1.0], [0.0, 1.0], fill=(1.0, 0.0, 0.0)), "filled curve"),
-    ],
-)
-def test_what_is_not_drawn_yet_says_so(plot, call, wanted):
-    """A plot that quietly omits what it was asked for is worse than an error."""
-    with pytest.raises(NotImplementedError) as excinfo:
-        call(plot)
-    message = str(excinfo.value)
-    assert wanted in message
-    assert "PRD-104" in message, "the refusal names where the work is tracked"
-    assert "pyqtgraph" in message, "and what to use meanwhile"
+def test_a_filled_curve_is_shaded_down_to_zero(plot):
+    """A distribution drawn as a filled histogram: shaded between curve and zero.
+
+    It used to raise, so every lifetime fit's Distribution tab showed "Failed
+    to create plot" on the default backend.
+    """
+    plot.set_xlim(0.0, 10.0, padding=0.0)
+    plot.set_ylim(0.0, 10.0, padding=0.0)
+    plot.line([0.0, 5.0, 10.0], [8.0, 8.0, 8.0], pen=(0, 0, 255), fill=(255, 0, 0, 255))
+    image = _paint(plot).toImage()
+    width, height = image.width(), image.height()
+    red = [
+        (i, j)
+        for i in range(0, width, 3)
+        for j in range(0, height, 3)
+        if QtGui.QColor(image.pixel(i, j)).red() > 200
+        and QtGui.QColor(image.pixel(i, j)).green() < 60
+        and QtGui.QColor(image.pixel(i, j)).blue() < 60
+    ]
+    assert red, "nothing was filled"
+    ys = sorted(j for _, j in red)
+    # From the line (high on screen) down towards the zero line (low on screen).
+    assert ys[-1] - ys[0] > height * 0.4
 
 
 def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
