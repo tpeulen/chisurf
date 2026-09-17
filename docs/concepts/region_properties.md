@@ -236,4 +236,4 @@ Transactions on Information Theory 8(2):179–187, 1962.
 
 [4] F. Bolte, F. P. Cordelières, *A guided tour into subcellular colocalization
 analysis in light microscopy*, Journal of Microscopy 224(3):213–232, 2006.
-- Tools in ChiSurf: **Molecule-wise MLE** (`chisurf/plugins/microscopy/sm_image_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.
+- Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.

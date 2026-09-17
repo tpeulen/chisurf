@@ -39,7 +39,7 @@ decays = img.get_pixel_decays()                  # per-pixel micro-time histogra
 
 Pixel-wise analyses: `img_pixel_mle` (per-pixel `2I*` lifetime, same harness as
 [burst MLE](21_lifetime_from_bursts.md)), `img_pixel_phasor`, `img_pixel_intensity`,
-`sm_image_mle` (single-molecule image MLE), plus `psf_determination` and
+`region_mle` (region-wise lifetime MLE), plus `psf_determination` and
 `img_calibration`.
 
 ## Selecting pixels

@@ -200,7 +200,7 @@ irf_estimation
 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `rics_precision` calculator, `experiments.ics.precision` |
 | [Exploring & fitting multidimensional data (ndX)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.curve_fit`, `chisurf.core.support.expressions` |
 | [From a selection to a fit: the ndX bridges](47_ndxplorer_bridges.md) | `ndxplorer.analysis.burst_bridge`, `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*` |
-| [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `sm_image_mle --roi` |
+| [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `region_mle --roi` |
 | [Photon-by-photon kinetics: rates without binning](49_photon_by_photon_kinetics.md) | `burst_gs` plugin, `core.fluorescence.burst.gopich_szabo` |
 | [Particle tracking: from spots to a diffusion coefficient](50_particle_tracking.md) | `img_tracking` plugin, `imaging.tracking` |
 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
