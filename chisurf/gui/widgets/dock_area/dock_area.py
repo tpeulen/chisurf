@@ -842,6 +842,14 @@ class DockArea(QtWidgets.QWidget):
             if not restored_children:
                 splitter.deleteLater()
                 return None
+            if len(restored_children) == 1:
+                # A saved split whose other panes name pages that no longer
+                # exist (a plot a model stopped offering). A splitter around one
+                # child is a node the cleanup below deletes as soon as that
+                # child empties -- which left the area pointing at a deleted
+                # root and every later layout save failing.
+                splitter.deleteLater()
+                return restored_children[0]
             for child in restored_children:
                 splitter.addWidget(child)
             sizes = state.get("sizes")
@@ -1749,6 +1757,10 @@ class DockArea(QtWidgets.QWidget):
             # sequence / timeline is one) therefore lost a whole dock, and the
             # first thing to touch that dock's widgets died with
             # "wrapped C/C++ object ... has been deleted".
+            if self._active_tab_widget is tw:
+                # The active stack is about to be deleted; asking it for its
+                # current page afterwards is the same dangling-wrapper error.
+                self._active_tab_widget = None
             tw.setParent(None)
             tw.deleteLater()
 
@@ -1756,7 +1768,11 @@ class DockArea(QtWidgets.QWidget):
             siblings = [w for w in siblings if w is not None and w is not tw]
 
             if not siblings:
-                # Nothing left: the splitter can go.
+                # Nothing left: the splitter can go -- and the area must stop
+                # pointing at it when it was the root, or the next layout save
+                # touches a deleted DockSplitter.
+                if parent is self._root_widget:
+                    self.set_root_widget(None)
                 parent.setParent(None)
                 parent.deleteLater()
             elif len(siblings) == 1:

@@ -507,3 +507,71 @@ def test_the_main_tab_widget_is_never_an_orphan(qtbot):
     orphans = [tw for tw in dock_area._find_tab_widgets() if tw is not real and tw.count() == 0]
     assert orphans, "the fixture produced no orphaned stack"
     assert dock_area.find_main_tab_widget() is real
+
+
+def _flush_deletes():
+    """Run the deferred deletes an event loop would (``processEvents`` does not)."""
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
+
+
+def test_a_saved_split_with_a_missing_pane_restores_without_a_one_child_splitter(qtbot):
+    """A layout naming a page that is gone must not leave a splitter around one stack.
+
+    Emptying that stack deleted the splitter while the area still held it as the
+    root, and every later save failed with "wrapped C/C++ object of type
+    DockSplitter has been deleted" -- what a lifetime fit window did once its
+    model stopped offering a plot its saved layout named.
+    """
+    area = DockArea()
+    qtbot.addWidget(area)
+    pages = {}
+    for name in ("fit", "table"):
+        page = QtWidgets.QWidget()
+        page.setProperty("k", name)
+        area.addTab(page, name)
+        pages[name] = page
+    state = {
+        "version": 1,
+        "active_tab_widget": None,
+        "current_index": 0,
+        "root": {
+            "type": "splitter",
+            "orientation": "horizontal",
+            "sizes": [1, 1],
+            "children": [
+                {"type": "tab", "tabs": [{"widget_key": "fit"}, {"widget_key": "table"}]},
+                {"type": "tab", "tabs": [{"widget_key": "a plot that is gone"}]},
+            ],
+        },
+    }
+    key = lambda widget: widget.property("k")  # noqa: E731
+
+    assert area.set_layout_state(state, key_func=key, emit_change=False)
+    _flush_deletes()
+    assert isinstance(area._root_widget, DockTabWidget)
+
+    stack = area._root_widget
+    for index in range(stack.count() - 1, -1, -1):
+        stack.removeTab(index)
+    area.cleanup_empty_tab_widget(stack)
+    _flush_deletes()
+    area.get_layout_state(key_func=key)
+
+
+def test_emptying_the_last_stack_of_a_root_splitter_clears_the_root(qtbot):
+    area = DockArea()
+    qtbot.addWidget(area)
+    page = QtWidgets.QWidget()
+    area.addTab(page, "only")
+    stack = area._root_widget
+    splitter = DockSplitter(QtCore.Qt.Horizontal, area)
+    area.replace_widget(stack, splitter)
+    splitter.addWidget(stack)
+    assert area._root_widget is splitter
+
+    stack.removeTab(0)
+    area.cleanup_empty_tab_widget(stack)
+    _flush_deletes()
+
+    assert area._root_widget is None
+    area.get_layout_state()
