@@ -174,7 +174,7 @@ gui:
       leftButtonPan: true
     show_acorr_grid: true
     show_data_grid: true
-    show_legend: false
+    show_legend: true
     show_residual_grid: true
   dock_tab_colors:
     "Read data": "#3b4a67"

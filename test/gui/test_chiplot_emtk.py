@@ -473,3 +473,97 @@ def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
     panel.clear()
 
     assert entries == [], "the display list is the whole of the panel's state"
+
+
+def test_tick_numbers_read_as_values():
+    """A log axis holds exponents, and a linear step never prints float noise."""
+    from chisurf.gui.chiplot.backends.emtk_backend import _tick_labels
+
+    assert _tick_labels([0.0, 1.0, 2.0, 3.0], log=True) == ["1", "10", "100", "1000"]
+    assert _tick_labels([6.0], log=True) == ["10⁶"]
+    assert _tick_labels([0.1, 0.2, 0.30000000000000004], log=False) == ["0.1", "0.2", "0.3"]
+    assert _tick_labels([-0.0, 50.0], log=False) == ["0", "50"]
+
+
+def test_linked_panels_share_the_x_range_of_all_their_data(plot, qapp):
+    """Residual strips over a decay: one time axis, fitted to the union."""
+    from chisurf.gui import chiplot as cp
+
+    strip = cp.Plot()
+    strip.link_x(plot)
+    plot.line(np.linspace(0.0, 12.0, 50), np.ones(50))
+    strip.line(np.linspace(1.0, 11.0, 50), np.zeros(50))
+    _paint(plot)
+    _paint(strip)
+
+    assert strip.get_range()[0] == pytest.approx(plot.get_range()[0])
+    low, high = plot.get_range()[0]
+    assert low <= 0.0 and high >= 12.0
+
+
+def test_an_edge_of_a_region_drags_on_its_own(plot):
+    """Pressing an edge moves that edge; the other stays where it was."""
+    x, y = _decay()
+    plot.line(x, y, name="decay")
+    region = plot.region((5.0, 10.0))
+    _paint(plot)
+    canvas = plot._canvas
+    low_px, high_px = region.native["_pixels"]
+
+    canvas.press(high_px, 50.0)
+    canvas.drag(high_px + 30.0, 50.0)
+    canvas.release()
+
+    low, high = region.bounds
+    assert low == pytest.approx(5.0)
+    assert high > 10.0
+
+
+def test_an_anchored_label_is_a_box_inside_the_plot_area(plot):
+    """The fit-quality readout: pinned to the panel, several lines, draggable."""
+    x, y = _decay()
+    plot.line(x, y)
+    label = plot.text("range 1–9\nχ² 1.0", (10, 10), fill=(0, 0, 0, 200),
+                      anchored=True, draggable=True)
+    _paint(plot)
+    left, top, right, bottom = label.native["_box"]
+    assert right - left > 20.0 and bottom - top > 20.0, "two lines get a two-line box"
+
+    canvas = plot._canvas
+    canvas.press(left + 5.0, top + 5.0)
+    canvas.drag(left + 25.0, top + 15.0)
+    canvas.release()
+    assert label.native["pos"] == pytest.approx((30.0, 20.0))
+
+
+def test_a_log_axis_takes_its_limits_in_data_units_and_ticks_on_decades(plot):
+    """The simulator's decay: zeros before the rise, limits (0.1, max) in counts.
+
+    The limits were used as exponents -- an axis up to 10**3000 that read
+    "10^10.669" and pressed the decay flat onto its floor.
+    """
+    from chisurf.gui.chiplot.backends.emtk_backend import _tick_labels
+
+    t = np.linspace(0.0, 12.0, 400)
+    counts = np.where(t < 1.0, 0.0, 5.0e4 * np.exp(-(t - 1.0) / 2.5))
+    plot.line(t, counts)
+    plot.set_log(y=True)
+    plot.set_ylim(0.1, float(counts.max()))
+    _paint(plot, 300, 240)
+
+    canvas = plot._canvas
+    low, high = canvas._drawn["y"]
+    assert (low, high) == pytest.approx((-1.0, np.log10(counts.max())))
+    assert plot.get_range()[1] == pytest.approx((0.1, counts.max()))
+    ticks = [v for v in range(-1, 5)]
+    assert _tick_labels([float(v) for v in ticks], log=True) == ["0.1", "1", "10", "100", "1000", "10000"]
+
+
+def test_a_log_axis_fits_only_the_positive_samples(plot):
+    t = np.linspace(0.0, 10.0, 100)
+    y = np.concatenate([np.zeros(10), -np.ones(5), np.geomspace(1.0, 1000.0, 85)])
+    plot.line(t, y)
+    plot.set_log(y=True)
+    _paint(plot)
+    low, high = plot._canvas._drawn["y"]
+    assert low < 0.0 < 3.0 < high and high - low < 3.5

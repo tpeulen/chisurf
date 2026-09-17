@@ -27,9 +27,9 @@ def _lineplot_source() -> str:
 
 def test_group_display_methods_exist():
     src = _lineplot_source()
-    assert "def _plot_group_curves(self" in src
-    assert "def _plot_single_fit_curves(self" in src
-    assert "def _plot_active_fit_only(self" in src
+    assert "def _plot_group_curves(" in src
+    assert "def _plot_single_fit_curves(" in src
+    assert "def _plot_active_fit_only(" in src
 
 
 def test_group_display_alpha_and_setalpha_contract():
@@ -203,8 +203,9 @@ def test_reference_mode_hidden_result(qtbot):
 
 def test_axis_range_skips_invalid_log_axis():
     """Manual axis ranges must not produce NaN ranges in log mode."""
-    assert LinePlot._axis_range(1.0, 3.0, np.array([1.0, 2.0, 3.0]), True) == [0.0, np.log10(3.0)]
-    assert LinePlot._axis_range(None, 3.0, np.array([1.0, 2.0, 3.0]), True) == [0.0, np.log10(3.0)]
+    # Data units: the backend converts to its log axis (chiplot's set_range contract).
+    assert LinePlot._axis_range(1.0, 3.0, np.array([1.0, 2.0, 3.0]), True) == [1.0, 3.0]
+    assert LinePlot._axis_range(None, 3.0, np.array([1.0, 2.0, 3.0]), True) == [1.0, 3.0]
     assert LinePlot._axis_range(0.0, None, np.array([1.0, 2.0]), True) is None
     assert LinePlot._axis_range(None, -1.0, np.array([1.0, 2.0]), True) is None
     assert LinePlot._axis_range(0.0, 2.0, np.array([1.0, 3.0]), False) == [0.0, 2.0]
@@ -408,4 +409,4 @@ def test_the_legend_is_shown_when_the_setting_asks_for_it():
     """
     src = _lineplot_source()
     assert "show_legend" in src
-    assert "plots['main_plot'].legend()" in src
+    assert 'plots["main_plot"].legend(' in src

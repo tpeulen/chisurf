@@ -59,6 +59,71 @@ def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[i
     return default if parsed is None else (int(parsed.r), int(parsed.g), int(parsed.b))
 
 
+def _rgba(color: Any, default: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """Return ``color`` as ``(r, g, b, a)``, keeping the alpha it was given."""
+    if color is None:
+        return default
+    inner = getattr(color, "color", None)
+    if inner is not None and inner is not color:
+        return _rgba(inner, default)
+    if all(hasattr(color, channel) for channel in ("r", "g", "b")):
+        return (int(color.r), int(color.g), int(color.b), int(getattr(color, "a", 255)))
+    if isinstance(color, (tuple, list)) and len(color) >= 3:
+        alpha = int(color[3]) if len(color) > 3 else 255
+        return (*(int(component) for component in color[:3]), alpha)
+    try:
+        parsed = S.to_color(color)
+    except Exception:
+        return default
+    return default if parsed is None else (parsed.r, parsed.g, parsed.b, parsed.a)
+
+
+def _faded(colour, opacity: float) -> tuple[int, ...]:
+    """``colour`` with its alpha scaled by ``opacity``; unchanged when opaque."""
+    if colour is None or opacity >= 1.0:
+        return colour
+    r, g, b, *alpha = colour
+    return (r, g, b, int(round((alpha[0] if alpha else 255) * max(opacity, 0.0))))
+
+
+_SUPERSCRIPT = str.maketrans("-0123456789", "\u207b\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079")
+
+
+def _tick_labels(ticks: list[float], log: bool) -> list[str]:
+    """Spell the tick values of one axis.
+
+    A log axis holds exponents: whole decades read as the number while it is
+    short (``1``, ``10``, ``1000``) and as a power of ten beyond that, and a
+    tick between decades as its value. A linear axis gets as many decimals as
+    its step needs, so ``0.30000000000000004`` is never printed and a column of
+    ticks shares one precision.
+    """
+    if log:
+        out = []
+        for v in ticks:
+            if abs(v - round(v)) < 1e-9:
+                n = int(round(v))
+                out.append(f"{10.0 ** n:g}" if -2 <= n <= 4 else "10" + str(n).translate(_SUPERSCRIPT))
+            else:
+                out.append(f"{10.0 ** v:.3g}")
+        return out
+    step = min((abs(b - a) for a, b in zip(ticks, ticks[1:]) if b != a), default=0.0)
+    decimals = max(0, -math.floor(math.log10(step))) if 0.0 < step < 1.0 else 0
+    labels = []
+    for v in ticks:
+        text = f"{v:.{decimals}f}"
+        labels.append("0" if text.strip("-0.") == "" else text)
+    return labels
+
+
+#: Chrome colours for the axes, matched to emtk's plot frame.
+_TICK_TEXT = (170, 175, 186)
+_LABEL_TEXT = (196, 201, 212)
+#: The width reserved for y tick numbers. Fixed rather than measured, so panels
+#: stacked in one column put their left axes on one line whatever their values.
+_Y_TICK_WIDTH = 44.0
+
+
 def _orientation(value) -> str:
     """Return ``"vertical"`` or ``"horizontal"`` from a string or the enum.
 
@@ -444,6 +509,14 @@ class EmtkCanvas(base.Canvas):
         self._background = _rgb(background, (30, 32, 38))
         self._interactive = True
         self._y_inverted = False
+        self._axis_visible = {"left": True, "bottom": True}
+        #: Panels whose x axes move together (see :meth:`link_x`); every member
+        #: holds the same list, so linking a third panel reaches all of them.
+        self._x_group: list[EmtkCanvas] = [self]
+        #: The ranges the last frame was drawn with, in axis units (exponents on
+        #: a log axis) -- what a pan or zoom starts from. ``_range`` holds what a
+        #: caller set, in data units, as chiplot's contract has it.
+        self._drawn = {"x": None, "y": None}
         self._click_callbacks: list[Callable] = []
         self._move_callbacks: list[Callable] = []
         self._range_callbacks: list[Callable] = []
@@ -468,25 +541,46 @@ class EmtkCanvas(base.Canvas):
 
     # -- what emtk's host calls ---------------------------------------
     def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
-        """Draw the whole display list into the box emtk gives us."""
+        """Draw the whole display list, with its axes, into the box emtk gives us.
+
+        The box is split into gutters and a plot area: the y tick numbers and
+        the rotated y title on the left, the x tick numbers and title below,
+        the title above. The left gutter has a fixed width, so the residual
+        strips stacked over a decay keep their axes on one vertical line.
+        """
         from emtk.widgets.plot import Plot as EmtkPlot
 
-        plot = EmtkPlot(
-            x,
-            y,
-            w,
-            h,
-            x_range=self._range["x"],
-            y_range=self._range["y"],
-            show_ticks=True,
-            show_legend=self._legend,
-        )
+        row = float(painter.line_height())
+        left_axis, bottom_axis = self._axis_visible["left"], self._axis_visible["bottom"]
+        gutter_left = (row + 2.0 + _Y_TICK_WIDTH + 6.0) if left_axis else 4.0
+        gutter_bottom = 4.0
+        if bottom_axis:
+            gutter_bottom += row + 2.0
+            if self._labels.get("bottom"):
+                gutter_bottom += row
+        gutter_top = row + 2.0 if self._title else 6.0
+        gutter_right = 10.0
+        bx, by = x + gutter_left, y + gutter_top
+        bw = max(w - gutter_left - gutter_right, 8.0)
+        bh = max(h - gutter_top - gutter_bottom, 8.0)
+
+        x_range = self._to_axis("x", self._range["x"]) or self._group_x_extent()
+        y_range = self._to_axis("y", self._range["y"]) or self._fitted(1, 0.04)
+        plot = EmtkPlot(bx, by, bw, bh, x_range=x_range, y_range=y_range,
+                        show_ticks=self._grid, show_legend=self._legend)
         plot.y_inverted = self._y_inverted
+        plot.show_y_tick_labels = False
+        plot.x_tick_target = max(2, int(bw // 90))
+        plot.y_tick_target = max(3, int(bh // 36))
+        plot._x_axis.log_decades = self._log["x"]
+        plot._y_axis.log_decades = self._log["y"]
+        plot.underlays.append(self._draw_regions)
         for entry in sorted(self._entries, key=lambda e: e.z):
             if not entry.visible:
                 continue
             self._draw_entry(plot, entry)
         plot.draw(painter)
+        self._drawn = {"x": plot._x_axis.range, "y": plot._y_axis.range}
         # After the axes exist: the plot places its own box and axis ranges in
         # draw(), and an image is positioned in data coordinates, so it cannot
         # be blitted before that mapping is known.
@@ -499,22 +593,125 @@ class EmtkCanvas(base.Canvas):
             painter.image(
                 min(left, right), min(top, bottom), abs(right - left), abs(bottom - top), texture
             )
+        self._draw_axes(painter, plot, x, y, w, h, row)
+        self._draw_texts(painter, plot)
+
+    def _draw_axes(self, painter, plot, x, y, w, h, row) -> None:
+        """Tick numbers, axis titles and the panel title, around the plot area."""
+        from emtk.painter import ALIGN_HCENTER, ALIGN_RIGHT, ALIGN_VCENTER
+
+        bx, by, bw, bh = plot.x, plot.y, plot.w, plot.h
+        if self._axis_visible["left"]:
+            ticks = plot._y_axis.ticks(plot.y_tick_target)
+            for value, text in zip(ticks, _tick_labels(ticks, self._log["y"])):
+                py = plot._y_axis.to_pixels(value)
+                if by - 1.0 <= py <= by + bh + 1.0:
+                    painter.text(bx - _Y_TICK_WIDTH - 6.0, py - row * 0.5, _Y_TICK_WIDTH, row,
+                                 ALIGN_RIGHT | ALIGN_VCENTER, text, _TICK_TEXT)
+            label = self._labels.get("left")
+            if label:
+                if hasattr(painter, "text_rotated"):
+                    cx = x + 2.0 + row * 0.5
+                    cy = by + bh * 0.5
+                    painter.text_rotated(cx - bh * 0.5, cy - row * 0.5, bh, row,
+                                         ALIGN_HCENTER | ALIGN_VCENTER, label, _LABEL_TEXT, -90.0)
+                else:
+                    painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, _LABEL_TEXT)
+        if self._axis_visible["bottom"]:
+            ticks = plot._x_axis.ticks(plot.x_tick_target)
+            for value, text in zip(ticks, _tick_labels(ticks, self._log["x"])):
+                px = plot._x_axis.to_pixels(value)
+                if bx - 1.0 <= px <= bx + bw + 1.0:
+                    painter.text(px - 40.0, by + bh + 2.0, 80.0, row,
+                                 ALIGN_HCENTER | ALIGN_VCENTER, text, _TICK_TEXT)
+            label = self._labels.get("bottom")
+            if label:
+                painter.text(bx, by + bh + 2.0 + row, bw, row,
+                             ALIGN_HCENTER | ALIGN_VCENTER, label, _LABEL_TEXT)
+        if self._title:
+            painter.text(bx, y + 1.0, bw, row, ALIGN_HCENTER | ALIGN_VCENTER,
+                         self._title, _LABEL_TEXT)
+
+    def _extent(self, axis: int) -> tuple[tuple[float, float] | None, tuple[float, float] | None]:
+        """What is drawn along *axis*, in axis coordinates (log10 on a log axis).
+
+        Two spans: the samples of curves and scatter clouds, which get padding
+        so no point sits on the frame, and what is placed exactly (an image's
+        rect, a region), which does not -- a heatmap fills its panel. Either is
+        ``None`` when there is nothing of that kind.
+        """
+        low, high = math.inf, -math.inf
+        exact_low, exact_high = math.inf, -math.inf
+        for entry in self._entries:
+            if not entry.visible:
+                continue
+            state = entry.state
+            if entry.kind in ("curve", "scatter"):
+                xs, ys = self._scaled(state["x"], state["y"])
+                values = np.asarray(xs if axis == 0 else ys, dtype=float)
+                values = values[np.isfinite(values)]
+                if values.size:
+                    low, high = min(low, float(values.min())), max(high, float(values.max()))
+            elif entry.kind == "image":
+                x0, y0, width, height = state["rect"]
+                start, extent = (x0, width) if axis == 0 else (y0, height)
+                exact_low = min(exact_low, float(start))
+                exact_high = max(exact_high, float(start + extent))
+            elif entry.kind == "region" and axis == 0:
+                a, b = entry.bounds
+                exact_low, exact_high = min(exact_low, a), max(exact_high, b)
+        return (
+            (low, high) if high >= low else None,
+            (exact_low, exact_high) if exact_high >= exact_low else None,
+        )
+
+    def _fitted(self, axis: int, fraction: float, members=None) -> tuple[float, float] | None:
+        """The auto-fitted range of *axis* over *members* (default: this panel)."""
+        series, exact = [], []
+        for member in members or (self,):
+            data, placed = member._extent(axis)
+            if data is not None:
+                series.append(data)
+            if placed is not None:
+                exact.append(placed)
+        spans = []
+        if series:
+            spans.append(self._padded((min(a for a, _ in series), max(b for _, b in series)), fraction))
+        spans.extend(exact)
+        if not spans:
+            return None
+        return (min(a for a, _ in spans), max(b for _, b in spans))
+
+    @staticmethod
+    def _padded(span, fraction: float) -> tuple[float, float] | None:
+        """*span* widened by *fraction* of itself each side, so no sample sits on the frame."""
+        if span is None:
+            return None
+        low, high = span
+        margin = (high - low) * fraction if high > low else max(abs(low) * 0.05, 0.5)
+        return (low - margin, high + margin)
+
+    def _group_x_extent(self) -> tuple[float, float] | None:
+        """The x range every linked panel auto-fits to: the union of their data."""
+        return self._fitted(0, 0.01, self._x_group)
 
     def _draw_entry(self, plot, entry: _Entry) -> None:
         """Add one display-list entry to *plot*."""
         state = entry.state
         label = state.get("name") or ""
+        opacity = float(state.get("opacity", 1.0))
         if entry.kind == "curve":
             xs, ys = self._scaled(state["x"], state["y"], gaps=state.get("gaps", False))
             if xs.size:
-                plot.line(label, xs, ys, colour=state.get("color"), width=state.get("width", 1.5))
+                plot.line(label, xs, ys, colour=_faded(state.get("color"), opacity),
+                          width=state.get("width", 1.5))
             if state.get("symbol") is not None and xs.size:
                 marked = np.isfinite(xs) & np.isfinite(ys)
                 plot.scatter(
                     label,
                     xs[marked],
                     ys[marked],
-                    colour=state.get("symbol_color", state.get("color")),
+                    colour=_faded(state.get("symbol_color", state.get("color")), opacity),
                     radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0),
                 )
         elif entry.kind == "scatter":
@@ -524,7 +721,7 @@ class EmtkCanvas(base.Canvas):
                     label,
                     xs,
                     ys,
-                    colour=state.get("color"),
+                    colour=_faded(state.get("color"), opacity),
                     radius=max(1.0, float(state.get("symbol_size", 7.0)) / 2.0),
                 )
         elif entry.kind == "image":
@@ -541,8 +738,7 @@ class EmtkCanvas(base.Canvas):
                 # is a one-pixel band drawn with the regions below.
                 plot._x_axis.fit((entry.value, entry.value))
         elif entry.kind == "region":
-            low, high = entry.bounds
-            plot._x_axis.fit((low, high))
+            pass  # counted by `_extent`, drawn under the series by `_draw_regions`
         elif entry.kind == "arrow":
             x, y = entry.position
             plot._x_axis.fit((x,))
@@ -559,19 +755,7 @@ class EmtkCanvas(base.Canvas):
         for entry in self._entries:
             if not entry.visible:
                 continue
-            if entry.kind == "region":
-                low, high = entry.bounds
-                left = plot._x_axis.to_pixels(low)
-                right = plot._x_axis.to_pixels(high)
-                painter.fill_rect(
-                    min(left, right),
-                    top,
-                    abs(right - left),
-                    height,
-                    entry.state.get("brush", (70, 110, 160, 60)),
-                )
-                entry.state["_pixels"] = (min(left, right), max(left, right))
-            elif entry.kind == "marker" and entry.state.get("orientation") != "horizontal":
+            if entry.kind == "marker" and entry.state.get("orientation") != "horizontal":
                 at = plot._x_axis.to_pixels(entry.value)
                 painter.fill_rect(at, top, 1.0, height, entry.state.get("color", (200, 200, 200)))
                 entry.state["_pixels"] = (at - 4.0, at + 4.0)
@@ -585,19 +769,72 @@ class EmtkCanvas(base.Canvas):
                 self._draw_band(painter, plot, entry)
             elif entry.kind == "errorbars":
                 self._draw_errorbars(painter, plot, entry)
-            elif entry.kind == "text":
-                x, y = entry.state["pos"]
-                painter.text(
-                    plot._x_axis.to_pixels(x),
-                    plot._y_axis.to_pixels(y),
-                    120.0,
-                    plot.p_line_height if hasattr(plot, "p_line_height") else 14.0,
-                    0,
-                    entry.text,
-                    entry.state.get("color", (220, 220, 220)),
-                )
         self._axis = plot._x_axis
         self._y_axis_cache = plot._y_axis
+
+    def _draw_regions(self, painter, plot) -> None:
+        """Shade each region under the series, with a line on either edge.
+
+        Called by the plot between its gridlines and its series: a fit range
+        is a statement about where the data is read, and drawn over the data
+        it tinted every curve the colour of the selector. The edges are what
+        a press grabs, so they are drawn where the eye can find them.
+        """
+        top, height = plot.y, plot.h
+        for entry in self._entries:
+            if not entry.visible or entry.kind != "region":
+                continue
+            low, high = entry.bounds
+            left, right = sorted((plot._x_axis.to_pixels(low), plot._x_axis.to_pixels(high)))
+            fill = entry.state.get("brush", (70, 110, 160, 50))
+            painter.fill_rect(left, top, right - left, height, fill)
+            edge = (*fill[:3], 220)
+            for at in (left, right):
+                painter.fill_rect(at - 0.75, top, 1.5, height, edge)
+            entry.state["_pixels"] = (left, right)
+
+    def _draw_texts(self, painter, plot) -> None:
+        """Draw the text labels last, over everything, each in its own box.
+
+        An ``anchored`` label sits at a pixel offset from the plot area's
+        top-left and stays put when the view moves; any other is placed at a
+        data coordinate. A label may span lines, and a box is sized to them.
+        """
+        from emtk.painter import ALIGN_LEFT, ALIGN_VCENTER
+
+        row = float(painter.line_height())
+        pad = 5.0
+        for entry in self._entries:
+            if not entry.visible or entry.kind != "text" or not entry.text:
+                continue
+            state = entry.state
+            if state.get("anchored"):
+                ox, oy = state["pos"]
+                left, top = plot.x + ox, plot.y + oy
+            else:
+                px, py = state["pos"]
+                left, top = plot._x_axis.to_pixels(px), plot._y_axis.to_pixels(py)
+            lines = entry.text.split("\n")
+            width = max(painter.text_width(line) for line in lines) + 2.0 * pad
+            height = row * len(lines) + 2.0 * pad
+            anchor_x, anchor_y = state.get("anchor") or (0.0, 0.0)
+            left -= width * anchor_x
+            top -= height * anchor_y
+            if state.get("anchored"):
+                # Kept inside the plot area, so a label dragged to an edge or
+                # left behind by a resize is never lost off the panel.
+                left = min(max(left, plot.x), plot.x + max(plot.w - width, 0.0))
+                top = min(max(top, plot.y), plot.y + max(plot.h - height, 0.0))
+            fill, border = state.get("fill"), state.get("border")
+            if fill is not None:
+                painter.fill_rect(left, top, width, height, fill)
+            if border is not None:
+                painter.stroke_rect(left, top, width, height, border)
+            colour = state.get("color", (220, 220, 220))
+            for index, line in enumerate(lines):
+                painter.text(left + pad, top + pad + index * row, width - 2.0 * pad, row,
+                             ALIGN_LEFT | ALIGN_VCENTER, line, colour)
+            state["_box"] = (left, top, left + width, top + height)
 
     def _draw_roi(self, painter, plot, entry: _Entry) -> None:
         """Draw a region of interest and record the box a press has to hit."""
@@ -809,6 +1046,12 @@ class EmtkCanvas(base.Canvas):
         for entry in reversed(self._entries):
             if not entry.visible or not entry.state.get("movable", True):
                 continue
+            if entry.kind == "text":
+                box = entry.state.get("_box")
+                if box and box[0] <= px <= box[2] and box[1] <= py <= box[3]:
+                    self._dragging = (entry, (px, py))
+                    break
+                continue
             if entry.kind == "roi":
                 box = entry.state.get("_box")
                 if box and box[0] <= px <= box[2] and box[1] <= py <= box[3]:
@@ -818,6 +1061,15 @@ class EmtkCanvas(base.Canvas):
             span = entry.state.get("_pixels")
             if span is None or entry.kind not in ("region", "marker"):
                 continue
+            if entry.kind == "region":
+                # An edge moves on its own, as pyqtgraph's region does; the
+                # inside moves the whole range.
+                for edge, at in (("low", span[0]), ("high", span[1])):
+                    if abs(px - at) <= 5.0:
+                        self._dragging = (entry, (edge, self._from_pixels(px)))
+                        break
+                if self._dragging is not None:
+                    break
             if span[0] - 3.0 <= px <= span[1] + 3.0:
                 self._dragging = (entry, self._from_pixels(px))
                 break
@@ -832,14 +1084,38 @@ class EmtkCanvas(base.Canvas):
         """Move whatever the press picked up, or pan the view."""
         if getattr(self, "_panning", None):
             grabbed_x, grabbed_y = self._panning
-            (x0, x1), (y0, y1) = self.get_range()
+            (x0, x1), (y0, y1) = self._view()
             dx = grabbed_x - self._from_pixels(px)
             dy = grabbed_y - self._from_pixels_y(py)
-            self.set_range(x=(x0 + dx, x1 + dx), y=(y0 + dy, y1 + dy))
+            self._set_view(x=(x0 + dx, x1 + dx), y=(y0 + dy, y1 + dy))
             return
         if not getattr(self, "_dragging", None):
             return
         entry, grabbed_at = self._dragging
+        if entry.kind == "text":
+            grabbed_x, grabbed_y = grabbed_at
+            if entry.state.get("anchored"):
+                x, y = entry.state["pos"]
+                entry.set_position(x + px - grabbed_x, y + py - grabbed_y)
+            else:
+                x, y = entry.state["pos"]
+                entry.set_position(
+                    x + self._from_pixels(px) - self._from_pixels(grabbed_x),
+                    y + self._from_pixels_y(py) - self._from_pixels_y(grabbed_y),
+                )
+            self._dragging = (entry, (px, py))
+            return
+        if entry.kind == "region" and isinstance(grabbed_at, tuple):
+            edge, _ = grabbed_at
+            low, high = entry.bounds
+            at = self._from_pixels(px)
+            if edge == "low":
+                entry.set_bounds(min(at, high), high)
+            else:
+                entry.set_bounds(low, max(at, low))
+            self._dragging = (entry, (edge, at))
+            entry._notify(final=False)
+            return
         if entry.kind == "roi":
             grabbed_x, grabbed_y = grabbed_at
             now_x, now_y = self._from_pixels(px), self._from_pixels_y(py)
@@ -861,7 +1137,8 @@ class EmtkCanvas(base.Canvas):
         """Finish the drag and tell the listeners where it ended."""
         if getattr(self, "_dragging", None):
             entry, _ = self._dragging
-            entry._notify(final=True)
+            if entry.kind != "text":
+                entry._notify(final=True)
         self._dragging = None
         self._panning = None
 
@@ -875,10 +1152,10 @@ class EmtkCanvas(base.Canvas):
         if not self._interactive:
             return
         factor = 1.1 ** float(rows)
-        (x0, x1), (y0, y1) = self.get_range()
+        (x0, x1), (y0, y1) = self._view()
         cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
         half_x, half_y = (x1 - x0) / 2.0 * factor, (y1 - y0) / 2.0 * factor
-        self.set_range(x=(cx - half_x, cx + half_x), y=(cy - half_y, cy + half_y))
+        self._set_view(x=(cx - half_x, cx + half_x), y=(cy - half_y, cy + half_y))
 
     def _draw_image(self, plot, entry: _Entry) -> None:
         """Place an image in the plot's data space.
@@ -1058,17 +1335,80 @@ class EmtkCanvas(base.Canvas):
         self.refresh()
 
     def set_range(self, *, x=None, y=None, padding=None) -> None:
-        """Set the visible range in data units."""
+        """Set the visible range, in data units -- on a log axis too.
+
+        ``(1, 10000)``, not ``(0, 4)``: the axis converts. An x range reaches
+        every panel linked to this one.
+        """
         if x is not None:
-            self._range["x"] = (float(x[0]), float(x[1]))
+            for member in self._x_group:
+                member._range["x"] = (float(x[0]), float(x[1]))
+                if member is not self:
+                    member.refresh()
         if y is not None:
             self._range["y"] = (float(y[0]), float(y[1]))
         self.refresh()
         self._announce_range()
 
     def get_range(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        """Return the visible ``((x0, x1), (y0, y1))`` range."""
-        return (self._range["x"] or self._data_range(0), self._range["y"] or self._data_range(1))
+        """Return the visible ``((x0, x1), (y0, y1))`` range.
+
+        What the last frame showed when it was fitted automatically -- padding
+        included, in the axis' own coordinates -- so a pan starts from what is
+        on screen rather than from the raw data.
+        """
+        return (
+            self._range["x"] or self._from_axis("x", self._drawn["x"]) or self._data_range(0),
+            self._range["y"] or self._from_axis("y", self._drawn["y"]) or self._data_range(1),
+        )
+
+    def _to_axis(self, axis: str, span):
+        """A data-unit range in the units the axis holds: exponents on a log axis.
+
+        ``None`` for no range, and for a log range with nothing positive in it,
+        which no log axis can show -- the axis then fits its data instead.
+        """
+        if span is None or not self._log[axis]:
+            return span
+        low, high = float(span[0]), float(span[1])
+        if high <= 0.0:
+            return None
+        if low <= 0.0:
+            low = high * 1e-6
+        return (math.log10(low), math.log10(high))
+
+    def _from_axis(self, axis: str, span):
+        """Inverse of :meth:`_to_axis`."""
+        if span is None or not self._log[axis]:
+            return span
+        return (10.0 ** span[0], 10.0 ** span[1])
+
+    def _view(self):
+        """The visible range in axis units, what a pan or zoom moves."""
+        return tuple(
+            self._to_axis(axis, self._range[axis]) or self._drawn[axis]
+            or self._to_axis(axis, self._data_range(index)) or (0.0, 1.0)
+            for index, axis in enumerate(("x", "y"))
+        )
+
+    def _set_view(self, *, x, y) -> None:
+        """Set the visible range from axis units."""
+        self.set_range(x=self._from_axis("x", x), y=self._from_axis("y", y))
+
+    def set_axis_visible(self, side: str, visible: bool) -> None:
+        """Show or hide the left or bottom axis (tick numbers and title)."""
+        if side in self._axis_visible:
+            self._axis_visible[side] = bool(visible)
+            self.refresh()
+
+    def link_x(self, other) -> None:
+        """Share the x axis with *other*: auto-fit to the union, pan and zoom together."""
+        if not isinstance(other, EmtkCanvas) or other._x_group is self._x_group:
+            return
+        merged = self._x_group + [m for m in other._x_group if m not in self._x_group]
+        for member in merged:
+            member._x_group = merged
+            member.refresh()
 
     def _data_range(self, axis: int) -> tuple[float, float]:
         """The extent of the drawn data along *axis*, or ``(0, 1)`` when empty.
@@ -1096,7 +1436,9 @@ class EmtkCanvas(base.Canvas):
 
     def auto_range(self) -> None:
         """Fit the view to its contents."""
-        self._range["x"] = None
+        for member in self._x_group:
+            member._range["x"] = None
+            member.refresh()
         self._range["y"] = None
         self.refresh()
         self._announce_range()
@@ -1104,7 +1446,9 @@ class EmtkCanvas(base.Canvas):
     def enable_auto_range(self, *, x=None, y=None) -> None:
         """Keep the view fitted to contents as data changes."""
         if x:
-            self._range["x"] = None
+            for member in self._x_group:
+                member._range["x"] = None
+                member.refresh()
         if y:
             self._range["y"] = None
         self.refresh()
@@ -1265,12 +1609,12 @@ class EmtkCanvas(base.Canvas):
                 "CHISURF_PLOT_BACKEND=pyqtgraph for one"
             )
         low, high = (float(bounds[0]), float(bounds[1]))
-        fill = _rgb(brush, (70, 110, 160))
+        fill = _rgba(brush, (70, 110, 160, 50))
         return self._add(
             "region",
             bounds=(min(low, high), max(low, high)),
             movable=bool(movable),
-            brush=(*fill, 60),
+            brush=fill,
             orientation=_orientation(orientation),
         )
 
@@ -1355,12 +1699,22 @@ class EmtkCanvas(base.Canvas):
         border=None,
         anchored=False,
     ) -> H.Text:
-        """Draw a text label at a data coordinate and return its handle."""
+        """Draw a text label and return its handle.
+
+        ``anchored`` pins it to the plot area (``pos`` is a pixel offset from
+        its top-left), otherwise ``pos`` is a data coordinate; ``draggable``
+        lets a press move it.
+        """
         return self._add(
             "text",
             text=str(text),
             pos=(float(pos[0]), float(pos[1])),
-            color=_rgb(color, (220, 220, 220)),
+            color=_rgba(color, (220, 220, 220, 255)),
+            anchor=tuple(anchor) if anchor is not None else (0.0, 0.0),
+            fill=None if fill is None else _rgba(fill, (20, 22, 28, 200)),
+            border=None if border is None else _rgba(border, (90, 95, 105, 255)),
+            anchored=bool(anchored),
+            movable=bool(draggable),
         )
 
 

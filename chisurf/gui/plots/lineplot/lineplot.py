@@ -914,15 +914,15 @@ class LinePlot(plotbase.Plot):
         area.installEventFilter(self)
         self.layout.addWidget(area)
 
-        # Labels - draggable text box for the fit-quality metrics overlay. Yellow
-        # text on a translucent-blue box, drawn on the data panel; created with
-        # ignoreBounds so it never drives the view auto-range.
+        # Labels - draggable text box for the fit-quality metrics overlay: light
+        # text on a dark translucent box with a quiet border, pinned to the top
+        # of the data panel, clear of the axis.
         self.text = plots["main_plot"].text(
             "",
-            (100, 0),
-            color="#FF0",
-            border="w",
-            fill=(0, 0, 255, 100),
+            (100, 6),
+            color="#e6e8ee",
+            border=(110, 116, 128, 200),
+            fill=(18, 20, 26, 200),
             anchor=(0, 0),
             draggable=True,
             anchored=True,
@@ -986,7 +986,8 @@ class LinePlot(plotbase.Plot):
         # never appears is one that cannot be dragged either. The curves are
         # already named, which is all a legend needs.
         if cs.core.settings.gui["plot"].get("show_legend", False):
-            plots["main_plot"].legend()
+            # Top-right: the fit-quality box holds the top-left.
+            plots["main_plot"].legend(offset=(-10, 10))
 
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
@@ -1301,35 +1302,36 @@ class LinePlot(plotbase.Plot):
             except Exception:
                 current_idx = 0
 
-        def _fmt_float(v, nd=4):
+        def _fmt_float(v, nd=3):
             try:
                 return f"{float(v):.{int(nd)}f}"
             except Exception:
                 return "?"
 
-        header = (
-            f"Range {int(getattr(current_fit, 'xmin', 0))}, {int(getattr(current_fit, 'xmax', 0))}"
-        )
+        header = f"range {int(getattr(current_fit, 'xmin', 0))}\u2013{int(getattr(current_fit, 'xmax', 0))}"
         if show_group:
-            lines = [header, "chi2r\tDW"]
+            # One self-describing line per dataset. A tab-separated table
+            # needed its columns to line up, and in a proportional font they
+            # did not: the values ran into each other ("505.57590.0173").
+            lines = [header]
             for idx, f in enumerate(grouped_fits):
-                marker = "*" if idx == current_idx else " "
-                chi2r = _fmt_float(getattr(f, "chi2r", None), nd=4)
-                dw = _fmt_float(getattr(f, "durbin_watson", None), nd=4)
-                lines.append(f"{marker}{chi2r}\t{dw}")
+                marker = "\u25b8" if idx == current_idx else "  "
+                chi2r = _fmt_float(getattr(f, "chi2r", None))
+                dw = _fmt_float(getattr(f, "durbin_watson", None))
+                lines.append(f"{marker} {idx + 1}  \u03c7\u00b2\u1d63 {chi2r}   DW {dw}")
             return "\n".join(lines)
 
         return "\n".join(
             [
                 header,
-                f"chi2r={_fmt_float(getattr(current_fit, 'chi2r', None), nd=4)}",
-                f"DW={_fmt_float(getattr(current_fit, 'durbin_watson', None), nd=4)}",
+                f"\u03c7\u00b2\u1d63 {_fmt_float(getattr(current_fit, 'chi2r', None))}"
+                f"   DW {_fmt_float(getattr(current_fit, 'durbin_watson', None))}",
             ]
         )
 
     @staticmethod
     def _axis_range(min_value, max_value, values, log_mode: bool = False):
-        """Return a finite pyqtgraph axis range, or ``None`` if invalid."""
+        """Return a finite axis range in data units, or ``None`` if invalid."""
         if min_value is None and max_value is None:
             return None
 
@@ -1346,11 +1348,11 @@ class LinePlot(plotbase.Plot):
 
         if not np.isfinite(a_min) or not np.isfinite(a_max):
             return None
-        if log_mode:
-            if a_min <= 0.0 or a_max <= 0.0:
-                return None
-            a_min = np.log10(a_min)
-            a_max = np.log10(a_max)
+        # Data units on a log axis too (chiplot's set_range contract); a log
+        # axis only refuses what it cannot show. Taking log10 here as well made
+        # the backend take it a second time.
+        if log_mode and (a_min <= 0.0 or a_max <= 0.0):
+            return None
         if a_min > a_max:
             return None
         return [a_min, a_max]
@@ -1481,8 +1483,8 @@ class LinePlot(plotbase.Plot):
         ):
             try:
                 metrics_text = self._build_metrics_overlay_text(current_fit=current_fit)
-                # The overlay was created yellow; the text property setter keeps
-                # that color while replacing the content.
+                # The text property setter keeps the overlay's colour and box
+                # while replacing the content.
                 self.text.text = metrics_text
             except Exception:
                 pass
@@ -1803,6 +1805,10 @@ class LinePlot(plotbase.Plot):
                 lw = curve_options.get("lw", 2)
                 pen_color = curve_options.get("color", "#FFFFFF")
                 label = curve_options.get("label", curve_key)
+                if len(grouped_fits) > 1:
+                    # Numbered like the rows of the fit-quality box, so a legend
+                    # entry and a chi2 row name the same dataset.
+                    label = f"{label} {grouped_fits.index(group_fit) + 1}"
                 auto_downsample = curve_options.get("auto_downsample", False)
                 clip_to_view = curve_options.get("clip_to_view", auto_downsample)
 
