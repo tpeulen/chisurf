@@ -18,13 +18,13 @@ import chisurf.core.fluorescence.tcspc.convolve
 import chisurf.core.fluorescence.general
 import chisurf.core.fio as io
 
-# Import matplotlib for plotting
-import matplotlib
 from chisurf.gui import dialogs
-matplotlib.use('QtAgg')
+# The figure is embedded through its Qt canvas, which needs no global backend.
+# This module used to call matplotlib.use('QtAgg') on import, which switched
+# pyplot for the whole process: a later plt.show() in the LLTF fitter then ran
+# a blocking Qt event loop instead of doing nothing.
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
 
 from chisurf.plugins.fluorescence_decay.lltf.core.settings import get_default_settings
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
