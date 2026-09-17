@@ -52,6 +52,22 @@ on every selection change, `{}` when cleared) — a master list driving a detail
 panel is the commonest table idiom there is, and `selected_attr` covered it only
 for a model willing to expose a reacting property setter.
 
+**`data_table` and `table` read the same in both renderers.** emtk draws both
+dialects from a spec (`emtk/widgets/data_table.py`: `TableBinding` +
+`DataTable`, used by `emtk.widgets.view_spec.table_bindings`/`ViewSpecPanel`
+and `emtk.view_form`), so the options a ranked or streamed table needs are
+shared rather than renderer-specific: a column's **`"display": "bar"`** with a
+**`"range"`** draws the value as a bar under its text (diverging from zero,
+coloured by sign, when the range spans zero; `BarDelegate` in
+`chitable/delegates.py`, `ColumnSpec.value_range`), **`format`**,
+**`columns_source`** (columns known only at run time; then the declared columns
+are exactly the columns), **`sort`** `{key, descending}`, **`tooltip_key`** and
+**`row_key`**. A record list that **grows in place** is re-read without a
+rebind, keeping sort and selection, and `selected_call` is not fired again for
+the row already selected. Found on the way: a sorted `ChiTableModel` reported
+the *view* row as the source row on selection (it sorts itself, with no proxy
+to map through), so a sorted table handed `selected_call` the wrong record.
+
 A section rendered as a **dock-area child no longer draws its own caption**: the
 dock tab already carries the title, so a `custom` section in a dock used to put
 "Provenance" directly under a tab reading "Provenance".

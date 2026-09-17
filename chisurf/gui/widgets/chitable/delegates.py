@@ -13,6 +13,7 @@ Delegates are selected per column through :attr:`ColumnSpec.delegate`:
 ``"float"``    :class:`FloatEditDelegate` — scientific spin-box editor
 ``"richtext"`` :class:`RichTextDelegate` — HTML labels (τ₀, x<sub>l</sub>)
 ``"choice"``   :class:`ChoiceDelegate` — combo box over fixed values
+``"bar"``      :class:`BarDelegate` — the value as a bar under its text
 =============  ==========================================================
 """
 
@@ -320,7 +321,77 @@ class RichTextHeaderView(QtWidgets.QHeaderView):
         )
 
 
-def delegate_for(kind: str, choices: Sequence[str] = (), parent=None):
+class BarDelegate(QtWidgets.QStyledItemDelegate):
+    """Draw the cell as usual plus its value as a bar along the bottom edge.
+
+    The ``"display": "bar"`` column option of a view spec's table, drawn the
+    same way emtk's painted table draws it (``emtk.widgets.data_table``), so a
+    spec reads alike in both renderers: ``(v - lo) / (hi - lo)`` of the cell
+    width, and a *diverging* bar from the zero point, coloured by sign, when the
+    range spans zero (Orange3's correlation colours). Under the text rather than
+    behind it, so the number stays legible at every length.
+
+    Parameters
+    ----------
+    value_range : tuple of float
+        ``(lo, hi)``.
+    parent : qtpy.QtCore.QObject, optional
+        Owner.
+    """
+
+    BAR_HEIGHT = 4
+    COLOUR = QtGui.QColor(90, 150, 220)
+    POSITIVE = QtGui.QColor(170, 242, 43)
+    NEGATIVE = QtGui.QColor(70, 190, 250)
+
+    def __init__(self, value_range: Sequence[float] = (0.0, 1.0), parent=None) -> None:
+        super().__init__(parent)
+        lo, hi = (tuple(value_range) + (0.0, 1.0))[:2] if len(value_range) >= 2 else (0.0, 1.0)
+        self.lo, self.hi = float(lo), float(hi)
+
+    def bar(self, value) -> tuple | None:
+        """``(start, end, colour)`` as fractions of the width, or ``None``."""
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if number != number or not self.hi > self.lo:
+            return None
+
+        def at(v: float) -> float:
+            return min(max((v - self.lo) / (self.hi - self.lo), 0.0), 1.0)
+
+        if self.lo < 0.0 < self.hi:
+            zero, point = at(0.0), at(number)
+            return (min(zero, point), max(zero, point),
+                    self.POSITIVE if number >= 0 else self.NEGATIVE)
+        return (0.0, at(number), self.COLOUR)
+
+    def paint(self, painter, option, index):  # noqa: D102 (Qt override)
+        super().paint(painter, option, index)
+        from chisurf.gui.widgets.chitable.model import ChiTableModel
+
+        bar = self.bar(index.data(ChiTableModel.RawRole))
+        if bar is None:
+            return
+        start, end, colour = bar
+        rect = option.rect.adjusted(3, 0, -3, -2)
+        width = rect.width()
+        painter.save()
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(colour)
+        painter.drawRect(QtCore.QRectF(rect.left() + start * width,
+                                       rect.bottom() - self.BAR_HEIGHT + 1,
+                                       max((end - start) * width, 1.0), self.BAR_HEIGHT))
+        painter.restore()
+
+    def sizeHint(self, option, index):  # noqa: N802, D102 (Qt override)
+        size = super().sizeHint(option, index)
+        return QtCore.QSize(size.width(), size.height() + self.BAR_HEIGHT + 2)
+
+
+def delegate_for(kind: str, choices: Sequence[str] = (), parent=None,
+                 value_range: Sequence[float] = ()):
     """Return a delegate instance for a :attr:`ColumnSpec.delegate` hint.
 
     Parameters
@@ -331,6 +402,8 @@ def delegate_for(kind: str, choices: Sequence[str] = (), parent=None):
         Allowed values, used only by ``"choice"``.
     parent : qtpy.QtCore.QObject, optional
         Owner passed to the delegate.
+    value_range : sequence of float
+        ``(lo, hi)``, used only by ``"bar"``.
 
     Returns
     -------
@@ -345,4 +418,6 @@ def delegate_for(kind: str, choices: Sequence[str] = (), parent=None):
         return RichTextDelegate(parent)
     if kind == "choice":
         return ChoiceDelegate(choices, parent)
+    if kind == "bar":
+        return BarDelegate(value_range or (0.0, 1.0), parent)
     return None

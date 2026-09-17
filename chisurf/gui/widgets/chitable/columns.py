@@ -56,12 +56,15 @@ class ColumnSpec:
         Opt this column into value-scaled cell backgrounds. Ignored unless the
         table's colour scheme is enabled.
     delegate : str
-        Delegate hint: ``"bool"``, ``"float"``, ``"richtext"``, ``"choice"`` or
-        ``""`` for none.
+        Delegate hint: ``"bool"``, ``"float"``, ``"richtext"``, ``"choice"``,
+        ``"bar"`` or ``""`` for none.
     choices : tuple of str
         Allowed values for ``delegate="choice"``.
     visible : bool
         Initial visibility. The column picker toggles this at runtime.
+    value_range : tuple of float
+        ``(lo, hi)`` for ``delegate="bar"``: the value is drawn as that fraction
+        of the cell under its text, diverging from zero when the range spans it.
     """
 
     key: str
@@ -76,6 +79,7 @@ class ColumnSpec:
     delegate: str = ""
     choices: tuple = field(default_factory=tuple)
     visible: bool = True
+    value_range: tuple = field(default_factory=tuple)
 
     @property
     def title(self) -> str:

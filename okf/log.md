@@ -2,6 +2,19 @@
 
 ## 2026-09-17
 
+* **Declared tables render in emtk as in Qt; a sorted table selected the wrong
+  record.** emtk commit `fbf3290` renders `table` and `custom` `data_table`
+  sections (`widgets/data_table.py`, `view_spec.table_bindings` +
+  `ViewSpecPanel`, `view_form`); `unsupported_sections` still reports
+  `parameter_group_table`/`plot`/`image`. Both renderers honour column
+  `display: "bar"` + `range` (diverging across zero), `format`,
+  `columns_source`, `sort`, `tooltip_key`, `row_key`, and a source list that
+  grows in place (chisurf `BarDelegate`, `ColumnSpec.value_range`,
+  `data_table_section.py`). Fixed: `ChiTableWidget.rowSelected` emitted the view
+  row of a self-sorting `ChiTableModel` as the source row. Tests:
+  `test/gui/test_autoform_data_table_display.py`, emtk
+  `tests/test_ui_data_table.py`. See [GUI/AutoForm](subsystems/gui-autoform.md).
+
 * **Number & Brightness harvested from PAM; the PAM checkout is retired.**
   `core/fluorescence/imaging/number_brightness.py` replaces the old three-line
   `nb_maps` (apparent B/N, ε = B − 1, population variance): dead-time correction,

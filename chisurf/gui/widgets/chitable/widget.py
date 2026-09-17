@@ -603,6 +603,13 @@ class ChiTableWidget(QtWidgets.QWidget):
         while hasattr(model, "mapToSource") and hasattr(model, "sourceModel"):
             index = model.mapToSource(index)
             model = model.sourceModel()
+        # ChiTableModel sorts and filters *itself*, with no proxy in between, so
+        # the walk above leaves a view row. Reporting it as a source row sent a
+        # sorted table's selection to whichever record sat at that position in
+        # source order.
+        if isinstance(model, ChiTableModel):
+            self.rowSelected.emit(int(model.source_row(index.row())))
+            return
         self.rowSelected.emit(int(index.row()))
 
     def _on_rows_changed(self, *_args) -> None:

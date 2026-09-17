@@ -472,7 +472,7 @@ def apply_column_delegates(view: QtWidgets.QTableView, model: ChiTableModel) -> 
         kind = spec.delegate
         if not kind and spec.kind == "bool":
             kind = "bool"
-        delegate = delegate_for(kind, spec.choices, view)
+        delegate = delegate_for(kind, spec.choices, view, getattr(spec, "value_range", ()))
         if delegate is not None:
             view.setItemDelegateForColumn(col, delegate)
             kept.append(delegate)
