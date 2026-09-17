@@ -124,6 +124,11 @@ Two steps of the original workflow are not panels here yet; they run headless.
   `api.reproduce_fit`) rebuilds the 2D-FLC map `A G Aᵀ` and the 2D-FDC it predicts
   from fitted parameters, on any axis — fit on the linear matrix, reproduce the
   log one and compare, as the original code does.
+- **The original fit, IRF scan and average.** `flc-2d rise-search-2d` fits the
+  matrices at a series of IRF placements and reports chi2 for each; `flc-2d
+  average-2d` averages the fit over the placements around the best one (or
+  `api.search_irf_rise_2d`, `api.average_2d_mem`). A log-binned matrix needs the
+  basis summed over each bin, `api.exp_curves`.
 
 ## Further reading
 

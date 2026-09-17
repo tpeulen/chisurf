@@ -84,6 +84,20 @@ for parameters, `api.reproduce_fit(result, time_axis_ns)` for a fit result, or
 `flc-2d reproduce params.json`. See "Checking an inversion by reproducing it" in
 {ref}`concept-filtered-fcs`.
 
+The original code's own analysis scans the IRF position and averages around the best
+one, fitting the log-binned matrices with a basis summed over each bin:
+
+```python
+kw = dict(irf=irf, xdata_ns=irf_t, estimates=[0, 1, 1, 0.3, 1, 3, 0.3],
+          t_min_ns=0.5, t_max_ns=12.2, t_step_ns=0.004, lint_bin_factor=4, logt_imax=100)
+scan = api.search_irf_rise_2d(matrices, center=310, n_points=20, **kw)
+avg = api.average_2d_mem(matrices, center=scan.best, n_points=5, **kw)
+```
+
+(`flc-2d rise-search-2d` / `flc-2d average-2d` headless.) To fit a log matrix with the
+plugin's own inversions, pass `basis=api.exp_curves(...).binned_log` and its
+`tau_grid` to `api.two_d_spectrum`.
+
 ### Instrument parameters
 
 When a species is a coupled smFRET decay rather than a plain lifetime spectrum,

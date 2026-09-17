@@ -223,6 +223,24 @@ from fitted $A$, $G$, $y_0$ on a *different* binning than the fit used — the l
 fit reproduced on the logarithmic axis — and comparing it with the data there is the
 check the original implementation ends every fit with.
 
+### The original fit: binned basis, regulator ramp, IRF rise point
+
+Three details of the original implementation decide what its maps contain.
+
+- **The basis is integrated over each bin.** A column of $E$ is the IRF-convolved
+  decay summed over the channels of a bin, not sampled at it. On a linear axis the
+  two agree within 1% after scaling; on a logarithmic axis, where a bin spans one to
+  hundreds of channels, a sampled column is off by a median 43%.
+- **The entropy weight is ramped.** $Q$ is minimized repeatedly with
+  $\eta_k = \eta_0 \cdot 1.4^{k-1}$ ($\eta_0 = 0.1$, 100 trials), the prior $m$
+  recomputed from the current $A$ each time, so the fit moves from the prior towards
+  the data. The shortest lag is fitted first; its $A$ is then held while each lag's
+  $G$ is fitted, and finally all lags are fitted together.
+- **The IRF position is scanned.** With the rise channels of IRF and fluorescence as
+  free offsets, the whole fit is repeated at ~20 IRF positions and the lowest
+  $\chi^2$ chosen; the reported maps are then averaged over five positions around it,
+  which trades a little resolution for a smaller timing systematic.
+
 ## See also
 
 - Guide: {doc}`/guides/17_filtered_fcs`; foundational FCS concept:

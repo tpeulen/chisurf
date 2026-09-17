@@ -2,6 +2,23 @@
 
 ## 2026-09-17
 
+* **2D-FLCS harvest, part 2: the reference's basis, MEM ramp, IRF-rise scan and
+  average are ported; `TK_DisIntLife2Dmap` is SKIPPED.** `flc_2d/fit/exp_curve.py`
+  (`TK_CreateExpCurve`: IRF placed by rise points, basis summed over the linear/log
+  bins; Octave A/B <= 4e-14 on four gates, reproducing MATLAB's one-row `sum` quirk
+  that corrupts the last linear bin at the reference's default gate),
+  `fit/minimize_q.py` (`MinimizeQ_09`/`GFitF_MinimizeQ_04` schedule and objective,
+  `mi_ModelFunction` A/B 5e-16, start values A/B 3e-14; L-BFGS-B with an analytic
+  gradient replaces `fminsearch`), `fit/workflow_2d.py` (`fit_2d_mem_workflow`,
+  `search_irf_rise_2d`, `average_2d_mem`; CLI `rise-search-2d`, `average-2d`). A basis
+  sampled at log-bin positions misfits by a median 43% (linear < 1%), so
+  `two_d_spectrum`/`fit_mem_2d`/`global_lifetime_mem` now refuse a non-uniform axis
+  unless given `basis=` + `tau_grid`. `TK_DisIntLife2Dmap` is a plot (image,
+  Gaussian smoothing, a colormap file absent from the repository, no return value).
+  Fixture `test/data/flc_2d/matlab_exp_curve.npz`; tests `test_exp_curve.py`,
+  `test_workflow_2d.py`. Resume point:
+  [filtered-fcs-2dflcs-theory](references/filtered-fcs-2dflcs-theory.md).
+
 * **Declared tables render in emtk as in Qt; a sorted table selected the wrong
   record.** emtk commit `fbf3290` renders `table` and `custom` `data_table`
   sections (`widgets/data_table.py`, `view_spec.table_bindings` +

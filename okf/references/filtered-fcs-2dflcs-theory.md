@@ -15,14 +15,25 @@ with P. Manna's technical note) is fully accounted for in tttrlib
 `okf/prds/PRD-036-2d-flc-photon-kernels.md` (table + "The harvest finished"), and
 its checkout is deleted. Open, in priority order:
 
-1. **Not ported, found by the audit spot-check:** `TK_CreateExpCurve` (basis
-   *integrated* over each linear/log bin, with the IRF rise point) — chisurf's
-   `build_exp_basis` samples at bin positions, which on the log axis is not the
-   reference's model, so a 2D-MEM fit on `mat_log` is not the reference's fit;
-   `TK_MyMain_Search_RiseIRF_2DMEM` and `TK_MyMain_Run_Ave2DMEM` (IRF-rise scan and
-   averaging for the 2D/global MEM; only the 1D scan exists); `TK_DisIntLife2Dmap`
-   (display). To re-derive the MATLAB, re-clone with `junk/clone.sh`.
-2. **The bootstrap and reproduction are API/CLI only.** No backend RPC or GUI
+1. **Nothing of the MATLAB is left unported** (2026-09-17, part 2):
+   `TK_CreateExpCurve` -> `fit/exp_curve.py`, `TK_MyMain_Search_RiseIRF_2DMEM` /
+   `TK_MyMain_Run_Ave2DMEM` (+ `Fit_2DMEM_04`, `GFit_2DMEM`, `MinimizeQ_09`,
+   `GFitF_MinimizeQ_04`, `mi_ModelFunction`) -> `fit/minimize_q.py`,
+   `fit/workflow_2d.py`; `TK_DisIntLife2Dmap` SKIPPED (display only: `figure`,
+   `image(imgaussfilt(...))`, a colormap file `mycmap.dat` that is not even in the
+   repository, output `Out` never assigned; its one other effect, `global g2Dmax`, is
+   a colour-axis limit). Open from that port: the **local minimizer** is L-BFGS-B with
+   an analytic gradient, not `fminsearch` -- same objective and schedule, but trial
+   results differ, so the maps are not A/B-able against Octave (only the deterministic
+   pieces are, fixture `matlab_exp_curve.npz`); a real-data comparison against a
+   published MATLAB result would be the check. **Reference defect reproduced, not
+   fixed:** MATLAB `sum` of a one-row slice sums across lifetimes, which corrupts every
+   linear bin at `lint_bin_factor = 1` and the last linear bin at the reference's own
+   default gate (0.5-12.2 ns, factor 4); the reference fits log matrices, so it did not
+   bite there. The rise scan on a simulated stream puts the chi2 minimum at 294 for an
+   IRF simulated at 300 (gate offset of one channel plus IRF sampling); 270/330 are 2x
+   and 3x worse.
+2. **The bootstrap, reproduction and 2D-MEM drivers are API/CLI only.** No backend RPC or GUI
    panel: bootstrap needs one file per molecule, which the single-stream tool
    does not model. A multi-file "molecule set" input is what blocks both. Any
    panel for them (options, a reproduced-vs-data view, an error map) is a new
@@ -138,6 +149,14 @@ incl. MFD polarisation-resolved).
 - `fit/reproduct.py` — port of the four `Reproduct` functions: forward models
   `decay_model`/`fdc_model` (shared with the fits), MATLAB chi2/entropy/Q,
   estimates-vector unpacking with fix flags. Octave A/B 2e-16.
+- `fit/exp_curve.py` — `TK_ExpMultiDeco_For2DFLC` + `TK_CreateExpCurve`: IRF placed by
+  rise points, basis summed over linear/log bins (Octave A/B <= 4e-14, four gates).
+  `api.two_d_spectrum`/`fit_mem_2d`/`global_lifetime_mem` refuse a non-uniform axis
+  unless given `basis=` + `tau_grid`.
+- `fit/minimize_q.py` — `TK_FitF_MinimizeQ_09`/`TK_GFitF_MinimizeQ_04` schedule,
+  `TK_mi_ModelFunction` (A/B 5e-16), start distribution and scaling (A/B 3e-14).
+- `fit/workflow_2d.py` — `fit_2d_mem_workflow`, `search_irf_rise_2d`,
+  `average_2d_mem` (rise-point sequences A/B exact); CLI `rise-search-2d`, `average-2d`.
 - `fit/ilt.py`, `fit/mem_1d.py`, `fit/mem_2d.py`, `fit/global_mem.py` — MEM /
   inverse-Laplace inversion to $P(\tau_1,\tau_2)$. `mem_2d.solve_mem_2d` uses the
   Skilling–Gull entropy with an analytic-gradient L-BFGS-B (replacing the old

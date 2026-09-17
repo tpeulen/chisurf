@@ -8,6 +8,10 @@
 * :mod:`kinetics` -- rate-matrix recovery from species correlation decays.
 * :mod:`gaussian` -- multi-Gaussian peak fit of a lifetime distribution.
 * :mod:`helpers` -- 1D-FDC, 1D histogram, IRF-rise scan.
+* :mod:`reproduct` -- the reference's forward models, chi2/entropy/Q, reproduction.
+* :mod:`exp_curve` -- the reference's IRF-convolved basis summed over the 2D-FDC bins.
+* :mod:`minimize_q` -- the reference's regulator-ramped MEM minimization.
+* :mod:`workflow_2d` -- the reference's 2D-MEM drivers: one fit, IRF-rise scan, average.
 """
 
 from .dynamics import SpeciesCorrelation, filtered_correlation, fit_relaxation, species_filters

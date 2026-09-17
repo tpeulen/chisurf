@@ -62,6 +62,8 @@ flc-2d --help
 flc-2d metadata measurement.ptu
 flc-2d lifetime measurement.ptu --method nnls --components 40
 flc-2d reproduce fitted_params.json -o model.json
+flc-2d rise-search-2d mol_*.ptu --irf irf.npz --dt 100 --ddt 10 -o scan.npz
+flc-2d average-2d mol_*.ptu --irf irf.npz --dt 100 --dt 1000 --ddt 10 --center 298 -o avg.npz
 flc-2d bootstrap mol_*.ptu --dt 100 --dt 1000 --dt 100000 --ddt 10 \
     --tmin 125 --tmax 3050 --replicates 200 -o fdc_bootstrap.npz
 ```
@@ -114,6 +116,24 @@ sep = api.separate_data_2d_fdc(molecules, [100, 1000, 100_000], 10, tMin=125, tM
 boot = api.bootstrap_2d_fdc(sep, 200, seed=1)
 cor, err = sep.total()["cor_log"], boot.std["cor_log"]
 ```
+
+## The reference's 2D-MEM workflow
+
+The original code fits log-binned matrices with a basis **summed over each bin**
+(`api.exp_curves`; a basis sampled at the bin position misfits log columns by a
+median 43%, so `two_d_spectrum` refuses a log axis without `basis=`), a
+maximum-entropy objective minimized along a regulator ramp, and an IRF placed by a
+"rise point" that is scanned rather than known. The three drivers:
+
+```python
+mats = sep.total()                                    # from separate_data_2d_fdc
+kw = dict(irf=irf, xdata_ns=irf_t, estimates=[0, 1, 1, 0.3, 1, 3, 0.3],
+          t_min_ns=0.5, t_max_ns=12.2, t_step_ns=0.004, lint_bin_factor=4, logt_imax=100)
+scan = api.search_irf_rise_2d(mats, center=310, n_points=20, **kw)   # chi2 per rise point
+avg = api.average_2d_mem(mats, center=scan.best, n_points=5, **kw)   # A, G, maps, models
+```
+
+`flc-2d rise-search-2d` and `flc-2d average-2d` run the same from TTTR files.
 
 ## Checking a fit
 

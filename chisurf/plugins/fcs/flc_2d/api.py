@@ -89,6 +89,10 @@ __all__ = [
     "reproduce_fit",
     "separate_data_2d_fdc",
     "bootstrap_2d_fdc",
+    "exp_curves",
+    "fit_2d_mem_workflow",
+    "search_irf_rise_2d",
+    "average_2d_mem",
 ]
 
 
@@ -429,6 +433,38 @@ def _rebin_square(matrix: np.ndarray, target: int) -> tuple[np.ndarray, int]:
     return matrix[:m, :m].reshape(m // k, k, m // k, k).sum(axis=(1, 3)), k
 
 
+def _matrix_and_basis(matrix, time_axis_ns, *, tau_range, n_components, irf, irf_time_ns,
+                      max_bins, basis, tau_grid):
+    """Rebinned matrix and sampled basis, or the matrix as given with a supplied basis.
+
+    A sampled basis is only a model of a *uniformly* binned matrix: on a log axis a
+    bin spans one channel to hundreds and has to be integrated over
+    (:func:`exp_curves`; measured column misfit of a sampled basis there: median 43%).
+    So a non-uniform axis without an explicit ``basis`` is refused rather than fitted.
+    """
+    M = np.asarray(matrix, dtype=float)
+    if basis is not None:
+        E = np.asarray(basis, dtype=float)
+        if tau_grid is None or np.size(tau_grid) != E.shape[1]:
+            raise ValueError("a supplied basis needs tau_grid with one lifetime per column")
+        n = min(M.shape[0], E.shape[0])
+        return M[:n, :n], E[:n], np.asarray(tau_grid, dtype=float)
+    t = np.asarray(time_axis_ns, dtype=float)
+    steps = np.diff(t[: M.shape[0]])
+    if steps.size > 1 and np.ptp(steps) > 1e-6 * abs(float(np.mean(steps))):
+        raise ValueError(
+            "non-uniform (e.g. log) time axis: pass basis=exp_curves(...).binned_log "
+            "and its tau_grid; a point-sampled basis does not model a log-binned matrix"
+        )
+    M2, k = _rebin_square(M, max_bins)
+    if k > 1:
+        m = (t.size // k) * k
+        t = t[:m].reshape(-1, k).mean(axis=1)
+    t = t[: M2.shape[0]]
+    tau = lifetime_grid(tau_range[0], tau_range[1], n_components)
+    return M2, build_exp_basis(t, tau, irf=irf, irf_time_ns=irf_time_ns), tau
+
+
 def two_d_spectrum(
     matrix: np.ndarray,
     time_axis_ns: np.ndarray,
@@ -440,24 +476,23 @@ def two_d_spectrum(
     method: str = "tikhonov",
     reg: float | None = None,
     max_bins: int = 80,
+    basis: np.ndarray | None = None,
+    tau_grid: np.ndarray | None = None,
 ) -> ILTResult2D:
     """Invert a 2D-FDC matrix into a 2D lifetime distribution ``P``.
 
     The matrix is block-rebinned to at most ``max_bins`` for tractability, an
-    IRF-convolved basis is built on the (rebinned) time axis, and the regularized 2D
-    inverse-Laplace problem ``M = E P E.T`` is solved. ``P``'s diagonal is the marginal
-    lifetime spectrum; its off-diagonal encodes lifetime exchange.
+    IRF-convolved basis is built on the (rebinned, uniform) time axis, and the
+    regularized 2D inverse-Laplace problem ``M = E P E.T`` is solved. ``P``'s diagonal is
+    the marginal lifetime spectrum; its off-diagonal encodes lifetime exchange. For a
+    log-binned matrix pass ``basis`` (e.g. :func:`exp_curves` ``.binned_log``) and its
+    ``tau_grid``; the matrix is then used as given.
     """
-    M = np.asarray(matrix, dtype=float)
-    t = np.asarray(time_axis_ns, dtype=float)
-    M2, k = _rebin_square(M, max_bins)
-    if k > 1:
-        m = (t.size // k) * k
-        t = t[:m].reshape(-1, k).mean(axis=1)
-    t = t[: M2.shape[0]]
-    tau = lifetime_grid(tau_range[0], tau_range[1], n_components)
-    basis = build_exp_basis(t, tau, irf=irf, irf_time_ns=irf_time_ns)
-    return ilt_2d(M2, basis, tau, method=method, reg=reg)
+    M2, E, tau = _matrix_and_basis(matrix, time_axis_ns, tau_range=tau_range,
+                                   n_components=n_components, irf=irf,
+                                   irf_time_ns=irf_time_ns, max_bins=max_bins, basis=basis,
+                                   tau_grid=tau_grid)
+    return ilt_2d(M2, E, tau, method=method, reg=reg)
 
 
 # alias requested by the manifest / older callers
@@ -475,21 +510,13 @@ def fit_mem_2d(matrix, time_axis_ns, **kw) -> ILTResult2D:
     """
     from .fit.mem_2d import solve_mem_2d
 
-    M = np.asarray(matrix, dtype=float)
-    t = np.asarray(time_axis_ns, dtype=float)
-    max_bins = kw.pop("max_bins", 80)
-    M2, k = _rebin_square(M, max_bins)
-    if k > 1:
-        m = (t.size // k) * k
-        t = t[:m].reshape(-1, k).mean(axis=1)
-    t = t[: M2.shape[0]]
-    tau_range = kw.pop("tau_range", (0.3, 8.0))
-    n_components = kw.pop("n_components", 24)
-    tau = lifetime_grid(tau_range[0], tau_range[1], n_components)
-    basis = build_exp_basis(
-        t, tau, irf=kw.pop("irf", None), irf_time_ns=kw.pop("irf_time_ns", None)
+    M2, E, tau = _matrix_and_basis(
+        matrix, time_axis_ns, tau_range=kw.pop("tau_range", (0.3, 8.0)),
+        n_components=kw.pop("n_components", 24), irf=kw.pop("irf", None),
+        irf_time_ns=kw.pop("irf_time_ns", None), max_bins=kw.pop("max_bins", 80),
+        basis=kw.pop("basis", None), tau_grid=kw.pop("tau_grid", None),
     )
-    return solve_mem_2d(M2, basis, tau, **kw)
+    return solve_mem_2d(M2, E, tau, **kw)
 
 
 # ------------------------------------------------------------------------- dynamics
@@ -572,20 +599,24 @@ def global_lifetime_mem(
     irf: np.ndarray | None = None,
     irf_time_ns: np.ndarray | None = None,
     regulator: float = 1.0,
+    basis: np.ndarray | None = None,
+    tau_grid: np.ndarray | None = None,
 ) -> GlobalMEMResult:
     """Jointly invert several lag matrices with one shared lifetime distribution.
 
     Builds the IRF-convolved basis once and runs the global multi-lag 2D-MEM
     (:func:`~chisurf.plugins.fcs.flc_2d.fit.global_mem.solve_global_mem_2d`). All matrices
     must share the same shape and time axis (e.g. linear 2D-FDCs built at different ``dT``
-    with the same ``tMin``/``tMax``/binning).
+    with the same ``tMin``/``tMax``/binning). Log-binned matrices need ``basis`` and
+    ``tau_grid`` (see :func:`two_d_spectrum`).
     """
     mats = [np.asarray(M, dtype=float) for M in matrices]
-    n = mats[0].shape[0]
-    t = np.asarray(time_axis_ns, dtype=float)[:n]
-    tau = lifetime_grid(tau_range[0], tau_range[1], n_components)
-    basis = build_exp_basis(t, tau, irf=irf, irf_time_ns=irf_time_ns)
-    return solve_global_mem_2d(mats, basis, tau, n_states=n_states, regulator=regulator)
+    _, E, tau = _matrix_and_basis(mats[0], time_axis_ns, tau_range=tau_range,
+                                  n_components=n_components, irf=irf, irf_time_ns=irf_time_ns,
+                                  max_bins=mats[0].shape[0], basis=basis, tau_grid=tau_grid)
+    n = E.shape[0]
+    return solve_global_mem_2d([M[:n, :n] for M in mats], E, tau, n_states=n_states,
+                               regulator=regulator)
 
 
 def rate_matrix_kinetics(
@@ -716,6 +747,65 @@ def reproduce_fit(
 
     E = _basis(time_axis_ns, result.tau_grid, irf, irf_time_ns, basis)
     return reproduce_result(result, E, data=data)
+
+
+# ------------------------------------------------------- the reference's 2D-MEM workflow
+
+
+def exp_curves(tau_ns, xdata_ns, irf, *, t_min_ns, t_max_ns, t_step_ns, lint_bin_factor,
+               logt_imax, rise_point_irf, rise_point_fl=300, irf_range=None):
+    """The reference's exponential basis, integrated over the linear and log 2D-FDC bins.
+
+    Port of ``TK_CreateExpCurve``/``TK_ExpMultiDeco_For2DFLC``; the axes are built the
+    ``TK_Create2DFDC_04`` way. ``irf_range`` defaults to ``(50, len(xdata) - 90)``.
+    Returns :class:`~chisurf.plugins.fcs.flc_2d.fit.exp_curve.ExpCurves` with
+    ``lin_axis_ns``/``log_axis_ns`` attached.
+    """
+    from .fit.exp_curve import create_exp_curve, matlab_lin_axis_ns, matlab_log_axis_ns
+
+    x = np.asarray(xdata_ns, dtype=float)
+    log_axis = matlab_log_axis_ns(t_min_ns, t_max_ns, t_step_ns, lint_bin_factor, logt_imax)
+    curves = create_exp_curve(
+        tau_ns, x, irf, t_min_ns=t_min_ns, t_max_ns=t_max_ns, t_step_ns=t_step_ns,
+        lint_bin_factor=lint_bin_factor, log_axis_ns=log_axis, rise_point_fl=rise_point_fl,
+        rise_point_irf=rise_point_irf,
+        irf_range=(50, x.size - 90) if irf_range is None else irf_range,
+    )
+    curves.lin_axis_ns = matlab_lin_axis_ns(t_min_ns, t_max_ns, t_step_ns, lint_bin_factor)
+    curves.log_axis_ns = log_axis
+    return curves
+
+
+def fit_2d_mem_workflow(matrices, **kwargs):
+    """One run of the reference's 2D-MEM drivers (``TK_MyMain_Fit_2DMEM_04`` + ``GFit_2DMEM``).
+
+    See :func:`chisurf.plugins.fcs.flc_2d.fit.workflow_2d.fit_2d_mem_workflow`.
+    ``matrices`` is ``separate_data_2d_fdc(...).total()``.
+    """
+    from .fit.workflow_2d import fit_2d_mem_workflow as _fit
+
+    return _fit(matrices, **kwargs)
+
+
+def search_irf_rise_2d(matrices, **kwargs):
+    """Scan the IRF rise point over the 2D-MEM workflow (``TK_MyMain_Search_RiseIRF_2DMEM``).
+
+    See :func:`chisurf.plugins.fcs.flc_2d.fit.workflow_2d.search_irf_rise_2d`; the result's
+    ``best`` is the lowest-chi2 rise point.
+    """
+    from .fit.workflow_2d import search_irf_rise_2d as _search
+
+    return _search(matrices, **kwargs)
+
+
+def average_2d_mem(matrices, **kwargs):
+    """Average the 2D-MEM workflow over rise points around a centre (``TK_MyMain_Run_Ave2DMEM``).
+
+    See :func:`chisurf.plugins.fcs.flc_2d.fit.workflow_2d.average_2d_mem`.
+    """
+    from .fit.workflow_2d import average_2d_mem as _average
+
+    return _average(matrices, **kwargs)
 
 
 # ------------------------------------------------------------------ separate data
