@@ -60,10 +60,18 @@ def comparison(tmp_path_factory):
     # made without reaching the rest of the session.
     env["CHIMOL_TOOLKIT"] = "none"
     env["QT_QPA_PLATFORM"] = "offscreen"
+    # Run in the report's directory: the capture presses every reachable
+    # control, and one of them records an orbit movie into the working
+    # directory -- from the checkout, orbit.gif and its frames landed in the
+    # repository root. The package root is put on the path explicitly, since a
+    # relative entry would no longer point at it.
+    root = pathlib.Path(__file__).resolve().parents[4]
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(root), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
     finished = subprocess.run(
         [sys.executable, "-m", "chisurf.plugins.chimol.test.web_parity",
          "--out", str(out)],
-        capture_output=True, text=True, env=env, timeout=1800,
+        capture_output=True, text=True, env=env, timeout=1800, cwd=str(out),
     )
     desktop = out / "desktop.json"
     browser = out / "browser.json"
