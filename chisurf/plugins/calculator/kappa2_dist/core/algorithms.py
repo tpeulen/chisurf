@@ -74,9 +74,10 @@ def compute_kappa2_dist(**params: float | bool | str) -> dict:
         r_0=r_0,
     )
 
+    weights = None
     if model_type == "cone":
         if rAD_known:
-            x, k2hist, k2v = kappasq_all_delta(
+            x, k2hist, k2v, weights = kappasq_all_delta(
                 delta=delta,
                 sD2=sd2,
                 sA2=sa2,
@@ -109,13 +110,18 @@ def compute_kappa2_dist(**params: float | bool | str) -> dict:
         raise ValueError(f"Unknown model_type: {model_type}")
 
     if model_type != "isotropic":
-        # ``k2v`` holds the sampled orientation factors themselves, so the
-        # moments need no binning at all. Taking them from the histogram
-        # instead made them depend on ``n_bins``, and the previous code paired
-        # the counts with the *upper* bin edges, shifting every mean up by half
-        # a bin.
+        # ``k2v`` holds the orientation factors themselves, so the moments need
+        # no binning at all. Taking them from the histogram instead made them
+        # depend on ``n_bins``, and the previous code paired the counts with
+        # the *upper* bin edges, shifting every mean up by half a bin.
+        #
+        # A random sample weighs every value the same. The known-delta grid
+        # does not: its points crowd towards the pole, so it carries the
+        # solid-angle weight of each one, and ignoring it pulled <k2> from
+        # 0.668 to 0.633.
         k2v = np.asarray(k2v, dtype=float)
-        weights = np.ones_like(k2v)
+        weights = (np.ones_like(k2v) if weights is None
+                   else np.asarray(weights, dtype=float))
 
     total = max(float(np.sum(weights)), 1e-30)
     k2_mean = float(np.dot(weights, k2v) / total)

@@ -152,6 +152,9 @@ def kappasq_all_delta(
           - k2hist (np.ndarray): Histogram of kappa² values (weighted by sin(beta1)).
           - k2 (np.ndarray): Flat array of computed kappa² values, one per
             (beta1, phi) grid point in row-major order.
+          - weights (np.ndarray): The solid-angle weight of each value. A
+            moment taken over ``k2`` needs these: the grid points crowd towards
+            the pole, and an unweighted mean counts that region too often.
 
     Notes
     -----
@@ -180,6 +183,7 @@ def kappasq_all_delta(
         np.asarray(dist.scale, dtype=np.float64),
         np.asarray(dist.hist, dtype=np.float64),
         np.asarray(dist.values, dtype=np.float64),
+        np.asarray(dist.weights, dtype=np.float64),
     )
 
 

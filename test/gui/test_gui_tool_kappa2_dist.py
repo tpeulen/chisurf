@@ -53,36 +53,39 @@ class Tests(unittest.TestCase):
         """Restricted motion widens the distribution; it does not move <k2>.
 
         The mean over isotropically distributed *relative* orientations is 2/3
-        whatever the cones do — see test/fitting/test_kappa2_distribution.py,
+        whatever the cones do -- see test/fitting/test_kappa2_distribution.py,
         where the same invariant is pinned directly on the sampler. The values
         this file asserted before the port (0.7545, 0.1907) came from the
-        octant sampling that test's docstring records as the bug it found: it
-        skewed the mean, which is exactly the quantity that must not move.
+        octant sampling that test's docstring records as the bug it found.
+
+        This mode samples randomly, so the spreads are asserted to the
+        precision a 10 000-sample run actually has.
         """
         self.tool._do_compute()
 
-        self.assertAlmostEqual(self.model.k2_mean, 2.0 / 3.0, places=2)
-        self.assertAlmostEqual(self.model.k2_sd, 0.217, places=2)
-        self.assertAlmostEqual(self.model.Rapp_mean, 0.993, places=2)
-        self.assertAlmostEqual(self.model.RappSD, 0.0517, places=3)
+        self.assertAlmostEqual(self.model.k2_mean, 2.0 / 3.0, delta=0.01)
+        self.assertAlmostEqual(self.model.k2_sd, 0.217, delta=0.005)
+        self.assertAlmostEqual(self.model.Rapp_mean, 0.993, delta=0.003)
+        self.assertAlmostEqual(self.model.RappSD, 0.052, delta=0.003)
 
-    def test_a_known_rAD_narrows_the_distribution(self):
-        """A measured donor-acceptor anisotropy constrains the cone further.
+    def test_a_known_rAD_keeps_the_mean_at_two_thirds(self):
+        """A known angle between the dye axes, with R_DA still random.
 
-        With rAD known the sampling is deterministic, so these are exact
-        rather than sampled: the distribution is narrower (0.207 against
-        0.217) and its mean is pulled off 2/3, which is what knowing the
-        relative orientation does.
+        Knowing how the two axes sit relative to each other does not tell the
+        orientation of that pair relative to R_DA, so <k2> is still 2/3 --
+        which an independent Monte Carlo over the same geometry confirms
+        (IMP.bff's test_orientation_factor_cpp.py). This used to assert 0.6304:
+        the engine folded beta2 into (0, pi/2) and the moments ignored the
+        grid's solid-angle weights, and that number was the bias of both.
+        The sweep is deterministic, so the values are tight.
         """
         self.model.rAD_known = True
         self.tool._do_compute()
 
-        self.assertAlmostEqual(self.model.k2_mean, 0.6304, places=3)
-        self.assertAlmostEqual(self.model.k2_sd, 0.2072, places=3)
-        self.assertAlmostEqual(self.model.Rapp_mean, 0.9840, places=3)
-        self.assertAlmostEqual(self.model.RappSD, 0.0503, places=3)
-        self.assertLess(self.model.k2_sd, 0.217)
-
+        self.assertAlmostEqual(self.model.k2_mean, 2.0 / 3.0, places=3)
+        self.assertAlmostEqual(self.model.k2_sd, 0.2200, places=3)
+        self.assertAlmostEqual(self.model.Rapp_mean, 0.9929, places=3)
+        self.assertAlmostEqual(self.model.RappSD, 0.0521, places=3)
 
 if __name__ == "__main__":
     unittest.main()
