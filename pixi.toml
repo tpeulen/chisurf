@@ -112,6 +112,15 @@ swig = ">=4.4.0,<5"
 ninja = ">=1.13.2,<2"
 scikit-build-core = ">=0.12.1,<0.13"
 pybind11 = ">=3.0.3,<4"
+# imp-bff's own standalone/CMakeLists.txt (it is built from source now, see
+# the imp-bff pypi-dependency below) needs these three C++ header libraries
+# unconditionally (`find_package(Eigen3 REQUIRED CONFIG)`, `find_package(Boost
+# 1.66 REQUIRED)` for boost/random only, and cereal). libboost-headers, not
+# `boost` or `boost-cpp`, because only the headers are needed -- no compiled
+# Boost libraries or the Python bindings `boost` pulls in.
+eigen = "*"
+libboost-headers = "*"
+cereal = "*"
 llvm-openmp = ">=22.1.3,<23"
 
 # PyPI-only runtime deps (no conda package exists). latexify-py backs the LaTeX
