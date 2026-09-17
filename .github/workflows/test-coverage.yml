@@ -5,6 +5,13 @@ on:
 
 env:
   PIXI_VERSION: latest
+  # pixi.toml's per-task env = { PYTHONUNBUFFERED = "1" } (test/test-cov)
+  # didn't reach the pytest subprocess -- confirmed on real CI (run
+  # 35276631679): 17+ minutes of zero output between "timeout method:
+  # thread" and the job-level 30min timeout cancelling it, still. Setting it
+  # here, at the workflow level, is unambiguous: every step in every job
+  # gets it in its environment, with no pixi task-injection layer to trust.
+  PYTHONUNBUFFERED: "1"
 
 jobs:
   lint-typecheck:
