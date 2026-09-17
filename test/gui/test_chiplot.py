@@ -54,25 +54,6 @@ def _pyqtgraph_backend():
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
-@pytest.fixture(autouse=True)
-def _dispose_of_the_plots_each_test_made():
-    """Close what a test opened, before the next one runs.
-
-    Every test here builds plots and drops them on the floor; the
-    ``QApplication`` is module-scoped, so they accumulate. Qt keeps delivering
-    layout events to that pile, and eventually one reaches a label whose C++
-    object is gone -- "wrapped C/C++ object of type LabelItem has been
-    deleted", and then a segfault out of the event loop that raised it. With
-    the whole file it took 37 tests to happen, which is why it looked like a
-    crash in whichever test came last.
-    """
-    yield
-    for widget in QtWidgets.QApplication.topLevelWidgets():
-        widget.close()
-        widget.deleteLater()
-    QtWidgets.QApplication.processEvents()
-
-
 @pytest.fixture(scope="module")
 def qapp():
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
