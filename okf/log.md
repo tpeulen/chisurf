@@ -1,5 +1,21 @@
 # Update Log
 
+## 2026-09-17
+
+* **ChiSurf's PAM A/B tests no longer read the PAM checkout.** Ahead of deleting
+  `junk/PAM`: the compiled three-colour PDA kernel A/B
+  (`test/models/test_pda3c_octave_ab.py`) had been silently *skipping* for a while
+  — it pointed at `functions/PDA3c/C Files/src`, which upstream moved to
+  `functions/tcPDA/C Files/src`. Re-run live against the corrected path (passed,
+  max rel. diff < 1e-10), then frozen into
+  `test/data/pda3c/pam_eval_prob_3c_bg_lib_reference.npz` (3 KB) with the generator
+  `gen_pam_pda3c_reference.py` (upstream gitlab.com/PAM-PIE/PAM @7319d15d, exact
+  sources, Octave driver). The Gopich–Szabo fixture already existed; its `.m` carried
+  an absolute path to the checkout and is replaced by `gen_pam_gs_reference.py`,
+  which re-ran `GP_logL.m` and reproduced all four stored logL bit-exactly. The FCS/PCF
+  A/B tests and `models.yaml` comments were cite-only; their `junk/PAM` paths now cite
+  the upstream revision instead.
+
 ## 2026-09-16
 
 * **The GUI toolkit is emtk, renamed from cmtk.** `cmtk` collided on PyPI with an

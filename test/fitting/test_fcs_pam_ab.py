@@ -1,7 +1,7 @@
 """A/B verification of the PAM-derived FCS models ported into models.yaml.
 
 The reference side ("A") transcribes each PAM model's MATLAB ``fit`` lambda from
-``junk/PAM/Models/fcs/*.m`` verbatim (keeping the explicit ``1e-12``/``1e-6`` SI
+PAM's ``Models/fcs/*.m`` (https://gitlab.com/PAM-PIE/PAM at 7319d15d) verbatim (keeping the explicit ``1e-12``/``1e-6`` SI
 conversions and ``x`` in seconds). The ported side ("B") is the corresponding
 ``models.yaml`` equation evaluated through ChiSurf's real ``ParseModel`` scanner.
 For each model we draw random in-range parameter sets and assert the two agree,

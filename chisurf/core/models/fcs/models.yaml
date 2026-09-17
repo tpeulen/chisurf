@@ -505,7 +505,7 @@ Simple 2D diffusion & 1x relaxation:
     abt5: 1
   description: Mixed 2D-membrane plus 3D-Gaussian diffusion with one bunching term and a five-component anti-correlation (reaction/exchange) term; for cross-correlation curves
 
-# --- PAM-derived FCS models (ported from junk/PAM/Models/fcs, A/B-verified). x in s. ---
+# --- PAM-derived FCS models (ported from Models/fcs, gitlab.com/PAM-PIE/PAM @7319d15d, A/B-verified). x in s. ---
 3D diffusion (D, triplet):
   equation: y_0+1/sqrt(8)*(1/N)*(1+Trip/(1-Trip)*exp(-x/(tau_T*0.000001)))*(1/(1+4*D*x/w_r**2))*(1/sqrt(1+4*D*x/w_z**2))
   initial:

@@ -47,7 +47,7 @@ def _parse_and_eval(equation, values, x):
     return eval(m.code)
 
 
-# PAM reference lambdas (verbatim from junk/PAM/Models/fcs/PCF_*.m).
+# PAM reference lambdas (verbatim from Models/fcs/PCF_*.m, https://gitlab.com/PAM-PIE/PAM at 7319d15d).
 def _pcf_lognormal(x, A, Mode, sigma):
     # PAM's y0 is unused in its fit function, so it is omitted from the port.
     return A / sigma / np.sqrt(2 * np.pi) / x * np.exp(

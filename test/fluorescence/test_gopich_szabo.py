@@ -8,7 +8,8 @@ Three levels of check, in increasing strength:
    spectral kernel.
 3. **Against the reference MATLAB** — log-likelihoods produced by PAM's
    unmodified ``GP_logL.m`` under Octave and frozen into
-   ``test/data/gopich_szabo/pam_gs_reference.npz``.
+   ``test/data/gopich_szabo/pam_gs_reference.npz``; the upstream revision and
+   the regeneration recipe are in ``gen_pam_gs_reference.py`` beside it.
 """
 
 from __future__ import annotations

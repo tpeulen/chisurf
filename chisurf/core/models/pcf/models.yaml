@@ -1,6 +1,6 @@
 ---
 # Pair-correlation-function (PCF) distribution fits, ported from PAM
-# (junk/PAM/Models/fcs/PCF_*.m), A/B-verified. x is the correlation lag (s);
+# (Models/fcs/PCF_*.m, gitlab.com/PAM-PIE/PAM @7319d15d), A/B-verified. x is the correlation lag (s);
 # Mode is in ms (hence the x*1000 inside the log).
 PCF Log-Normal:
   equation: A/sigma/sqrt(2*3.141592653589793)/x*exp(-(log(x/Mode*1000)-sigma**2)**2/(2*sigma**2))
