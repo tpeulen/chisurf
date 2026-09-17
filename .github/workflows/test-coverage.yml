@@ -104,7 +104,7 @@ jobs:
 
       - name: Run tests with coverage (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a pixi run test-cov
+        run: xvfb-run -a pixi run --environment test test-cov
 
       - name: Upload coverage to Codecov
         if: runner.os == 'Linux'
@@ -126,4 +126,4 @@ jobs:
 
       - name: Run tests (macOS / Windows)
         if: runner.os != 'Linux'
-        run: pixi run test
+        run: pixi run --environment test test

@@ -76,4 +76,4 @@ jobs:
           locked: false
 
       - name: Smoke tests (headless)
-        run: xvfb-run -a pixi run test-smoke
+        run: xvfb-run -a pixi run --environment test test-smoke
